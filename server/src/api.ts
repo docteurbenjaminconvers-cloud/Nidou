@@ -72,7 +72,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
    * without a session every route answers 401 `non_connecte`. NIDOU_AUTH=0 keeps the single-household prototype.
    */
   api.use("*", async (c, next) => {
-    if (c.req.path.includes("/auth/") || c.req.path.endsWith("/inbox") || c.req.path.endsWith("/bank/webhook") || c.req.path.endsWith("/bank/callback") || c.req.path.endsWith("/stripe/webhook") || c.req.path.endsWith("/abonnement/simule")) return next();
+    if (c.req.path.includes("/auth/") || c.req.path.endsWith("/inbox") || c.req.path.endsWith("/bank/webhook") || c.req.path.endsWith("/bank/callback") || c.req.path.endsWith("/stripe/webhook") || c.req.path.endsWith("/abonnement/simule") || c.req.path.endsWith("/waitlist")) return next();
     let row;
     let user = null as { id: string; email: string; prenom: string | null } | null;
     if (AUTH_ON()) {

@@ -112,6 +112,10 @@ En local, le site est visible sur http://localhost:3000/site/.
 
 Réservé au plan Famille (`402 limite_plan` sinon). `DELETE /api/bank` supprime la connexion et les comptes.
 
+## Production
+
+`Dockerfile` (image unique : appli, API, MCP, site), `deploy/docker-compose.yml` (Caddy en HTTPS automatique devant l'application, sauvegarde quotidienne), `deploy/Caddyfile` (site sur `nidou.fr`, appli sur `app.nidou.fr`, en-têtes de sécurité), `server/scripts/sauvegarde.mjs` (copie cohérente de la base à chaud et des fichiers, 14 jours gardés). Guide pas à pas pour un VPS OVH : `deploy/DEPLOIEMENT.md`. Les tests et la construction de l'image tournent sur GitHub Actions à chaque envoi (`.github/workflows/ci.yml`).
+
 ## Avant une mise en production
 
 - Hébergement européen, chiffrement au repos, sauvegardes.

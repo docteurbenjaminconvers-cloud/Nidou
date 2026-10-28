@@ -1,0 +1,10 @@
+**/node_modules
+web/dist
+server/dist
+server/data
+**/.env
+.git
+demo
+demo-site
+docs/*.xlsx
+*.log

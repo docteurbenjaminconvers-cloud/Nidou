@@ -1,0 +1,45 @@
+# Nidou en production sur un VPS (OVH ou autre) : Caddy (HTTPS automatique) devant l'application.
+#   cp ../server/.env.example .env   # puis remplir
+#   docker compose up -d --build
+services:
+  nidou:
+    build: ..
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NIDOU_DATA: /data
+      PORT: "3000"
+    volumes:
+      - nidou-data:/data
+    expose: ["3000"]
+
+  sauvegarde:
+    build: ..
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NIDOU_DATA: /data
+    volumes:
+      - nidou-data:/data
+    # une sauvegarde par jour ; les 14 dernières sont gardées dans /data/sauvegardes
+    command: ["sh", "-c", "while true; do node scripts/sauvegarde.mjs; sleep 86400; done"]
+    depends_on: [nidou]
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMAINE_APP: ${DOMAINE_APP:-app.nidou.fr}
+      DOMAINE_SITE: ${DOMAINE_SITE:-nidou.fr}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../site:/srv/site:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [nidou]
+
+volumes:
+  nidou-data:
+  caddy-data:
+  caddy-config:

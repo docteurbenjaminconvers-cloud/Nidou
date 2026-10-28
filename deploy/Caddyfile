@@ -1,0 +1,25 @@
+# Certificats HTTPS Let's Encrypt automatiques pour les deux domaines.
+{$DOMAINE_SITE}, www.{$DOMAINE_SITE} {
+	encode zstd gzip
+	@waitlist path /api/waitlist
+	reverse_proxy @waitlist nidou:3000
+	root * /srv/site
+	file_server
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+}
+
+{$DOMAINE_APP} {
+	encode zstd gzip
+	reverse_proxy nidou:3000
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(self), microphone=(), geolocation=()"
+	}
+}
