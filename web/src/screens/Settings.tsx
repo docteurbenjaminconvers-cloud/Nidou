@@ -1,0 +1,137 @@
+import { useEffect, useState } from "react";
+import type { Api } from "../api";
+import { ApiError } from "../api";
+import type { Household } from "../types";
+import { Back } from "../ui";
+
+/** Accounts sharing this household: invite a partner by email, see who is in, remove. */
+function FamillePartagee({ api, household, toast }: { api: Api; household: Household; toast: (m: string) => void }) {
+  const [data, setData] = useState<Awaited<ReturnType<Api["comptes"]>> | null>(null);
+  const [email, setEmail] = useState(""); const [prenom, setPrenom] = useState(""); const [busy, setBusy] = useState(false); const [lien, setLien] = useState<string | null>(null);
+  const load = () => api.comptes().then(setData).catch(() => setData({ comptes: [], invitations: [] }));
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const owner = !household.utilisateur || data?.comptes.find((c) => c.id === household.utilisateur?.id)?.role === "proprietaire";
+  const invite = async () => {
+    setBusy(true);
+    try { const r = await api.inviter(email.trim(), prenom.trim() || null); setLien(r.lien); toast(r.envoye ? `Invitation envoyée à ${email}` : "Invitation créée"); setEmail(""); setPrenom(""); load(); }
+    catch (e) { toast(e instanceof ApiError ? e.message : "L'invitation a échoué"); }
+    finally { setBusy(false); }
+  };
+  return (
+    <section className="section">
+      <div className="section-head"><h2>Famille partagée</h2>{data && <span className="badge">{data.comptes.length} compte{data.comptes.length > 1 ? "s" : ""}</span>}</div>
+      <p style={{ marginBottom: 10 }}>Votre conjoint·e ou un proche reçoit un lien par email et ouvre le même nid sur son téléphone : mêmes papiers, mêmes rappels, même budget.</p>
+      {data?.comptes.map((c) => (
+        <div className="settings-row" key={c.id}><div><div className="t">{c.prenom ?? c.email}{household.utilisateur?.id === c.id ? " (vous)" : ""}</div><div className="s">{c.email} · {c.role === "proprietaire" ? "propriétaire du nid" : "membre"}</div></div>{owner && household.utilisateur?.id !== c.id && <button className="link" style={{ color: "var(--ember)" }} onClick={async () => { if (confirm(`Retirer ${c.prenom ?? c.email} du nid ?`)) { await api.retirerCompte(c.id); toast("Compte retiré"); load(); } }}>Retirer</button>}</div>
+      ))}
+      {data?.invitations.map((i) => (
+        <div className="settings-row" key={i.token}><div><div className="t">{i.prenom ?? i.email}</div><div className="s">{i.email} · invitation en attente</div></div><button className="link" onClick={async () => { await api.annulerInvitation(i.token); load(); }}>Annuler</button></div>
+      ))}
+      <div className="lock" style={{ marginTop: 12 }}>
+        <b>Inviter quelqu'un</b>
+        <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+          <input className="in" placeholder="Prénom" value={prenom} onChange={(e) => setPrenom(e.target.value)} />
+          <input className="in" type="email" inputMode="email" placeholder="email@exemple.fr" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <button className="btn" disabled={busy || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)} onClick={invite}>{busy ? <span className="spinner" /> : "Envoyer l'invitation"}</button>
+        </div>
+        {lien && <p className="note" style={{ marginTop: 8 }}>Mode développement, lien à transmettre : <a className="link" href={lien}>{lien}</a></p>}
+        {household.plan === "gratuit" && <p className="note" style={{ marginTop: 8 }}>Plan gratuit : 2 comptes au maximum. Le plan Famille en accepte 6.</p>}
+      </div>
+    </section>
+  );
+}
+
+export function Settings({ api, household, onBack, onPlan, toast, go }: { api: Api; household: Household; onBack: () => void; onPlan: (p: Household["plan"]) => void; toast: (m: string) => void; go: (s: string, id?: string) => void }) {
+  const mcpUrl = `${location.origin}/mcp`;
+  const checkout = async (periode: "mensuel" | "annuel") => {
+    try {
+      const r = await api.checkout(periode);
+      if (r.url) { location.href = r.url; return; }
+      onPlan("famille"); toast("Plan Famille activé (démo)");
+    } catch (e) { toast((e as Error).message); }
+  };
+  return (
+    <div className="screen">
+      <Back onClick={onBack} />
+      <div className="top"><div><h1>Réglages</h1><p className="sub"><button className="link" style={{ fontWeight: 500, color: "var(--mist)" }} onClick={async () => { const n = prompt("Nom du nid", household.nom); if (n && n.trim()) { await api.renommer(n.trim()); onPlan(household.plan); } }}>{household.nom} ✎</button>{api.mode === "demo" ? " · mode démo" : ""}</p></div></div>
+
+      <section className="section">
+        <div className="section-head"><h2>Votre plan</h2>{household.essai?.actif && <span className="badge">essai : {household.essai.jours_restants} j</span>}</div>
+        {household.essai?.actif && <p className="note" style={{ marginBottom: 10 }}>Vous profitez du plan Famille complet pendant 15 jours, sans carte bancaire. Ensuite, votre compte passe en Gratuit en gardant tous vos papiers et vos échéances.</p>}
+        <div className={`plan-card ${household.plan === "gratuit" ? "on" : ""}`}>
+          <h3>Gratuit</h3>
+          <ul><li>50 documents, 2 membres</li><li>Papiers lus localement (sans IA), champs à compléter</li><li>Rappels d'échéances (notifications sur le téléphone)</li><li>3 courriers par mois (modèles)</li><li>Charges fixes d'après vos papiers</li><li>Sans import de relevés ni connexion bancaire</li></ul>
+          {household.plan !== "gratuit" && <button className="link" style={{ marginTop: 10 }} onClick={() => { api.setPlan("gratuit"); onPlan("gratuit"); toast("Plan gratuit activé"); }}>Revenir au gratuit</button>}
+        </div>
+        <div className={`plan-card ${household.plan === "famille" ? "on" : ""}`}>
+          <h3>Famille · 9,90 € / mois ou 99 € / an</h3>
+          <ul><li>Documents illimités, jusqu'à 6 membres</li><li>Photos, PDF et emails lus par l'IA et rangés tout seuls</li><li>Courriers illimités, rédigés par l'IA</li><li>Banque connectée ou relevés importés, toutes les économies chiffrées</li><li>Rappels par notification et par email</li><li>Connecteur IA (Claude, ChatGPT…)</li></ul>
+          {household.plan_souscrit !== "famille" && household.abonnement?.statut !== "active" && household.abonnement?.statut !== "simule" && (
+            <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
+              <button className="btn" onClick={() => checkout("annuel")}>99 € par an <small style={{ fontWeight: 500, opacity: 0.85 }}>· 2 mois offerts</small></button>
+              <button className="btn ghost" onClick={() => checkout("mensuel")}>9,90 € par mois, sans engagement</button>
+              <p className="note">Paiement sécurisé par Stripe. Résiliable en un clic, remboursement au prorata jamais demandé : on arrête, c'est tout.</p>
+            </div>
+          )}
+          {(household.abonnement?.statut === "active" || household.abonnement?.statut === "simule" || household.abonnement?.statut === "past_due") && (
+            <div style={{ marginTop: 12 }}>
+              <p className="note">Abonnement {household.abonnement.periode === "annuel" ? "annuel" : "mensuel"}{household.abonnement.fin ? `, prochaine échéance le ${new Date(household.abonnement.fin).toLocaleDateString("fr-FR")}` : ""}{household.abonnement.statut === "past_due" ? " · paiement en attente, mettez à jour votre carte" : ""}{household.abonnement.statut === "simule" ? " · simulé (Stripe non configuré)" : ""}.</p>
+              {household.abonnement.gerable && <button className="link" style={{ marginTop: 6 }} onClick={async () => { const r = await api.portail(); location.href = r.url; }}>Gérer mon abonnement (carte, facture, résiliation)</button>}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="section-head"><h2>Membres du foyer</h2></div>
+        {household.membres.map((m) => (
+          <div className="settings-row" key={m.id}><div><div className="t">{m.prenom}</div><div className="s">{m.role}</div></div></div>
+        ))}
+        <button className="link" style={{ marginTop: 10 }} onClick={() => go("famille")}>Composition du foyer, écoles, activités, conseils</button>
+      </section>
+
+      <FamillePartagee api={api} household={household} toast={toast} />
+
+      <section className="section">
+        <div className="section-head"><h2>Papiers par email</h2>{household.boite_email ? <span className="badge">active</span> : <span className="badge yolk">plan Famille</span>}</div>
+        <p style={{ marginBottom: 10 }}>Transférez un email à votre adresse Nidou : la facture, le contrat ou l'avis d'échéance se range tout seul et crée ses rappels. Nidou ne lit jamais votre boîte mail, seulement ce que vous lui envoyez.</p>
+        {household.boite_email ? (
+          <>
+            <div className="settings-row"><div><div className="t">Votre adresse Nidou</div><div className="s">À enregistrer dans vos contacts</div></div><button className="link" onClick={async () => { try { await navigator.clipboard.writeText(household.boite_email!); toast("Adresse copiée"); } catch { toast(household.boite_email!); } }}>Copier</button></div>
+            <div className="code" style={{ marginTop: 8 }}>{household.boite_email}</div>
+            <p className="note" style={{ marginTop: 10 }}>Astuce : dans Gmail ou Outlook, créez une règle « tout ce qui vient de EDF, MAIF, Orange… → transférer à cette adresse ». Vos papiers arriveront sans rien faire.</p>
+            {(household.boite_recus?.length ?? 0) > 0 && (
+              <ul className="list" style={{ marginTop: 10 }}>
+                {household.boite_recus!.slice(0, 5).map((m) => <li key={m.message_id} className="settings-row"><div><div className="t">{m.objet ?? "(sans objet)"}</div><div className="s">{m.expediteur ?? ""} · {m.documents} papier{m.documents > 1 ? "s" : ""}</div></div></li>)}
+              </ul>
+            )}
+          </>
+        ) : <p className="note">Pendant l'essai et avec le plan Famille, vous recevez une adresse personnelle du type nid-xxxxxx@in.nidou.fr.</p>}
+      </section>
+
+      <section className="section">
+        <div className="section-head"><h2>Connecteur IA</h2>{household.plan === "famille" ? <span className="badge">actif</span> : <span className="badge yolk">plan Famille</span>}</div>
+        <p style={{ marginBottom: 10 }}>Demandez à Claude ou ChatGPT « quand expire mon assurance auto ? » : l'assistant interroge vos papiers, en lecture seule, et chaque accès est journalisé.</p>
+        <div className="settings-row"><div><div className="t">Adresse du connecteur</div><div className="s">À ajouter comme connecteur MCP distant</div></div></div>
+        <div className="code" style={{ marginTop: 8 }}>{mcpUrl}</div>
+        {household.mcp_token && (
+          <>
+            <div className="settings-row"><div><div className="t">Jeton d'accès de votre nid</div><div className="s">À coller comme « Bearer token » ; propre à votre foyer</div></div><button className="link" onClick={async () => { try { await navigator.clipboard.writeText(household.mcp_token!); toast("Jeton copié"); } catch { toast(household.mcp_token!); } }}>Copier</button></div>
+            <div className="code" style={{ marginTop: 8 }}>{household.mcp_token}</div>
+            <button className="link" style={{ marginTop: 8 }} onClick={async () => { const t = await api.regenererMcp(); toast("Nouveau jeton : " + t.slice(0, 6) + "…"); onPlan(household.plan); }}>Régénérer le jeton (révoque l'ancien)</button>
+          </>
+        )}
+        <div className="settings-row"><div><div className="t">Santé et banque exclues</div><div className="s">Ces dossiers ne sont jamais lus par le connecteur</div></div><button className="toggle" role="switch" aria-checked="true" onClick={() => toast("Réglé côté serveur (NIDOU_MCP_EXCLUDE)")} /></div>
+        <div className="settings-row"><div><div className="t">Lecture seule</div><div className="s">Aucune action sans confirmation dans Nidou</div></div><button className="toggle" role="switch" aria-checked="true" onClick={() => toast("L'écriture arrivera plus tard, toujours avec confirmation")} /></div>
+      </section>
+
+      <section className="section">
+        <div className="section-head"><h2>Vos données</h2></div>
+        <div className="settings-row"><div><div className="t">Hébergement</div><div className="s">Europe · chiffré · jamais revendu</div></div></div>
+        <div className="settings-row"><div><div className="t">Exporter tout</div><div className="s">Documents et échéances au format JSON</div></div><button className="link" onClick={() => toast("Export disponible dans la version serveur")}>Exporter</button></div>
+        <div className="settings-row"><div><div className="t">Supprimer le compte</div><div className="s">Tout est effacé, sans délai</div></div><button className="link" style={{ color: "var(--ember)" }} onClick={() => toast("Dans le prototype, supprimez le fichier de données")}>Supprimer</button></div>
+        {household.utilisateur && <div className="settings-row"><div><div className="t">Connecté·e</div><div className="s">{household.utilisateur.email}</div></div><button className="link" onClick={async () => { await api.deconnexion(); location.reload(); }}>Se déconnecter</button></div>}
+      </section>
+    </div>
+  );
+}

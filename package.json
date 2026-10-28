@@ -1,0 +1,11 @@
+{
+  "name": "nidou",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["server", "web"],
+  "scripts": {
+    "dev": "npm run dev --workspace=server & npm run dev --workspace=web",
+    "build": "npm run build --workspace=web && npm run build --workspace=server",
+    "test": "npm test --workspace=server"
+  }
+}

@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nidou</title>
+<meta name="description" content="Nidou range les papiers de votre famille, vous prévient avant chaque échéance et trouve les économies faciles dans vos dépenses. Avec un connecteur pour votre assistant IA.">
+<meta property="og:title" content="Nidou — l'assistant de votre famille">
+<meta property="og:description" content="Papiers, échéances, budget : Nidou s'occupe de la charge mentale de votre famille.">
+<meta name="theme-color" content="#FBF4F0">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@1,9..144,500;1,9..144,600;0,9..144,600&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="Nidou, accueil">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="32" fill="#D95F45"/><path d="M14 38c0 8 8 14 18 14s18-6 18-14H14z" fill="#FBF4F0"/><circle cx="26" cy="32" r="7" fill="#E9B23A"/><circle cx="39" cy="31" r="6" fill="#FBF4F0" stroke="#D95F45" stroke-width="1.5"/></svg>
+      Nidou
+    </a>
+    <nav>
+      <a href="#economies" data-i18n="t1">Économies</a>
+      <a href="#fonctionnement" data-i18n="t2">Comment ça marche</a>
+      <a href="#ia" data-i18n="t3">Connecteur IA</a>
+      <a href="#tarifs" data-i18n="t4">Tarifs</a>
+      <a href="#faq" data-i18n="t5">Questions</a>
+      <a class="btn" href="#inscription" data-i18n="t6">Rejoindre la liste d'attente</a>
+      <label class="lang" aria-label="Langue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/></svg><select id="lang"><option value="fr">FR</option><option value="en">EN</option><option value="es">ES</option><option value="it">IT</option><option value="ar">AR</option></select></label>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <h1 data-i18n="t7">Nidou s'occupe de la <b>charge mentale</b> de votre famille.</h1>
+      <p class="lead" data-i18n="t8">Photographiez un courrier, transférez une facture : Nidou le range, retient chaque date et vous prévient à temps. Il lit vos dépenses, trouve les abonnements fantômes et les hausses cachées, et compte les euros que vous récupérez. Votre assistant IA peut enfin répondre à « quand expire mon assurance auto ? ».</p>
+      <div class="cta">
+        <a class="btn big" href="#inscription" data-i18n="t9">Rejoindre la liste d'attente</a>
+        <a class="btn ghost big" href="#fonctionnement" data-i18n="t10">Voir comment ça marche</a>
+      </div>
+      <p class="small" data-i18n="t11">Gratuit pour commencer. Données hébergées en Europe. Rien n'est partagé avec une IA sans votre accord.</p>
+    </div>
+
+    <div class="phone" aria-label="Aperçu de l'application Nidou">
+      <div class="bar"><span>9:41</span><span>Nidou</span></div>
+      <div class="hello" data-i18n="p0">Bonjour</div>
+      <div class="sub">Famille Martin</div>
+      <div class="saved"><span data-i18n="t13">Économisés cette année</span><b>1 232 €</b></div>
+      <div class="nest">
+        <div class="k" data-i18n="p1">Prochaine échéance</div>
+        <div class="count"><b>18</b><span data-i18n="t14">jours · 15 novembre</span></div>
+        <div class="what" data-i18n="p2">Paiement : taxe foncière</div>
+        <div class="why" data-i18n="p3">1 240 € à régler. Rappel 5 jours avant.</div>
+      </div>
+      <div class="rows">
+        <div class="row"><div class="chip yolk">22<small>déc</small></div><div><div class="t" data-i18n="p4">Passeport de Léa expire</div><div class="s" data-i18n="p5">Prévoir 2 mois pour le renouvellement</div></div><div class="r">›</div></div>
+        <div class="row"><div class="chip">27<small>nov</small></div><div><div class="t" data-i18n="p6">Assurance auto se renouvelle</div><div class="s" data-i18n="p7">Comparer avant reconduction</div></div><div class="r">›</div></div>
+        <div class="row"><div class="chip" style="background:var(--yolk-soft)">€</div><div><div class="t" data-i18n="p8">2 salles de sport payées</div><div class="s" data-i18n="p9">Keepcool et Basic-Fit, 65 € par mois</div></div><div class="r">360 €<small data-i18n="p10">par an</small></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="pain">
+  <div class="wrap">
+    <h2 data-i18n="t15">Les papiers sont partout. Les échéances, nulle part.</h2>
+    <p class="lead" data-i18n="t16">Boîte mail, tiroir, espace client, photo dans le téléphone. Une personne du foyer qui garde tout en tête. Et chaque oubli qui coûte de l'argent.</p>
+    <div class="grid3">
+      <div class="item"><b data-i18n="t17">Oublié</b><p data-i18n="t18">Le préavis de résiliation est passé : l'assurance est reconduite un an de plus, au nouveau tarif.</p></div>
+      <div class="item"><b data-i18n="t19">Invisible</b><p data-i18n="t20">Un abonnement d'essai devenu payant, deux services pour la même chose, des frais bancaires chaque mois.</p></div>
+      <div class="item"><b data-i18n="t21">Introuvable</b><p data-i18n="t22">Le numéro de contrat, la facture du lave-linge en panne, le carnet de vaccination au moment de l'inscription.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="economies">
+  <div class="wrap">
+    <div class="grid2" style="margin-top:0;align-items:center">
+      <div>
+        <p class="eyebrow" data-i18n="t23">Économies réalisées</p>
+        <h2 data-i18n="t24">Nidou se mesure en euros récupérés.</h2>
+        <p class="lead" style="margin-top:14px" data-i18n="t25">Pas de camembert, pas de « vous avez dépensé 12 % de plus en restaurants ». Une liste d'actions classées par gain et par effort, un bouton pour agir, et un compteur de ce que vous avez vraiment récupéré.</p>
+        <ul class="howsave">
+          <li data-i18n="t26"><b>Abonnements fantômes</b><span>un essai devenu payant, un service oublié, prélevé chaque mois</span></li>
+          <li data-i18n="t27"><b>Hausses silencieuses</b><span>même contrat, montant qui monte : souvent un droit de résilier sans frais</span></li>
+          <li data-i18n="t28"><b>Doublons</b><span>deux salles de sport, quatre plateformes de streaming, deux assurances pour le même risque</span></li>
+          <li data-i18n="t29"><b>Frais évitables</b><span>cotisation de carte, commissions d'intervention, agios</span></li>
+          <li data-i18n="t30"><b>Contrats jamais renégociés</b><span>assurance, box, énergie : les tarifs d'entrée des concurrents sont plus bas</span></li>
+        </ul>
+        <p class="small" style="color:var(--mist);margin-top:18px;font-size:14.5px" data-i18n="t31">Chaque action affiche le gain annuel estimé. Une économie n'est comptée « réalisée » qu'une fois la résiliation ou la renégociation confirmée par vous.</p>
+      </div>
+      <div class="ledger" aria-label="Exemple d'économies repérées pour une famille">
+        <div class="ledger-head"><span data-i18n="t32">Famille Martin · 4 mois de relevés</span><b data-i18n="t33">1 949 € / an repérés</b></div>
+        <div class="ledger-row"><div><b>Keepcool</b><span data-i18n="t35">abonnement fantôme, 34,90 € par mois</span></div><em>419 €</em></div>
+        <div class="ledger-row"><div><b data-i18n="t36">Deux salles de sport</b><span data-i18n="t37">Keepcool et Basic-Fit en même temps</span></div><em>360 €</em></div>
+        <div class="ledger-row"><div><b data-i18n="t38">Électricité +22 %</b><span data-i18n="t39">nouvel échéancier, droit de résiliation</span></div><em>252 €</em></div>
+        <div class="ledger-row"><div><b data-i18n="t40">Frais bancaires</b><span data-i18n="t41">cotisation carte et commissions</span></div><em>208 €</em></div>
+        <div class="ledger-row"><div><b data-i18n="t42">Quatre streamings</b><span>Netflix, Disney+, Canal+, Prime</span></div><em>84 €</em></div>
+        <div class="ledger-row"><div><b data-i18n="t44">Assurance habitation</b><span data-i18n="t45">3 ans sans renégociation</span></div><em>46 €</em></div>
+        <div class="ledger-foot">Exemple construit à partir d'une famille fictive. Vos chiffres dépendent de vos contrats.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="fonctionnement">
+  <div class="wrap">
+    <p class="eyebrow" data-i18n="t46">Comment ça marche</p>
+    <h2 data-i18n="t47">Trois gestes, puis Nidou travaille pour vous.</h2>
+    <div class="grid3">
+      <div class="step"><div class="num">1</div><h3 data-i18n="t48">Vous déposez</h3><p data-i18n="t49">Une photo, un PDF, un email transféré. Contrats, factures, attestations, pièces d'identité, garanties.</p></div>
+      <div class="step"><div class="num">2</div><h3 data-i18n="t50">Nidou lit et range</h3><p data-i18n="t51">L'IA reconnaît le document, extrait l'organisme, le numéro, les montants et les dates. Vous validez d'un geste.</p></div>
+      <div class="step"><div class="num">3</div><h3 data-i18n="t52">Vous êtes prévenu</h3><p data-i18n="t53">Dernier jour pour résilier, renouvellement, expiration d'un passeport, fin de garantie : la notification arrive avant, pas après.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="fonctions" style="padding-top:0">
+  <div class="wrap">
+    <div class="grid2">
+      <div class="feature">
+        <span class="tag" data-i18n="t54">Papiers et échéances</span>
+        <h3 data-i18n="t55">Un seul endroit pour tous les papiers du foyer</h3>
+        <p data-i18n="t56">Recherche par organisme, numéro ou mot du document. Chaque contrat porte ses dates et son préavis. Les courriers de résiliation ou de réclamation sont rédigés, prêts à envoyer.</p>
+      </div>
+      <div class="feature">
+        <span class="tag yolk" data-i18n="t57">Économies faciles</span>
+        <h3 data-i18n="t58">Des euros, pas des camemberts</h3>
+        <p data-i18n="t59">Connectez votre banque ou importez un relevé : Nidou repère les abonnements fantômes, les hausses silencieuses, les doublons et les frais évitables. Chaque alerte donne le gain annuel et le bouton pour agir.</p>
+      </div>
+      <div class="feature">
+        <span class="tag" data-i18n="t60">Famille</span>
+        <h3 data-i18n="t61">Partagé avec ceux qui comptent</h3>
+        <p data-i18n="t62">Votre conjoint, vos enfants devenus grands, un parent âgé dont vous gérez les papiers. Chacun voit ce qu'il doit voir, et la charge ne repose plus sur une seule personne.</p>
+      </div>
+      <div class="feature">
+        <span class="tag" data-i18n="t63">Connecteur IA</span>
+        <h3 data-i18n="t64">Votre assistant connaît enfin vos papiers</h3>
+        <p data-i18n="t65">Claude, ChatGPT ou tout assistant compatible peut interroger votre coffre, en lecture seule, avec votre accord et un journal de chaque accès.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="ia" class="trust" style="background:var(--paper)">
+  <div class="wrap">
+    <div class="grid2" style="margin-top:0;align-items:center">
+      <div>
+        <p class="eyebrow" data-i18n="t66">Connecteur IA</p>
+        <h2 data-i18n="t67">Posez la question à votre assistant. Nidou a la réponse.</h2>
+        <p class="lead" style="margin-top:14px" data-i18n="t68">Les assistants savent rédiger une lettre de résiliation. Ils ignorent le numéro de contrat, la date d'échéance et l'adresse de l'assureur. Nidou leur donne ces informations, et rien d'autre.</p>
+        <ul style="margin:22px 0 0;padding-left:20px;color:var(--mist)">
+          <li data-i18n="t69">Lecture seule : aucune action sans confirmation dans Nidou.</li>
+          <li data-i18n="t70">Périmètre choisi : santé et banque exclus par défaut.</li>
+          <li data-i18n="t71">Journal visible de chaque consultation par une IA.</li>
+          <li data-i18n="t72">Standard ouvert (MCP) : fonctionne avec les assistants d'aujourd'hui et de demain.</li>
+        </ul>
+      </div>
+      <div class="chat" aria-label="Exemple de conversation avec un assistant connecté à Nidou">
+        <div class="msg u" data-i18n="c1">Quand expire mon assurance auto, et combien elle coûte ?</div>
+        <div class="msg a" data-i18n="c2">Votre contrat MAIF (Peugeot 3008) se renouvelle le 27 novembre, à 612 € par an. Le préavis de résiliation est de 60 jours : il est déjà passé pour cette année.<span class="src">Source : Nidou · Assurance auto</span></div>
+        <div class="msg u" data-i18n="c3">Rédige la résiliation pour l'an prochain.</div>
+        <div class="msg a" data-i18n="c4">Voici le courrier, avec le numéro de contrat AUT-4471-8820 et la date d'effet au 27 novembre 2027. Nidou vous rappellera 14 jours avant la date limite d'envoi.<span class="src">Courrier enregistré dans Nidou</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="tarifs">
+  <div class="wrap">
+    <p class="eyebrow" data-i18n="t75">Tarifs</p>
+    <h2 data-i18n="t76">Gratuit pour prendre l'habitude. Famille quand ça vous fait gagner de l'argent.</h2>
+    <div class="plans">
+      <div class="plan">
+        <h3 data-i18n="t77">Gratuit</h3>
+        <div class="price">0 €</div>
+        <p class="for" data-i18n="t78">Pour une personne qui veut arrêter de rater des échéances. Commence par 15 jours de plan Famille complet, sans carte.</p>
+        <ul>
+          <li data-i18n="t79">50 documents, lus localement (sans IA), vous complétez les champs</li>
+          <li data-i18n="t80">Rappels avant chaque échéance (notifications)</li>
+          <li data-i18n="t81">3 courriers par mois, sur modèle</li>
+          <li data-i18n="t82">Charges fixes d'après vos papiers ; sans import de relevés ni connexion bancaire</li>
+          <li data-i18n="t83">2 membres</li>
+        </ul>
+        <a class="btn ghost" href="#inscription" data-i18n="t84">Commencer gratuitement</a>
+      </div>
+      <div class="plan on">
+        <h3 data-i18n="t85">Famille</h3>
+        <div class="price">9,90 €<small data-i18n="tp"> / mois, ou 99 € par an</small></div>
+        <p class="for" data-i18n="t86">Pour un foyer qui veut tout centraliser et récupérer de l'argent. Un seul abonnement résilié rembourse l'année.</p>
+        <ul>
+          <li data-i18n="t87">Documents illimités, chacun lu par l'IA, jusqu'à 6 membres</li>
+          <li data-i18n="t87b">Une adresse email Nidou : transférez une facture, elle se range toute seule</li>
+          <li data-i18n="t87c">Organisation de la famille : écoles, cantine, activités, agenda de la semaine, aides et dates clés</li>
+          <li data-i18n="t88">Connexion bancaire et toutes les économies repérées</li>
+          <li data-i18n="t89">Courriers illimités, rédigés par l'IA</li>
+          <li data-i18n="t90">Connecteur IA (Claude, ChatGPT…)</li>
+          <li data-i18n="t91">Parent âgé géré par un aidant, avec son accord</li>
+        </ul>
+        <a class="btn" href="#inscription" data-i18n="t92">Rejoindre la liste d'attente</a>
+      </div>
+    </div>
+    <p class="small" style="color:var(--mist);margin-top:18px;font-size:14.5px" data-i18n="t93">Tarifs prévus au lancement. Tout le monde commence par 15 jours de plan Famille complet, sans carte bancaire. Sans engagement ensuite : on résilie en un clic, et on exporte tout.</p>
+  </div>
+</section>
+
+<section class="trust">
+  <div class="wrap">
+    <p class="eyebrow" data-i18n="t94">Confiance</p>
+    <h2 data-i18n="t95">Ce sont les papiers les plus sensibles d'une famille. On les traite comme tels.</h2>
+    <ul>
+      <li data-i18n="t96"><b>Hébergement en Europe</b><span>Serveurs dans l'Union européenne, chiffrement en transit et au repos.</span></li>
+      <li data-i18n="t97"><b>Vos données vous appartiennent</b><span>Export complet et suppression définitive en un clic, sans délai ni justification.</span></li>
+      <li data-i18n="t98"><b>Jamais revendues</b><span>Nidou vit de ses abonnements, pas de vos données. Aucune publicité.</span></li>
+      <li data-i18n="t99"><b>Banque via un agrégateur agréé</b><span>Connexion DSP2 encadrée par la Banque de France. Nidou ne voit jamais vos identifiants bancaires.</span></li>
+      <li data-i18n="t100"><b>IA sous contrôle</b><span>Le connecteur est en lecture seule, limité aux dossiers que vous choisissez, et journalisé.</span></li>
+      <li data-i18n="t101"><b>Santé à part</b><span>Le volet santé ouvrira sur un hébergement certifié HDS, pas avant.</span></li>
+    </ul>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <p class="eyebrow" data-i18n="t102">Questions fréquentes</p>
+    <h2 style="margin-bottom:28px" data-i18n="t103">Ce qu'on nous demande le plus</h2>
+    <details><summary data-i18n="t104">Est-ce que je dois tout scanner moi-même ?</summary><p data-i18n="t105">Non. Vous ajoutez les papiers au fil de l'eau : une photo quand un courrier arrive, un transfert d'email pour une facture. Nidou reconnaît aussi vos contrats à partir des prélèvements bancaires et vous propose d'ajouter le papier manquant.</p></details>
+    <details><summary data-i18n="t106">Que se passe-t-il si l'IA se trompe sur une date ?</summary><p data-i18n="t107">Chaque champ extrait est affiché avec son niveau de confiance. Vous corrigez d'un geste, et les rappels se recalculent. Aucune échéance n'est créée sur une date que vous n'avez pas pu voir.</p></details>
+    <details><summary data-i18n="t108">Nidou a-t-il accès à mon compte bancaire ?</summary><p data-i18n="t109">Vous choisissez : importer un relevé (CSV ou PDF) ou connecter votre banque via Bridge, un agrégateur agréé. Dans ce cas, Nidou reçoit uniquement la liste des opérations, en lecture. Il ne peut ni payer ni virer, et ne connaît pas vos identifiants.</p></details>
+    <details><summary data-i18n="t110">Comment Nidou compte les économies ?</summary><p data-i18n="t111">Chaque action (résilier, renégocier, supprimer un doublon) porte un gain annuel estimé à partir de vos propres prélèvements. Le compteur de l'accueil n'additionne que les actions que vous avez confirmées comme faites. Il ne gonfle jamais avec des hypothèses.</p></details>
+    <details><summary data-i18n="t112">Quelle différence avec une appli de budget ?</summary><p data-i18n="t113">Une appli de budget vous dit combien vous avez dépensé. Nidou vous dit quoi résilier, avant quelle date, combien vous gagnez, et rédige le courrier. Il relie les dépenses aux contrats, ce qu'une appli de budget ne peut pas faire.</p></details>
+    <details><summary data-i18n="t114">Comment fonctionne le connecteur IA ?</summary><p data-i18n="t115">Vous ajoutez Nidou comme connecteur dans votre assistant (Claude, ChatGPT, et tout outil compatible MCP). L'assistant peut alors consulter vos papiers et vos échéances pour vous répondre. Il ne peut rien modifier, ni accéder aux dossiers que vous avez exclus. Chaque consultation apparaît dans votre journal.</p></details>
+    <details><summary data-i18n="t116">Puis-je gérer les papiers de mes parents ?</summary><p data-i18n="t117">Oui, avec le plan Famille : un espace par personne aidée, des droits par dossier, et les rappels qui arrivent chez l'aidant. Deux conditions, parce que la loi protège les personnes aidées : la personne doit donner son accord dans Nidou (elle peut le retirer à tout moment), et sa banque ne peut être connectée que par elle-même ou par son représentant légal. Si elle est sous tutelle ou curatelle, c'est le tuteur ou le curateur qui autorise l'accès, dans la limite de son mandat.</p></details>
+    <details><summary data-i18n="t118">Et si j'arrête ?</summary><p data-i18n="t119">Vous exportez tout en un fichier, puis vous supprimez votre compte. C'est effacé, sans délai. Aucune question posée.</p></details>
+  </div>
+</section>
+
+<section id="inscription" style="padding-top:0">
+  <div class="wrap">
+    <div class="join">
+      <h2 data-i18n="t120">Rejoignez la liste d'attente</h2>
+      <p data-i18n="t121">Nidou ouvre en France début 2027. Les premiers inscrits testent l'appli avant tout le monde et choisissent avec nous les fonctions qui comptent.</p>
+      <form class="form" id="waitlist" novalidate>
+        <input type="email" id="email" name="email" placeholder="votre@email.fr" data-i18n-ph="ph1" autocomplete="email" required aria-label="Votre adresse email">
+        <button class="btn" type="submit" id="submit" data-i18n="t122">Je m'inscris</button>
+        <select id="situation" name="situation" class="wide" aria-label="Votre situation (facultatif)">
+          <option value="" data-i18n="t123">Votre situation (facultatif)</option>
+          <option value="enfants" data-i18n="t124">Parent d'enfants à la maison</option>
+          <option value="aidant" data-i18n="t125">Je gère les papiers d'un parent</option>
+          <option value="couple" data-i18n="t126">En couple, sans enfant</option>
+          <option value="solo" data-i18n="t127">Seul·e, premier logement</option>
+        </select>
+      </form>
+      <p class="ok" id="ok" hidden></p>
+      <p class="err" id="err" hidden></p>
+      <p class="alt" id="alt" hidden>Vous pouvez aussi nous écrire : <span id="mail">bonjour@nidou.fr</span><button class="copy" type="button" id="copy">Copier</button></p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span data-i18n="t129">© 2026 Nidou · Fait en Occitanie</span>
+    <span><a href="mentions-legales.html">Mentions légales</a> · <a href="confidentialite.html">Confidentialité</a> · <span id="mail2">bonjour@nidou.fr</span></span>
+  </div>
+</footer>
+
+<script src="i18n.js"></script>
+<script>
+(function () {
+  var form = document.getElementById("waitlist"), ok = document.getElementById("ok"), err = document.getElementById("err"), alt = document.getElementById("alt"), btn = document.getElementById("submit");
+  function show(el, text) { el.textContent = text; el.hidden = false; }
+  function hide(el) { el.hidden = true; }
+  function validEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v); }
+
+  // 1) Nidou server (nidou.fr); 2) claude.ai artifact store (signed-in viewers of the demo); 3) show the address.
+  async function save(payload) {
+    try {
+      var r = await fetch("/api/waitlist", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+      if (r.ok) return "serveur";
+    } catch (e) {}
+    try {
+      if (window.claude && window.claude.use) {
+        var db = await window.claude.use("db"), user = await window.claude.use("user");
+        if (db && user) {
+          var id = await user.id();
+          await db.collection("inscriptions").doc(id).set({ email: payload.email, situation: payload.situation || null, source: payload.source, quand: new Date().toISOString() });
+          return "demo";
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  form.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    hide(ok); hide(err); hide(alt);
+    var email = document.getElementById("email").value.trim();
+    if (!validEmail(email)) { show(err, nidouT("bad")); return; }
+    btn.disabled = true; btn.textContent = nidouT("wait");
+    var where = await save({ email: email, situation: document.getElementById("situation").value, source: "site-" + window.NIDOU_LANG });
+    btn.disabled = false; btn.textContent = nidouT("t122");
+    if (where) { show(ok, nidouT("ok")); form.reset(); }
+    else { show(err, nidouT("fail")); alt.hidden = false; }
+  });
+
+  document.getElementById("copy").addEventListener("click", function () {
+    var t = document.getElementById("mail").textContent;
+    try { navigator.clipboard.writeText(t).then(function () { show(ok, nidouT("copied")); }, function () { selectText(); }); } catch (e) { selectText(); }
+    function selectText() { var r = document.createRange(); r.selectNodeContents(document.getElementById("mail")); var s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+  });
+})();
+</script>
+</body>
+</html>
