@@ -288,6 +288,7 @@ export function ConsentPage({ api, jeton }: { api: Api; jeton: string }) {
   const [ok, setOk] = useState(false);
   const [busy, setBusy] = useState(false);
   const [retrait, setRetrait] = useState(false);
+  const [manque, setManque] = useState<"nom" | "case" | null>(null);
   const banqueRetour = new URLSearchParams(location.hash.split("?")[1] ?? "").get("banque");
   useEffect(() => {
     api.vuePersonne(jeton).then((v) => { setVue(v); setQualite(v.qui_consent.personne && !v.accords_donnes.includes("personne") ? "personne" : "representant"); }).catch((e) => setErr(e.message));
@@ -335,12 +336,17 @@ export function ConsentPage({ api, jeton }: { api: Api; jeton: string }) {
                   <button className="pill" aria-pressed={qualite === "representant"} disabled={vue.accords_donnes.includes("representant")} onClick={() => setQualite("representant")}>Je suis le curateur</button>
                 </div>
               )}
-              <div className="fields"><div className="field"><span>{qualite === "personne" ? "Votre nom" : "Nom du représentant"}</span><input value={nom} onChange={(e) => setNom(e.target.value)} autoComplete="name" /></div></div>
+              <div className="fields"><div className="field"><span>{qualite === "personne" ? "Votre nom" : "Nom du représentant"}</span><input id="nom-signataire" value={nom} placeholder="Écrivez votre nom ici" onChange={(e) => { setNom(e.target.value); setManque(null); }} autoComplete="name" style={manque === "nom" ? { outline: "2px solid var(--ember)", borderRadius: 10 } : undefined} /></div></div>
               <label style={{ display: "grid", gridTemplateColumns: "26px 1fr", gap: 10, alignItems: "start", fontSize: 17, margin: "6px 0 14px" }}>
                 <input type="checkbox" checked={ok} onChange={(e) => setOk(e.target.checked)} style={{ width: 22, height: 22 }} />
                 <span>{qualite === "personne" ? "J'ai compris et je suis d'accord. Je sais que je peux arrêter quand je veux." : `J'autorise la veille en ma qualité de représentant légal de ${vue.prenom}, qui en a été informée.`}</span>
               </label>
-              <button className="btn" style={{ fontSize: 18, padding: "14px 22px" }} disabled={!ok || nom.trim().length < 2 || busy} onClick={() => act(() => api.consentirVeille(jeton, { nom_signataire: nom, en_qualite_de: qualite, accepte: ok }))}>Je donne mon accord</button>
+              <button className="btn" style={{ fontSize: 18, padding: "14px 22px" }} disabled={busy} onClick={() => {
+                if (nom.trim().length < 2) { setManque("nom"); document.getElementById("nom-signataire")?.focus(); return; }
+                if (!ok) { setManque("case"); return; }
+                act(() => api.consentirVeille(jeton, { nom_signataire: nom, en_qualite_de: qualite, accepte: ok }));
+              }}>Je donne mon accord</button>
+              {manque && <p className="note" style={{ color: "var(--ember)", marginTop: 8 }}>{manque === "nom" ? "Écrivez d'abord votre nom, c'est votre signature." : "Cochez la case pour confirmer votre accord."}</p>}
               <p className="note" style={{ marginTop: 10 }}>Vous pouvez aussi ne rien faire : sans accord, rien ne se passe.</p>
             </section>
           )}
