@@ -11,7 +11,7 @@ export default defineConfig({
       strategies: "injectManifest",
       srcDir: "src",
       filename: "sw.ts",
-      injectManifest: { globPatterns: ["**/*.{js,css,html,svg,png,webmanifest}"] },
+      injectManifest: { globPatterns: ["**/*.{js,css,html,svg,png}"] },
       includeAssets: ["icon.svg", "icon-192.png", "icon-512.png"],
       manifest: {
         name: "Nidou — l'assistant de votre famille",
