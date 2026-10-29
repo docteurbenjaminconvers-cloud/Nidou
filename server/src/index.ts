@@ -7,6 +7,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Db } from "./db.js";
 import { createApi } from "./api.js";
+import { demarrerSynchroBanques } from "./banques.js";
 import { demarrerRappels } from "./rappels.js";
 import { handleMcpRequest } from "./mcp.js";
 import { seedDemo } from "./seed.js";
@@ -58,6 +59,7 @@ if (existsSync(WEB_DIST)) {
 }
 
 demarrerRappels(db);
+demarrerSynchroBanques(db);
 
 serve({ fetch: app.fetch, port: PORT }, () => {
   console.log(`Nidou · http://localhost:${PORT}  · API /api · MCP /mcp · IA ${process.env.ANTHROPIC_API_KEY ? "activée" : "désactivée (mode heuristique)"}`);

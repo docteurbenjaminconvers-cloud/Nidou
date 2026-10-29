@@ -11,7 +11,7 @@ Résultat : `nidou.fr` (site vitrine) et `app.nidou.fr` (appli, API, connecteur 
 | Envoi d'emails et réception `in.nidou.fr` | Brevo | gratuit jusqu'à 300 emails / jour |
 | Paiement | Stripe, au nom de la SASU | 1,5 % + 0,25 € par paiement |
 | Lecture des documents | Anthropic (ou Mistral) | à l'usage |
-| Banque | Bridge | sur devis |
+| Banque | Enable Banking (Bridge en secours) | sur devis, par compte connecté et par mois |
 
 ## 2. DNS (zone OVH de nidou.fr)
 
@@ -53,7 +53,7 @@ STRIPE_PRICE_SOLO_MENSUEL=…  STRIPE_PRICE_SOLO_ANNUEL=…  (et de même pour D
 ```
 
 Clés VAPID : `docker compose run --rm nidou npx web-push generate-vapid-keys`.
-Bridge : à ajouter plus tard ; sans clés, la banque reste simulée.
+Enable Banking : créer l'application dans le Control Panel (production après signature du contrat), télécharger la clé privée `.pem`, la copier dans le volume (`docker compose cp enablebanking.pem nidou:/data/`) et remplir `ENABLEBANKING_APP_ID`. Redirect URL à déclarer : `https://app.nidou.fr/api/bank/eb/callback`. Sans clés, la banque reste simulée.
 
 Ne jamais mettre ce fichier sur GitHub (il est exclu par `.gitignore`).
 
@@ -83,7 +83,7 @@ Restaurer : arrêter (`docker compose stop nidou`), remplacer `/data/nidou.sqlit
 
 ## 8. Avant d'accueillir de vraies familles
 
-- Audit de sécurité (tests d'intrusion) et revue RGPD : registre des traitements, contrats de sous-traitance (OVH, Brevo, Anthropic, Stripe, Bridge).
+- Audit de sécurité (tests d'intrusion) et revue RGPD : registre des traitements, contrats de sous-traitance (OVH, Brevo, Anthropic, Stripe, Enable Banking).
 - Données de santé : la catégorie « santé » impose un hébergeur certifié HDS (OVH propose une offre HDS) ; d'ici là, la désactiver ou prévenir que rien de médical ne doit y être rangé.
 - Mentions légales et CGV complétées avec les informations de la SASU.
-- **Veille bancaire d'un proche** : laisser `NIDOU_VEILLE=0` tant qu'un avocat n'a pas validé le parcours de consentement, les textes de la page personnelle, l'engagement de l'aidant et l'analyse d'impact RGPD. Bridge doit aussi accepter ce cas d'usage (un compte connecté par une personne autre que l'abonné).
+- **Veille bancaire d'un proche** : laisser `NIDOU_VEILLE=0` tant qu'un avocat n'a pas validé le parcours de consentement, les textes de la page personnelle, l'engagement de l'aidant et l'analyse d'impact RGPD. Enable Banking doit aussi accepter ce cas d'usage (un compte connecté par une personne autre que l'abonné).

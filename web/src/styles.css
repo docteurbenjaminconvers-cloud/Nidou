@@ -375,3 +375,11 @@ b, strong { font-weight: 800; }
 .consent-list li { background: var(--white); border-radius: 18px; padding: 14px 16px; box-shadow: var(--shadow); line-height: 1.45; }
 .consent .field input { font-size: 18px; }
 .mesures { display: grid; gap: 8px; }
+
+/* ---------- bank picker ---------- */
+.bank-picker { margin-top: 10px; }
+.bank-picker ul { list-style: none; padding: 0; margin: 10px 0 0; max-height: 340px; overflow-y: auto; border-radius: 16px; background: var(--white); box-shadow: var(--shadow); }
+.bank-picker li + li { border-top: 1px solid var(--line); }
+.bank-picker button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 12px; background: none; border: 0; text-align: left; font: inherit; font-weight: 700; color: inherit; cursor: pointer; }
+.bank-picker img { border-radius: 8px; object-fit: contain; }
+.bank-dot { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: var(--moss-soft); color: var(--nest); font-weight: 800; }

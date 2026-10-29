@@ -1,4 +1,4 @@
-import type { Activite, BankStatus, BudgetAction, BudgetReport, ChargesReport, Deadline, Doc, FamilleReport, Household, ImportResult, Member, Mesure, Temoin, Veille, VeillesReport, VuePersonne } from "./types";
+import type { Activite, BankStatus, BudgetAction, BudgetReport, ChargesReport, Deadline, Doc, FamilleReport, Household, ImportResult, Member, Mesure, Temoin, Banque, BanquesReport, Veille, VeillesReport, VuePersonne } from "./types";
 import demoFamille from "./demo/famille.json";
 import demoBudget from "./demo/budget.json";
 import demoBudgetFamille from "./demo/budget-famille.json";
@@ -29,7 +29,8 @@ export interface Api {
   importStatement(input: { file?: File; texte?: string; demo?: boolean; compte?: string }): Promise<ImportResult>;
   decide(cle: string, decision: "garde" | "resilie" | "a_faire"): Promise<void>;
   bankStatus(): Promise<BankStatus>;
-  bankConnect(email: string): Promise<{ url: string }>;
+  bankConnect(email: string, aspsp?: Banque): Promise<{ url: string }>;
+  banques(): Promise<BanquesReport>;
   bankSync(): Promise<{ comptes: number; lues: number; ajoutees: number }>;
   bankDisconnect(): Promise<void>;
   famille(): Promise<FamilleReport>;
@@ -69,7 +70,8 @@ export interface Api {
   vuePersonne(jeton: string): Promise<VuePersonne>;
   consentirVeille(jeton: string, input: { nom_signataire: string; en_qualite_de: "personne" | "representant"; accepte: boolean }): Promise<VuePersonne>;
   retirerVeille(jeton: string, nom: string): Promise<VuePersonne>;
-  banqueVeille(jeton: string): Promise<{ url: string | null } & Partial<VuePersonne>>;
+  banquesVeille(jeton: string): Promise<BanquesReport>;
+  banqueVeille(jeton: string, aspsp?: Banque): Promise<{ url: string | null } & Partial<VuePersonne>>;
 }
 
 class ApiError extends Error {
@@ -121,7 +123,8 @@ const serverApi: Api = {
   },
   decide: async (cle, decision) => { await call("/budget/decision", json({ cle, decision })); },
   bankStatus: () => call("/bank/status"),
-  bankConnect: (email) => call("/bank/connect", json({ email })),
+  bankConnect: (email, aspsp) => call("/bank/connect", json(aspsp ? { aspsp } : { email })),
+  banques: () => call("/bank/banques"),
   bankSync: () => call("/bank/sync", { method: "POST" }),
   bankDisconnect: async () => { await call("/bank", { method: "DELETE" }); },
   famille: () => call("/famille"),
@@ -158,7 +161,8 @@ const serverApi: Api = {
   vuePersonne: (jeton) => call(`/veille/p/${jeton}`),
   consentirVeille: (jeton, input) => call(`/veille/p/${jeton}/consentir`, json(input)),
   retirerVeille: (jeton, nom) => call(`/veille/p/${jeton}/retirer`, json({ nom })),
-  banqueVeille: (jeton) => call(`/veille/p/${jeton}/banque`, json({})),
+  banquesVeille: (jeton) => call(`/veille/p/${jeton}/banques`),
+  banqueVeille: (jeton, aspsp) => call(`/veille/p/${jeton}/banque`, json(aspsp ? { aspsp } : {})),
 };
 
 // ---------- demo adapter ----------
@@ -236,6 +240,7 @@ function makeDemoApi(): Api {
       fournisseur: "simule", connecte: state.bank, statut: state.bank ? "connecte" : "aucune", derniere_synchro: state.bank ? new Date().toISOString() : null,
       comptes: state.bank ? [{ id: "sim:1", nom: "Compte joint", banque: "Banque de démonstration", solde: 2487.91, devise: "EUR", maj_le: new Date().toISOString() }] : [],
     }),
+    banques: async () => ({ fournisseur: "simule", banques: [] }),
     bankConnect: async () => { await new Promise((r) => setTimeout(r, 900)); state.bank = true; state.imported = true; return { url: "" }; },
     bankSync: async () => { await new Promise((r) => setTimeout(r, 700)); return { comptes: 1, lues: 127, ajoutees: 0 }; },
     bankDisconnect: async () => { state.bank = false; },
@@ -303,7 +308,7 @@ function recomputeFamille(f: FamilleReport, h: Household): FamilleReport {
 }
 
 type VeilleDemoState = { veilles: (Veille & { jeton: string; historique: { quand: string; acteur: string; action: string; details: string; empreinte: string }[] })[]; veillesSupp: number };
-type VeilleApi = Pick<Api, "veilles" | "creerVeille" | "veille" | "veilleVue" | "terminerVeille" | "journalVeille" | "journalCsvUrl" | "acheterVeille" | "vuePersonne" | "consentirVeille" | "retirerVeille" | "banqueVeille">;
+type VeilleApi = Pick<Api, "veilles" | "creerVeille" | "veille" | "veilleVue" | "terminerVeille" | "journalVeille" | "journalCsvUrl" | "acheterVeille" | "vuePersonne" | "consentirVeille" | "retirerVeille" | "banqueVeille" | "banquesVeille">;
 
 function makeVeilleDemo(state: VeilleDemoState, household: () => Household, membres: () => Member[]): VeilleApi {
   const MESURE: Record<Mesure, string> = { aucune: "sans mesure de protection", curatelle: "curatelle", tutelle: "tutelle", habilitation_familiale: "habilitation familiale", mandat_protection_future: "mandat de protection future" };
@@ -377,6 +382,7 @@ function makeVeilleDemo(state: VeilleDemoState, household: () => Household, memb
       return vue(v);
     },
     retirerVeille: async (j, nom) => { const v = parJeton(j); v.statut = "terminee"; v.fin_le = new Date().toISOString(); v.motif_fin = "retrait_consentement"; v.banque_connectee = false; log(v, nom || "La personne protégée", "fin", { motif: "retrait_consentement" }); return vue(v); },
+    banquesVeille: async () => ({ fournisseur: "simule", banques: [] }),
     banqueVeille: async (j) => {
       const v = parJeton(j);
       if (v.statut !== "active") throw new ApiError(400, "consentement", "La banque se connecte une fois l'accord donné.");

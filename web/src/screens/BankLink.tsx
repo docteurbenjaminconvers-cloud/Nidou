@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import type { Api } from "../api";
 import { ApiError } from "../api";
-import type { BankStatus, Household } from "../types";
+import type { Banque, BankStatus, Household } from "../types";
+import { BankPicker } from "../BankPicker";
 import { fmtEuro } from "../ui";
 
 /** "Connecter ma banque" block: Bridge Connect in production, simulated bank in the demo. */
@@ -12,15 +13,18 @@ export function BankLink({ api, household, onChanged, onUpgrade, toast, compact 
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState(() => localStorage.getItem("nidou.email") ?? "");
   const [err, setErr] = useState<string | null>(null);
+  const [banques, setBanques] = useState<Banque[] | null>(null);
 
   const load = () => api.bankStatus().then(setStatus).catch(() => setStatus(null));
   useEffect(() => { load(); }, [api, household.plan]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const connect = async () => {
+  const connect = async (aspsp?: Banque) => {
     setBusy(true); setErr(null);
     try {
-      localStorage.setItem("nidou.email", email);
-      const { url } = await api.bankConnect(email || "famille@example.org");
+      try { localStorage.setItem("nidou.email", email); } catch {}
+      // Enable Banking: Nidou shows the bank list first, then sends the family to its bank's own login page.
+      if (!aspsp && status?.fournisseur === "enablebanking") { setBanques((await api.banques()).banques); return; }
+      const { url } = await api.bankConnect(email || "famille@example.org", aspsp);
       if (url && url.startsWith("http")) { location.href = url; return; }     // Bridge Connect (real)
       if (url) { await fetch(url, { redirect: "manual" }).catch(() => {}); }     // simulated callback on the server
       toast("Banque connectée : opérations récupérées");
@@ -43,6 +47,8 @@ export function BankLink({ api, household, onChanged, onUpgrade, toast, compact 
 
   if (!status) return null;
 
+  const expire = status.expire_le ? Math.ceil((new Date(status.expire_le).getTime() - Date.now()) / 864e5) : null;
+
   if (status.connecte) {
     const last = status.derniere_synchro ? new Date(status.derniere_synchro).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
     return (
@@ -57,7 +63,14 @@ export function BankLink({ api, household, onChanged, onUpgrade, toast, compact 
           <button className="link" disabled={busy} onClick={sync}>{busy ? "Mise à jour…" : "Mettre à jour"}</button>
           <button className="link" style={{ color: "var(--mist)" }} onClick={disconnect}>Déconnecter</button>
         </div>
-        {status.fournisseur === "simule" && <p className="note" style={{ marginTop: 8 }}>Banque de démonstration. En production, la connexion passe par Bridge (agrégateur agréé) et se met à jour chaque jour.</p>}
+        {expire !== null && expire <= 14 && (
+          <p className="note" style={{ color: "var(--ember)", marginTop: 8 }}>
+            {expire > 0 ? `L'autorisation de votre banque expire dans ${expire} jour${expire > 1 ? "s" : ""}.` : "L'autorisation de votre banque a expiré."} C'est la règle européenne : il suffit de la renouveler.{" "}
+            <button className="link" onClick={() => connect()}>Renouveler</button>
+          </p>
+        )}
+        {banques && <BankPicker banques={banques} busy={busy} onPick={(b) => connect(b)} />}
+        {status.fournisseur === "simule" && <p className="note" style={{ marginTop: 8 }}>Banque de démonstration. En production, la connexion passe par un agrégateur agréé (Enable Banking) et se met à jour chaque jour.</p>}
       </div>
     );
   }
@@ -70,11 +83,15 @@ export function BankLink({ api, household, onChanged, onUpgrade, toast, compact 
         <button className="btn" onClick={onUpgrade}>Inclus dans le plan Famille</button>
       ) : (
         <>
-          <label className="lbl" htmlFor="bank-email" style={{ marginTop: 0 }}>Email pour le suivi de la connexion</label>
-          <input id="bank-email" className="in" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="vous@exemple.fr" />
-          <div style={{ marginTop: 10 }}>
-            <button className="btn block" disabled={busy} onClick={connect}>{busy ? <span className="spinner" /> : "Choisir ma banque"}</button>
-          </div>
+          {status.fournisseur === "bridge" && <>
+            <label className="lbl" htmlFor="bank-email" style={{ marginTop: 0 }}>Email pour le suivi de la connexion</label>
+            <input id="bank-email" className="in" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="vous@exemple.fr" />
+          </>}
+          {banques ? <BankPicker banques={banques} busy={busy} onPick={(b) => connect(b)} /> : (
+            <div style={{ marginTop: 10 }}>
+              <button className="btn block" disabled={busy} onClick={() => connect()}>{busy ? <span className="spinner" /> : "Choisir ma banque"}</button>
+            </div>
+          )}
           {err && <p className="note" style={{ color: "var(--ember)", marginTop: 8 }}>{err}</p>}
           {status.statut === "erreur" && <p className="note" style={{ color: "var(--ember)", marginTop: 8 }}>La dernière synchronisation a échoué. Réessayez, ou reconnectez la banque.</p>}
         </>

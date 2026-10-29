@@ -140,12 +140,16 @@ export interface BudgetReport {
 export interface ImportResult { lues: number; ajoutees: number; doublons: number; de?: string; a?: string }
 
 export interface BankStatus {
-  fournisseur: "bridge" | "simule";
+  fournisseur: "enablebanking" | "bridge" | "simule";
   connecte: boolean;
+  expire_le?: string | null;
   statut: "aucune" | "en_attente" | "connecte" | "erreur";
   derniere_synchro: string | null;
   comptes: { id: string; nom: string; banque: string | null; solde: number | null; devise: string | null; maj_le: string | null }[];
 }
+
+export interface Banque { name: string; country: string; logo?: string; maximum_consent_validity?: number }
+export interface BanquesReport { fournisseur: BankStatus["fournisseur"]; banques: Banque[] }
 
 // ---------- veille bancaire d'un proche ----------
 export type Mesure = "aucune" | "curatelle" | "tutelle" | "habilitation_familiale" | "mandat_protection_future";

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import type { Api } from "../api";
 import { ApiError } from "../api";
-import type { Doc, Member, Mesure, Temoin, Veille, VeillesReport, VuePersonne } from "../types";
+import type { Banque, Doc, Member, Mesure, Temoin, Veille, VeillesReport, VuePersonne } from "../types";
 import { Back, Logo, fmtDate } from "../ui";
+import { BankPicker } from "../BankPicker";
 
 /**
  * Bank watch of a protected relative: read-only anti-scam alerts, with the person's (or her legal
@@ -289,6 +290,15 @@ export function ConsentPage({ api, jeton }: { api: Api; jeton: string }) {
   const [busy, setBusy] = useState(false);
   const [retrait, setRetrait] = useState(false);
   const [manque, setManque] = useState<"nom" | "case" | null>(null);
+  const [banques, setBanques] = useState<Banque[] | null>(null);
+  const connecterBanque = async () => {
+    setBusy(true); setErr(null);
+    try {
+      const r = await api.banquesVeille(jeton);
+      if (r.fournisseur === "enablebanking") { setBanques(r.banques); return; }
+    } catch (e) { setErr((e as Error).message); return; } finally { setBusy(false); }
+    act(() => api.banqueVeille(jeton));
+  };
   const banqueRetour = new URLSearchParams(location.hash.split("?")[1] ?? "").get("banque");
   useEffect(() => {
     api.vuePersonne(jeton).then((v) => { setVue(v); setQualite(v.qui_consent.personne && !v.accords_donnes.includes("personne") ? "personne" : "representant"); }).catch((e) => setErr(e.message));
@@ -359,7 +369,12 @@ export function ConsentPage({ api, jeton }: { api: Api; jeton: string }) {
               {vue.banque_connectee ? <p className="note">Votre compte est suivi en lecture seule.{banqueRetour === "ok" ? " Merci, c'est fait." : ""}</p> : (
                 <>
                   <p className="note">Connectez vous-même votre banque, avec vos codes habituels, sur la page sécurisée de notre partenaire agréé. Ne donnez jamais vos codes à quelqu'un, même de votre famille.</p>
-                  <button className="btn" style={{ fontSize: 18, padding: "14px 22px" }} disabled={busy} onClick={() => act(() => api.banqueVeille(jeton))}>{busy ? "Un instant…" : "Connecter ma banque"}</button>
+                  {banques ? (
+                    <>
+                      <p className="note">Choisissez votre banque. Vous arriverez sur sa page habituelle, où vous vous connectez comme d'habitude.</p>
+                      <BankPicker large banques={banques} busy={busy} onPick={(b) => act(() => api.banqueVeille(jeton, b))} />
+                    </>
+                  ) : <button className="btn" style={{ fontSize: 18, padding: "14px 22px" }} disabled={busy} onClick={connecterBanque}>{busy ? "Un instant…" : "Connecter ma banque"}</button>}
                 </>
               )}
               {vue.consentement_expire && <p className="note">Accord donné le {fmtDate(vue.consentement_le!.slice(0, 10))}, valable jusqu'au {fmtDate(vue.consentement_expire.slice(0, 10))}.</p>}

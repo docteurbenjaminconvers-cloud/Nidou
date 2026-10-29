@@ -62,7 +62,7 @@ Le cadre, pensé pour protéger la personne d'abord et la famille ensuite contre
 - **Engagement de loyauté** de l'aidant à la création.
 - **Facturation** : une veille comprise dans Tribu, les suivantes (et en Solo ou Duo) à 3,90 € / mois ou 39 € / an (`STRIPE_PRICE_VEILLE_*`, ligne ajoutée à l'abonnement avec prorata).
 
-`NIDOU_VEILLE=1` ouvre la fonction. **À ne faire qu'après validation par un avocat** (consentement, mesures de protection, RGPD : données financières d'un tiers vulnérable, analyse d'impact). Sans Bridge, la banque est simulée avec un relevé fictif contenant des schémas d'arnaque.
+`NIDOU_VEILLE=1` ouvre la fonction. **À ne faire qu'après validation par un avocat** (consentement, mesures de protection, RGPD : données financières d'un tiers vulnérable, analyse d'impact). Sans fournisseur bancaire configuré, la banque est simulée avec un relevé fictif contenant des schémas d'arnaque.
 
 ## Connecteur MCP
 
@@ -117,9 +117,25 @@ En local, le site est visible sur http://localhost:3000/site/.
 
 ## Tests
 
-`npm test` : règles d'échéances, charges et alertes, extracteur heuristique, journal MCP, parseur de relevés, récurrences et actions d'économies (27 tests, dont le client Bridge contre une fausse API, les rappels de fin d'essai et l'adresse de transfert).
+`npm test` : règles d'échéances, charges et alertes, extracteur heuristique, journal MCP, parseur de relevés, récurrences et actions d'économies (34 tests, dont les clients Enable Banking et Bridge contre de fausses API, les rappels de fin d'essai et l'adresse de transfert).
 
-## Connexion bancaire (Bridge)
+## Connexion bancaire (Enable Banking, Bridge en secours)
+
+Le fournisseur se choisit tout seul (`server/src/banques.ts`) : **Enable Banking** si ses clés sont présentes, sinon Bridge, sinon une banque simulée.
+
+### Enable Banking (par défaut)
+
+Facturé par compte bancaire connecté et par mois : les appels, le volume et les renouvellements d'autorisation sont compris, donc les synchronisations ne coûtent rien de plus. `server/src/enablebanking.ts` :
+
+1. `GET /api/bank/banques` donne la liste des banques françaises (`GET /aspsps`, en cache un jour) ; la famille choisit la sienne dans Nidou.
+2. `POST /api/bank/connect {aspsp}` appelle `POST /auth` (autorisation de 180 jours au plus, `state` = `h.<aléa>` pour un foyer, `v.<aléa>` pour la veille d'un proche) ; la personne se connecte sur la page de **sa** banque.
+3. La banque revient sur `GET /api/bank/eb/callback?code&state` : `POST /sessions` ouvre la session et liste les comptes ; première synchronisation (soldes, opérations comptabilisées des 90 derniers jours, pagination `continuation_key`, référence de la banque comme empreinte, donc jamais de doublon).
+4. Pas de webhook pour la lecture des comptes : Nidou relit toutes les **6 heures** (`demarrerSynchroBanques`), soit le maximum de 4 lectures par jour sans la personne prévue par la DSP2, avec 3 jours de recouvrement.
+5. Fin d'autorisation : l'appli prévient 14 jours avant et propose « Renouveler ». `DELETE /api/bank`, l'arrêt d'une veille ou le retrait d'accord ferment aussi la session chez la banque (`DELETE /sessions/{id}`).
+
+Chaque requête porte un JWT RS256 signé avec la clé privée de l'application (`kid` = identifiant de l'application). À déclarer dans le Control Panel Enable Banking : la redirect URL `NIDOU_PUBLIC_URL/api/bank/eb/callback`.
+
+### Bridge (secours)
 
 `server/src/bridge.ts` implémente l'agrégation Bridge, version `2025-01-15` :
 
