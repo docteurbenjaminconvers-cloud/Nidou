@@ -9,7 +9,7 @@ import { chargesReport } from "./charges.js";
 import { generateLetter, templateLetter } from "./letters.js";
 import { rappelsEssai, rappelsEcheances } from "./rappels.js";
 import { envoyerPush, pushOn } from "./push.js";
-import { appliquerAbonnement, creerCheckout, portail, resumeAbonnement, traiterWebhook } from "./abonnement.js";
+import { appliquerAbonnement, capaciteComptes, creerCheckout, FORMULES, portail, resumeAbonnement, traiterWebhook, type Formule } from "./abonnement.js";
 import { AUTH_ON, COOKIE, consommerLien, cookieHeader, demanderLien, emailValide, readCookie } from "./auth.js";
 import { familleReport, echeancesFamille, JOURS } from "./famille.js";
 import { boiteAddress, fromBrevo, processInboundEmail, type InboundEmail } from "./inbox.js";
@@ -28,7 +28,7 @@ import { bridgeConfig, BridgeClient, syncHousehold, simulatedConnect, simulatedS
  */
 export const FREE_LIMITS = {
   documents: 50,
-  members: 2,
+  comptes: 1,      // people who log in; member cards without a login (children, elderly parent) are unlimited on every plan
   lettersPerMonth: 3,
   iaLecturesParMois: Number(process.env.NIDOU_IA_LECTURES_GRATUIT ?? 0),
   importReleves: false,
@@ -92,6 +92,16 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
         db.addMember(row.id, "Moi", "adulte");
       }
     }
+    // Accounts beyond the formule's capacity are paused (owner first, then by join date); the owner always keeps access.
+    if (user) {
+      const ordre = db.usersOfHousehold(row.id).sort((a, b) => Number(b.role === "proprietaire") - Number(a.role === "proprietaire") || a.rejoint_le.localeCompare(b.rejoint_le));
+      const rang = ordre.findIndex((u) => u.id === user!.id);
+      const cap = capaciteComptes(db, row);
+      if (rang >= cap && !c.req.path.endsWith("/auth/moi") && !c.req.path.endsWith("/auth/deconnexion")) {
+        const proprio = ordre[0];
+        return c.json({ error: "compte_en_pause", message: `Le nid « ${row.nom} » est en formule ${cap === 1 ? "gratuite (1 personne)" : `${cap} personnes`}. ${proprio?.prenom ?? "Le propriétaire"} peut passer à une formule plus grande pour vous rendre l'accès ; vos papiers vous attendent.` }, 402);
+      }
+    }
     // `plan` is the plan in force today (trial counts as Famille); `plan_souscrit` is what is paid for.
     c.set("household" as never, { ...row, plan_souscrit: row.plan, plan: db.effectivePlan(row), essai_jours_restants: db.trialDaysLeft(row) } as never);
     c.set("user" as never, user as never);
@@ -118,8 +128,14 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     const body = z.object({ email: z.string(), prenom: z.string().nullable().default(null) }).parse(await c.req.json());
     const email = body.email.trim().toLowerCase();
     if (!emailValide(email)) return c.json({ error: "email", message: "Adresse email invalide." }, 400);
-    if (h.plan === "gratuit" && db.usersOfHousehold(h.id).length + db.listInvitations(h.id).length >= FREE_LIMITS.members) {
-      return c.json({ error: "limite_plan", message: `Le plan gratuit est limité à ${FREE_LIMITS.members} comptes.` }, 402);
+    const cap = capaciteComptes(db, db.getHousehold(h.id)!);
+    if (db.usersOfHousehold(h.id).length + db.listInvitations(h.id).length >= cap) {
+      const msg = h.plan === "gratuit"
+        ? "Le plan gratuit est réservé à une personne. Avec Duo, votre conjoint·e se connecte aussi ; avec Tribu, jusqu'à 6 personnes."
+        : cap < FORMULES.tribu.comptes
+          ? `Votre formule accepte ${cap} personne${cap > 1 ? "s" : ""} connectée${cap > 1 ? "s" : ""}. Passez à ${cap === 1 ? "Duo ou Tribu" : "Tribu"} pour en inviter plus.`
+          : `La formule Tribu accepte jusqu'à ${cap} personnes connectées.`;
+      return c.json({ error: "limite_comptes", message: msg, capacite: cap }, 402);
     }
     const u = currentUser(c);
     const r = await demanderLien(db, email, { household_id: h.id, prenom: body.prenom, invite_par: u?.prenom ?? db.listMembers(h.id)[0]?.prenom ?? null });
@@ -144,8 +160,12 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
   // ---------- abonnement (Stripe) ----------
   api.post("/abonnement/checkout", async (c) => {
     const h = household(c);
-    const body = z.object({ periode: z.enum(["mensuel", "annuel"]) }).parse(await c.req.json());
-    const r = await creerCheckout(db, db.getHousehold(h.id)!, body.periode, currentUser(c)?.email ?? null);
+    const body = z.object({ formule: z.enum(["solo", "duo", "tribu"]).default("duo"), periode: z.enum(["mensuel", "annuel"]) }).parse(await c.req.json());
+    const comptes = db.usersOfHousehold(h.id).length;
+    if (comptes > FORMULES[body.formule].comptes) {
+      return c.json({ error: "formule_trop_petite", message: `${comptes} personnes se connectent à ce nid : la formule ${FORMULES[body.formule].nom} en accepte ${FORMULES[body.formule].comptes}. Choisissez une formule plus grande ou retirez un compte.` }, 400);
+    }
+    const r = await creerCheckout(db, db.getHousehold(h.id)!, body.formule, body.periode, currentUser(c)?.email ?? null);
     return c.json(r);
   });
 
@@ -159,8 +179,9 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     if (process.env.STRIPE_SECRET_KEY) return c.json({ error: "stripe_actif" }, 400);
     const h = db.getHousehold(c.req.query("h") ?? "");
     const periode = c.req.query("periode") === "annuel" ? "annuel" : "mensuel";
+    const formule = (["solo", "duo", "tribu"].includes(c.req.query("formule") ?? "") ? c.req.query("formule") : "duo") as Formule;
     if (!h) return c.json({ error: "introuvable" }, 404);
-    appliquerAbonnement(db, h, { statut: "simule", periode, fin: new Date(Date.now() + (periode === "annuel" ? 365 : 30) * 864e5).toISOString().slice(0, 10) });
+    appliquerAbonnement(db, h, { statut: "simule", formule, periode, fin: new Date(Date.now() + (periode === "annuel" ? 365 : 30) * 864e5).toISOString().slice(0, 10) });
     return c.redirect("/#/settings?paiement=ok");
   });
 
@@ -196,6 +217,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
       utilisateur: currentUser(c),
       abonnement: resumeAbonnement(db.getHousehold(h.id)!),
       comptes: db.usersOfHousehold(h.id).length,
+      capacite_comptes: capaciteComptes(db, db.getHousehold(h.id)!),
       boite_recus: db.listInboxMessages(h.id, 10),
     });
   });
@@ -236,9 +258,6 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
   api.post("/members", async (c) => {
     const h = household(c);
     const body = memberSchema.parse(await c.req.json());
-    if (h.plan === "gratuit" && db.listMembers(h.id).length >= FREE_LIMITS.members) {
-      return c.json({ error: "limite_plan", message: `Le plan gratuit est limité à ${FREE_LIMITS.members} membres.` }, 402);
-    }
     const { prenom, role, ...extra } = body;
     return c.json(db.addMember(h.id, prenom, role, extra as never), 201);
   });

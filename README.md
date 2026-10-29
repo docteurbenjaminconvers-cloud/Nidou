@@ -25,11 +25,15 @@ En développement : `npm run dev` lance le serveur (port 3000) et Vite (port 517
 - `NIDOU_AUTH=0` conserve le prototype mono-foyer sans connexion (tests, démo locale). Avec `NIDOU_SEED=1`, le compte `demo@nidou.fr` possède la famille de démonstration.
 - Le connecteur MCP s'authentifie avec le **jeton du foyer** (`households.mcp_token`, affiché et régénérable dans les réglages) ; refusé hors plan Famille (`402`).
 
-## Paiement (Stripe)
+## Formules et paiement (Stripe)
 
-- `POST /api/abonnement/checkout {periode: mensuel|annuel}` crée une session Stripe Checkout (abonnement, codes promo autorisés, retour sur `/#/settings?paiement=ok|annule`). `POST /api/abonnement/portail` ouvre le portail de facturation (carte, factures, résiliation).
+- **Gratuit** : 1 personne connectée. **Solo** 6,90 € / mois ou 69 € / an (1 personne), **Duo** 9,90 € ou 99 € (2 personnes), **Tribu** 13,90 € ou 139 € (jusqu'à 6). L'annuel vaut 10 mois. On compte les personnes qui se connectent ; les fiches sans connexion (enfants, parents âgés) sont illimitées partout. L'essai de 15 jours donne Tribu.
+- `server/src/abonnement.ts` : `FORMULES`, `capaciteComptes()`. Les invitations au-delà de la capacité sont refusées (`402 limite_comptes`) ; si un nid passe à une formule plus petite (fin d'essai, changement dans le portail Stripe), les comptes en trop sont mis en pause (`402 compte_en_pause`), le propriétaire puis les plus anciens gardent l'accès. Le checkout refuse une formule plus petite que le nombre de personnes déjà connectées.
+- Le webhook déduit la formule du prix réellement facturé (variables `STRIPE_PRICE_<FORMULE>_<PERIODE>`), ce qui suit aussi les changements faits dans le portail Stripe.
+
+- `POST /api/abonnement/checkout {formule: solo|duo|tribu, periode: mensuel|annuel}` crée une session Stripe Checkout (abonnement, codes promo autorisés, retour sur `/#/settings?paiement=ok|annule`). `POST /api/abonnement/portail` ouvre le portail de facturation (carte, factures, résiliation).
 - `POST /api/stripe/webhook` (signature vérifiée) applique `checkout.session.completed`, `customer.subscription.created|updated|deleted`, `invoice.payment_failed` : le plan passe à Famille tant que l'abonnement est `active`, `trialing` ou `past_due` (Stripe relance le paiement), revient en Gratuit à la résiliation. Statut, période et date de fin sont visibles dans les réglages.
-- À créer dans le dashboard Stripe : deux prix (9,90 € TTC/mois, 99 € TTC/an) et le webhook. Sans `STRIPE_SECRET_KEY`, mode simulé : le bouton active le plan directement (prototype, démo).
+- À créer dans le dashboard Stripe : six prix (trois formules × mensuel/annuel) et le webhook. Sans `STRIPE_SECRET_KEY`, mode simulé : le bouton active le plan directement (prototype, démo).
 
 ## Plans, essai inversé et coûts d'IA
 
@@ -97,7 +101,7 @@ En local, le site est visible sur http://localhost:3000/site/.
 
 ## Tests
 
-`npm test` : règles d'échéances, charges et alertes, extracteur heuristique, journal MCP, parseur de relevés, récurrences et actions d'économies (25 tests, dont le client Bridge contre une fausse API, les rappels de fin d'essai et l'adresse de transfert).
+`npm test` : règles d'échéances, charges et alertes, extracteur heuristique, journal MCP, parseur de relevés, récurrences et actions d'économies (27 tests, dont le client Bridge contre une fausse API, les rappels de fin d'essai et l'adresse de transfert).
 
 ## Connexion bancaire (Bridge)
 

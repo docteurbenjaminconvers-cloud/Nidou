@@ -2,28 +2,58 @@ import Stripe from "stripe";
 import type { Db, HouseholdRow } from "./db.js";
 
 /**
- * Famille plan billing with Stripe Checkout + Billing Portal + webhooks.
- * Prices live in Stripe (STRIPE_PRICE_MENSUEL 9,90 € TTC/mois, STRIPE_PRICE_ANNUEL 99 € TTC/an). Without a secret key the
- * module runs in "simulé" mode: checkout activates the plan immediately (prototype and demo).
+ * Paid plans billed with Stripe Checkout + Billing Portal + webhooks. Three formules, priced by the number of people
+ * who log in on the household (member cards without a login, such as children or an elderly parent, are unlimited):
+ *   Solo  1 personne   6,90 €/mois ou 69 €/an
+ *   Duo   2 personnes  9,90 €/mois ou 99 €/an
+ *   Tribu 6 personnes 13,90 €/mois ou 139 €/an
+ * Annual = 10 × monthly (« 2 mois offerts »). Prices live in Stripe: STRIPE_PRICE_<FORMULE>_<PERIODE>.
+ * Without a secret key the module runs in "simulé" mode: checkout activates the formule immediately (prototype and demo).
  */
 export const stripeOn = () => Boolean(process.env.STRIPE_SECRET_KEY);
 const stripe = () => new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2025-08-27.basil" as never });
 const publicUrl = () => (process.env.NIDOU_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, "");
 export type Periode = "mensuel" | "annuel";
-export const PRIX: Record<Periode, number> = { mensuel: 9.9, annuel: 99 };
+export type Formule = "solo" | "duo" | "tribu";
+export const FORMULES: Record<Formule, { nom: string; comptes: number; prix: Record<Periode, number> }> = {
+  solo: { nom: "Solo", comptes: 1, prix: { mensuel: 6.9, annuel: 69 } },
+  duo: { nom: "Duo", comptes: 2, prix: { mensuel: 9.9, annuel: 99 } },
+  tribu: { nom: "Tribu", comptes: 6, prix: { mensuel: 13.9, annuel: 139 } },
+};
+/** Accounts allowed on the free plan, and during the trial (full Tribu). */
+export const COMPTES_GRATUIT = 1;
+export const COMPTES_ESSAI = FORMULES.tribu.comptes;
+/** Kept for older callers: the Duo prices. */
+export const PRIX: Record<Periode, number> = FORMULES.duo.prix;
 
-export async function creerCheckout(db: Db, h: HouseholdRow, periode: Periode, email: string | null): Promise<{ url: string; simule: boolean }> {
-  if (!stripeOn()) return { url: `${publicUrl()}/api/abonnement/simule?periode=${periode}&h=${h.id}`, simule: true };
-  const price = periode === "annuel" ? process.env.STRIPE_PRICE_ANNUEL : process.env.STRIPE_PRICE_MENSUEL;
-  if (!price) throw new Error("STRIPE_PRICE_MENSUEL / STRIPE_PRICE_ANNUEL manquants");
+const priceEnv = (f: Formule, p: Periode) => `STRIPE_PRICE_${f.toUpperCase()}_${p.toUpperCase()}`;
+/** Price id → formule/periode, for webhooks that carry no metadata (changes made in the Stripe portal). */
+function depuisPrix(priceId: string | undefined): { formule: Formule; periode: Periode } | null {
+  if (!priceId) return null;
+  for (const f of Object.keys(FORMULES) as Formule[]) for (const p of ["mensuel", "annuel"] as Periode[]) if (process.env[priceEnv(f, p)] === priceId) return { formule: f, periode: p };
+  return null;
+}
+
+/** People allowed to log in on this household today. */
+export function capaciteComptes(db: Db, h: HouseholdRow): number {
+  const plan = db.effectivePlan(h);
+  if (plan === "gratuit") return COMPTES_GRATUIT;
+  if (h.plan !== "famille") return COMPTES_ESSAI; // trial
+  return FORMULES[(h.formule as Formule) ?? "duo"]?.comptes ?? FORMULES.duo.comptes;
+}
+
+export async function creerCheckout(db: Db, h: HouseholdRow, formule: Formule, periode: Periode, email: string | null): Promise<{ url: string; simule: boolean }> {
+  if (!stripeOn()) return { url: `${publicUrl()}/api/abonnement/simule?formule=${formule}&periode=${periode}&h=${h.id}`, simule: true };
+  const price = process.env[priceEnv(formule, periode)];
+  if (!price) throw new Error(`${priceEnv(formule, periode)} manquant`);
   const s = await stripe().checkout.sessions.create({
     mode: "subscription",
     line_items: [{ price, quantity: 1 }],
     customer: h.stripe_customer_id ?? undefined,
     customer_email: h.stripe_customer_id ? undefined : email ?? undefined,
     client_reference_id: h.id,
-    metadata: { household_id: h.id, periode },
-    subscription_data: { metadata: { household_id: h.id, periode } },
+    metadata: { household_id: h.id, formule, periode },
+    subscription_data: { metadata: { household_id: h.id, formule, periode } },
     allow_promotion_codes: true,
     locale: "fr",
     success_url: `${publicUrl()}/#/settings?paiement=ok`,
@@ -39,13 +69,14 @@ export async function portail(h: HouseholdRow): Promise<string | null> {
 }
 
 /** Applies a subscription state to the household. Shared by the webhook and the simulated mode. */
-export function appliquerAbonnement(db: Db, h: HouseholdRow, a: { customer?: string | null; subscription?: string | null; statut: string; periode?: Periode | null; fin?: string | null }) {
+export function appliquerAbonnement(db: Db, h: HouseholdRow, a: { customer?: string | null; subscription?: string | null; statut: string; formule?: Formule | null; periode?: Periode | null; fin?: string | null }) {
   const actif = ["active", "trialing", "past_due", "simule"].includes(a.statut);
   db.setAbonnement(h.id, {
     stripe_customer_id: a.customer ?? h.stripe_customer_id,
     stripe_subscription_id: a.subscription === undefined ? h.stripe_subscription_id : a.subscription,
     abonnement_statut: a.statut,
     abonnement_periode: a.periode === undefined ? h.abonnement_periode : a.periode,
+    formule: a.formule === undefined || a.formule === null ? h.formule : a.formule,
     abonnement_fin: a.fin === undefined ? h.abonnement_fin : a.fin,
     plan: actif ? "famille" : "gratuit",
   });
@@ -67,10 +98,14 @@ export interface EvenementMinimal {
 
 export function appliquerEvenement(db: Db, event: EvenementMinimal): string {
   const o = event.data.object;
+  const parPrix = depuisPrix(o.items?.data[0]?.price.id);
   const periodeDe = (): Periode | null => {
+    if (parPrix) return parPrix.periode;
     const m = o.metadata?.periode; if (m === "mensuel" || m === "annuel") return m;
     const iv = o.items?.data[0]?.price.recurring?.interval; return iv === "year" ? "annuel" : iv === "month" ? "mensuel" : null;
   };
+  // The price actually billed wins over metadata: a change of formule in the Stripe portal keeps the old metadata.
+  const formuleDe = (): Formule | null => parPrix?.formule ?? ((o.metadata?.formule as Formule) in FORMULES ? (o.metadata!.formule as Formule) : null);
   const finDe = (): string | null => {
     const t = o.current_period_end ?? o.items?.data[0]?.current_period_end;
     return t ? new Date(t * 1000).toISOString().slice(0, 10) : null;
@@ -78,14 +113,14 @@ export function appliquerEvenement(db: Db, event: EvenementMinimal): string {
   if (event.type === "checkout.session.completed") {
     const h = (o.client_reference_id && db.getHousehold(o.client_reference_id)) || (o.metadata?.household_id && db.getHousehold(o.metadata.household_id));
     if (!h) return "checkout: foyer inconnu";
-    appliquerAbonnement(db, h, { customer: o.customer ?? null, subscription: o.subscription ?? null, statut: "active", periode: periodeDe() });
+    appliquerAbonnement(db, h, { customer: o.customer ?? null, subscription: o.subscription ?? null, statut: "active", formule: formuleDe(), periode: periodeDe() });
     return `checkout: ${h.nom} → famille`;
   }
   if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.created" || event.type === "customer.subscription.deleted") {
     const h = (o.customer && db.householdByStripeCustomer(o.customer)) || (o.metadata?.household_id && db.getHousehold(o.metadata.household_id));
     if (!h) return "subscription: foyer inconnu";
     const statut = event.type === "customer.subscription.deleted" ? "canceled" : o.status ?? "active";
-    appliquerAbonnement(db, h, { customer: o.customer ?? null, subscription: o.id, statut, periode: periodeDe(), fin: finDe() });
+    appliquerAbonnement(db, h, { customer: o.customer ?? null, subscription: o.id, statut, formule: formuleDe(), periode: periodeDe(), fin: finDe() });
     return `subscription ${statut}: ${h.nom} → ${db.getHousehold(h.id)!.plan}`;
   }
   if (event.type === "invoice.payment_failed") {
@@ -100,9 +135,11 @@ export function resumeAbonnement(h: HouseholdRow) {
   return {
     stripe: stripeOn(),
     statut: h.abonnement_statut,
+    formule: (h.formule as Formule | null) ?? (h.plan === "famille" ? "duo" : null),
     periode: h.abonnement_periode as Periode | null,
     fin: h.abonnement_fin,
     prix: PRIX,
+    formules: FORMULES,
     gerable: Boolean(h.stripe_customer_id) && stripeOn(),
   };
 }

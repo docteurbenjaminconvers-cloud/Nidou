@@ -19,10 +19,10 @@ function FamillePartagee({ api, household, toast }: { api: Api; household: House
   };
   return (
     <section className="section">
-      <div className="section-head"><h2>Famille partagée</h2>{data && <span className="badge">{data.comptes.length} compte{data.comptes.length > 1 ? "s" : ""}</span>}</div>
+      <div className="section-head"><h2>Famille partagée</h2>{data && <span className="badge">{data.comptes.length} / {household.capacite_comptes ?? "?"} personne{(household.capacite_comptes ?? 2) > 1 ? "s" : ""}</span>}</div>
       <p style={{ marginBottom: 10 }}>Votre conjoint·e ou un proche reçoit un lien par email et ouvre le même nid sur son téléphone : mêmes papiers, mêmes rappels, même budget.</p>
       {data?.comptes.map((c) => (
-        <div className="settings-row" key={c.id}><div><div className="t">{c.prenom ?? c.email}{household.utilisateur?.id === c.id ? " (vous)" : ""}</div><div className="s">{c.email} · {c.role === "proprietaire" ? "propriétaire du nid" : "membre"}</div></div>{owner && household.utilisateur?.id !== c.id && <button className="link" style={{ color: "var(--ember)" }} onClick={async () => { if (confirm(`Retirer ${c.prenom ?? c.email} du nid ?`)) { await api.retirerCompte(c.id); toast("Compte retiré"); load(); } }}>Retirer</button>}</div>
+        <div className="settings-row" key={c.id}><div><div className="t">{c.prenom ?? c.email}{household.utilisateur?.id === c.id ? " (vous)" : ""}</div><div className="s">{c.email} · {c.role === "proprietaire" ? "propriétaire du nid" : "membre"}</div></div>{owner && household.utilisateur?.id !== c.id && c.role !== "proprietaire" && <button className="link" style={{ color: "var(--ember)" }} onClick={async () => { if (confirm(`Retirer ${c.prenom ?? c.email} du nid ?`)) { await api.retirerCompte(c.id); toast("Compte retiré"); load(); } }}>Retirer</button>}</div>
       ))}
       {data?.invitations.map((i) => (
         <div className="settings-row" key={i.token}><div><div className="t">{i.prenom ?? i.email}</div><div className="s">{i.email} · invitation en attente</div></div><button className="link" onClick={async () => { await api.annulerInvitation(i.token); load(); }}>Annuler</button></div>
@@ -35,19 +35,32 @@ function FamillePartagee({ api, household, toast }: { api: Api; household: House
           <button className="btn" disabled={busy || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)} onClick={invite}>{busy ? <span className="spinner" /> : "Envoyer l'invitation"}</button>
         </div>
         {lien && <p className="note" style={{ marginTop: 8 }}>Mode développement, lien à transmettre : <a className="link" href={lien}>{lien}</a></p>}
-        {household.plan === "gratuit" && <p className="note" style={{ marginTop: 8 }}>Plan gratuit : 2 comptes au maximum. Le plan Famille en accepte 6.</p>}
+        <p className="note" style={{ marginTop: 8 }}>{household.plan === "gratuit" ? "Le plan gratuit est réservé à une personne. Duo : 2 personnes, Tribu : jusqu'à 6." : (household.capacite_comptes ?? 6) < 6 ? `Votre formule accepte ${household.capacite_comptes} personne${(household.capacite_comptes ?? 1) > 1 ? "s" : ""} connectée${(household.capacite_comptes ?? 1) > 1 ? "s" : ""} ; Tribu va jusqu'à 6.` : "Jusqu'à 6 personnes connectées."}</p>
       </div>
     </section>
   );
 }
 
+type Formule = "solo" | "duo" | "tribu";
+const TIERS: { id: Formule; nom: string; comptes: number; prix: { mensuel: number; annuel: number }; pour: string }[] = [
+  { id: "solo", nom: "Solo", comptes: 1, prix: { mensuel: 6.9, annuel: 69 }, pour: "pour vous seul·e" },
+  { id: "duo", nom: "Duo", comptes: 2, prix: { mensuel: 9.9, annuel: 99 }, pour: "vous et votre conjoint·e" },
+  { id: "tribu", nom: "Tribu", comptes: 6, prix: { mensuel: 13.9, annuel: 139 }, pour: "toute la famille, ados et grands-parents" },
+];
+const fmtPrix = (n: number) => `${(Math.round(n * 100) / 100).toLocaleString("fr-FR", { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 })} €`;
+const ROLE_LABEL: Record<string, string> = { adulte: "adulte", enfant: "enfant", parent_a_charge: "parent à charge", autre_a_charge: "personne à charge" };
+
 export function Settings({ api, household, onBack, onPlan, toast, go }: { api: Api; household: Household; onBack: () => void; onPlan: (p: Household["plan"]) => void; toast: (m: string) => void; go: (s: string, id?: string) => void }) {
   const mcpUrl = `${location.origin}/mcp`;
-  const checkout = async (periode: "mensuel" | "annuel") => {
+  const [periode, setPeriode] = useState<"mensuel" | "annuel">("annuel");
+  const comptes = household.comptes ?? 1;
+  const formuleActuelle = household.plan_souscrit === "famille" || household.abonnement?.statut === "simule" ? household.abonnement?.formule ?? null : null;
+  const conseil: Formule = comptes >= 3 ? "tribu" : "duo";
+  const checkout = async (formule: Formule, p: "mensuel" | "annuel") => {
     try {
-      const r = await api.checkout(periode);
+      const r = await api.checkout(formule, p);
       if (r.url) { location.href = r.url; return; }
-      onPlan("famille"); toast("Plan Famille activé (démo)");
+      onPlan("famille"); toast(`Formule ${TIERS.find((t) => t.id === formule)!.nom} activée (démo)`);
     } catch (e) { toast((e as Error).message); }
   };
   return (
@@ -56,27 +69,45 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
       <div className="top"><div><h1>Réglages</h1><p className="sub"><button className="link" style={{ fontWeight: 500, color: "var(--mist)" }} onClick={async () => { const n = prompt("Nom du nid", household.nom); if (n && n.trim()) { await api.renommer(n.trim()); onPlan(household.plan); } }}>{household.nom} ✎</button>{api.mode === "demo" ? " · mode démo" : ""}</p></div></div>
 
       <section className="section">
-        <div className="section-head"><h2>Votre plan</h2>{household.essai?.actif && <span className="badge">essai : {household.essai.jours_restants} j</span>}</div>
-        {household.essai?.actif && <p className="note" style={{ marginBottom: 10 }}>Vous profitez du plan Famille complet pendant 15 jours, sans carte bancaire. Ensuite, votre compte passe en Gratuit en gardant tous vos papiers et vos échéances.</p>}
+        <div className="section-head"><h2>Votre formule</h2>{household.essai?.actif && <span className="badge">essai : {household.essai.jours_restants} j</span>}</div>
+        {household.essai?.actif && <p className="note" style={{ marginBottom: 10 }}>Vous profitez de tout Nidou, jusqu'à 6 personnes, pendant 15 jours, sans carte bancaire. Ensuite, le nid passe en Gratuit (1 personne) en gardant tous vos papiers et vos échéances.</p>}
+
         <div className={`plan-card ${household.plan === "gratuit" ? "on" : ""}`}>
-          <h3>Gratuit</h3>
-          <ul><li>50 documents, 2 membres</li><li>Papiers lus localement (sans IA), champs à compléter</li><li>Rappels d'échéances (notifications sur le téléphone)</li><li>3 courriers par mois (modèles)</li><li>Charges fixes d'après vos papiers</li><li>Sans import de relevés ni connexion bancaire</li></ul>
-          {household.plan !== "gratuit" && <button className="link" style={{ marginTop: 10 }} onClick={() => { api.setPlan("gratuit"); onPlan("gratuit"); toast("Plan gratuit activé"); }}>Revenir au gratuit</button>}
+          <h3>Gratuit · 1 personne</h3>
+          <ul><li>50 documents, fiches famille illimitées</li><li>Papiers lus localement (sans IA), champs à compléter</li><li>Rappels d'échéances (notifications sur le téléphone)</li><li>3 courriers par mois (modèles)</li><li>Sans import de relevés ni connexion bancaire</li></ul>
+          {household.plan !== "gratuit" && api.mode === "demo" && <button className="link" style={{ marginTop: 10 }} onClick={() => { api.setPlan("gratuit"); onPlan("gratuit"); toast("Plan gratuit activé"); }}>Revenir au gratuit (démo)</button>}
         </div>
-        <div className={`plan-card ${household.plan === "famille" ? "on" : ""}`}>
-          <h3>Famille · 9,90 € / mois ou 99 € / an</h3>
-          <ul><li>Documents illimités, jusqu'à 6 membres</li><li>Photos, PDF et emails lus par l'IA et rangés tout seuls</li><li>Courriers illimités, rédigés par l'IA</li><li>Banque connectée ou relevés importés, toutes les économies chiffrées</li><li>Rappels par notification et par email</li><li>Connecteur IA (Claude, ChatGPT…)</li></ul>
-          {household.plan_souscrit !== "famille" && household.abonnement?.statut !== "active" && household.abonnement?.statut !== "simule" && (
-            <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
-              <button className="btn" onClick={() => checkout("annuel")}>99 € par an <small style={{ fontWeight: 500, opacity: 0.85 }}>· 2 mois offerts</small></button>
-              <button className="btn ghost" onClick={() => checkout("mensuel")}>9,90 € par mois, sans engagement</button>
-              <p className="note">Paiement sécurisé par Stripe. Résiliable en un clic, remboursement au prorata jamais demandé : on arrête, c'est tout.</p>
-            </div>
-          )}
+
+        <div style={{ marginTop: 18 }}>
+          <div className="section-head" style={{ marginBottom: 4 }}><h3 style={{ fontSize: 16 }}>Tout Nidou, selon le nombre de personnes connectées</h3></div>
+          <p className="note" style={{ marginBottom: 10 }}>Chaque formule comprend tout : lecture IA, banque et économies, courriers illimités, rappels par email, adresse de transfert, connecteur IA. Les fiches sans connexion (enfants, parents âgés) sont illimitées.</p>
+          <div className="pills" role="group" aria-label="Période">
+            <button className="pill" aria-pressed={periode === "annuel"} onClick={() => setPeriode("annuel")}>Annuel · 2 mois offerts</button>
+            <button className="pill" aria-pressed={periode === "mensuel"} onClick={() => setPeriode("mensuel")}>Mensuel</button>
+          </div>
+          <div className="tiers">
+            {TIERS.map((t) => {
+              const actuel = formuleActuelle === t.id;
+              const tropPetite = comptes > t.comptes;
+              const prix = t.prix[periode];
+              return (
+                <div key={t.id} className={`plan-card tier ${actuel ? "on" : ""} ${t.id === conseil && !formuleActuelle ? "conseil" : ""}`}>
+                  {t.id === conseil && !formuleActuelle && <span className="tier-tag">{comptes >= 2 ? "Pour votre nid" : "Le plus choisi"}</span>}
+                  <div className="tier-head"><h3>{t.nom}</h3><span className="tier-people">{t.comptes === 1 ? "1 personne" : t.comptes === 2 ? "2 personnes" : "jusqu'à 6 personnes"}</span></div>
+                  <div className="tier-price"><b>{fmtPrix(prix)}</b><span>{periode === "annuel" ? " / an" : " / mois"}</span></div>
+                  <p className="note">{periode === "annuel" ? `soit ${fmtPrix(prix / 12)} par mois` : `ou ${fmtPrix(t.prix.annuel)} par an`} · {t.pour}</p>
+                  {actuel ? <span className="badge" style={{ marginTop: 10 }}>votre formule</span>
+                    : tropPetite ? <p className="note" style={{ marginTop: 8 }}>{comptes} personnes se connectent déjà à ce nid.</p>
+                    : <button className={`btn block ${t.id === conseil ? "" : "ghost"}`} style={{ marginTop: 10 }} onClick={() => checkout(t.id, periode)}>{formuleActuelle ? `Passer à ${t.nom}` : `Choisir ${t.nom}`}</button>}
+                </div>
+              );
+            })}
+          </div>
+          <p className="note" style={{ marginTop: 10 }}>Paiement sécurisé par Stripe. Sans engagement : on change de formule ou on résilie en un clic.</p>
           {(household.abonnement?.statut === "active" || household.abonnement?.statut === "simule" || household.abonnement?.statut === "past_due") && (
             <div style={{ marginTop: 12 }}>
-              <p className="note">Abonnement {household.abonnement.periode === "annuel" ? "annuel" : "mensuel"}{household.abonnement.fin ? `, prochaine échéance le ${new Date(household.abonnement.fin).toLocaleDateString("fr-FR")}` : ""}{household.abonnement.statut === "past_due" ? " · paiement en attente, mettez à jour votre carte" : ""}{household.abonnement.statut === "simule" ? " · simulé (Stripe non configuré)" : ""}.</p>
-              {household.abonnement.gerable && <button className="link" style={{ marginTop: 6 }} onClick={async () => { const r = await api.portail(); location.href = r.url; }}>Gérer mon abonnement (carte, facture, résiliation)</button>}
+              <p className="note">Formule {TIERS.find((t) => t.id === formuleActuelle)?.nom ?? ""}, paiement {household.abonnement.periode === "annuel" ? "annuel" : "mensuel"}{household.abonnement.fin ? `, prochaine échéance le ${new Date(household.abonnement.fin).toLocaleDateString("fr-FR")}` : ""}{household.abonnement.statut === "past_due" ? " · paiement en attente, mettez à jour votre carte" : ""}{household.abonnement.statut === "simule" ? " · simulé (Stripe non configuré)" : ""}.</p>
+              {household.abonnement.gerable && <button className="link" style={{ marginTop: 6 }} onClick={async () => { const r = await api.portail(); location.href = r.url; }}>Gérer mon abonnement (carte, factures, résiliation)</button>}
             </div>
           )}
         </div>
@@ -85,7 +116,7 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
       <section className="section">
         <div className="section-head"><h2>Membres du foyer</h2></div>
         {household.membres.map((m) => (
-          <div className="settings-row" key={m.id}><div><div className="t">{m.prenom}</div><div className="s">{m.role}</div></div></div>
+          <div className="settings-row" key={m.id}><div><div className="t">{m.prenom}</div><div className="s">{ROLE_LABEL[m.role] ?? m.role}</div></div></div>
         ))}
         <button className="link" style={{ marginTop: 10 }} onClick={() => go("famille")}>Composition du foyer, écoles, activités, conseils</button>
       </section>

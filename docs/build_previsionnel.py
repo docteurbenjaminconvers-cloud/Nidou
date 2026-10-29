@@ -28,8 +28,13 @@ hy["A2"] = "Cellules en bleu sur fond jaune : à modifier librement. Tout le res
 
 rows = [
     ("REVENUS", None, None, None),
-    ("Prix mensuel TTC (€)", 9.9, EUR2, "Plan Famille, décision du 28/10/2026"),
-    ("Prix annuel TTC (€)", 99, EUR2, "Plan Famille, décision du 28/10/2026"),
+    ("Solo (1 personne) — prix mensuel TTC (€)", 6.9, EUR2, "Grille du 29/10/2026 ; annuel = 10 × mensuel (69 €)"),
+    ("Duo (2 personnes) — prix mensuel TTC (€)", 9.9, EUR2, "Annuel 99 €"),
+    ("Tribu (jusqu'à 6 personnes) — prix mensuel TTC (€)", 13.9, EUR2, "Annuel 139 €"),
+    ("Part des abonnés en Solo", 0.30, PCT, "Hypothèse : personnes seules et parents isolés"),
+    ("Part des abonnés en Tribu", 0.20, PCT, "Hypothèse : familles avec ados ou grands-parents connectés ; le reste est en Duo"),
+    ("Prix mensuel TTC (€)", lambda R: f"={R['Solo (1 personne) — prix mensuel TTC (€)']}*{R['Part des abonnés en Solo']}+{R['Tribu (jusqu\'à 6 personnes) — prix mensuel TTC (€)']}*{R['Part des abonnés en Tribu']}+{R['Duo (2 personnes) — prix mensuel TTC (€)']}*(1-{R['Part des abonnés en Solo']}-{R['Part des abonnés en Tribu']})", EUR2, "Calculé : prix moyen pondéré par le mélange de formules"),
+    ("Prix annuel TTC (€)", lambda R: f"={R['Prix mensuel TTC (€)']}*10", EUR2, "Calculé : 10 mois payés, 2 offerts"),
     ("Part des abonnés en formule annuelle", 0.5, PCT, "Hypothèse : moitié mensuel, moitié annuel"),
     ("TVA", 0.20, PCT, "Service numérique en France : 20 %"),
     ("Commission moyenne de paiement (Stripe), % du TTC", 0.015, PCT, "Cartes européennes ≈ 1,5 % + 0,25 € ; les stores (Apple/Google) prendraient 15 à 30 % : à éviter, paiement web"),
@@ -41,7 +46,7 @@ rows = [
     ("IA — foyer gratuit (€)", 0.0, EUR2, "Gratuit nu : lecture locale sans IA, pas d'import de relevés ni de banque. 0 € d'IA (NIDOU_IA_LECTURES_GRATUIT=0 ; un quota rouvrable plus tard reste plafonné par NIDOU_IA_PLAFOND_GRATUIT_EUR)"),
     ("Agrégation bancaire Bridge, par compte connecté (€)", 1.0, EUR2, "Tarif public indicatif 0,5 à 2 € par compte et par mois ; à négocier au volume"),
     ("Part des abonnés qui connectent leur banque", 0.6, PCT, "Hypothèse"),
-    ("Nombre de comptes connectés par foyer connecté", 1.3, '0.0', "Compte joint + un compte perso"),
+    ("Nombre de comptes connectés par foyer connecté", lambda R: f"=1.1*{R['Part des abonnés en Solo']}+2*{R['Part des abonnés en Tribu']}+1.4*(1-{R['Part des abonnés en Solo']}-{R['Part des abonnés en Tribu']})", '0.00', "Calculé : 1,1 compte en Solo, 1,4 en Duo (compte joint + un perso), 2 en Tribu"),
     ("Stockage et bande passante, tous foyers (€)", 0.01, EUR2, "OVH Object Storage ≈ 0,01 €/Go ; 50 documents × 2 Mo = 0,1 Go par foyer"),
     ("Emails et notifications push (€)", 0.02, EUR2, "Payants : push + email (Brevo). Gratuits : push seulement, donc ≈ 0 ; la moyenne tous foyers est surestimée ici par prudence"),
     ("Coût d'acquisition d'un abonné payant (€)", 20, EUR2, "Mix parrainage + publicité (15 €) + le coût de l'essai inversé des inscrits non convertis (≈ 5 € par payant gagné, voir onglet Lancement) ; dépensé pour remplacer le churn"),
@@ -54,7 +59,10 @@ for label, val, fmt, note in rows:
     if val is None:
         hy.cell(r, 1).font = BOLD; hy.cell(r, 1).fill = GREY
     else:
-        c = hy.cell(r, 2, val); c.font = BLUE; c.fill = YELLOW; c.number_format = fmt
+        if callable(val):
+            c = hy.cell(r, 2, val(ref)); c.number_format = fmt; c.font = Font(name=FONT)
+        else:
+            c = hy.cell(r, 2, val); c.font = BLUE; c.fill = YELLOW; c.number_format = fmt
         hy.cell(r, 3, note).font = Font(name=FONT, size=9, color="555555")
         ref[label] = f"Hypothèses!$B${r}"
     r += 1

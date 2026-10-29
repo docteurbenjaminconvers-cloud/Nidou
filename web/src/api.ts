@@ -50,7 +50,7 @@ export interface Api {
   retirerCompte(userId: string): Promise<void>;
   regenererMcp(): Promise<string>;
   renommer(nom: string): Promise<void>;
-  checkout(periode: "mensuel" | "annuel"): Promise<{ url: string; simule: boolean }>;
+  checkout(formule: "solo" | "duo" | "tribu", periode: "mensuel" | "annuel"): Promise<{ url: string; simule: boolean }>;
   pushCle(): Promise<{ actif: boolean; cle: string | null; appareils: number }>;
   pushAbonner(s: { endpoint: string; keys: { p256dh: string; auth: string }; appareil: string | null }): Promise<void>;
   pushDesabonner(endpoint: string): Promise<void>;
@@ -127,7 +127,7 @@ const serverApi: Api = {
   retirerCompte: async (id) => { await call(`/foyer/comptes/${id}`, { method: "DELETE" }); },
   regenererMcp: async () => (await call<{ token: string }>("/mcp/regenerer", { method: "POST" })).token,
   renommer: async (nom) => { await call("/household", json({ nom }, "PATCH")); },
-  checkout: (periode) => call("/abonnement/checkout", json({ periode })),
+  checkout: (formule, periode) => call("/abonnement/checkout", json({ formule, periode })),
   pushCle: () => call("/push/cle"),
   pushAbonner: async (s) => { await call("/push/abonner", json(s)); },
   pushDesabonner: async (endpoint) => { await call("/push/abonner", json({ endpoint }, "DELETE")); },
@@ -151,11 +151,12 @@ function makeDemoApi(): Api {
   const today = () => new Date().toISOString().slice(0, 10);
   return {
     mode: "demo",
-    household: async () => ({ ...state.household, documents: state.docs.length }),
+    household: async () => ({ ...state.household, documents: state.docs.length, comptes: state.comptes.length }),
     setPlan: async (plan) => {
       state.household.plan = plan;
       // Demo: switching to free simulates the end of the trial (bare free plan: no AI reading, no statement import, no bank).
       if (plan === "gratuit" && state.household.essai) state.household.essai = { ...state.household.essai, jours_restants: 0, actif: false };
+      if (plan === "gratuit") { state.household.plan_souscrit = "gratuit"; state.household.capacite_comptes = 1; state.household.abonnement = undefined; }
     },
     documents: async (q, category) =>
       state.docs.filter((d) => (!category || d.category === category) && (!q || [d.title, d.organisme, d.resume].some((v) => v?.toLowerCase().includes(q.toLowerCase())))),
@@ -228,12 +229,14 @@ function makeDemoApi(): Api {
     demanderLien: async () => ({ ok: true, envoye: false, lien: null }),
     deconnexion: async () => {},
     comptes: async () => ({ comptes: state.comptes, invitations: state.invitations }),
-    inviter: async (email, prenom) => { state.invitations.push({ token: crypto.randomUUID(), email, prenom, expire_le: new Date(Date.now() + 7 * 864e5).toISOString() }); return { ok: true, envoye: true, lien: null }; },
+    inviter: async (email, prenom) => {
+      const cap = state.household.capacite_comptes ?? 6;
+      if (state.comptes.length + state.invitations.length >= cap) throw new ApiError(402, "limite_comptes", cap === 1 ? "Le plan gratuit est réservé à une personne. Avec Duo, votre conjoint·e se connecte aussi ; avec Tribu, jusqu'à 6 personnes." : `Votre formule accepte ${cap} personnes connectées. Passez à Tribu pour en inviter plus.`); state.invitations.push({ token: crypto.randomUUID(), email, prenom, expire_le: new Date(Date.now() + 7 * 864e5).toISOString() }); return { ok: true, envoye: true, lien: null }; },
     annulerInvitation: async (token) => { state.invitations = state.invitations.filter((i) => i.token !== token); },
     retirerCompte: async (id) => { state.comptes = state.comptes.filter((c) => c.id !== id); },
     regenererMcp: async () => "demo-" + crypto.randomUUID().slice(0, 8),
     renommer: async (nom) => { state.household.nom = nom; },
-    checkout: async (periode) => { state.household.plan = "famille"; state.household.abonnement = { stripe: false, statut: "simule", periode, fin: new Date(Date.now() + (periode === "annuel" ? 365 : 30) * 864e5).toISOString().slice(0, 10), prix: { mensuel: 9.9, annuel: 99 }, gerable: false }; return { url: "", simule: true }; },
+    checkout: async (formule, periode) => { state.household.plan = "famille"; state.household.plan_souscrit = "famille"; state.household.capacite_comptes = { solo: 1, duo: 2, tribu: 6 }[formule]; state.household.abonnement = { stripe: false, statut: "simule", formule, periode, fin: new Date(Date.now() + (periode === "annuel" ? 365 : 30) * 864e5).toISOString().slice(0, 10), prix: { mensuel: 9.9, annuel: 99 }, gerable: false }; return { url: "", simule: true }; },
     portail: async () => ({ url: "" }),
     pushCle: async () => ({ actif: false, cle: null, appareils: 0 }),
     pushAbonner: async () => {},

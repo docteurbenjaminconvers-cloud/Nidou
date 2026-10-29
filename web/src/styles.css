@@ -354,3 +354,15 @@ b, strong { font-weight: 800; }
 .reveal { overflow-y: auto; -webkit-overflow-scrolling: touch; place-items: start center; padding: calc(env(safe-area-inset-top) + 40px) 20px calc(env(safe-area-inset-bottom) + 28px); }
 .reveal-inner { margin: auto 0; }
 .reveal-amount b { font-size: clamp(56px, 19vw, 88px); white-space: nowrap; }
+
+/* Formules Solo / Duo / Tribu */
+.tiers { display: grid; gap: 12px; }
+.plan-card.tier { position: relative; margin-top: 0; }
+.plan-card.tier.conseil { border-color: var(--nest); }
+.tier-tag { position: absolute; top: -11px; right: 16px; background: var(--yolk); color: var(--plum); font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; transform: rotate(2deg); }
+.tier-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.tier-head h3 { font-family: var(--display); font-style: italic; font-weight: 600; font-size: 22px; }
+.tier-people { font-size: 12.5px; font-weight: 800; color: var(--lilac-ink); background: var(--lilac-soft); border-radius: 999px; padding: 4px 10px; white-space: nowrap; }
+.tier-price { margin: 6px 0 2px; }
+.tier-price b { font-family: var(--display); font-size: 32px; font-weight: 600; color: var(--nest); letter-spacing: -0.02em; }
+.tier-price span { color: var(--mist); font-weight: 700; }

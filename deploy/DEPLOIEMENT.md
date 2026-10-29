@@ -48,7 +48,8 @@ BREVO_API_KEY=…
 ANTHROPIC_API_KEY=…
 NIDOU_INBOX_SECRET=<une longue chaîne aléatoire>
 VAPID_PUBLIC_KEY=…   VAPID_PRIVATE_KEY=…   VAPID_SUBJECT=mailto:bonjour@nidou.fr
-STRIPE_SECRET_KEY=…  STRIPE_WEBHOOK_SECRET=…  STRIPE_PRICE_MENSUEL=…  STRIPE_PRICE_ANNUEL=…
+STRIPE_SECRET_KEY=…  STRIPE_WEBHOOK_SECRET=…
+STRIPE_PRICE_SOLO_MENSUEL=…  STRIPE_PRICE_SOLO_ANNUEL=…  (et de même pour DUO et TRIBU)
 ```
 
 Clés VAPID : `docker compose run --rm nidou npx web-push generate-vapid-keys`.
@@ -58,7 +59,7 @@ Ne jamais mettre ce fichier sur GitHub (il est exclu par `.gitignore`).
 
 ## 5. Brancher les services
 
-- **Stripe** : créer deux prix (9,90 € TTC / mois, 99 € TTC / an), un webhook vers `https://app.nidou.fr/api/stripe/webhook` (événements `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`), activer le portail client.
+- **Stripe** : créer un produit par formule et six prix TTC (Solo 6,90 € / mois et 69 € / an, Duo 9,90 € et 99 €, Tribu 13,90 € et 139 €), autoriser le changement de formule dans le portail client, un webhook vers `https://app.nidou.fr/api/stripe/webhook` (événements `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`), activer le portail client.
 - **Brevo** : domaine `nidou.fr` vérifié, expéditeur `bonjour@nidou.fr`, réception « inbound parsing » sur `in.nidou.fr` vers `https://app.nidou.fr/api/inbox?secret=<NIDOU_INBOX_SECRET>`.
 - **Connecteur IA** : chaque famille trouve l'adresse `https://app.nidou.fr/mcp` et son jeton dans ses réglages.
 

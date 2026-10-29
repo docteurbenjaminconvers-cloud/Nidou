@@ -33,7 +33,8 @@ export default function App() {
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [reveal, setReveal] = useState(false);
   const [famille, setFamille] = useState<FamilleReport | null>(null);
-  const [login, setLogin] = useState<string | null | false>(false); // false: unknown/no, string|null: show login (with optional error code)
+  const [login, setLogin] = useState<string | null | false>(false);
+  const [pause, setPause] = useState<string | null>(null); // false: unknown/no, string|null: show login (with optional error code)
 
   const notifs = useNotifications(deadlines, docs, budget, household);
   const toast = useCallback((m: string) => { setToastMsg(m); setTimeout(() => setToastMsg(null), 2600); }, []);
@@ -52,6 +53,7 @@ export default function App() {
     setLogin(false);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) { setLogin(new URLSearchParams(location.hash.split("?")[1] ?? "").get("erreur")); return; }
+      if (e instanceof ApiError && e.code === "compte_en_pause") { setPause(e.message); return; }
       throw e;
     }
   }, [api]);
@@ -72,6 +74,17 @@ export default function App() {
   const onDone = async (id: string) => { await api!.setDeadlineDone(id, true); toast("Marqué comme fait"); reload(); };
 
   if (api && login !== false) return <Login api={api} erreur={login} />;
+  if (api && pause) return (
+    <div className="app"><div className="screen" style={{ minHeight: "85dvh", display: "flex", flexDirection: "column", justifyContent: "center", gap: 14 }}>
+      <Logo />
+      <h1 className="detail-title">Votre accès est en pause</h1>
+      <p className="detail-sub">{pause}</p>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <button className="btn" onClick={() => { setPause(null); reload(); }}>Réessayer</button>
+        <button className="btn ghost" onClick={async () => { await api.deconnexion(); location.reload(); }}>Se déconnecter</button>
+      </div>
+    </div></div>
+  );
   if (!api || !household) {
     return (
       <div className="app"><div className="screen" style={{ display: "grid", placeItems: "center", minHeight: "70dvh" }}><Logo /></div></div>

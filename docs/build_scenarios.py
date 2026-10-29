@@ -13,10 +13,10 @@ def run(changes):
     for r in ws.iter_rows(min_row=4, max_row=ws.max_row):
         if str(r[0].value).startswith("RÉSULTAT"): return [round(c.value) for c in r[1:6]]
 sc = [
-    ("A — 9,90 € / mois, 99 € / an, hypothèses de base (Bridge au tarif public 1 €)", {}),
-    ("B — 9,90 € / 99 €, Bridge négocié à 0,60 € par compte", {"Agrégation bancaire Bridge, par compte connecté (€)": 0.6}),
-    ("C — 9,90 € / 99 €, churn à 5 % par mois (pessimiste)", {"Churn mensuel des abonnés": 0.05}),
-    ("D — 9,90 € / 99 €, 15 comptes gratuits par payant (conversion faible)", {"Utilisateurs gratuits par abonné payant": 15}),
+    ("A — Solo / Duo / Tribu (30 / 50 / 20 %), hypothèses de base (Bridge au tarif public 1 €)", {}),
+    ("B — même grille, Bridge négocié à 0,60 € par compte", {"Agrégation bancaire Bridge, par compte connecté (€)": 0.6}),
+    ("C — même grille, churn à 5 % par mois (pessimiste)", {"Churn mensuel des abonnés": 0.05}),
+    ("D — même grille, 15 comptes gratuits par payant (conversion faible)", {"Utilisateurs gratuits par abonné payant": 15}),
     ("E — pour mémoire : 4 € / 40 €, hypothèses de base", {"Prix mensuel TTC (€)": 4, "Prix annuel TTC (€)": 40}),
 ]
 res = [(l, run(c)) for l, c in sc]
@@ -35,7 +35,7 @@ for i, (l, v) in enumerate(res):
     for j, x in enumerate(v): c = ws.cell(5 + i, 2 + j, x); c.number_format = '#,##0 €;(#,##0 €);-'; c.font = F(color="0000FF")
 ws.cell(11, 1, "Lecture").font = F(bold=True)
 notes = [
-    "À 9,90 € TTC (99 € par an), il reste ≈ 7,30 € nets par abonné après TVA et Stripe, pour ≈ 1,80 € de coûts variables (dont Bridge 0,78 €). Le modèle est positif à tous les paliers, y compris au tarif public de Bridge.",
+    "Avec la grille Solo 6,90 € / Duo 9,90 € / Tribu 13,90 € (mélange 30 / 50 / 20 %), le prix moyen est ≈ 9,80 € TTC et il reste ≈ 7,20 € nets par abonné après TVA et Stripe, pour ≈ 1,90 € de coûts variables (dont Bridge, plus élevé en Tribu). Le modèle est positif à tous les paliers, y compris au tarif public de Bridge.",
     "Le seuil de rentabilité de chaque palier (couvrir l'équipe et le support prévus) est atteint avec 20 à 35 % des abonnés du palier.",
     "Un abonné vaut ≈ 240 € nets sur sa durée de vie à 3 % de churn : un coût d'acquisition jusqu'à 60 à 80 € reste rentable.",
     "Le gratuit coûte ≈ 2 centimes par compte et par mois (IA en modèle rapide au quota, stockage, push). 15 gratuits par payant restent supportables (scénario D).",

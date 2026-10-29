@@ -68,14 +68,15 @@ export interface Household {
   plan_souscrit?: "gratuit" | "famille";
   membres: Member[];
   documents: number;
-  limites: { documents: number; members: number; lettersPerMonth: number; iaLecturesParMois: number; importReleves: boolean; banque: boolean; notifications: "push" } | null;
+  limites: { documents: number; comptes: number; lettersPerMonth: number; iaLecturesParMois: number; importReleves: boolean; banque: boolean; notifications: "push" } | null;
   essai?: { fin: string; jours_restants: number | null; actif: boolean } | null;
   ia_lectures_utilisees?: number;
   ia_lectures_restantes?: number | null;
   ia_gratuit_en_pause?: boolean;
   boite_email?: string | null;
   mcp_token?: string | null;
-  abonnement?: { stripe: boolean; statut: string | null; periode: "mensuel" | "annuel" | null; fin: string | null; prix: { mensuel: number; annuel: number }; gerable: boolean };
+  capacite_comptes?: number;
+  abonnement?: { stripe: boolean; statut: string | null; formule?: "solo" | "duo" | "tribu" | null; periode: "mensuel" | "annuel" | null; fin: string | null; prix: { mensuel: number; annuel: number }; gerable: boolean };
   utilisateur?: { id: string; email: string; prenom: string | null } | null;
   comptes?: number;
   boite_recus?: { message_id: string; expediteur: string | null; objet: string | null; documents: number; quand: string }[];
