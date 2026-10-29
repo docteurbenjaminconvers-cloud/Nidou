@@ -214,6 +214,7 @@ export function VeilleDetail({ api, id, onBack, toast }: { api: Api; id: string;
           <div className="fields"><div className="field"><span>Lien personnel</span><input readOnly value={v.lien_personne ?? ""} onFocus={(e) => e.target.select()} /></div></div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button className="btn" onClick={partager}>Envoyer le lien</button>
+            {api.mode === "demo" && v.lien_personne && <button className="btn ghost" onClick={() => { location.hash = `#/consentement/${v.lien_personne!.split("/consentement/")[1]}`; window.scrollTo({ top: 0 }); }}>Ouvrir sa page (démo)</button>}
             <button className="btn ghost" onClick={load}>Actualiser</button>
           </div>
         </section>
@@ -234,7 +235,10 @@ export function VeilleDetail({ api, id, onBack, toast }: { api: Api; id: string;
           {(v.alertes ?? []).some((a) => a.gravite === "urgente") && (
             <div className="confidence" style={{ display: "block" }}>Le bon réflexe : appeler {v.prenom} calmement, sans reproche, puis sa banque (opposition, rappel de virement). En cas d'escroquerie : plainte, et signalement sur <a href="https://www.cybermalveillance.gouv.fr" target="_blank" rel="noreferrer">cybermalveillance.gouv.fr</a> ou au 17.</div>
           )}
-          <button className="btn ghost" style={{ marginTop: 6 }} onClick={partager}>Renvoyer sa page à {v.prenom}</button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
+            <button className="btn ghost" onClick={partager}>Renvoyer sa page à {v.prenom}</button>
+            {api.mode === "demo" && v.lien_personne && <button className="btn ghost" onClick={() => { location.hash = `#/consentement/${v.lien_personne!.split("/consentement/")[1]}`; window.scrollTo({ top: 0 }); }}>Ouvrir sa page (démo)</button>}
+          </div>
         </section>
       )}
 
@@ -290,7 +294,10 @@ export function ConsentPage({ api, jeton }: { api: Api; jeton: string }) {
   }, [jeton]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const wrap = (body: React.ReactNode) => <div className="app"><div className="screen consent">{<Logo />}{body}</div></div>;
-  if (err) return wrap(<p className="detail-sub" style={{ marginTop: 20 }}>{err}</p>);
+  if (err && !vue) return wrap(<>
+    <p className="detail-sub" style={{ marginTop: 20 }}>{err}</p>
+    {api.mode === "demo" && <p className="note">Dans la démo, rien n'est enregistré : ouvrez cette page avec le bouton « Ouvrir sa page (démo) » depuis la veille, dans le même onglet. <a className="link" href="#/famille">Aller à Famille</a></p>}
+  </>);
   if (!vue) return wrap(<p className="note">Chargement…</p>);
   const act = async (f: () => Promise<Partial<VuePersonne> & { url?: string | null }>) => {
     setBusy(true); setErr(null);
@@ -374,6 +381,11 @@ export function ConsentPage({ api, jeton }: { api: Api; jeton: string }) {
             </section>
           )}
         </>
+      )}
+      {api.mode === "demo" && (
+        <div className="confidence" style={{ display: "block", marginTop: 20 }}>
+          Démo : ici, vous voyez la page que recevrait {vue.prenom}. <button className="link" onClick={() => history.back()}>Revenir à la veille côté aidant</button>
+        </div>
       )}
       <p className="note" style={{ marginTop: 24 }}>Nidou · nid « {vue.nid} ». Une question, un doute sur cette page : appelez votre banque au numéro inscrit sur votre carte, jamais un numéro reçu par message.</p>
     </>
