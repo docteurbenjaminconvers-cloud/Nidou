@@ -3,6 +3,7 @@ import type { Api } from "../api";
 import type { Activite, Conseil, FamilleReport, Household, Member, Role } from "../types";
 import { Bell } from "../notifications";
 import { Back, fmtDate, fmtEuro } from "../ui";
+import { VeilleCard, estProtegeable } from "./Veille";
 
 export const JOURS = ["", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
 const JOURS_COURT = ["", "lun", "mar", "mer", "jeu", "ven", "sam", "dim"];
@@ -206,7 +207,9 @@ export function MembreDetail({ api, id, onBack, go, onChanged, toast }: { api: A
         )}
       </section>
 
-      {(m.role === "parent_a_charge" || m.role === "autre_a_charge") && (
+      {estProtegeable(m) && <VeilleCard api={api} membre={m} go={go} />}
+
+      {estProtegeable(m) && (
         <div className="confidence" style={{ display: "block", width: "100%" }}>Les papiers de {m.prenom} se rangent dans Nidou avec son accord. Sous tutelle ou curatelle, c'est le tuteur ou le curateur qui autorise, notamment pour la banque.</div>
       )}
 

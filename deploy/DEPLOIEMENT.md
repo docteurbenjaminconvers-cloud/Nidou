@@ -60,6 +60,7 @@ Ne jamais mettre ce fichier sur GitHub (il est exclu par `.gitignore`).
 ## 5. Brancher les services
 
 - **Stripe** : créer un produit par formule et six prix TTC (Solo 6,90 € / mois et 69 € / an, Duo 9,90 € et 99 €, Tribu 13,90 € et 139 €), autoriser le changement de formule dans le portail client, un webhook vers `https://app.nidou.fr/api/stripe/webhook` (événements `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`), activer le portail client.
+- **Stripe, veille d'un proche** : un produit « Veille d'un proche » avec deux prix (3,90 € / mois et 39 € / an) dans `STRIPE_PRICE_VEILLE_MENSUEL` et `STRIPE_PRICE_VEILLE_ANNUEL`.
 - **Brevo** : domaine `nidou.fr` vérifié, expéditeur `bonjour@nidou.fr`, réception « inbound parsing » sur `in.nidou.fr` vers `https://app.nidou.fr/api/inbox?secret=<NIDOU_INBOX_SECRET>`.
 - **Connecteur IA** : chaque famille trouve l'adresse `https://app.nidou.fr/mcp` et son jeton dans ses réglages.
 
@@ -85,3 +86,4 @@ Restaurer : arrêter (`docker compose stop nidou`), remplacer `/data/nidou.sqlit
 - Audit de sécurité (tests d'intrusion) et revue RGPD : registre des traitements, contrats de sous-traitance (OVH, Brevo, Anthropic, Stripe, Bridge).
 - Données de santé : la catégorie « santé » impose un hébergeur certifié HDS (OVH propose une offre HDS) ; d'ici là, la désactiver ou prévenir que rien de médical ne doit y être rangé.
 - Mentions légales et CGV complétées avec les informations de la SASU.
+- **Veille bancaire d'un proche** : laisser `NIDOU_VEILLE=0` tant qu'un avocat n'a pas validé le parcours de consentement, les textes de la page personnelle, l'engagement de l'aidant et l'analyse d'impact RGPD. Bridge doit aussi accepter ce cas d'usage (un compte connecté par une personne autre que l'abonné).

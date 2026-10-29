@@ -1,4 +1,4 @@
-import type { Activite, BankStatus, BudgetAction, BudgetReport, ChargesReport, Deadline, Doc, FamilleReport, Household, ImportResult, Member } from "./types";
+import type { Activite, BankStatus, BudgetAction, BudgetReport, ChargesReport, Deadline, Doc, FamilleReport, Household, ImportResult, Member, Mesure, Temoin, Veille, VeillesReport, VuePersonne } from "./types";
 import demoFamille from "./demo/famille.json";
 import demoBudget from "./demo/budget.json";
 import demoBudgetFamille from "./demo/budget-famille.json";
@@ -56,6 +56,20 @@ export interface Api {
   pushDesabonner(endpoint: string): Promise<void>;
   pushTest(): Promise<{ envoyes: number; actif: boolean }>;
   portail(): Promise<{ url: string }>;
+  // protected-person bank watch
+  veilles(): Promise<VeillesReport>;
+  creerVeille(input: { member_id: string; mesure: Mesure; acte_document_id: string | null; aidant_qualite: string | null; temoins: Temoin[]; personne_peut_consentir: boolean }): Promise<Veille>;
+  veille(id: string): Promise<Veille>;
+  veilleVue(id: string): Promise<void>;
+  terminerVeille(id: string, motif: "deces" | "fin_mesure" | "demande_aidant"): Promise<Veille>;
+  journalVeille(id: string): Promise<{ verification: { intact: boolean; lignes: number; rupture: number | null }; lignes: { quand: string; acteur: string; action: string; details: string; empreinte: string }[] }>;
+  journalCsvUrl(id: string): string | null;
+  acheterVeille(periode: "mensuel" | "annuel"): Promise<void>;
+  // the protected person's own page (no account)
+  vuePersonne(jeton: string): Promise<VuePersonne>;
+  consentirVeille(jeton: string, input: { nom_signataire: string; en_qualite_de: "personne" | "representant"; accepte: boolean }): Promise<VuePersonne>;
+  retirerVeille(jeton: string, nom: string): Promise<VuePersonne>;
+  banqueVeille(jeton: string): Promise<{ url: string | null } & Partial<VuePersonne>>;
 }
 
 class ApiError extends Error {
@@ -133,6 +147,18 @@ const serverApi: Api = {
   pushDesabonner: async (endpoint) => { await call("/push/abonner", json({ endpoint }, "DELETE")); },
   pushTest: () => call("/push/test", { method: "POST" }),
   portail: () => call("/abonnement/portail", { method: "POST" }),
+  veilles: () => call("/veilles"),
+  creerVeille: (input) => call("/veilles", json(input)),
+  veille: (id) => call(`/veilles/${id}`),
+  veilleVue: async (id) => { await call(`/veilles/${id}/vue`, { method: "POST" }); },
+  terminerVeille: (id, motif) => call(`/veilles/${id}/terminer`, json({ motif })),
+  journalVeille: (id) => call(`/veilles/${id}/journal`),
+  journalCsvUrl: (id) => `/api/veilles/${id}/journal?format=csv`,
+  acheterVeille: async (periode) => { await call("/abonnement/veille", json({ periode })); },
+  vuePersonne: (jeton) => call(`/veille/p/${jeton}`),
+  consentirVeille: (jeton, input) => call(`/veille/p/${jeton}/consentir`, json(input)),
+  retirerVeille: (jeton, nom) => call(`/veille/p/${jeton}/retirer`, json({ nom })),
+  banqueVeille: (jeton) => call(`/veille/p/${jeton}/banque`, json({})),
 };
 
 // ---------- demo adapter ----------
@@ -147,7 +173,11 @@ function makeDemoApi(): Api {
     famille: structuredClone(demoFamille) as unknown as FamilleReport,
     comptes: [{ id: "u1", email: "demo@nidou.fr", prenom: "Moi", role: "proprietaire", rejoint_le: "2026-10-01T09:00:00.000Z" }, { id: "u2", email: "camille@example.org", prenom: "Camille", role: "membre", rejoint_le: "2026-10-02T18:30:00.000Z" }],
     invitations: [] as { token: string; email: string; prenom: string | null; expire_le: string }[],
+    veilles: [] as (Veille & { jeton: string; historique: { quand: string; acteur: string; action: string; details: string; empreinte: string }[] })[],
+    veillesSupp: 0,
   };
+  // Demo of the watch: same rules as the server, on a fictional statement (pension, then a scam unfolding).
+  const veilleDemo = makeVeilleDemo(state, () => state.household, () => state.famille.membres);
   const today = () => new Date().toISOString().slice(0, 10);
   return {
     mode: "demo",
@@ -242,6 +272,7 @@ function makeDemoApi(): Api {
     pushAbonner: async () => {},
     pushDesabonner: async () => {},
     pushTest: async () => ({ envoyes: 0, actif: false }),
+    ...veilleDemo,
     letter: async ({ kind, nom }) => {
       const d = state.docs[0];
       return `${nom}\n\n${d?.organisme ?? "Service client"}\n\nObjet : ${kind === "resiliation" ? "Résiliation" : kind === "reclamation" ? "Réclamation" : "Demande de remboursement"} — ${d?.title ?? ""}\n\nMadame, Monsieur,\n\n(Mode démo : le courrier complet est rédigé par le serveur Nidou.)\n\n${nom}`;
@@ -269,6 +300,92 @@ function recomputeFamille(f: FamilleReport, h: Household): FamilleReport {
   });
   h.membres = membres.map(({ id, prenom, role }) => ({ id, prenom, role }));
   return { ...f, membres, semaine, couts, cout_enfants_mois: couts.reduce((s, c) => s + c.total, 0), composition: { adultes: membres.filter((m) => m.role === "adulte").length, enfants: membres.filter((m) => m.role === "enfant").length, a_charge: membres.filter((m) => m.role === "parent_a_charge" || m.role === "autre_a_charge").length } };
+}
+
+type VeilleDemoState = { veilles: (Veille & { jeton: string; historique: { quand: string; acteur: string; action: string; details: string; empreinte: string }[] })[]; veillesSupp: number };
+type VeilleApi = Pick<Api, "veilles" | "creerVeille" | "veille" | "veilleVue" | "terminerVeille" | "journalVeille" | "journalCsvUrl" | "acheterVeille" | "vuePersonne" | "consentirVeille" | "retirerVeille" | "banqueVeille">;
+
+function makeVeilleDemo(state: VeilleDemoState, household: () => Household, membres: () => Member[]): VeilleApi {
+  const MESURE: Record<Mesure, string> = { aucune: "sans mesure de protection", curatelle: "curatelle", tutelle: "tutelle", habilitation_familiale: "habilitation familiale", mandat_protection_future: "mandat de protection future" };
+  const qui = (v: Veille) => v.mesure === "aucune" ? { personne: true, representant: false, texte: `${v.prenom} donne son accord elle-même.` }
+    : v.mesure === "curatelle" ? { personne: true, representant: true, texte: `${v.prenom} donne son accord, avec son curateur ou sa curatrice (${v.aidant}).` }
+    : { personne: false, representant: true, texte: `${v.aidant}, ${MESURE[v.mesure]}, autorise la veille ; ${v.prenom} en est informée.` };
+  let h = 0;
+  const log = (v: VeilleDemoState["veilles"][number], acteur: string, action: string, details: object = {}) => { h = (h * 31 + action.length + acteur.length + v.historique.length) >>> 0; v.historique.push({ quand: new Date().toISOString(), acteur, action, details: JSON.stringify(details), empreinte: h.toString(16).padStart(8, "0") + "…" }); };
+  const d = (n: number) => new Date(Date.now() - n * 864e5).toISOString();
+  const ALERTES = (): Veille["alertes"] => [
+    { id: "a1", type: "virement_nouveau", gravite: "urgente", titre: "Virement de 2 400 € vers un bénéficiaire inconnu", detail: "VIR SEPA VERS M DUBOIS ALEXANDRE : jamais vu sur ce compte. En cas de doute, appelez la banque pour le bloquer, puis parlez-en avec elle.", quand: d(1), vue: 0 },
+    { id: "a2", type: "coupon", gravite: "urgente", titre: "Achat de coupon prépayé (Transcash) de 500 €", detail: "Les escrocs demandent souvent d'acheter des coupons et de leur lire le code au téléphone. Aucun service officiel ne paie par coupon.", quand: d(2), vue: 0 },
+    { id: "a3", type: "retraits", gravite: "attention", titre: "3 retraits en 5 jours (700 €)", detail: "Inhabituel par rapport aux deux mois précédents.", quand: d(3), vue: 0 },
+    { id: "a4", type: "prelevement_nouveau", gravite: "attention", titre: "2 nouveaux prélèvements : ASSUR OBSEQUES DIRECT, TELESURVEILLANCE PLUS", detail: "Souscrits récemment ? Le démarchage à domicile ou au téléphone ouvre 14 jours pour se rétracter.", quand: d(12), vue: 0 },
+  ];
+  const find = (id: string) => { const v = state.veilles.find((x) => x.id === id); if (!v) throw new ApiError(404, "introuvable", "Veille introuvable"); return v; };
+  const parJeton = (j: string) => { const v = state.veilles.find((x) => x.jeton === j); if (!v) throw new ApiError(404, "introuvable", "Ce lien n'est plus valable."); return v; };
+  const capacite = () => { const hh = household(); const f = hh.abonnement?.formule ?? (hh.essai?.actif ? "tribu" : null); return hh.plan === "gratuit" ? 0 : (f === "tribu" ? 1 : 0) + state.veillesSupp; };
+  const enCours = () => state.veilles.filter((v) => v.statut !== "terminee").length;
+  const pub = (v: Veille): Veille => { const { jeton: _j, historique: _l, ...rest } = v as VeilleDemoState["veilles"][number]; return { ...rest, qui_consent: qui(v) }; };
+  const vue = (v: VeilleDemoState["veilles"][number]): VuePersonne => ({
+    prenom: v.prenom, nid: household().nom, aidant: v.aidant, aidant_qualite: v.aidant_qualite, mesure: v.mesure, mesure_label: v.mesure_label, statut: v.statut,
+    qui_consent: qui(v), accords_donnes: v.accords, consentement_le: v.consentement_le, consentement_expire: v.consentement_expire, temoins: v.temoins, banque_connectee: v.banque_connectee,
+    acces: [{ nom: v.aidant, role: v.aidant_qualite ?? "aidant" }, ...v.temoins.map((t) => ({ nom: t.nom, role: "témoin, reçoit les mêmes alertes" }))],
+    engagements: [
+      "Nidou ne voit vos opérations qu'en lecture : personne ne peut faire de virement ni rien modifier sur votre compte.",
+      "Vous n'avez jamais à donner votre code bancaire à quelqu'un d'autre ; vous vous connectez vous-même à votre banque.",
+      "Vous voyez ici qui reçoit les alertes. Chaque consultation est notée dans un journal que l'on ne peut pas modifier.",
+      "Votre accord vaut un an. Vous pouvez le retirer à tout moment, seul·e, depuis cette page.",
+    ],
+    derniers_acces: v.historique.filter((l) => l.action === "consultation").slice(-5).map((l) => ({ quand: l.quand, qui: l.acteur })),
+  });
+  return {
+    veilles: async () => ({ ouverte: true, capacite: capacite(), en_cours: enCours(), prix: { mensuel: 3.9, annuel: 39 }, veilles: state.veilles.map(pub) }),
+    creerVeille: async (input) => {
+      const m = membres().find((x) => x.id === input.member_id);
+      if (!m) throw new ApiError(400, "membre", "Personne introuvable.");
+      if (state.veilles.some((v) => v.member_id === m.id && v.statut !== "terminee")) throw new ApiError(400, "doublon", `Une veille existe déjà pour ${m.prenom}.`);
+      if (input.mesure === "aucune" && !input.personne_peut_consentir) throw new ApiError(400, "consentement_impossible", `Sans mesure de protection, ${m.prenom} doit pouvoir donner son accord elle-même. Si ce n'est plus possible, une mesure doit être demandée au juge des contentieux de la protection : tutelle, curatelle ou habilitation familiale. Nidou ne peut pas l'activer à sa place.`);
+      if (input.mesure !== "aucune" && !input.acte_document_id) throw new ApiError(400, "acte_manquant", "Joignez le jugement ou le mandat (ajoutez-le dans Papiers, puis choisissez-le ici).");
+      if (input.mesure !== "aucune" && !input.aidant_qualite?.trim()) throw new ApiError(400, "qualite", "Précisez votre qualité dans la mesure (tuteur, curateur, personne habilitée, mandataire).");
+      if (enCours() >= capacite()) throw new ApiError(402, "veille_payante", household().plan === "gratuit" ? "La veille bancaire d'un proche demande une formule payante." : "La veille d'un proche coûte 3,90 € par mois (39 € par an) ; la formule Tribu en comprend une.");
+      const v = { id: crypto.randomUUID(), jeton: crypto.randomUUID().replace(/-/g, ""), member_id: m.id, prenom: m.prenom, statut: "attente_consentement" as const, mesure: input.mesure, mesure_label: MESURE[input.mesure],
+        aidant: "Moi (demo@nidou.fr)", aidant_qualite: input.aidant_qualite, temoins: input.temoins.filter((t) => t.nom.trim()), consentement_le: null, consentement_expire: null, accords: [], qui_consent: null,
+        banque_connectee: false, alertes_non_vues: 0, alertes_urgentes: 0, lien_personne: "", fin_le: null, motif_fin: null, historique: [] };
+      v.lien_personne = `${location.origin}${location.pathname}#/consentement/${v.jeton}`;
+      log(v, v.aidant, "demande", { personne: m.prenom, mesure: v.mesure });
+      state.veilles.unshift(v); return pub(v);
+    },
+    veille: async (id) => {
+      const v = find(id);
+      if (v.statut === "active") log(v, v.aidant, "consultation");
+      return { ...pub(v), alertes: v.statut === "active" || v.statut === "suspendue" ? v.alertes ?? [] : [], journal: { intact: true, lignes: v.historique.length, rupture: null } };
+    },
+    veilleVue: async (id) => { const v = find(id); v.alertes = (v.alertes ?? []).map((a) => ({ ...a, vue: 1 })); v.alertes_non_vues = 0; v.alertes_urgentes = 0; },
+    terminerVeille: async (id, motif) => { const v = find(id); v.statut = "terminee"; v.fin_le = new Date().toISOString(); v.motif_fin = motif; v.banque_connectee = false; v.lien_personne = null; log(v, v.aidant, "fin", { motif }); return pub(v); },
+    journalVeille: async (id) => { const v = find(id); return { verification: { intact: true, lignes: v.historique.length, rupture: null }, lignes: v.historique }; },
+    journalCsvUrl: () => null,
+    acheterVeille: async () => { state.veillesSupp++; },
+    vuePersonne: async (j) => vue(parJeton(j)),
+    consentirVeille: async (j, input) => {
+      const v = parJeton(j);
+      if (!input.accepte || input.nom_signataire.trim().length < 2) throw new ApiError(400, "signature", "Écrivez votre nom et cochez la case pour donner votre accord.");
+      const q = qui(v);
+      if (input.en_qualite_de === "personne" && !q.personne) throw new ApiError(400, "qualite", "Sous cette mesure, c'est le représentant désigné qui autorise.");
+      v.accords = Array.from(new Set([...v.accords, input.en_qualite_de]));
+      if ((!q.personne || v.accords.includes("personne")) && (!q.representant || v.accords.includes("representant"))) {
+        v.statut = "active"; v.consentement_le = new Date().toISOString(); v.consentement_expire = new Date(Date.now() + 365 * 864e5).toISOString();
+      }
+      log(v, input.nom_signataire.trim(), "consentement", { en_qualite_de: input.en_qualite_de });
+      return vue(v);
+    },
+    retirerVeille: async (j, nom) => { const v = parJeton(j); v.statut = "terminee"; v.fin_le = new Date().toISOString(); v.motif_fin = "retrait_consentement"; v.banque_connectee = false; log(v, nom || "La personne protégée", "fin", { motif: "retrait_consentement" }); return vue(v); },
+    banqueVeille: async (j) => {
+      const v = parJeton(j);
+      if (v.statut !== "active") throw new ApiError(400, "consentement", "La banque se connecte une fois l'accord donné.");
+      await new Promise((r) => setTimeout(r, 900));
+      v.banque_connectee = true; v.alertes = ALERTES(); v.alertes_non_vues = 4; v.alertes_urgentes = 2;
+      log(v, "Banque", "connexion_banque", { fournisseur: "démo" });
+      return { url: null, ...vue(v) };
+    },
+  };
 }
 
 let instance: Api | null = null;

@@ -8,6 +8,10 @@ import { deadlinesFor } from "./deadlines.js";
 import { chargesReport } from "./charges.js";
 import { generateLetter, templateLetter } from "./letters.js";
 import { rappelsEssai, rappelsEcheances } from "./rappels.js";
+import * as V from "./veille.js";
+import { ajouterVeillePayante } from "./abonnement.js";
+import { mapTransactions } from "./bridge.js";
+import { envoyerEmail } from "./mail.js";
 import { envoyerPush, pushOn } from "./push.js";
 import { appliquerAbonnement, capaciteComptes, creerCheckout, FORMULES, portail, resumeAbonnement, traiterWebhook, type Formule } from "./abonnement.js";
 import { AUTH_ON, COOKIE, consommerLien, cookieHeader, demanderLien, emailValide, readCookie } from "./auth.js";
@@ -40,6 +44,7 @@ const freeCapEur = () => Number(process.env.NIDOU_IA_PLAFOND_GRATUIT_EUR ?? 2000
 
 export function createApi(db: Db, opts: { uploadDir: string }) {
   const api = new Hono();
+  V.ensureVeilleSchema(db);
 
   const secure = () => (process.env.NIDOU_PUBLIC_URL ?? "").startsWith("https://");
 
@@ -72,7 +77,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
    * without a session every route answers 401 `non_connecte`. NIDOU_AUTH=0 keeps the single-household prototype.
    */
   api.use("*", async (c, next) => {
-    if (c.req.path.includes("/auth/") || c.req.path.endsWith("/inbox") || c.req.path.endsWith("/bank/webhook") || c.req.path.endsWith("/bank/callback") || c.req.path.endsWith("/stripe/webhook") || c.req.path.endsWith("/abonnement/simule") || c.req.path.endsWith("/waitlist")) return next();
+    if (c.req.path.includes("/auth/") || c.req.path.endsWith("/inbox") || c.req.path.endsWith("/bank/webhook") || c.req.path.endsWith("/bank/callback") || c.req.path.endsWith("/stripe/webhook") || c.req.path.endsWith("/abonnement/simule") || c.req.path.endsWith("/waitlist") || c.req.path.includes("/veille/p/") || c.req.path.endsWith("/veille/callback")) return next();
     let row;
     let user = null as { id: string; email: string; prenom: string | null } | null;
     if (AUTH_ON()) {
@@ -218,6 +223,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
       abonnement: resumeAbonnement(db.getHousehold(h.id)!),
       comptes: db.usersOfHousehold(h.id).length,
       capacite_comptes: capaciteComptes(db, db.getHousehold(h.id)!),
+      veille: { ouverte: V.veilleOuverte(), capacite: V.capaciteVeilles(db, db.getHousehold(h.id)!), en_cours: V.veillesEnCours(db, h.id) },
       boite_recus: db.listInboxMessages(h.id, 10),
     });
   });
@@ -616,6 +622,170 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
   });
 
   /** Bridge webhook: `item.refreshed` (and friends) → sync that user's household. Signed with BridgeApi-Signature. */
+
+  // ---------- veille bancaire d'un proche (anti-arnaque, lecture seule) ----------
+  const fermee = (c: any) => c.json({ error: "fonction_fermee", message: "La veille bancaire d'un proche ouvrira après validation juridique." }, 403);
+  const acteurDe = (c: any) => { const u = currentUser(c); return u ? (u.prenom ? `${u.prenom} (${u.email})` : u.email) : "Aidant"; };
+  const publicUrl = () => (process.env.NIDOU_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  const lienPersonne = (v: V.VeilleRow) => `${publicUrl()}/#/consentement/${v.jeton}`;
+  const resumeVeille = (v: V.VeilleRow) => {
+    const m = db.getMember(v.member_id);
+    const al = V.alertes(db, v.id);
+    return { id: v.id, member_id: v.member_id, prenom: m?.prenom ?? "?", statut: v.statut, mesure: v.mesure, mesure_label: V.MESURE_LABEL[v.mesure], aidant: v.aidant_nom, aidant_qualite: v.aidant_qualite,
+      temoins: JSON.parse(v.temoins), consentement_le: v.consentement_le, consentement_expire: v.consentement_expire, accords: (v.consentement_par ?? "").split(",").filter(Boolean),
+      qui_consent: m ? V.quiConsent(v, m.prenom) : null, banque_connectee: Boolean(v.banque_connectee), alertes_non_vues: al.filter((a) => !a.vue).length, alertes_urgentes: al.filter((a) => a.gravite === "urgente" && !a.vue).length,
+      lien_personne: v.statut === "terminee" ? null : lienPersonne(v), fin_le: v.fin_le, motif_fin: v.motif_fin };
+  };
+  /** Alerts reach the aidant's devices and the witnesses by email (paid plans), the same text for everyone. */
+  const notifier = async (v: V.VeilleRow, nouvelles: V.Alerte[]) => {
+    if (!nouvelles.length) return;
+    const m = db.getMember(v.member_id)!;
+    const urgent = nouvelles.some((a) => a.gravite === "urgente");
+    const titre = `${urgent ? "Alerte" : "À vérifier"} sur le compte de ${m.prenom}`;
+    const corps = nouvelles.map((a) => `• ${a.titre}`).join("\n");
+    await envoyerPush(db, v.household_id, { titre, corps: nouvelles[0].titre, url: `/#/veille/${v.id}`, tag: `veille-${v.id}` });
+    for (const t of JSON.parse(v.temoins) as V.Temoin[]) if (t.email) await envoyerEmail({ to: t.email, subject: titre, text: `${corps}\n\nVous recevez ces alertes en tant que témoin désigné par ${v.aidant_nom}, avec l'accord de ${m.prenom}. Nidou ne voit le compte qu'en lecture.` });
+  };
+
+  api.get("/veilles", (c) => {
+    const h = household(c);
+    const row = db.getHousehold(h.id)!;
+    return c.json({ ouverte: V.veilleOuverte(), capacite: V.capaciteVeilles(db, row), en_cours: V.veillesEnCours(db, h.id), prix: V.PRIX_VEILLE, veilles: V.veillesDuFoyer(db, h.id).map(resumeVeille) });
+  });
+
+  api.post("/veilles", async (c) => {
+    if (!V.veilleOuverte()) return fermee(c);
+    const h = household(c);
+    const body = z.object({
+      member_id: z.string(), mesure: z.enum(["aucune", "curatelle", "tutelle", "habilitation_familiale", "mandat_protection_future"]),
+      acte_document_id: z.string().nullable().default(null), aidant_qualite: z.string().nullable().default(null),
+      temoins: z.array(z.object({ nom: z.string(), email: z.string().email().nullable().default(null) })).max(6).default([]),
+      personne_peut_consentir: z.boolean().default(false),
+    }).parse(await c.req.json());
+    try {
+      const v = V.creerVeille(db, db.getHousehold(h.id)!, { ...body, aidant_user_id: currentUser(c)?.id ?? null, aidant_nom: acteurDe(c) });
+      return c.json(resumeVeille(v), 201);
+    } catch (e) {
+      if (e instanceof V.RefusVeille) return c.json({ error: e.code, message: e.message }, e.code === "veille_payante" ? 402 : 400);
+      throw e;
+    }
+  });
+
+  const maVeille = (c: any) => { const v = V.veilleParId(db, c.req.param("id")); return v && v.household_id === household(c).id ? v : null; };
+
+  api.get("/veilles/:id", (c) => {
+    const v = maVeille(c);
+    if (!v) return c.json({ error: "introuvable" }, 404);
+    if (v.statut === "active") V.marquerConsultation(db, v, acteurDe(c));
+    return c.json({ ...resumeVeille(v), alertes: v.statut === "active" || v.statut === "suspendue" ? V.alertes(db, v.id) : [], journal: V.verifierJournal(db, v.id) });
+  });
+
+  api.post("/veilles/:id/vue", (c) => {
+    const v = maVeille(c);
+    if (!v) return c.json({ error: "introuvable" }, 404);
+    db.raw.prepare("UPDATE veille_alertes SET vue = 1 WHERE veille_id = ?").run(v.id);
+    return c.json({ ok: true });
+  });
+
+  api.post("/veilles/:id/terminer", async (c) => {
+    const v = maVeille(c);
+    if (!v) return c.json({ error: "introuvable" }, 404);
+    const body = z.object({ motif: z.enum(["deces", "fin_mesure", "demande_aidant"]) }).parse(await c.req.json());
+    return c.json(resumeVeille(V.terminer(db, v, acteurDe(c), body.motif)));
+  });
+
+  /** Tamper-evident log, as JSON (with the chain check) or CSV for a lawyer or a notary. */
+  api.get("/veilles/:id/journal", (c) => {
+    const v = maVeille(c);
+    if (!v) return c.json({ error: "introuvable" }, 404);
+    const lignes = V.journal(db, v.id);
+    if (c.req.query("format") === "csv") {
+      const esc = (x: string) => `"${String(x ?? "").replace(/"/g, '""')}"`;
+      const csv = ["quand;acteur;action;details;empreinte_precedente;empreinte", ...lignes.map((l) => [l.quand, l.acteur, l.action, l.details, l.empreinte_prec, l.empreinte].map(esc).join(";"))].join("\n");
+      return new Response("﻿" + csv, { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="journal-veille-${v.id.slice(0, 8)}.csv"` } });
+    }
+    return c.json({ verification: V.verifierJournal(db, v.id), lignes });
+  });
+
+  api.post("/abonnement/veille", async (c) => {
+    const h = household(c);
+    const body = z.object({ periode: z.enum(["mensuel", "annuel"]).default("mensuel") }).parse(await c.req.json().catch(() => ({})));
+    try { return c.json(await ajouterVeillePayante(db, db.getHousehold(h.id)!, body.periode)); }
+    catch (e) { return c.json({ error: "paiement", message: (e as Error).message }, 400); }
+  });
+
+  // --- page personnelle de la personne protégée (sans compte : son lien suffit) ---
+  const parJeton = (c: any) => V.veilleParJeton(db, c.req.param("jeton"));
+
+  api.get("/veille/p/:jeton", (c) => {
+    const v = parJeton(c);
+    if (!v) return c.json({ error: "introuvable", message: "Ce lien n'est plus valable." }, 404);
+    return c.json(V.vuePersonne(db, v));
+  });
+
+  api.post("/veille/p/:jeton/consentir", async (c) => {
+    if (!V.veilleOuverte()) return fermee(c);
+    const v = parJeton(c);
+    if (!v) return c.json({ error: "introuvable" }, 404);
+    const body = z.object({ nom_signataire: z.string(), en_qualite_de: z.enum(["personne", "representant"]), accepte: z.boolean() }).parse(await c.req.json());
+    try { V.consentir(db, v, body); return c.json(V.vuePersonne(db, V.veilleParId(db, v.id)!)); }
+    catch (e) { if (e instanceof V.RefusVeille) return c.json({ error: e.code, message: e.message }, 400); throw e; }
+  });
+
+  api.post("/veille/p/:jeton/retirer", async (c) => {
+    const v = parJeton(c);
+    if (!v) return c.json({ error: "introuvable" }, 404);
+    const body = z.object({ nom: z.string().default("La personne protégée") }).parse(await c.req.json().catch(() => ({})));
+    V.terminer(db, v, body.nom.trim() || "La personne protégée", "retrait_consentement");
+    const m = db.getMember(v.member_id)!;
+    await envoyerPush(db, v.household_id, { titre: `${m.prenom} a retiré son accord`, corps: "La veille bancaire est arrêtée. Les opérations seront effacées.", url: `/#/veille/${v.id}`, tag: `veille-${v.id}` });
+    return c.json(V.vuePersonne(db, V.veilleParId(db, v.id)!));
+  });
+
+  /** The person connects her own bank herself (her code never goes through the aidant). */
+  api.post("/veille/p/:jeton/banque", async (c) => {
+    if (!V.veilleOuverte()) return fermee(c);
+    const v = parJeton(c);
+    if (!v) return c.json({ error: "introuvable" }, 404);
+    if (v.statut !== "active") return c.json({ error: "consentement", message: "La banque se connecte une fois l'accord donné." }, 400);
+    const b = bridge();
+    if (!b) {
+      V.setBanque(db, v, { banque_connectee: 1 });
+      const r = V.ajouterOperations(db, V.veilleParId(db, v.id)!, V.operationsSimulees());
+      V.journaliser(db, v.id, "Banque", "connexion_banque", { fournisseur: "simulé", operations: r.ajoutees });
+      await notifier(v, r.nouvelles);
+      return c.json({ url: null, ...V.vuePersonne(db, V.veilleParId(db, v.id)!) });
+    }
+    const body = z.object({ email: z.string().email().nullable().default(null) }).parse(await c.req.json().catch(() => ({})));
+    let uuid = v.bridge_user_uuid;
+    if (!uuid) { uuid = (await b.client.createUser(`nidou-veille-${v.id}`)).uuid; V.setBanque(db, v, { bridge_user_uuid: uuid }); }
+    const { access_token } = await b.client.userToken(uuid);
+    const session = await b.client.connectSession(access_token, body.email ?? `veille+${v.id.slice(0, 8)}@nidou.fr`, v.id, "/api/veille/callback");
+    return c.json({ url: session.url });
+  });
+
+  const syncVeille = async (v: V.VeilleRow) => {
+    const b = bridge();
+    if (!b || !v.bridge_user_uuid || v.statut !== "active") return;
+    const { access_token } = await b.client.userToken(v.bridge_user_uuid);
+    const accounts = await b.client.accounts(access_token);
+    const names = new Map(accounts.map((a) => [String(a.id), a.name]));
+    const ops = mapTransactions(await b.client.transactions(access_token, null), names).map((t) => ({ date: t.date, libelle: t.libelle, montant: t.montant }));
+    const r = V.ajouterOperations(db, v, ops);
+    await notifier(v, r.nouvelles);
+  };
+
+  api.get("/veille/callback", async (c) => {
+    const v = V.veilleParBridgeUser(db, c.req.query("user_uuid") ?? "");
+    if (!v) return c.redirect("/");
+    if (c.req.query("success") === "true") {
+      V.setBanque(db, v, { banque_connectee: 1 });
+      V.journaliser(db, v.id, "Banque", "connexion_banque", { fournisseur: "bridge" });
+      await syncVeille(V.veilleParId(db, v.id)!).catch((e) => console.error("veille sync :", e));
+    }
+    return c.redirect(`/#/consentement/${v.jeton}?banque=${c.req.query("success") === "true" ? "ok" : "abandon"}`);
+  });
+
   api.post("/bank/webhook", async (c) => {
     const raw = await c.req.text();
     const b = bridge();
@@ -631,6 +801,8 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
         // Respond fast, sync in the background (Bridge retries slow endpoints).
         syncHousehold(db, b.client, link.household_id).catch((e) => console.error("webhook sync :", e));
       }
+      const veille = V.veilleParBridgeUser(db, String(userUuid));
+      if (veille && b) syncVeille(veille).catch((e) => console.error("webhook veille :", e));
     }
     return c.json({ ok: true });
   });

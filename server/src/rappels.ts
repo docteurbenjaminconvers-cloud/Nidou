@@ -1,3 +1,4 @@
+import { entretienVeilles } from "./veille.js";
 import type { Db, HouseholdRow } from "./db.js";
 import { budgetReport } from "./budget.js";
 import { envoyerPush } from "./push.js";
@@ -73,7 +74,10 @@ export async function passeQuotidienne(db: Db, envoyer: (h: HouseholdRow, r: Rap
 }
 
 export function demarrerRappels(db: Db) {
-  const tick = () => passeQuotidienne(db).catch((e) => console.error("[rappel]", e));
+  const tick = () => {
+    try { entretienVeilles(db); } catch (e) { console.error("[veille]", e); }
+    return passeQuotidienne(db).catch((e) => console.error("[rappel]", e));
+  };
   setTimeout(tick, 5_000);
   const t = setInterval(tick, 6 * 3600_000); // every 6 h; idempotent thanks to rappels_envoyes
   (t as { unref?: () => void }).unref?.();

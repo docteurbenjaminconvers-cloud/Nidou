@@ -13,6 +13,7 @@ import { useNotifications, NotificationsScreen } from "./notifications";
 import { Reveal, REVEAL_KEY } from "./screens/Reveal";
 import { Famille, MembreDetail, ActiviteDetail } from "./screens/Famille";
 import { Login } from "./screens/Login";
+import { ConsentPage, VeilleDetail, VeilleNouvelle } from "./screens/Veille";
 import { ApiError } from "./api";
 import type { FamilleReport } from "./types";
 
@@ -73,6 +74,8 @@ export default function App() {
   const go = (s: string, id?: string) => { location.hash = id ? `${s}/${id}` : s; window.scrollTo({ top: 0 }); };
   const onDone = async (id: string) => { await api!.setDeadlineDone(id, true); toast("Marqué comme fait"); reload(); };
 
+  // The protected person's own page: no account, no household loaded, just her link.
+  if (api && route.s === "consentement" && route.id) return <ConsentPage api={api} jeton={route.id.split("?")[0]} />;
   if (api && login !== false) return <Login api={api} erreur={login} />;
   if (api && pause) return (
     <div className="app"><div className="screen" style={{ minHeight: "85dvh", display: "flex", flexDirection: "column", justifyContent: "center", gap: 14 }}>
@@ -91,7 +94,7 @@ export default function App() {
     );
   }
 
-  const tab = route.s === "doc" || route.s === "add" ? "" : route.s === "membre" || route.s === "activite" ? "famille" : route.s;
+  const tab = route.s === "doc" || route.s === "add" ? "" : route.s === "membre" || route.s === "activite" || route.s === "veille" || route.s === "veille-nouvelle" ? "famille" : route.s;
 
   return (
     <div className="app">
@@ -99,13 +102,15 @@ export default function App() {
       {route.s === "famille" && <Famille api={api} household={household} go={go} unread={notifs.unread} onChanged={reload} toast={toast} />}
       {route.s === "membre" && route.id && <MembreDetail api={api} id={route.id} onBack={() => go("famille")} go={go} onChanged={reload} toast={toast} />}
       {route.s === "activite" && route.id && <ActiviteDetail api={api} id={route.id} onBack={() => history.length > 1 ? history.back() : go("famille")} onChanged={reload} toast={toast} />}
+      {route.s === "veille-nouvelle" && route.id && <VeilleNouvelle api={api} memberId={route.id} onBack={() => go("membre", route.id)} go={go} toast={toast} />}
+      {route.s === "veille" && route.id && <VeilleDetail api={api} id={route.id} onBack={() => history.length > 1 ? history.back() : go("famille")} toast={toast} />}
       {route.s === "docs" && <Documents docs={docs} go={go} unread={notifs.unread} />}
       {route.s === "doc" && route.id && <DocumentDetail api={api} id={route.id} onBack={() => history.length > 1 ? history.back() : go("docs")} onChanged={reload} toast={toast} />}
       {route.s === "add" && <Add api={api} household={household} onBack={() => go("home")} onAdded={(id) => { reload(); go("doc", id); }} toast={toast} />}
       {route.s === "budget" && <Budget api={api} charges={charges} budget={budget} household={household} go={go} onUpgrade={() => go("settings")} onChanged={reload} toast={toast} unread={notifs.unread} />}
       {route.s === "notifs" && <NotificationsScreen items={notifs.items} read={notifs.read} markRead={notifs.markRead} markAll={notifs.markAll} go={go} onBack={() => go("home")} api={api} toast={toast} />}
       {route.s === "settings" && <Settings api={api} household={household} onBack={() => go("home")} onPlan={() => reload()} toast={toast} go={go} />}
-      {(route.s === "home" || !["deadlines", "docs", "doc", "add", "budget", "settings", "notifs", "famille", "membre", "activite"].includes(route.s)) && (
+      {(route.s === "home" || !["deadlines", "docs", "doc", "add", "budget", "settings", "notifs", "famille", "membre", "activite", "veille", "veille-nouvelle"].includes(route.s)) && (
         <Today household={household} deadlines={deadlines} docs={docs} charges={charges} budget={budget} go={go} onDone={onDone} unread={notifs.unread} famille={famille} />
       )}
 

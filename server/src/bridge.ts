@@ -72,10 +72,10 @@ export class BridgeClient {
   }
 
   /** POST /v3/aggregation/connect-sessions — returns the URL of the bank-selection funnel */
-  connectSession(token: string, userEmail: string, context?: string) {
+  connectSession(token: string, userEmail: string, context?: string, callbackPath = "/api/bank/callback") {
     return this.call<{ id: string; url: string }>("POST", "/v3/aggregation/connect-sessions", {
       user_email: userEmail,
-      callback_url: `${this.cfg.publicUrl}/api/bank/callback`,
+      callback_url: `${this.cfg.publicUrl}${callbackPath}`,
       ...(context ? { context } : {}),
     }, token);
   }

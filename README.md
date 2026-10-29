@@ -48,6 +48,22 @@ En développement : `npm run dev` lance le serveur (port 3000) et Vite (port 517
 - **IA** (`server/src/ia.ts`) : fournisseur Anthropic ou Mistral ; modèle rapide d'abord (Haiku), modèle précis (Sonnet) seulement si la confiance est sous `NIDOU_SEUIL_CONFIANCE`. Chaque lecture est comptée avec son coût estimé ; `GET /api/ia/depense` donne la dépense du mois.
 - Le prévisionnel `docs/Nidou-previsionnel.xlsx` (onglets Scénarios, Hypothèses, Lancement 3 mois, Prévisionnel) se régénère avec `python3 docs/build_previsionnel.py && python3 docs/build_lancement.py && python3 docs/build_scenarios.py`.
 
+## Veille bancaire d'un proche (fermée par défaut)
+
+Pour un parent âgé ou une personne aidée : Nidou lit son compte **en lecture seule** et prévient l'aidant et les témoins en cas de virement vers un inconnu, d'achat de coupon prépayé, de cryptomonnaie, de retraits en série ou de nouveaux prélèvements. Le module est dans `server/src/veille.ts`, les écrans dans `web/src/screens/Veille.tsx`.
+
+Le cadre, pensé pour protéger la personne d'abord et la famille ensuite contre les litiges :
+
+- **Consentement selon la situation juridique** : sans mesure, la personne donne son accord elle-même (si elle ne le peut plus, Nidou refuse et renvoie vers le juge des contentieux de la protection) ; en curatelle, elle et son curateur ; en tutelle, habilitation familiale ou mandat de protection future, le représentant, avec le jugement ou le mandat joint.
+- **Page personnelle de la personne** (`/#/consentement/<jeton>`, sans compte) : ce que voit Nidou, qui reçoit les alertes, les dernières consultations, l'accord, la connexion de **sa** banque par elle-même, et le **retrait seule, à tout moment**.
+- **Témoins** : d'autres proches reçoivent exactement les mêmes alertes ; personne ne surveille seul.
+- **Journal infalsifiable** : chaque demande, accord, consultation, alerte et fin est chaînée par SHA-256 à la précédente ; toute modification casse la chaîne. Export CSV pour un notaire ou un juge.
+- **Accord valable un an**, puis suspension automatique ; fin au décès (le compte relève alors du notaire), à la fin de la mesure ou au retrait ; opérations effacées après `NIDOU_VEILLE_CONSERVATION_JOURS`.
+- **Engagement de loyauté** de l'aidant à la création.
+- **Facturation** : une veille comprise dans Tribu, les suivantes (et en Solo ou Duo) à 3,90 € / mois ou 39 € / an (`STRIPE_PRICE_VEILLE_*`, ligne ajoutée à l'abonnement avec prorata).
+
+`NIDOU_VEILLE=1` ouvre la fonction. **À ne faire qu'après validation par un avocat** (consentement, mesures de protection, RGPD : données financières d'un tiers vulnérable, analyse d'impact). Sans Bridge, la banque est simulée avec un relevé fictif contenant des schémas d'arnaque.
+
 ## Connecteur MCP
 
 Point d'entrée : `http://localhost:3000/mcp` (transport HTTP « streamable », sans état).

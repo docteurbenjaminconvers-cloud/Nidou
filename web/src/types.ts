@@ -146,3 +146,24 @@ export interface BankStatus {
   derniere_synchro: string | null;
   comptes: { id: string; nom: string; banque: string | null; solde: number | null; devise: string | null; maj_le: string | null }[];
 }
+
+// ---------- veille bancaire d'un proche ----------
+export type Mesure = "aucune" | "curatelle" | "tutelle" | "habilitation_familiale" | "mandat_protection_future";
+export interface Temoin { nom: string; email: string | null }
+export interface VeilleAlerte { id: string; type: string; gravite: "urgente" | "attention"; titre: string; detail: string; quand: string; vue: number }
+export interface Veille {
+  id: string; member_id: string; prenom: string; statut: "attente_consentement" | "active" | "suspendue" | "terminee";
+  mesure: Mesure; mesure_label: string; aidant: string; aidant_qualite: string | null; temoins: Temoin[];
+  consentement_le: string | null; consentement_expire: string | null; accords: string[];
+  qui_consent: { personne: boolean; representant: boolean; texte: string } | null;
+  banque_connectee: boolean; alertes_non_vues: number; alertes_urgentes: number; lien_personne: string | null;
+  fin_le: string | null; motif_fin: string | null;
+  alertes?: VeilleAlerte[]; journal?: { intact: boolean; lignes: number; rupture: number | null };
+}
+export interface VeillesReport { ouverte: boolean; capacite: number; en_cours: number; prix: { mensuel: number; annuel: number }; veilles: Veille[] }
+export interface VuePersonne {
+  prenom: string; nid: string; aidant: string; aidant_qualite: string | null; mesure: Mesure; mesure_label: string;
+  statut: Veille["statut"]; qui_consent: { personne: boolean; representant: boolean; texte: string }; accords_donnes: string[];
+  consentement_le: string | null; consentement_expire: string | null; temoins: Temoin[]; banque_connectee: boolean;
+  acces: { nom: string; role: string }[]; engagements: string[]; derniers_acces: { quand: string; qui: string }[];
+}

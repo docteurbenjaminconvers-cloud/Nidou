@@ -62,6 +62,24 @@ export async function creerCheckout(db: Db, h: HouseholdRow, formule: Formule, p
   return { url: s.url!, simule: false };
 }
 
+/** Extra protected-person watch (« veille d'un proche », 3,90 €/mois ou 39 €/an), added to the existing subscription. */
+export async function ajouterVeillePayante(db: Db, h: HouseholdRow, periode: Periode): Promise<{ simule: boolean; total: number }> {
+  const actuel = (db.raw.prepare("SELECT veilles_supp FROM households WHERE id = ?").get(h.id) as { veilles_supp: number } | undefined)?.veilles_supp ?? 0;
+  if (!stripeOn()) {
+    db.raw.prepare("UPDATE households SET veilles_supp = ? WHERE id = ?").run(actuel + 1, h.id);
+    return { simule: true, total: actuel + 1 };
+  }
+  if (!h.stripe_subscription_id) throw new Error("Choisissez d'abord une formule Solo, Duo ou Tribu.");
+  const price = process.env[`STRIPE_PRICE_VEILLE_${(h.abonnement_periode ?? periode).toUpperCase()}`];
+  if (!price) throw new Error("Prix Stripe de la veille manquant (STRIPE_PRICE_VEILLE_MENSUEL / _ANNUEL).");
+  const sub = await stripe().subscriptions.retrieve(h.stripe_subscription_id);
+  const item = sub.items.data.find((i) => i.price.id === price);
+  if (item) await stripe().subscriptionItems.update(item.id, { quantity: (item.quantity ?? 0) + 1, proration_behavior: "create_prorations" });
+  else await stripe().subscriptionItems.create({ subscription: sub.id, price, quantity: 1, proration_behavior: "create_prorations" });
+  // the webhook (customer.subscription.updated) sets veilles_supp from the billed quantity
+  return { simule: false, total: actuel + 1 };
+}
+
 export async function portail(h: HouseholdRow): Promise<string | null> {
   if (!stripeOn() || !h.stripe_customer_id) return null;
   const s = await stripe().billingPortal.sessions.create({ customer: h.stripe_customer_id, return_url: `${publicUrl()}/#/settings`, locale: "fr" });
@@ -98,7 +116,7 @@ export interface EvenementMinimal {
 
 export function appliquerEvenement(db: Db, event: EvenementMinimal): string {
   const o = event.data.object;
-  const parPrix = depuisPrix(o.items?.data[0]?.price.id);
+  const parPrix = (o.items?.data ?? []).map((i) => depuisPrix(i.price.id)).find(Boolean) ?? null;
   const periodeDe = (): Periode | null => {
     if (parPrix) return parPrix.periode;
     const m = o.metadata?.periode; if (m === "mensuel" || m === "annuel") return m;
@@ -121,6 +139,11 @@ export function appliquerEvenement(db: Db, event: EvenementMinimal): string {
     if (!h) return "subscription: foyer inconnu";
     const statut = event.type === "customer.subscription.deleted" ? "canceled" : o.status ?? "active";
     appliquerAbonnement(db, h, { customer: o.customer ?? null, subscription: o.id, statut, formule: formuleDe(), periode: periodeDe(), fin: finDe() });
+    const prixVeille = [process.env.STRIPE_PRICE_VEILLE_MENSUEL, process.env.STRIPE_PRICE_VEILLE_ANNUEL].filter(Boolean);
+    if (prixVeille.length) {
+      const n = statut === "canceled" ? 0 : (o.items?.data ?? []).filter((i) => prixVeille.includes(i.price.id)).reduce((s2, i) => s2 + ((i as { quantity?: number }).quantity ?? 1), 0);
+      db.raw.prepare("UPDATE households SET veilles_supp = ? WHERE id = ?").run(n, h.id);
+    }
     return `subscription ${statut}: ${h.nom} → ${db.getHousehold(h.id)!.plan}`;
   }
   if (event.type === "invoice.payment_failed") {

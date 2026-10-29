@@ -366,3 +366,12 @@ b, strong { font-weight: 800; }
 .tier-price { margin: 6px 0 2px; }
 .tier-price b { font-family: var(--display); font-size: 32px; font-weight: 600; color: var(--nest); letter-spacing: -0.02em; }
 .tier-price span { color: var(--mist); font-weight: 700; }
+
+/* ---------- veille: the protected person's page (large, calm, readable) ---------- */
+.consent { font-size: 17px; padding-bottom: 48px; }
+.consent .note { font-size: 16px; line-height: 1.5; }
+.consent .detail-sub { font-size: 18px; line-height: 1.5; }
+.consent-list { list-style: none; padding: 0; margin: 0 0 8px; display: grid; gap: 10px; }
+.consent-list li { background: var(--white); border-radius: 18px; padding: 14px 16px; box-shadow: var(--shadow); line-height: 1.45; }
+.consent .field input { font-size: 18px; }
+.mesures { display: grid; gap: 8px; }
