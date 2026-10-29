@@ -1,6 +1,8 @@
 /* Nidou — traductions du site. Le français est dans le HTML ; chaque clé data-i18n reçoit ici sa version EN / ES / IT / AR. */
 window.NIDOU_I18N = {
   en: {
+    s1: "All of Nidou, AI reading included", s2: "Bank connection and savings", s3: "Reminders by notification and email", s4: "All of Nidou, for both of you", s5: "Each with their own login, the same papers", s6: "Reminders reach you both", s7: "All of Nidou, up to 6 logins", s8: "Grown-up children and grandparents connected", s9: "Everyone sees what they should",
+    n1: "The tour", h1: "Hosted in Europe", h2: "No advertising", h3: "Read-only bank access", b1: "Notice period: 12 days left", b2: "Invoice filed by itself", b3: "a year, one forgotten subscription", v0: "The tour", v00: "The whole household fits in one app.", v000: "Five screens, and nothing slips through again. Scroll through.", v1: "Today", v2: "The next deadline in big, everyone's day, and what you have already saved.", v3: "Agenda", v4: "Paperwork deadlines and the children's activities in one place, with the reminder before.", v5: "Papers", v6: "Every contract with its dates, notice period and amount. One search and it's there.", v7: "Family", v8: "Schools, canteen, activities, dependent parents: what each one costs and the benefits they are entitled to.", v9: "Budget", v10: "Your real spending, and the easy savings ranked by gain, with the button to act.", pm: "Monthly", pa: "Yearly", pa2: "2 months free", pF: "To try it, on your own", pS: "Just for you", pD: "Ideal for couples", pD2: "You and your partner", pT: "The whole family, grown-up children included", pinc: "Included in Solo, Duo and Tribu", peq: "i.e. {x} / month", peq2: "no commitment", t34: "Example built from a fictional family. Your figures depend on your contracts.",
     _dir: "ltr", _desc: "Nidou files your family's paperwork, warns you before every deadline and finds the easy savings in your spending. With a connector for your AI assistant.",
     t1: "Savings", t2: "How it works", t3: "AI connector", t4: "Pricing", t5: "Questions", t6: "Join the waitlist",
     t7: "Nidou takes the <b>mental load</b> off your family.",
@@ -72,6 +74,8 @@ window.NIDOU_I18N = {
     ok: "Noted. You'll receive an invitation as soon as we open.", bad: "Please check the email address.", fail: "The sign-up could not be saved from this page.", copied: "Address copied.", wait: "One moment…",
   },
   es: {
+    s1: "Todo Nidou, lectura por IA incluida", s2: "Conexión bancaria y ahorros", s3: "Avisos por notificación y por email", s4: "Todo Nidou, para los dos", s5: "Cada uno con su acceso, los mismos papeles", s6: "Los avisos llegan a los dos", s7: "Todo Nidou, hasta 6 accesos", s8: "Hijos mayores y abuelos conectados", s9: "Cada uno ve lo que debe ver",
+    n1: "La visita", h1: "Alojado en Europa", h2: "Sin publicidad", h3: "Banco solo en lectura", b1: "Preaviso: quedan 12 días", b2: "Factura archivada sola", b3: "al año, una suscripción olvidada", v0: "La visita", v00: "Todo el hogar cabe en una sola app.", v000: "Cinco pantallas, y ya nada se te escapa. Desliza.", v1: "Hoy", v2: "El próximo vencimiento en grande, el día de cada uno y lo que ya has ahorrado.", v3: "Agenda", v4: "Los vencimientos de los papeles y las actividades de los niños en un mismo lugar, con el aviso antes.", v5: "Papeles", v6: "Cada contrato con sus fechas, su preaviso y su importe. Una búsqueda y ahí está.", v7: "Familia", v8: "Colegios, comedor, actividades, padres a cargo: lo que cuesta cada uno y las ayudas a las que tiene derecho.", v9: "Presupuesto", v10: "Tus gastos reales y los ahorros fáciles ordenados por ganancia, con el botón para actuar.", pm: "Mensual", pa: "Anual", pa2: "2 meses gratis", pF: "Para probar, solo", pS: "Solo para ti", pD: "Ideal en pareja", pD2: "Tú y tu pareja", pT: "Toda la familia, hijos mayores incluidos", pinc: "Incluido en Solo, Duo y Tribu", peq: "o sea {x} / mes", peq2: "sin compromiso", t34: "Ejemplo construido a partir de una familia ficticia. Tus cifras dependen de tus contratos.",
     _dir: "ltr", _desc: "Nidou ordena los papeles de tu familia, te avisa antes de cada vencimiento y encuentra los ahorros fáciles en tus gastos. Con un conector para tu asistente de IA.",
     t1: "Ahorros", t2: "Cómo funciona", t3: "Conector IA", t4: "Precios", t5: "Preguntas", t6: "Unirme a la lista de espera",
     t7: "Nidou se ocupa de la <b>carga mental</b> de tu familia.",
@@ -143,6 +147,8 @@ window.NIDOU_I18N = {
     ok: "Anotado. Recibirás una invitación en cuanto abramos.", bad: "Revisa la dirección de correo.", fail: "No se ha podido registrar la inscripción desde esta página.", copied: "Dirección copiada.", wait: "Un momento…",
   },
   it: {
+    s1: "Tutto Nidou, lettura con l'IA inclusa", s2: "Collegamento bancario e risparmi", s3: "Promemoria con notifica ed email", s4: "Tutto Nidou, per voi due", s5: "Ognuno il suo accesso, gli stessi documenti", s6: "I promemoria arrivano a entrambi", s7: "Tutto Nidou, fino a 6 accessi", s8: "Figli grandi e nonni collegati", s9: "Ognuno vede ciò che deve vedere",
+    n1: "Il tour", h1: "Ospitato in Europa", h2: "Senza pubblicità", h3: "Banca in sola lettura", b1: "Preavviso: mancano 12 giorni", b2: "Fattura archiviata da sola", b3: "all'anno, un abbonamento dimenticato", v0: "Il tour", v00: "Tutta la famiglia sta in un'unica app.", v000: "Cinque schermate, e nulla ti sfugge più. Scorri.", v1: "Oggi", v2: "La prossima scadenza in grande, la giornata di ognuno e quanto hai già risparmiato.", v3: "Agenda", v4: "Le scadenze dei documenti e le attività dei figli nello stesso posto, con il promemoria prima.", v5: "Documenti", v6: "Ogni contratto con le sue date, il preavviso e l'importo. Una ricerca ed è lì.", v7: "Famiglia", v8: "Scuole, mensa, attività, genitori a carico: quanto costa ognuno e gli aiuti a cui ha diritto.", v9: "Budget", v10: "Le tue spese reali e i risparmi facili ordinati per guadagno, con il pulsante per agire.", pm: "Mensile", pa: "Annuale", pa2: "2 mesi gratis", pF: "Per provare, da solo", pS: "Solo per te", pD: "Ideale in coppia", pD2: "Tu e il tuo partner", pT: "Tutta la famiglia, figli grandi compresi", pinc: "Incluso in Solo, Duo e Tribu", peq: "cioè {x} / mese", peq2: "senza vincoli", t34: "Esempio costruito su una famiglia fittizia. Le tue cifre dipendono dai tuoi contratti.",
     _dir: "ltr", _desc: "Nidou archivia i documenti della tua famiglia, ti avvisa prima di ogni scadenza e trova i risparmi facili nelle tue spese. Con un connettore per il tuo assistente IA.",
     t1: "Risparmi", t2: "Come funziona", t3: "Connettore IA", t4: "Prezzi", t5: "Domande", t6: "Iscriviti alla lista d'attesa",
     t7: "Nidou si occupa del <b>carico mentale</b> della tua famiglia.",
@@ -214,10 +220,12 @@ window.NIDOU_I18N = {
     ok: "Registrato. Riceverai un invito non appena apriremo.", bad: "Controlla l'indirizzo email.", fail: "Non è stato possibile registrare l'iscrizione da questa pagina.", copied: "Indirizzo copiato.", wait: "Un attimo…",
   },
   ar: {
-    _dir: "rtl", _desc: "نيدلي يرتّب أوراق عائلتك، وينبّهك قبل كل موعد استحقاق، ويجد لك الوفورات السهلة في مصاريفك. مع موصّل لمساعدك الذكي.",
+    s1: "كل نيدو، مع القراءة بالذكاء الاصطناعي", s2: "ربط البنك والتوفير", s3: "تذكيرات بالإشعار والبريد", s4: "كل نيدو، لكما معًا", s5: "لكل واحد دخوله، والأوراق نفسها", s6: "التذكيرات تصل إلى كليكما", s7: "كل نيدو، حتى 6 حسابات", s8: "الأبناء الكبار والأجداد متصلون", s9: "كلٌّ يرى ما يخصه",
+    n1: "الجولة", h1: "مستضاف في أوروبا", h2: "بلا إعلانات", h3: "البنك للقراءة فقط", b1: "مهلة الإلغاء: بقي 12 يومًا", b2: "فاتورة رُتّبت وحدها", b3: "سنويًا، اشتراك منسي", v0: "الجولة", v00: "البيت كله في تطبيق واحد.", v000: "خمس شاشات، ولن يفوتك شيء بعد اليوم. مرّر.", v1: "اليوم", v2: "الموعد القادم بخط كبير، ويوم كل فرد، وما وفّرته حتى الآن.", v3: "المفكرة", v4: "مواعيد الأوراق وأنشطة الأطفال في مكان واحد، مع التذكير مسبقًا.", v5: "الأوراق", v6: "كل عقد بتواريخه ومهلة إلغائه ومبلغه. بحث واحد ويظهر.", v7: "العائلة", v8: "المدارس والمطعم المدرسي والأنشطة والوالدان المعالان: تكلفة كل فرد والمساعدات التي يستحقها.", v9: "الميزانية", v10: "مصاريفك الحقيقية، والتوفير السهل مرتّبًا حسب المكسب، مع زر التنفيذ.", pm: "شهري", pa: "سنوي", pa2: "شهران مجانًا", pF: "للتجربة، وحدك", pS: "لك وحدك", pD: "مثالي للأزواج", pD2: "أنت وشريكك", pT: "العائلة كلها، مع الأبناء الكبار", pinc: "مشمول في Solo وDuo وTribu", peq: "أي {x} / شهريًا", peq2: "بلا التزام", t34: "مثال مبني على عائلة خيالية. أرقامك تعتمد على عقودك.",
+    _dir: "rtl", _desc: "نيدو يرتّب أوراق عائلتك، وينبّهك قبل كل موعد استحقاق، ويجد لك الوفورات السهلة في مصاريفك. مع موصّل لمساعدك الذكي.",
     t1: "الوفورات", t2: "كيف يعمل", t3: "موصّل الذكاء الاصطناعي", t4: "الأسعار", t5: "أسئلة", t6: "الانضمام إلى قائمة الانتظار",
-    t7: "نيدلي يتكفّل <b>بالعبء الذهني</b> لعائلتك.",
-    t8: "صوّر رسالة، أو حوّل فاتورة: نيدلي يرتّبها، ويحفظ كل تاريخ، وينبّهك في الوقت المناسب. يقرأ مصاريفك، ويكتشف الاشتراكات المنسية والزيادات الخفية في الأسعار، ويحسب اليوروهات التي تستردّها. ومساعدك الذكي يستطيع أخيرًا أن يجيب عن «متى ينتهي تأمين سيارتي؟».",
+    t7: "نيدو يتكفّل <b>بالعبء الذهني</b> لعائلتك.",
+    t8: "صوّر رسالة، أو حوّل فاتورة: نيدو يرتّبها، ويحفظ كل تاريخ، وينبّهك في الوقت المناسب. يقرأ مصاريفك، ويكتشف الاشتراكات المنسية والزيادات الخفية في الأسعار، ويحسب اليوروهات التي تستردّها. ومساعدك الذكي يستطيع أخيرًا أن يجيب عن «متى ينتهي تأمين سيارتي؟».",
     t9: "الانضمام إلى قائمة الانتظار", t10: "شاهد كيف يعمل",
     t11: "مجاني للبدء. البيانات مستضافة في أوروبا. لا يُشارَك أي شيء مع ذكاء اصطناعي دون موافقتك.",
     p0: "مرحبًا", t13: "تم توفيره هذا العام", p1: "الاستحقاق التالي", t14: "يومًا · 15 نوفمبر", p2: "دفع: الضريبة العقارية", p3: "1 240 € للسداد. تذكير قبل 5 أيام.",
@@ -227,7 +235,7 @@ window.NIDOU_I18N = {
     t17: "منسيّ", t18: "مرّت مهلة الإلغاء: يتجدّد التأمين سنة أخرى، بالسعر الجديد.",
     t19: "غير مرئي", t20: "تجربة مجانية صارت مدفوعة، خدمتان للشيء نفسه، رسوم بنكية كل شهر.",
     t21: "لا يُعثر عليه", t22: "رقم العقد، فاتورة الغسالة المعطّلة، دفتر التطعيم وقت التسجيل.",
-    t23: "وفورات محقّقة", t24: "نيدلي يُقاس باليوروهات المستردّة.",
+    t23: "وفورات محقّقة", t24: "نيدو يُقاس باليوروهات المستردّة.",
     t25: "لا رسوم بيانية دائرية، ولا «أنفقت 12 % أكثر في المطاعم». قائمة إجراءات مرتّبة حسب المكسب والجهد، وزر للتنفيذ، وعدّاد لما استرددته فعلًا.",
     t26: "<b>اشتراكات منسية</b><span>تجربة صارت مدفوعة، خدمة منسية، تُخصم كل شهر</span>",
     t27: "<b>زيادات صامتة</b><span>العقد نفسه والمبلغ يرتفع: غالبًا يمنحك حق الإلغاء دون رسوم</span>",
@@ -238,50 +246,50 @@ window.NIDOU_I18N = {
     t32: "عائلة مارتان · 4 أشهر من كشوف الحساب", t33: "1 949 € / سنة تم رصدها",
     t35: "اشتراك منسي، 34,90 € شهريًا", t36: "ناديان رياضيان", t37: "Keepcool وBasic-Fit في الوقت نفسه", t38: "الكهرباء +22 %", t39: "جدول دفع جديد، حق الإلغاء",
     t40: "رسوم بنكية", t41: "رسوم البطاقة والعمولات", t42: "أربع منصات بث", t44: "تأمين المنزل", t45: "3 سنوات دون إعادة تفاوض",
-    t46: "كيف يعمل", t47: "ثلاث خطوات، ثم يعمل نيدلي من أجلك.",
+    t46: "كيف يعمل", t47: "ثلاث خطوات، ثم يعمل نيدو من أجلك.",
     t48: "أنت تضيف", t49: "صورة، ملف PDF، بريد محوَّل. عقود، فواتير، شهادات، وثائق هوية، ضمانات.",
-    t50: "نيدلي يقرأ ويرتّب", t51: "يتعرّف الذكاء الاصطناعي على المستند، ويستخرج الجهة والرقم والمبالغ والتواريخ. وأنت تؤكّد بلمسة.",
+    t50: "نيدو يقرأ ويرتّب", t51: "يتعرّف الذكاء الاصطناعي على المستند، ويستخرج الجهة والرقم والمبالغ والتواريخ. وأنت تؤكّد بلمسة.",
     t52: "يتم تنبيهك", t53: "آخر يوم للإلغاء، التجديد، انتهاء جواز السفر، نهاية الضمان: يصل الإشعار قبل الموعد، لا بعده.",
     t54: "الأوراق والمواعيد", t55: "مكان واحد لكل أوراق البيت",
     t56: "ابحث بالجهة أو الرقم أو أي كلمة في المستند. كل عقد يحمل تواريخه ومهلة إلغائه. رسائل الإلغاء أو الشكوى تُكتب جاهزة للإرسال.",
     t57: "وفورات سهلة", t58: "يوروهات، لا رسوم بيانية",
-    t59: "اربط بنكك أو استورد كشف حساب: يرصد نيدلي الاشتراكات المنسية، والزيادات الصامتة، والتكرارات، والرسوم التي يمكن تجنّبها. كل تنبيه يعرض المكسب السنوي وزر التنفيذ.",
+    t59: "اربط بنكك أو استورد كشف حساب: يرصد نيدو الاشتراكات المنسية، والزيادات الصامتة، والتكرارات، والرسوم التي يمكن تجنّبها. كل تنبيه يعرض المكسب السنوي وزر التنفيذ.",
     t60: "العائلة", t61: "مشترك مع من يهمّك",
     t62: "شريك حياتك، أبناؤك الذين كبروا، والد مسنّ تدير أوراقه. كل واحد يرى ما ينبغي له، ولا يعود العبء على شخص واحد.",
     t63: "موصّل الذكاء الاصطناعي", t64: "مساعدك يعرف أوراقك أخيرًا",
     t65: "يستطيع Claude أو ChatGPT أو أي مساعد متوافق الاطلاع على خزنتك، للقراءة فقط، بموافقتك ومع سجل لكل وصول.",
-    t66: "موصّل الذكاء الاصطناعي", t67: "اسأل مساعدك. نيدلي لديه الجواب.",
-    t68: "المساعدون يجيدون كتابة رسالة إلغاء. لكنهم يجهلون رقم العقد وتاريخ الاستحقاق وعنوان شركة التأمين. نيدلي يعطيهم هذه المعلومات، ولا شيء غيرها.",
-    t69: "قراءة فقط: لا إجراء دون تأكيد في نيدلي.", t70: "نطاق تختاره أنت: الصحة والبنك مستبعدان افتراضيًا.", t71: "سجل مرئي لكل اطلاع من ذكاء اصطناعي.", t72: "معيار مفتوح (MCP): يعمل مع مساعدي اليوم والغد.",
+    t66: "موصّل الذكاء الاصطناعي", t67: "اسأل مساعدك. نيدو لديه الجواب.",
+    t68: "المساعدون يجيدون كتابة رسالة إلغاء. لكنهم يجهلون رقم العقد وتاريخ الاستحقاق وعنوان شركة التأمين. نيدو يعطيهم هذه المعلومات، ولا شيء غيرها.",
+    t69: "قراءة فقط: لا إجراء دون تأكيد في نيدو.", t70: "نطاق تختاره أنت: الصحة والبنك مستبعدان افتراضيًا.", t71: "سجل مرئي لكل اطلاع من ذكاء اصطناعي.", t72: "معيار مفتوح (MCP): يعمل مع مساعدي اليوم والغد.",
     c1: "متى ينتهي تأمين سيارتي، وكم يكلّف؟",
-    c2: "عقدك لدى MAIF (بيجو 3008) يتجدّد في 27 نوفمبر بمبلغ 612 € سنويًا. مهلة الإلغاء 60 يومًا: وقد انقضت لهذا العام.<span class=\"src\">المصدر: نيدلي · تأمين السيارة</span>",
+    c2: "عقدك لدى MAIF (بيجو 3008) يتجدّد في 27 نوفمبر بمبلغ 612 € سنويًا. مهلة الإلغاء 60 يومًا: وقد انقضت لهذا العام.<span class=\"src\">المصدر: نيدو · تأمين السيارة</span>",
     c3: "اكتب رسالة الإلغاء للسنة القادمة.",
-    c4: "إليك الرسالة، برقم العقد AUT-4471-8820 وسريان من 27 نوفمبر 2027. سيذكّرك نيدلي قبل 14 يومًا من آخر موعد للإرسال.<span class=\"src\">حُفظت الرسالة في نيدلي</span>",
+    c4: "إليك الرسالة، برقم العقد AUT-4471-8820 وسريان من 27 نوفمبر 2027. سيذكّرك نيدو قبل 14 يومًا من آخر موعد للإرسال.<span class=\"src\">حُفظت الرسالة في نيدو</span>",
     tp: "ابتداءً من", tpm: " / شهريًا", tm: "/ شهريًا", ta: "/ سنويًا", tS: "شخص واحد", tD: "شخصان", tT: "حتى 6 أشخاص", t75: "الأسعار", t76: "مجاني لاكتساب العادة. مدفوع عندما يُكسبك المال.",
     t77: "مجاني", t78: "لشخص يريد التوقّف عن تفويت المواعيد. يبدأ بـ15 يومًا من نيدو كاملًا، دون بطاقة.",
     t79: "50 مستندًا، تُقرأ محليًا (دون ذكاء اصطناعي)، وتكمل أنت الحقول", t80: "تذكير قبل كل موعد (إشعارات)", t81: "3 رسائل شهريًا، وفق نماذج", t82: "المصاريف الثابتة من أوراقك؛ دون استيراد كشوف أو ربط بنكي", t83: "شخص واحد متصل، وملفات عائلية غير محدودة", t84: "ابدأ مجانًا",
     t85: "نيدو كاملًا", t86: "يعتمد السعر على عدد الأشخاص الذين يسجّلون الدخول. الأطفال والوالدان المسنّان دون حساب مشمولون دائمًا. إلغاء اشتراك واحد يغطي ثمن السنة.",
-    t87: "مستندات غير محدودة يقرؤها الذكاء الاصطناعي، وملفات عائلية غير محدودة", t87b: "عنوان بريد نيدلي خاص بك: أعد توجيه فاتورة فتُرتَّب وحدها", t87c: "تنظيم العائلة: المدارس، المقصف، الأنشطة، جدول الأسبوع، المساعدات والمواعيد المهمة", t88: "ربط بنكي وكل الوفورات المرصودة", t89: "رسائل غير محدودة، يكتبها الذكاء الاصطناعي", t90: "موصّل الذكاء الاصطناعي (Claude وChatGPT…)", t91: "والد مسنّ يديره مرافق، بموافقته",
+    t87: "مستندات غير محدودة يقرؤها الذكاء الاصطناعي، وملفات عائلية غير محدودة", t87b: "عنوان بريد نيدو خاص بك: أعد توجيه فاتورة فتُرتَّب وحدها", t87c: "تنظيم العائلة: المدارس، المقصف، الأنشطة، جدول الأسبوع، المساعدات والمواعيد المهمة", t88: "ربط بنكي وكل الوفورات المرصودة", t89: "رسائل غير محدودة، يكتبها الذكاء الاصطناعي", t90: "موصّل الذكاء الاصطناعي (Claude وChatGPT…)", t91: "والد مسنّ يديره مرافق، بموافقته",
     t92: "الانضمام إلى قائمة الانتظار", t93: "أسعار متوقعة عند الإطلاق. يبدأ الجميع بـ15 يومًا من نيدو كاملًا، حتى 6 أشخاص، دون بطاقة بنكية. الاشتراك السنوي يمنح شهرين مجانًا. دون التزام: غيّر الخطة أو ألغِ بنقرة واحدة، وصدّر كل شيء.",
     t94: "الثقة", t95: "هذه أكثر أوراق العائلة حساسية. ونعاملها على هذا الأساس.",
     t96: "<b>استضافة في أوروبا</b><span>خوادم في الاتحاد الأوروبي، تشفير أثناء النقل وفي التخزين.</span>",
     t97: "<b>بياناتك ملك لك</b><span>تصدير كامل وحذف نهائي بنقرة واحدة، دون مهلة أو تبرير.</span>",
-    t98: "<b>لا تُباع أبدًا</b><span>نيدلي يعيش من اشتراكاته، لا من بياناتك. لا إعلانات.</span>",
-    t99: "<b>البنك عبر مجمّع مرخّص</b><span>اتصال PSD2 تحت إشراف بنك فرنسا. نيدلي لا يرى بيانات دخولك البنكية أبدًا.</span>",
+    t98: "<b>لا تُباع أبدًا</b><span>نيدو يعيش من اشتراكاته، لا من بياناتك. لا إعلانات.</span>",
+    t99: "<b>البنك عبر مجمّع مرخّص</b><span>اتصال PSD2 تحت إشراف بنك فرنسا. نيدو لا يرى بيانات دخولك البنكية أبدًا.</span>",
     t100: "<b>ذكاء اصطناعي تحت السيطرة</b><span>الموصّل للقراءة فقط، محدود بالملفات التي تختارها، ومسجَّل.</span>",
     t101: "<b>الصحة على حدة</b><span>سيُفتح قسم الصحة على استضافة معتمدة للبيانات الصحية (HDS)، وليس قبل ذلك.</span>",
     t102: "أسئلة شائعة", t103: "أكثر ما يُسأل عنه",
-    t104: "هل عليّ مسح كل شيء بنفسي؟", t105: "لا. تضيف الأوراق تباعًا: صورة عند وصول رسالة، بريد محوَّل لفاتورة. ويتعرّف نيدلي أيضًا على عقودك من الخصومات البنكية ويقترح إضافة الورقة الناقصة.",
+    t104: "هل عليّ مسح كل شيء بنفسي؟", t105: "لا. تضيف الأوراق تباعًا: صورة عند وصول رسالة، بريد محوَّل لفاتورة. ويتعرّف نيدو أيضًا على عقودك من الخصومات البنكية ويقترح إضافة الورقة الناقصة.",
     t106: "ماذا لو أخطأ الذكاء الاصطناعي في تاريخ؟", t107: "كل حقل مستخرَج يُعرض مع مستوى ثقته. تصحّحه بلمسة، فتُعاد حساب التذكيرات. لا يُنشأ أي موعد على تاريخ لم تتمكّن من رؤيته.",
-    t108: "هل يصل نيدلي إلى حسابي البنكي؟", t109: "أنت تختار: استيراد كشف حساب (CSV أو PDF) أو ربط بنكك عبر مجمّع مرخّص (Enable Banking). في هذه الحالة لا يتلقى نيدلي سوى قائمة العمليات، للقراءة فقط. لا يستطيع الدفع ولا التحويل، ولا يعرف بيانات دخولك.",
-    t110: "كيف يحسب نيدلي الوفورات؟", t111: "كل إجراء (إلغاء، إعادة تفاوض، حذف تكرار) يحمل مكسبًا سنويًا مقدّرًا من خصوماتك أنت. عدّاد الشاشة الرئيسية لا يجمع إلا الإجراءات التي أكّدت إنجازها. ولا يتضخّم أبدًا بالافتراضات.",
-    t112: "ما الفرق مع تطبيق ميزانية؟", t113: "تطبيق الميزانية يخبرك كم أنفقت. نيدلي يخبرك ماذا تلغي، وقبل أي تاريخ، وكم تربح، ويكتب الرسالة. يربط المصاريف بالعقود، وهو ما لا يستطيعه تطبيق الميزانية.",
-    t114: "كيف يعمل موصّل الذكاء الاصطناعي؟", t115: "تضيف نيدلي كموصّل في مساعدك (Claude وChatGPT وأي أداة متوافقة مع MCP). يستطيع المساعد حينها الاطلاع على أوراقك ومواعيدك ليجيبك. لا يمكنه تعديل شيء، ولا الوصول إلى الملفات التي استبعدتها. وكل اطلاع يظهر في سجلك.",
-    t116: "هل أستطيع إدارة أوراق والديّ؟", t117: "نعم، مع خطة العائلة: مساحة لكل شخص تساعده، وصلاحيات لكل ملف، وتذكيرات تصل إلى المرافق. بشرطين، لأن القانون يحمي الأشخاص المُساعَدين: يجب أن يمنح الشخص موافقته في نيدلي (ويمكنه سحبها في أي وقت)، ولا يمكن ربط بنكه إلا بنفسه أو بممثله القانوني. وإن كان تحت وصاية أو قوامة، فالوصي أو القيّم هو من يأذن بالوصول، في حدود تفويضه.",
+    t108: "هل يصل نيدو إلى حسابي البنكي؟", t109: "أنت تختار: استيراد كشف حساب (CSV أو PDF) أو ربط بنكك عبر مجمّع مرخّص (Enable Banking). في هذه الحالة لا يتلقى نيدو سوى قائمة العمليات، للقراءة فقط. لا يستطيع الدفع ولا التحويل، ولا يعرف بيانات دخولك.",
+    t110: "كيف يحسب نيدو الوفورات؟", t111: "كل إجراء (إلغاء، إعادة تفاوض، حذف تكرار) يحمل مكسبًا سنويًا مقدّرًا من خصوماتك أنت. عدّاد الشاشة الرئيسية لا يجمع إلا الإجراءات التي أكّدت إنجازها. ولا يتضخّم أبدًا بالافتراضات.",
+    t112: "ما الفرق مع تطبيق ميزانية؟", t113: "تطبيق الميزانية يخبرك كم أنفقت. نيدو يخبرك ماذا تلغي، وقبل أي تاريخ، وكم تربح، ويكتب الرسالة. يربط المصاريف بالعقود، وهو ما لا يستطيعه تطبيق الميزانية.",
+    t114: "كيف يعمل موصّل الذكاء الاصطناعي؟", t115: "تضيف نيدو كموصّل في مساعدك (Claude وChatGPT وأي أداة متوافقة مع MCP). يستطيع المساعد حينها الاطلاع على أوراقك ومواعيدك ليجيبك. لا يمكنه تعديل شيء، ولا الوصول إلى الملفات التي استبعدتها. وكل اطلاع يظهر في سجلك.",
+    t116: "هل أستطيع إدارة أوراق والديّ؟", t117: "نعم، مع خطة العائلة: مساحة لكل شخص تساعده، وصلاحيات لكل ملف، وتذكيرات تصل إلى المرافق. بشرطين، لأن القانون يحمي الأشخاص المُساعَدين: يجب أن يمنح الشخص موافقته في نيدو (ويمكنه سحبها في أي وقت)، ولا يمكن ربط بنكه إلا بنفسه أو بممثله القانوني. وإن كان تحت وصاية أو قوامة، فالوصي أو القيّم هو من يأذن بالوصول، في حدود تفويضه.",
     t118: "وماذا لو توقّفت؟", t119: "تصدّر كل شيء في ملف واحد، ثم تحذف حسابك. يُمحى فورًا. دون أسئلة.",
-    t120: "انضم إلى قائمة الانتظار", t121: "يفتح نيدلي في فرنسا مطلع 2027. أوائل المسجّلين يجرّبون التطبيق قبل الجميع ويختارون معنا الوظائف المهمة.",
+    t120: "انضم إلى قائمة الانتظار", t121: "يفتح نيدو في فرنسا مطلع 2027. أوائل المسجّلين يجرّبون التطبيق قبل الجميع ويختارون معنا الوظائف المهمة.",
     t122: "سجّلني", ph1: "بريدك@مثال.com", t123: "وضعك (اختياري)", t124: "والد/والدة وأطفال في البيت", t125: "أدير أوراق أحد والديّ", t126: "زوجان، دون أطفال", t127: "وحدي، أول مسكن",
-    t129: "© 2026 نيدلي · صُنع في أوكسيتانيا",
+    t129: "© 2026 نيدو · صُنع في أوكسيتانيا",
     ok: "تم التسجيل. ستصلك دعوة فور الافتتاح.", bad: "تحقّق من عنوان البريد.", fail: "تعذّر حفظ التسجيل من هذه الصفحة.", copied: "تم نسخ العنوان.", wait: "لحظة…",
   },
 };
@@ -291,6 +299,7 @@ window.NIDOU_I18N = {
   document.querySelectorAll("[data-i18n]").forEach(function (el) { fr[el.getAttribute("data-i18n")] = el.innerHTML; });
   document.querySelectorAll("[data-i18n-ph]").forEach(function (el) { fr[el.getAttribute("data-i18n-ph")] = el.getAttribute("placeholder"); });
   var frDesc = (document.querySelector('meta[name="description"]') || {}).content || "";
+  fr.tm = "/ mois"; fr.ta = "/ an"; fr.peq = "soit {x} / mois"; fr.peq2 = "sans engagement";
   fr.ok = "C'est noté. Vous recevrez une invitation dès l'ouverture."; fr.bad = "Vérifiez l'adresse email."; fr.fail = "L'inscription n'a pas pu être enregistrée depuis cette page."; fr.copied = "Adresse copiée."; fr.wait = "Un instant…";
   dict.fr = Object.assign({ _dir: "ltr", _desc: frDesc }, fr);
 
@@ -307,6 +316,7 @@ window.NIDOU_I18N = {
     window.NIDOU_LANG = lang;
     var sel = document.getElementById("lang"); if (sel && sel.value !== lang) sel.value = lang;
     try { localStorage.setItem("nidou.lang", lang); } catch (e) {}
+    try { window.dispatchEvent(new Event("nidou:lang")); } catch (e) {}
   }
 
   var initial = "fr";

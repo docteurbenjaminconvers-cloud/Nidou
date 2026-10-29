@@ -7,12 +7,14 @@
 <meta name="description" content="Nidou range les papiers de votre famille, vous prévient avant chaque échéance et trouve les économies faciles dans vos dépenses. Avec un connecteur pour votre assistant IA.">
 <meta property="og:title" content="Nidou — l'assistant de votre famille">
 <meta property="og:description" content="Papiers, échéances, budget : Nidou s'occupe de la charge mentale de votre famille.">
+<meta property="og:image" content="img/app-home.webp">
 <meta name="theme-color" content="#FBF4F0">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@1,9..144,500;1,9..144,600;0,9..144,600&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=Nunito:wght@500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="site.css">
+<script>document.documentElement.classList.add("js");</script>
 </head>
 <body>
 
@@ -23,8 +25,8 @@
       Nidou
     </a>
     <nav>
+      <a href="#visite" data-i18n="n1">La visite</a>
       <a href="#economies" data-i18n="t1">Économies</a>
-      <a href="#fonctionnement" data-i18n="t2">Comment ça marche</a>
       <a href="#ia" data-i18n="t3">Connecteur IA</a>
       <a href="#tarifs" data-i18n="t4">Tarifs</a>
       <a href="#faq" data-i18n="t5">Questions</a>
@@ -36,67 +38,88 @@
 
 <main id="top">
 
+<!-- ========== HERO ========== -->
 <section class="hero">
+  <svg class="blob b1" viewBox="0 0 200 200" aria-hidden="true"><path d="M44.7,-58.6C57.1,-47.4,66.1,-33.2,70.4,-17.2C74.7,-1.2,74.2,16.6,66.5,30.4C58.8,44.2,43.9,54,27.8,61.4C11.7,68.8,-5.6,73.8,-22.6,70.5C-39.6,67.2,-56.3,55.6,-65.9,39.8C-75.5,24,-78,4,-73.2,-13.6C-68.4,-31.2,-56.3,-46.4,-41.6,-57.2C-26.9,-68,-13.4,-74.4,1.5,-76.2C16.5,-78,32.3,-69.8,44.7,-58.6Z" transform="translate(100 100)"/></svg>
+  <svg class="blob b2" viewBox="0 0 200 200" aria-hidden="true"><path d="M38.5,-47.2C50.7,-36.4,61.6,-24.4,65.3,-10.1C69,4.2,65.5,20.8,56.5,33.4C47.5,46,33,54.6,17.1,60.6C1.2,66.6,-16.1,70,-30.4,64.2C-44.7,58.4,-56,43.4,-62.5,27C-69,10.6,-70.7,-7.2,-64.6,-21.8C-58.5,-36.4,-44.6,-47.8,-30.3,-58C-16,-68.2,-1.3,-77.2,11.5,-74.6C24.3,-72,26.3,-58,38.5,-47.2Z" transform="translate(100 100)"/></svg>
   <div class="wrap">
-    <div>
+    <div class="hero-text">
       <h1 data-i18n="t7">Nidou s'occupe de la <b>charge mentale</b> de votre famille.</h1>
       <p class="lead" data-i18n="t8">Photographiez un courrier, transférez une facture : Nidou le range, retient chaque date et vous prévient à temps. Il lit vos dépenses, trouve les abonnements fantômes et les hausses cachées, et compte les euros que vous récupérez. Votre assistant IA peut enfin répondre à « quand expire mon assurance auto ? ».</p>
       <div class="cta">
         <a class="btn big" href="#inscription" data-i18n="t9">Rejoindre la liste d'attente</a>
-        <a class="btn ghost big" href="#fonctionnement" data-i18n="t10">Voir comment ça marche</a>
+        <a class="btn ghost big" href="#visite" data-i18n="t10">Voir comment ça marche</a>
       </div>
-      <p class="small" data-i18n="t11">Gratuit pour commencer. Données hébergées en Europe. Rien n'est partagé avec une IA sans votre accord.</p>
+      <ul class="pills-trust">
+        <li data-i18n="h1">Hébergé en Europe</li>
+        <li data-i18n="h2">Sans publicité</li>
+        <li data-i18n="h3">Banque en lecture seule</li>
+      </ul>
     </div>
 
-    <div class="phone" aria-label="Aperçu de l'application Nidou">
-      <div class="bar"><span>9:41</span><span>Nidou</span></div>
-      <div class="hello" data-i18n="p0">Bonjour</div>
-      <div class="sub">Famille Martin</div>
-      <div class="saved"><span data-i18n="t13">Économisés cette année</span><b>1 232 €</b></div>
-      <div class="nest">
-        <div class="k" data-i18n="p1">Prochaine échéance</div>
-        <div class="count"><b>18</b><span data-i18n="t14">jours · 15 novembre</span></div>
-        <div class="what" data-i18n="p2">Paiement : taxe foncière</div>
-        <div class="why" data-i18n="p3">1 240 € à régler. Rappel 5 jours avant.</div>
-      </div>
-      <div class="rows">
-        <div class="row"><div class="chip yolk">22<small>déc</small></div><div><div class="t" data-i18n="p4">Passeport de Léa expire</div><div class="s" data-i18n="p5">Prévoir 2 mois pour le renouvellement</div></div><div class="r">›</div></div>
-        <div class="row"><div class="chip">27<small>nov</small></div><div><div class="t" data-i18n="p6">Assurance auto se renouvelle</div><div class="s" data-i18n="p7">Comparer avant reconduction</div></div><div class="r">›</div></div>
-        <div class="row"><div class="chip" style="background:var(--yolk-soft)">€</div><div><div class="t" data-i18n="p8">2 salles de sport payées</div><div class="s" data-i18n="p9">Keepcool et Basic-Fit, 65 € par mois</div></div><div class="r">360 €<small data-i18n="p10">par an</small></div></div>
-      </div>
+    <div class="hero-art" aria-label="Aperçu de l'application Nidou">
+      <figure class="device back"><img src="img/app-reveal.webp" width="300" height="649" alt="Écran Nidou : 1 949 € d'économies faciles trouvées par an" loading="eager"></figure>
+      <figure class="device front"><img src="img/app-home.webp" width="300" height="649" alt="Écran d'accueil de Nidou : prochaine échéance dans 10 jours, la journée de la famille, les économies" loading="eager"></figure>
+      <div class="float f1"><span class="dot ember"></span><span data-i18n="b1">Préavis : plus que 12 jours</span></div>
+      <div class="float f2"><span class="dot moss"></span><span data-i18n="b2">Facture rangée toute seule</span></div>
+      <div class="float f3"><b>+419 €</b><span data-i18n="b3">par an, un abonnement oublié</span></div>
     </div>
   </div>
 </section>
 
+<!-- ========== PROBLEM ========== -->
 <section class="pain">
+  <svg class="wave top" viewBox="0 0 1440 80" preserveAspectRatio="none" aria-hidden="true"><path d="M0,40 C240,90 480,0 720,30 C960,60 1200,10 1440,40 L1440,0 L0,0 Z"/></svg>
   <div class="wrap">
-    <h2 data-i18n="t15">Les papiers sont partout. Les échéances, nulle part.</h2>
-    <p class="lead" data-i18n="t16">Boîte mail, tiroir, espace client, photo dans le téléphone. Une personne du foyer qui garde tout en tête. Et chaque oubli qui coûte de l'argent.</p>
+    <h2 class="rv" data-i18n="t15">Les papiers sont partout. Les échéances, nulle part.</h2>
+    <p class="lead rv" data-i18n="t16">Boîte mail, tiroir, espace client, photo dans le téléphone. Une personne du foyer qui garde tout en tête. Et chaque oubli qui coûte de l'argent.</p>
     <div class="grid3">
-      <div class="item"><b data-i18n="t17">Oublié</b><p data-i18n="t18">Le préavis de résiliation est passé : l'assurance est reconduite un an de plus, au nouveau tarif.</p></div>
-      <div class="item"><b data-i18n="t19">Invisible</b><p data-i18n="t20">Un abonnement d'essai devenu payant, deux services pour la même chose, des frais bancaires chaque mois.</p></div>
-      <div class="item"><b data-i18n="t21">Introuvable</b><p data-i18n="t22">Le numéro de contrat, la facture du lave-linge en panne, le carnet de vaccination au moment de l'inscription.</p></div>
+      <div class="item rv"><span class="ico" aria-hidden="true"><svg viewBox="0 0 48 48"><circle cx="24" cy="26" r="15"/><path d="M24 18v9l6 4M17 7l-6 5M31 7l6 5"/></svg></span><b data-i18n="t17">Oublié</b><p data-i18n="t18">Le préavis de résiliation est passé : l'assurance est reconduite un an de plus, au nouveau tarif.</p></div>
+      <div class="item rv"><span class="ico" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M6 24s7-12 18-12 18 12 18 12-7 12-18 12S6 24 6 24z"/><circle cx="24" cy="24" r="5"/><path d="M9 39 39 9"/></svg></span><b data-i18n="t19">Invisible</b><p data-i18n="t20">Un abonnement d'essai devenu payant, deux services pour la même chose, des frais bancaires chaque mois.</p></div>
+      <div class="item rv"><span class="ico" aria-hidden="true"><svg viewBox="0 0 48 48"><circle cx="21" cy="21" r="12"/><path d="m30 30 11 11M17 17l8 8M25 17l-8 8"/></svg></span><b data-i18n="t21">Introuvable</b><p data-i18n="t22">Le numéro de contrat, la facture du lave-linge en panne, le carnet de vaccination au moment de l'inscription.</p></div>
     </div>
+  </div>
+  <svg class="wave bottom" viewBox="0 0 1440 80" preserveAspectRatio="none" aria-hidden="true"><path d="M0,40 C240,0 480,80 720,50 C960,20 1200,70 1440,40 L1440,80 L0,80 Z"/></svg>
+</section>
+
+<!-- ========== TOUR ========== -->
+<section id="visite" class="tour">
+  <div class="wrap">
+    <p class="eyebrow rv" data-i18n="v0">La visite</p>
+    <h2 class="rv" data-i18n="v00">Tout le foyer tient dans une seule appli.</h2>
+    <p class="lead rv" data-i18n="v000">Cinq écrans, et plus rien ne vous échappe. Faites défiler.</p>
+  </div>
+  <div class="tour-track" id="tour" tabindex="0" aria-label="Écrans de l'application Nidou">
+    <figure class="tour-card rv"><div class="device"><img src="img/app-home.webp" width="260" height="562" alt="Accueil de Nidou" loading="lazy"></div><figcaption><b data-i18n="v1">Aujourd'hui</b><span data-i18n="v2">La prochaine échéance en grand, la journée de chacun, et ce que vous avez déjà économisé.</span></figcaption></figure>
+    <figure class="tour-card rv"><div class="device"><img src="img/app-deadlines.webp" width="260" height="562" alt="Agenda de Nidou" loading="lazy"></div><figcaption><b data-i18n="v3">Agenda</b><span data-i18n="v4">Les échéances des papiers et les activités des enfants au même endroit, avec le rappel avant.</span></figcaption></figure>
+    <figure class="tour-card rv"><div class="device"><img src="img/app-docs.webp" width="260" height="562" alt="Papiers rangés dans Nidou" loading="lazy"></div><figcaption><b data-i18n="v5">Papiers</b><span data-i18n="v6">Chaque contrat avec ses dates, son préavis et son montant. Une recherche, et il est là.</span></figcaption></figure>
+    <figure class="tour-card rv"><div class="device"><img src="img/app-famille.webp" width="260" height="562" alt="La famille dans Nidou" loading="lazy"></div><figcaption><b data-i18n="v7">Famille</b><span data-i18n="v8">Écoles, cantine, activités, parents à charge : ce que coûte chacun et les aides auxquelles il a droit.</span></figcaption></figure>
+    <figure class="tour-card rv"><div class="device"><img src="img/app-budget.webp" width="260" height="562" alt="Budget et économies dans Nidou" loading="lazy"></div><figcaption><b data-i18n="v9">Budget</b><span data-i18n="v10">Vos vraies dépenses, et les économies faciles classées par gain, avec le bouton pour agir.</span></figcaption></figure>
+  </div>
+  <div class="wrap tour-nav">
+    <button class="round" id="tour-prev" type="button" aria-label="Écran précédent">‹</button>
+    <button class="round" id="tour-next" type="button" aria-label="Écran suivant">›</button>
   </div>
 </section>
 
-<section id="economies">
+<!-- ========== SAVINGS ========== -->
+<section id="economies" class="savings">
   <div class="wrap">
     <div class="grid2" style="margin-top:0;align-items:center">
       <div>
-        <p class="eyebrow" data-i18n="t23">Économies réalisées</p>
-        <h2 data-i18n="t24">Nidou se mesure en euros récupérés.</h2>
-        <p class="lead" style="margin-top:14px" data-i18n="t25">Pas de camembert, pas de « vous avez dépensé 12 % de plus en restaurants ». Une liste d'actions classées par gain et par effort, un bouton pour agir, et un compteur de ce que vous avez vraiment récupéré.</p>
+        <p class="eyebrow rv" data-i18n="t23">Économies réalisées</p>
+        <h2 class="rv" data-i18n="t24">Nidou se mesure en euros récupérés.</h2>
+        <p class="lead rv" style="margin-top:14px" data-i18n="t25">Pas de camembert, pas de « vous avez dépensé 12 % de plus en restaurants ». Une liste d'actions classées par gain et par effort, un bouton pour agir, et un compteur de ce que vous avez vraiment récupéré.</p>
         <ul class="howsave">
-          <li data-i18n="t26"><b>Abonnements fantômes</b><span>un essai devenu payant, un service oublié, prélevé chaque mois</span></li>
-          <li data-i18n="t27"><b>Hausses silencieuses</b><span>même contrat, montant qui monte : souvent un droit de résilier sans frais</span></li>
-          <li data-i18n="t28"><b>Doublons</b><span>deux salles de sport, quatre plateformes de streaming, deux assurances pour le même risque</span></li>
-          <li data-i18n="t29"><b>Frais évitables</b><span>cotisation de carte, commissions d'intervention, agios</span></li>
-          <li data-i18n="t30"><b>Contrats jamais renégociés</b><span>assurance, box, énergie : les tarifs d'entrée des concurrents sont plus bas</span></li>
+          <li class="rv" data-i18n="t26"><b>Abonnements fantômes</b><span>un essai devenu payant, un service oublié, prélevé chaque mois</span></li>
+          <li class="rv" data-i18n="t27"><b>Hausses silencieuses</b><span>même contrat, montant qui monte : souvent un droit de résilier sans frais</span></li>
+          <li class="rv" data-i18n="t28"><b>Doublons</b><span>deux salles de sport, quatre plateformes de streaming, deux assurances pour le même risque</span></li>
+          <li class="rv" data-i18n="t29"><b>Frais évitables</b><span>cotisation de carte, commissions d'intervention, agios</span></li>
+          <li class="rv" data-i18n="t30"><b>Contrats jamais renégociés</b><span>assurance, box, énergie : les tarifs d'entrée des concurrents sont plus bas</span></li>
         </ul>
-        <p class="small" style="color:var(--mist);margin-top:18px;font-size:14.5px" data-i18n="t31">Chaque action affiche le gain annuel estimé. Une économie n'est comptée « réalisée » qu'une fois la résiliation ou la renégociation confirmée par vous.</p>
+        <p class="small rv" data-i18n="t31">Chaque action affiche le gain annuel estimé. Une économie n'est comptée « réalisée » qu'une fois la résiliation ou la renégociation confirmée par vous.</p>
       </div>
-      <div class="ledger" aria-label="Exemple d'économies repérées pour une famille">
+      <div class="ledger rv" aria-label="Exemple d'économies repérées pour une famille">
         <div class="ledger-head"><span data-i18n="t32">Famille Martin · 4 mois de relevés</span><b data-i18n="t33">1 949 € / an repérés</b></div>
         <div class="ledger-row"><div><b>Keepcool</b><span data-i18n="t35">abonnement fantôme, 34,90 € par mois</span></div><em>419 €</em></div>
         <div class="ledger-row"><div><b data-i18n="t36">Deux salles de sport</b><span data-i18n="t37">Keepcool et Basic-Fit en même temps</span></div><em>360 €</em></div>
@@ -104,66 +127,53 @@
         <div class="ledger-row"><div><b data-i18n="t40">Frais bancaires</b><span data-i18n="t41">cotisation carte et commissions</span></div><em>208 €</em></div>
         <div class="ledger-row"><div><b data-i18n="t42">Quatre streamings</b><span>Netflix, Disney+, Canal+, Prime</span></div><em>84 €</em></div>
         <div class="ledger-row"><div><b data-i18n="t44">Assurance habitation</b><span data-i18n="t45">3 ans sans renégociation</span></div><em>46 €</em></div>
-        <div class="ledger-foot">Exemple construit à partir d'une famille fictive. Vos chiffres dépendent de vos contrats.</div>
+        <div class="ledger-foot" data-i18n="t34">Exemple construit à partir d'une famille fictive. Vos chiffres dépendent de vos contrats.</div>
       </div>
     </div>
   </div>
 </section>
 
+<!-- ========== HOW ========== -->
 <section id="fonctionnement">
   <div class="wrap">
-    <p class="eyebrow" data-i18n="t46">Comment ça marche</p>
-    <h2 data-i18n="t47">Trois gestes, puis Nidou travaille pour vous.</h2>
-    <div class="grid3">
-      <div class="step"><div class="num">1</div><h3 data-i18n="t48">Vous déposez</h3><p data-i18n="t49">Une photo, un PDF, un email transféré. Contrats, factures, attestations, pièces d'identité, garanties.</p></div>
-      <div class="step"><div class="num">2</div><h3 data-i18n="t50">Nidou lit et range</h3><p data-i18n="t51">L'IA reconnaît le document, extrait l'organisme, le numéro, les montants et les dates. Vous validez d'un geste.</p></div>
-      <div class="step"><div class="num">3</div><h3 data-i18n="t52">Vous êtes prévenu</h3><p data-i18n="t53">Dernier jour pour résilier, renouvellement, expiration d'un passeport, fin de garantie : la notification arrive avant, pas après.</p></div>
-    </div>
+    <p class="eyebrow rv" data-i18n="t46">Comment ça marche</p>
+    <h2 class="rv" data-i18n="t47">Trois gestes, puis Nidou travaille pour vous.</h2>
+    <ol class="steps">
+      <li class="rv"><span class="bubble peach" aria-hidden="true"><svg viewBox="0 0 48 48"><rect x="8" y="14" width="32" height="24" rx="6"/><circle cx="24" cy="26" r="6"/><path d="M18 14l3-5h6l3 5"/></svg></span><h3 data-i18n="t48">Vous déposez</h3><p data-i18n="t49">Une photo, un PDF, un email transféré. Contrats, factures, attestations, pièces d'identité, garanties.</p></li>
+      <li class="rv"><span class="bubble lilac" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M12 8h17l9 9v23a2 2 0 0 1-2 2H12a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z"/><path d="M28 8v10h10M16 26h16M16 33h10"/></svg></span><h3 data-i18n="t50">Nidou lit et range</h3><p data-i18n="t51">L'IA reconnaît le document, extrait l'organisme, le numéro, les montants et les dates. Vous validez d'un geste.</p></li>
+      <li class="rv"><span class="bubble moss" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M14 34V22a10 10 0 0 1 20 0v12l4 4H10z"/><path d="M20 40a4 4 0 0 0 8 0"/></svg></span><h3 data-i18n="t52">Vous êtes prévenu</h3><p data-i18n="t53">Dernier jour pour résilier, renouvellement, expiration d'un passeport, fin de garantie : la notification arrive avant, pas après.</p></li>
+    </ol>
   </div>
 </section>
 
+<!-- ========== FEATURES ========== -->
 <section id="fonctions" style="padding-top:0">
   <div class="wrap">
-    <div class="grid2">
-      <div class="feature">
-        <span class="tag" data-i18n="t54">Papiers et échéances</span>
-        <h3 data-i18n="t55">Un seul endroit pour tous les papiers du foyer</h3>
-        <p data-i18n="t56">Recherche par organisme, numéro ou mot du document. Chaque contrat porte ses dates et son préavis. Les courriers de résiliation ou de réclamation sont rédigés, prêts à envoyer.</p>
-      </div>
-      <div class="feature">
-        <span class="tag yolk" data-i18n="t57">Économies faciles</span>
-        <h3 data-i18n="t58">Des euros, pas des camemberts</h3>
-        <p data-i18n="t59">Connectez votre banque ou importez un relevé : Nidou repère les abonnements fantômes, les hausses silencieuses, les doublons et les frais évitables. Chaque alerte donne le gain annuel et le bouton pour agir.</p>
-      </div>
-      <div class="feature">
-        <span class="tag" data-i18n="t60">Famille</span>
-        <h3 data-i18n="t61">Partagé avec ceux qui comptent</h3>
-        <p data-i18n="t62">Votre conjoint, vos enfants devenus grands, un parent âgé dont vous gérez les papiers. Chacun voit ce qu'il doit voir, et la charge ne repose plus sur une seule personne.</p>
-      </div>
-      <div class="feature">
-        <span class="tag" data-i18n="t63">Connecteur IA</span>
-        <h3 data-i18n="t64">Votre assistant connaît enfin vos papiers</h3>
-        <p data-i18n="t65">Claude, ChatGPT ou tout assistant compatible peut interroger votre coffre, en lecture seule, avec votre accord et un journal de chaque accès.</p>
-      </div>
+    <div class="features">
+      <div class="feature peach rv"><span class="tag" data-i18n="t54">Papiers et échéances</span><h3 data-i18n="t55">Un seul endroit pour tous les papiers du foyer</h3><p data-i18n="t56">Recherche par organisme, numéro ou mot du document. Chaque contrat porte ses dates et son préavis. Les courriers de résiliation ou de réclamation sont rédigés, prêts à envoyer.</p></div>
+      <div class="feature yolk rv"><span class="tag" data-i18n="t57">Économies faciles</span><h3 data-i18n="t58">Des euros, pas des camemberts</h3><p data-i18n="t59">Connectez votre banque ou importez un relevé : Nidou repère les abonnements fantômes, les hausses silencieuses, les doublons et les frais évitables. Chaque alerte donne le gain annuel et le bouton pour agir.</p></div>
+      <div class="feature moss rv"><span class="tag" data-i18n="t60">Famille</span><h3 data-i18n="t61">Partagé avec ceux qui comptent</h3><p data-i18n="t62">Votre conjoint, vos enfants devenus grands, un parent âgé dont vous gérez les papiers. Chacun voit ce qu'il doit voir, et la charge ne repose plus sur une seule personne.</p></div>
+      <div class="feature lilac rv"><span class="tag" data-i18n="t63">Connecteur IA</span><h3 data-i18n="t64">Votre assistant connaît enfin vos papiers</h3><p data-i18n="t65">Claude, ChatGPT ou tout assistant compatible peut interroger votre coffre, en lecture seule, avec votre accord et un journal de chaque accès.</p></div>
     </div>
   </div>
 </section>
 
-<section id="ia" class="trust" style="background:var(--paper)">
+<!-- ========== AI ========== -->
+<section id="ia" class="ai">
   <div class="wrap">
     <div class="grid2" style="margin-top:0;align-items:center">
       <div>
-        <p class="eyebrow" data-i18n="t66">Connecteur IA</p>
-        <h2 data-i18n="t67">Posez la question à votre assistant. Nidou a la réponse.</h2>
-        <p class="lead" style="margin-top:14px" data-i18n="t68">Les assistants savent rédiger une lettre de résiliation. Ils ignorent le numéro de contrat, la date d'échéance et l'adresse de l'assureur. Nidou leur donne ces informations, et rien d'autre.</p>
-        <ul style="margin:22px 0 0;padding-left:20px;color:var(--mist)">
-          <li data-i18n="t69">Lecture seule : aucune action sans confirmation dans Nidou.</li>
-          <li data-i18n="t70">Périmètre choisi : santé et banque exclus par défaut.</li>
-          <li data-i18n="t71">Journal visible de chaque consultation par une IA.</li>
-          <li data-i18n="t72">Standard ouvert (MCP) : fonctionne avec les assistants d'aujourd'hui et de demain.</li>
+        <p class="eyebrow rv" data-i18n="t66">Connecteur IA</p>
+        <h2 class="rv" data-i18n="t67">Posez la question à votre assistant. Nidou a la réponse.</h2>
+        <p class="lead rv" style="margin-top:14px" data-i18n="t68">Les assistants savent rédiger une lettre de résiliation. Ils ignorent le numéro de contrat, la date d'échéance et l'adresse de l'assureur. Nidou leur donne ces informations, et rien d'autre.</p>
+        <ul class="checks">
+          <li class="rv" data-i18n="t69">Lecture seule : aucune action sans confirmation dans Nidou.</li>
+          <li class="rv" data-i18n="t70">Périmètre choisi : santé et banque exclus par défaut.</li>
+          <li class="rv" data-i18n="t71">Journal visible de chaque consultation par une IA.</li>
+          <li class="rv" data-i18n="t72">Standard ouvert (MCP) : fonctionne avec les assistants d'aujourd'hui et de demain.</li>
         </ul>
       </div>
-      <div class="chat" aria-label="Exemple de conversation avec un assistant connecté à Nidou">
+      <div class="chat" id="chat" aria-label="Exemple de conversation avec un assistant connecté à Nidou">
         <div class="msg u" data-i18n="c1">Quand expire mon assurance auto, et combien elle coûte ?</div>
         <div class="msg a" data-i18n="c2">Votre contrat MAIF (Peugeot 3008) se renouvelle le 27 novembre, à 612 € par an. Le préavis de résiliation est de 60 jours : il est déjà passé pour cette année.<span class="src">Source : Nidou · Assurance auto</span></div>
         <div class="msg u" data-i18n="c3">Rédige la résiliation pour l'an prochain.</div>
@@ -173,68 +183,102 @@
   </div>
 </section>
 
-<section id="tarifs">
+<!-- ========== PRICING ========== -->
+<section id="tarifs" class="pricing">
   <div class="wrap">
-    <p class="eyebrow" data-i18n="t75">Tarifs</p>
-    <h2 data-i18n="t76">Gratuit pour prendre l'habitude. Payant quand ça vous fait gagner de l'argent.</h2>
-    <div class="plans">
-      <div class="plan">
+    <p class="eyebrow rv" data-i18n="t75">Tarifs</p>
+    <h2 class="rv" data-i18n="t76">Gratuit pour prendre l'habitude. Payant quand ça vous fait gagner de l'argent.</h2>
+    <p class="lead rv" style="margin-top:14px" data-i18n="t86">Le prix dépend du nombre de personnes qui se connectent. Les enfants et les parents âgés sans connexion sont toujours inclus. Un seul abonnement résilié rembourse l'année.</p>
+
+    <div class="period rv" role="radiogroup" aria-label="Période de facturation">
+      <button type="button" role="radio" aria-checked="false" data-periode="mensuel" data-i18n="pm">Mensuel</button>
+      <button type="button" role="radio" aria-checked="true" data-periode="annuel"><span data-i18n="pa">Annuel</span> <em data-i18n="pa2">2 mois offerts</em></button>
+    </div>
+
+    <div class="cards" id="cards" data-periode="annuel">
+      <article class="card rv">
         <h3 data-i18n="t77">Gratuit</h3>
-        <div class="price">0 €</div>
+        <p class="who" data-i18n="pF">Pour essayer, seul·e</p>
+        <div class="amount"><b>0 €</b></div>
+        <p class="eq">&nbsp;</p>
         <p class="for" data-i18n="t78">Pour une personne qui veut arrêter de rater des échéances. Commence par 15 jours de tout Nidou, sans carte.</p>
         <ul>
           <li data-i18n="t79">50 documents, lus localement (sans IA), vous complétez les champs</li>
           <li data-i18n="t80">Rappels avant chaque échéance (notifications)</li>
           <li data-i18n="t81">3 courriers par mois, sur modèle</li>
-          <li data-i18n="t82">Charges fixes d'après vos papiers ; sans import de relevés ni connexion bancaire</li>
           <li data-i18n="t83">1 personne connectée, fiches famille illimitées</li>
         </ul>
         <a class="btn ghost" href="#inscription" data-i18n="t84">Commencer gratuitement</a>
-      </div>
-      <div class="plan on">
-        <h3 data-i18n="t85">Tout Nidou</h3>
-        <div class="price"><small data-i18n="tp">dès</small> 6,90 €<small data-i18n="tpm"> / mois</small></div>
-        <ul class="tiers-site">
-          <li><b>Solo</b><span data-i18n="tS">1 personne</span><em>6,90 € <small data-i18n="tm">/ mois</small> · 69 € <small data-i18n="ta">/ an</small></em></li>
-          <li class="on"><b>Duo</b><span data-i18n="tD">2 personnes</span><em>9,90 € <small data-i18n="tm">/ mois</small> · 99 € <small data-i18n="ta">/ an</small></em></li>
-          <li><b>Tribu</b><span data-i18n="tT">jusqu'à 6 personnes</span><em>13,90 € <small data-i18n="tm">/ mois</small> · 139 € <small data-i18n="ta">/ an</small></em></li>
-        </ul>
-        <p class="for" data-i18n="t86">Le prix dépend du nombre de personnes qui se connectent. Les enfants et les parents âgés sans connexion sont toujours inclus. Un seul abonnement résilié rembourse l'année.</p>
-        <ul>
-          <li data-i18n="t87">Documents illimités, chacun lu par l'IA, fiches famille illimitées</li>
-          <li data-i18n="t87b">Une adresse email Nidou : transférez une facture, elle se range toute seule</li>
-          <li data-i18n="t87c">Organisation de la famille : écoles, cantine, activités, agenda de la semaine, aides et dates clés</li>
-          <li data-i18n="t88">Connexion bancaire et toutes les économies repérées</li>
-          <li data-i18n="t89">Courriers illimités, rédigés par l'IA</li>
-          <li data-i18n="t90">Connecteur IA (Claude, ChatGPT…)</li>
-          <li data-i18n="t91">Parent âgé géré par un aidant, avec son accord</li>
-        </ul>
-        <a class="btn" href="#inscription" data-i18n="t92">Rejoindre la liste d'attente</a>
-      </div>
+      </article>
+      <article class="card rv" data-m="6,90" data-a="69" data-eq="5,75">
+        <h3>Solo</h3>
+        <p class="who" data-i18n="pS">Pour vous seul·e</p>
+        <div class="amount"><b class="px">69 €</b><small class="per" data-i18n-per></small></div>
+        <p class="eq"></p>
+        <p class="people"><span class="ppl" aria-hidden="true">●</span> <span data-i18n="tS">1 personne</span></p>
+        <ul><li data-i18n="s1">Tout Nidou, lecture par l'IA comprise</li><li data-i18n="s2">Connexion bancaire et économies</li><li data-i18n="s3">Rappels par notification et par email</li></ul>
+        <a class="btn ghost" href="#inscription" data-i18n="t122">Je m'inscris</a>
+      </article>
+      <article class="card star rv" data-m="9,90" data-a="99" data-eq="8,25">
+        <span class="ribbon" data-i18n="pD">Idéal en couple</span>
+        <h3>Duo</h3>
+        <p class="who" data-i18n="pD2">Vous et votre conjoint·e</p>
+        <div class="amount"><b class="px">99 €</b><small class="per"></small></div>
+        <p class="eq"></p>
+        <p class="people"><span class="ppl" aria-hidden="true">●●</span> <span data-i18n="tD">2 personnes</span></p>
+        <ul><li data-i18n="s4">Tout Nidou, pour vous deux</li><li data-i18n="s5">Chacun son accès, les mêmes papiers</li><li data-i18n="s6">Les rappels arrivent chez les deux</li></ul>
+        <a class="btn" href="#inscription" data-i18n="t122">Je m'inscris</a>
+      </article>
+      <article class="card rv" data-m="13,90" data-a="139" data-eq="11,58">
+        <h3>Tribu</h3>
+        <p class="who" data-i18n="pT">Toute la famille, grands enfants compris</p>
+        <div class="amount"><b class="px">139 €</b><small class="per"></small></div>
+        <p class="eq"></p>
+        <p class="people"><span class="ppl" aria-hidden="true">●●●●●●</span> <span data-i18n="tT">jusqu'à 6 personnes</span></p>
+        <ul><li data-i18n="s7">Tout Nidou, jusqu'à 6 accès</li><li data-i18n="s8">Grands enfants et grands-parents connectés</li><li data-i18n="s9">Chacun voit ce qu'il doit voir</li></ul>
+        <a class="btn ghost" href="#inscription" data-i18n="t122">Je m'inscris</a>
+      </article>
     </div>
-    <p class="small" style="color:var(--mist);margin-top:18px;font-size:14.5px" data-i18n="t93">Tarifs prévus au lancement. Tout le monde commence par 15 jours de tout Nidou, jusqu'à 6 personnes, sans carte bancaire. L'annuel offre 2 mois. Sans engagement : on change de formule ou on résilie en un clic, et on exporte tout.</p>
+
+    <div class="included rv">
+      <h3 data-i18n="pinc">Inclus dans Solo, Duo et Tribu</h3>
+      <ul>
+        <li data-i18n="t87">Documents illimités, chacun lu par l'IA, fiches famille illimitées</li>
+        <li data-i18n="t87b">Une adresse email Nidou : transférez une facture, elle se range toute seule</li>
+        <li data-i18n="t87c">Organisation de la famille : écoles, cantine, activités, agenda de la semaine, aides et dates clés</li>
+        <li data-i18n="t88">Connexion bancaire et toutes les économies repérées</li>
+        <li data-i18n="t89">Courriers illimités, rédigés par l'IA</li>
+        <li data-i18n="t90">Connecteur IA (Claude, ChatGPT…)</li>
+        <li data-i18n="t91">Parent âgé géré par un aidant, avec son accord</li>
+      </ul>
+    </div>
+    <p class="small rv" data-i18n="t93">Tarifs prévus au lancement. Tout le monde commence par 15 jours de tout Nidou, jusqu'à 6 personnes, sans carte bancaire. L'annuel offre 2 mois. Sans engagement : on change de formule ou on résilie en un clic, et on exporte tout.</p>
   </div>
 </section>
 
+<!-- ========== TRUST ========== -->
 <section class="trust">
+  <svg class="wave top" viewBox="0 0 1440 80" preserveAspectRatio="none" aria-hidden="true"><path d="M0,40 C240,90 480,0 720,30 C960,60 1200,10 1440,40 L1440,0 L0,0 Z"/></svg>
   <div class="wrap">
-    <p class="eyebrow" data-i18n="t94">Confiance</p>
-    <h2 data-i18n="t95">Ce sont les papiers les plus sensibles d'une famille. On les traite comme tels.</h2>
-    <ul>
-      <li data-i18n="t96"><b>Hébergement en Europe</b><span>Serveurs dans l'Union européenne, chiffrement en transit et au repos.</span></li>
-      <li data-i18n="t97"><b>Vos données vous appartiennent</b><span>Export complet et suppression définitive en un clic, sans délai ni justification.</span></li>
-      <li data-i18n="t98"><b>Jamais revendues</b><span>Nidou vit de ses abonnements, pas de vos données. Aucune publicité.</span></li>
-      <li data-i18n="t99"><b>Banque via un agrégateur agréé</b><span>Connexion DSP2 encadrée par la Banque de France. Nidou ne voit jamais vos identifiants bancaires.</span></li>
-      <li data-i18n="t100"><b>IA sous contrôle</b><span>Le connecteur est en lecture seule, limité aux dossiers que vous choisissez, et journalisé.</span></li>
-      <li data-i18n="t101"><b>Santé à part</b><span>Le volet santé ouvrira sur un hébergement certifié HDS, pas avant.</span></li>
+    <p class="eyebrow rv" data-i18n="t94">Confiance</p>
+    <h2 class="rv" data-i18n="t95">Ce sont les papiers les plus sensibles d'une famille. On les traite comme tels.</h2>
+    <ul class="trust-grid">
+      <li class="rv" data-i18n="t96"><b>Hébergement en Europe</b><span>Serveurs dans l'Union européenne, chiffrement en transit et au repos.</span></li>
+      <li class="rv" data-i18n="t97"><b>Vos données vous appartiennent</b><span>Export complet et suppression définitive en un clic, sans délai ni justification.</span></li>
+      <li class="rv" data-i18n="t98"><b>Jamais revendues</b><span>Nidou vit de ses abonnements, pas de vos données. Aucune publicité.</span></li>
+      <li class="rv" data-i18n="t99"><b>Banque via un agrégateur agréé</b><span>Connexion DSP2 encadrée par la Banque de France. Nidou ne voit jamais vos identifiants bancaires.</span></li>
+      <li class="rv" data-i18n="t100"><b>IA sous contrôle</b><span>Le connecteur est en lecture seule, limité aux dossiers que vous choisissez, et journalisé.</span></li>
+      <li class="rv" data-i18n="t101"><b>Santé à part</b><span>Le volet santé ouvrira sur un hébergement certifié HDS, pas avant.</span></li>
     </ul>
   </div>
+  <svg class="wave bottom" viewBox="0 0 1440 80" preserveAspectRatio="none" aria-hidden="true"><path d="M0,40 C240,0 480,80 720,50 C960,20 1200,70 1440,40 L1440,80 L0,80 Z"/></svg>
 </section>
 
+<!-- ========== FAQ ========== -->
 <section id="faq">
-  <div class="wrap">
-    <p class="eyebrow" data-i18n="t102">Questions fréquentes</p>
-    <h2 style="margin-bottom:28px" data-i18n="t103">Ce qu'on nous demande le plus</h2>
+  <div class="wrap narrow">
+    <p class="eyebrow rv" data-i18n="t102">Questions fréquentes</p>
+    <h2 class="rv" style="margin-bottom:28px" data-i18n="t103">Ce qu'on nous demande le plus</h2>
     <details><summary data-i18n="t104">Est-ce que je dois tout scanner moi-même ?</summary><p data-i18n="t105">Non. Vous ajoutez les papiers au fil de l'eau : une photo quand un courrier arrive, un transfert d'email pour une facture. Nidou reconnaît aussi vos contrats à partir des prélèvements bancaires et vous propose d'ajouter le papier manquant.</p></details>
     <details><summary data-i18n="t106">Que se passe-t-il si l'IA se trompe sur une date ?</summary><p data-i18n="t107">Chaque champ extrait est affiché avec son niveau de confiance. Vous corrigez d'un geste, et les rappels se recalculent. Aucune échéance n'est créée sur une date que vous n'avez pas pu voir.</p></details>
     <details><summary data-i18n="t108">Nidou a-t-il accès à mon compte bancaire ?</summary><p data-i18n="t109">Vous choisissez : importer un relevé (CSV ou PDF) ou connecter votre banque via un agrégateur agréé (Enable Banking). Dans ce cas, Nidou reçoit uniquement la liste des opérations, en lecture. Il ne peut ni payer ni virer, et ne connaît pas vos identifiants.</p></details>
@@ -246,9 +290,21 @@
   </div>
 </section>
 
+<!-- ========== WAITLIST ========== -->
 <section id="inscription" style="padding-top:0">
   <div class="wrap">
-    <div class="join">
+    <div class="join rv">
+      <svg class="nest-art" viewBox="0 0 220 160" aria-hidden="true">
+        <ellipse cx="110" cy="112" rx="96" ry="34" fill="#c98a5a"/>
+        <path d="M18 104c30 22 154 22 184 0" stroke="#a96a3e" stroke-width="5" fill="none" stroke-linecap="round"/>
+        <path d="M24 116c34 16 138 16 172 0M34 126c30 10 122 10 152 0" stroke="#e2b07e" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <ellipse cx="82" cy="92" rx="22" ry="27" fill="#fbf4f0"/>
+        <ellipse cx="118" cy="88" rx="24" ry="30" fill="#e9b23a"/>
+        <ellipse cx="152" cy="94" rx="19" ry="24" fill="#f6d5c8"/>
+        <circle cx="111" cy="78" r="3" fill="#3b2a3a"/><circle cx="125" cy="78" r="3" fill="#3b2a3a"/>
+        <path d="M113 87q5 4 10 0" stroke="#3b2a3a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        <path d="M170 30l4 9 9 4-9 4-4 9-4-9-9-4 9-4z" fill="#e9b23a"/><path d="M40 40l3 6 6 3-6 3-3 6-3-6-6-3 6-3z" fill="#f6d5c8"/>
+      </svg>
       <h2 data-i18n="t120">Rejoignez la liste d'attente</h2>
       <p data-i18n="t121">Nidou ouvre en France début 2027. Les premiers inscrits testent l'appli avant tout le monde et choisissent avec nous les fonctions qui comptent.</p>
       <form class="form" id="waitlist" novalidate>
@@ -322,6 +378,48 @@
     try { navigator.clipboard.writeText(t).then(function () { show(ok, nidouT("copied")); }, function () { selectText(); }); } catch (e) { selectText(); }
     function selectText() { var r = document.createRange(); r.selectNodeContents(document.getElementById("mail")); var s = getSelection(); s.removeAllRanges(); s.addRange(r); }
   });
+
+  // ---- reveal on scroll (content stays visible without JS or with reduced motion) ----
+  var reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var els = [].slice.call(document.querySelectorAll(".rv"));
+  if (reduce || !("IntersectionObserver" in window)) els.forEach(function (el) { el.classList.add("in"); });
+  else {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); } });
+    }, { rootMargin: "0px 0px -8% 0px", threshold: 0.08 });
+    els.forEach(function (el, i) { el.style.transitionDelay = (Array.prototype.indexOf.call(el.parentNode.children, el) % 6) * 70 + "ms"; io.observe(el); });
+  }
+
+  // ---- chat appears message by message ----
+  var chat = document.getElementById("chat");
+  if (chat && !reduce && "IntersectionObserver" in window) {
+    chat.classList.add("typing");
+    new IntersectionObserver(function (en, o) {
+      if (!en[0].isIntersecting) return; o.disconnect();
+      [].slice.call(chat.children).forEach(function (m, i) { setTimeout(function () { m.classList.add("shown"); }, 350 + i * 900); });
+    }, { threshold: 0.4 }).observe(chat);
+  }
+
+  // ---- tour: arrows scroll one card ----
+  var track = document.getElementById("tour");
+  function step(dir) { var c = track.querySelector(".tour-card"); track.scrollBy({ left: dir * (c ? c.getBoundingClientRect().width + 24 : 300), behavior: reduce ? "auto" : "smooth" }); }
+  document.getElementById("tour-prev").addEventListener("click", function () { step(document.documentElement.dir === "rtl" ? 1 : -1); });
+  document.getElementById("tour-next").addEventListener("click", function () { step(document.documentElement.dir === "rtl" ? -1 : 1); });
+
+  // ---- pricing: monthly / yearly ----
+  var cards = document.getElementById("cards");
+  function setPeriode(p) {
+    cards.setAttribute("data-periode", p);
+    document.querySelectorAll(".period button").forEach(function (b) { b.setAttribute("aria-checked", String(b.getAttribute("data-periode") === p)); });
+    cards.querySelectorAll(".card[data-m]").forEach(function (c) {
+      c.querySelector(".px").textContent = (p === "annuel" ? c.getAttribute("data-a") : c.getAttribute("data-m")) + " €";
+      c.querySelector(".per").textContent = nidouT(p === "annuel" ? "ta" : "tm");
+      c.querySelector(".eq").textContent = p === "annuel" ? nidouT("peq").replace("{x}", c.getAttribute("data-eq") + " €") : nidouT("peq2");
+    });
+  }
+  document.querySelectorAll(".period button").forEach(function (b) { b.addEventListener("click", function () { setPeriode(b.getAttribute("data-periode")); }); });
+  window.addEventListener("nidou:lang", function () { setPeriode(cards.getAttribute("data-periode")); });
+  setPeriode("annuel");
 })();
 </script>
 </body>
