@@ -215,3 +215,22 @@ input, select, textarea { border-radius: 999px !important; border: 2px solid var
 .nest { background: var(--white); color: var(--ink); box-shadow: var(--shadow); border-radius: 26px; }
 .nest .kicker, .nest .why { color: var(--mist); opacity: 1; }
 .nest b, .nest .count b { color: var(--nest); font-family: var(--display); font-style: italic; }
+
+/* Bandes sombres : couleur fixe, lisible en mode clair comme en mode sombre */
+:root { --band: #3b2a3a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --band: #3a2a39; } }
+:root[data-theme="dark"] { --band: #3a2a39; }
+.pain, .join { background: var(--band); color: #fff; }
+.pain h2, .pain .lead, .pain p, .join h2, .join p { color: #fff; }
+.pain .lead, .pain .item p, .join p { opacity: .85; }
+.pain .item b { color: var(--yolk); }
+.form input, .form select { background: #fff !important; color: #3b2a3a !important; }
+
+/* Menu sur téléphone : le bouton tient dans la largeur */
+@media (max-width: 720px) {
+  .brand { font-size: 20px; gap: 8px; }
+  .brand svg { width: 28px; height: 28px; }
+  .nav nav .lang svg { display: none; }
+  .nav nav .btn { max-width: 44vw; overflow: hidden; text-overflow: ellipsis; font-size: 13px; padding: 8px 14px; min-height: 38px; }
+  .nav nav .lang select { padding: 4px 6px; font-size: 13px; }
+}

@@ -349,3 +349,8 @@ b, strong { font-weight: 800; }
 .tabs { background: linear-gradient(to top, var(--paper) 55%, rgba(251, 244, 240, 0)); }
 .avatar.enfant { background: var(--yolk); color: var(--plum); }
 .avatar.parent_a_charge, .avatar.autre_a_charge { background: var(--peach); color: var(--peach-ink); }
+
+/* L'écran des économies défile quand il est plus haut que le téléphone */
+.reveal { overflow-y: auto; -webkit-overflow-scrolling: touch; place-items: start center; padding: calc(env(safe-area-inset-top) + 40px) 20px calc(env(safe-area-inset-bottom) + 28px); }
+.reveal-inner { margin: auto 0; }
+.reveal-amount b { font-size: clamp(56px, 19vw, 88px); white-space: nowrap; }
