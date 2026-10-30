@@ -18,6 +18,30 @@
 </head>
 <body>
 
+<!-- Ouverture : le nœud papillon de Lucien se déploie, puis le nom apparaît (une fois par visite, ignorée si mouvements réduits). -->
+<div id="intro" aria-hidden="true">
+  <div class="intro-inner">
+    <svg class="intro-noeud" viewBox="0 0 64 64">
+      <circle class="intro-rond" cx="32" cy="32" r="32" fill="#D95F45"/>
+      <path class="intro-aile g" d="M12 21.5c0-2.6 2.7-4.3 5-3.2l11.5 6.2v15l-11.5 6.2c-2.3 1.1-5-.6-5-3.2z" fill="#FBF4F0"/>
+      <path class="intro-aile d" d="M52 21.5c0-2.6-2.7-4.3-5-3.2l-11.5 6.2v15l11.5 6.2c2.3 1.1 5-.6 5-3.2z" fill="#FBF4F0"/>
+      <rect class="intro-centre" x="26.5" y="24.5" width="11" height="15" rx="4" fill="#E9B23A"/>
+    </svg>
+    <div class="intro-titre">Lucien</div>
+  </div>
+</div>
+<script>
+(function () {
+  var el = document.getElementById("intro"), vu = false;
+  try { vu = sessionStorage.getItem("lucien.intro") === "1"; sessionStorage.setItem("lucien.intro", "1"); } catch (e) {}
+  if (vu || matchMedia("(prefers-reduced-motion: reduce)").matches) { el.remove(); return; }
+  document.documentElement.classList.add("intro-on");
+  var fin = function () { if (!el.isConnected) return; el.classList.add("intro-fin"); document.documentElement.classList.remove("intro-on"); setTimeout(function () { el.remove(); }, 450); };
+  setTimeout(fin, 2100);
+  el.addEventListener("click", fin);
+})();
+</script>
+
 <header class="nav">
   <div class="wrap">
     <a class="brand" href="#top" aria-label="Lucien, accueil">

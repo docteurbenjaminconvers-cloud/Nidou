@@ -289,3 +289,23 @@ html[dir="rtl"] .included li { padding: 0 30px 10px 0; } html[dir="rtl"] .includ
 html[dir="rtl"] .trust-grid li { padding: 22px 62px 22px 22px; } html[dir="rtl"] .trust-grid li::before { left: auto; right: 20px; }
 html[dir="rtl"] .msg.u { margin-left: 0; margin-right: auto; }
 html[dir="rtl"] .pills-trust li { padding: 7px 30px 7px 14px; } html[dir="rtl"] .pills-trust li::before { left: auto; right: 12px; }
+
+/* ---------- Ouverture : nœud papillon et nom de Lucien ---------- */
+#intro { display: none; }
+.js #intro { display: grid; position: fixed; inset: 0; z-index: 1000; place-items: center; background: var(--paper); cursor: pointer; transition: opacity .45s ease, visibility .45s; }
+html.intro-on { overflow: hidden; }
+#intro.intro-fin { opacity: 0; visibility: hidden; }
+.intro-inner { display: grid; justify-items: center; gap: 18px; }
+.intro-noeud { width: clamp(96px, 26vw, 128px); height: auto; overflow: visible; }
+.intro-noeud * { transform-box: view-box; transform-origin: 32px 32px; }
+.intro-rond { animation: intro-rond .55s cubic-bezier(.34,1.56,.64,1) both; }
+.intro-aile { animation: intro-aile .6s cubic-bezier(.34,1.56,.64,1) .35s both; }
+.intro-aile.d { animation-delay: .42s; }
+.intro-centre { animation: intro-centre .45s cubic-bezier(.34,1.8,.64,1) .78s both; }
+.intro-noeud { animation: intro-salut .5s ease-in-out 1.15s both; }
+.intro-titre { font-family: var(--display); font-style: italic; font-weight: 600; font-size: clamp(40px, 11vw, 60px); line-height: 1; color: var(--plum); letter-spacing: -0.02em; animation: intro-titre .6s cubic-bezier(.22,1,.36,1) 1s both; }
+@keyframes intro-rond { from { transform: scale(0); } to { transform: scale(1); } }
+@keyframes intro-aile { from { transform: scaleX(0) scaleY(.4); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes intro-centre { from { transform: scale(0) rotate(-30deg); } to { transform: none; } }
+@keyframes intro-salut { 0%, 100% { transform: rotate(0); } 35% { transform: rotate(-8deg); } 70% { transform: rotate(5deg); } }
+@keyframes intro-titre { from { opacity: 0; transform: translateY(14px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
