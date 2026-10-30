@@ -7,6 +7,8 @@ import type { Db, DocumentRow } from "./db.js";
 import { chargesReport, lignesFamille } from "./charges.js";
 import { publicDoc } from "./api.js";
 import { budgetReport } from "./budget.js";
+import { entreeSemaine } from "./hebdo.js";
+import { pointSemaine } from "./semaine.js";
 
 /**
  * Lucien MCP server — read-only access to a household's papers for any MCP-compatible assistant
@@ -82,6 +84,26 @@ export function createMcpServer(db: Db, householdId: string) {
         cout_enfants_mois: r.cout_enfants_mois, couts: r.couts,
         dates_cles: r.echeances.filter((e) => !e.fait).map((e) => ({ date: e.date, titre: e.titre, note: e.note })),
       });
+    }
+  );
+
+  server.registerTool(
+    "semaine",
+    {
+      title: "La semaine de la famille",
+      description: "Le point de la semaine préparé par Lucien : échéances à ne pas manquer (et celles en retard), agenda des enfants jour par jour, papiers à vérifier, un conseil. À utiliser pour « qu'est-ce qui nous attend cette semaine ? ». Le volet budget n'apparaît que si la banque n'est pas exclue du connecteur.",
+      inputSchema: {},
+    },
+    async () => {
+      log("semaine", {});
+      const h = db.getHousehold(householdId)!;
+      const e = entreeSemaine(db, h);
+      // Same exclusions as the other tools: papers of excluded folders, and no budget when the bank is out of scope.
+      const exclus = new Set(db.listDocuments(householdId).filter((d) => excluded.has(d.category)).map((d) => d.id));
+      e.echeances = e.echeances.filter((x) => !x.document_id || !exclus.has(x.document_id));
+      if (excluded.has("banque")) e.economies = null;
+      const { notification, ...point } = pointSemaine(e);
+      return text(point);
     }
   );
 

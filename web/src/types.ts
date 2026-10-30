@@ -81,6 +81,7 @@ export interface Household {
   comptes?: number;
   boite_recus?: { message_id: string; expediteur: string | null; objet: string | null; documents: number; quand: string }[];
   notifications?: "push" | "push+email";
+  hebdo?: boolean;
   assistant?: AssistantEtat;
 }
 

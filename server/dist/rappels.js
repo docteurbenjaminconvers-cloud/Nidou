@@ -4,6 +4,7 @@ import { envoyerPush } from "./push.js";
 import { envoyerEmail } from "./mail.js";
 import { echeancesFamille, coutsParMembre } from "./famille.js";
 import { chargesReport, lignesFamille } from "./charges.js";
+import { creneauDimanche, emailSemaine, pointDuFoyer } from "./hebdo.js";
 const euro = (n) => `${Math.round(n).toLocaleString("fr-FR")} €`;
 /**
  * Reverse-trial reminders for one household, computed from today's state:
@@ -75,8 +76,14 @@ export function rappelsAlertes(db, h) {
 export async function transportParDefaut(db, h, r) {
     const n = await envoyerPush(db, h.id, { titre: r.titre, corps: r.corps, url: `/${r.route}`, tag: r.cle.split(":")[0] });
     if (db.effectivePlan(h) === "famille") {
-        for (const u of db.usersOfHousehold(h.id))
-            await envoyerEmail({ to: u.email, subject: r.titre, text: `${r.corps}\n\nOuvrir Lucien : ${(process.env.LUCIEN_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, "")}/${r.route}` });
+        const base = (process.env.LUCIEN_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, "");
+        for (const u of db.usersOfHousehold(h.id)) {
+            if (r.semaine) {
+                await envoyerEmail({ to: u.email, ...emailSemaine(r.semaine, u.prenom, base) });
+                continue;
+            }
+            await envoyerEmail({ to: u.email, subject: r.titre, text: `${r.corps}\n\nOuvrir Lucien : ${base}/${r.route}` });
+        }
     }
     if (!n)
         console.log(`[rappel] ${h.nom} · ${r.cle} · ${r.titre}`);
@@ -94,6 +101,30 @@ export async function passeQuotidienne(db, envoyer = (h, r) => transportParDefau
     }
     return n;
 }
+/**
+ * « La semaine de Lucien » for one household, if it is due: Sunday from 17:00 (Paris), once per ISO week,
+ * unless switched off in the settings or there is truly nothing to say.
+ */
+export function rappelHebdo(db, h, now = new Date()) {
+    if (h.hebdo === 0 || !creneauDimanche(now))
+        return [];
+    const p = pointDuFoyer(db, h, now);
+    if (p.vide)
+        return [];
+    return [{ cle: `hebdo:${p.cle}`, titre: p.notification.titre, corps: p.notification.corps, route: "#/semaine", semaine: p }];
+}
+/** Weekly pass (runs with the daily one): the Sunday point, once per household and per week. */
+export async function passeHebdo(db, envoyer = (h, r) => transportParDefaut(db, h, r), now = new Date()) {
+    let n = 0;
+    for (const h of db.listHouseholds()) {
+        for (const r of rappelHebdo(db, h, now))
+            if (db.marquerRappel(h.id, r.cle)) {
+                await envoyer(h, r);
+                n++;
+            }
+    }
+    return n;
+}
 export function demarrerRappels(db) {
     const tick = () => {
         try {
@@ -102,9 +133,9 @@ export function demarrerRappels(db) {
         catch (e) {
             console.error("[veille]", e);
         }
-        return passeQuotidienne(db).catch((e) => console.error("[rappel]", e));
+        return passeQuotidienne(db).then(() => passeHebdo(db)).catch((e) => console.error("[rappel]", e));
     };
     setTimeout(tick, 5_000);
-    const t = setInterval(tick, 6 * 3600_000); // every 6 h; idempotent thanks to rappels_envoyes
+    const t = setInterval(tick, 3 * 3600_000); // every 3 h (the Sunday point goes out between 17:00 and 20:00); idempotent thanks to rappels_envoyes
     t.unref?.();
 }

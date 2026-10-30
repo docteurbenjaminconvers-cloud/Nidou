@@ -4,6 +4,25 @@ import { ApiError } from "../api";
 import type { Household } from "../types";
 import { Back } from "../ui";
 
+/** « Le point du dimanche » : la semaine de Lucien, chaque dimanche soir (notification, et email avec le plan Famille). */
+function PointDimanche({ api, household, onChanged, toast, go }: { api: Api; household: Household; onChanged: () => void; toast: (m: string) => void; go: (s: string, id?: string) => void }) {
+  const [on, setOn] = useState(household.hebdo !== false);
+  const basculer = async () => {
+    const v = !on; setOn(v);
+    try { await api.setHebdo(v); onChanged(); toast(v ? "Le point du dimanche est activé" : "Plus de point du dimanche"); } catch { setOn(!v); toast("Réglage non enregistré, réessayez"); }
+  };
+  return (
+    <section className="section">
+      <div className="section-head"><h2>Le point du dimanche</h2>{on ? <span className="badge">actif</span> : <span className="badge yolk">arrêté</span>}</div>
+      <div className="settings-row">
+        <div><div className="t">La semaine de Lucien</div><div className="s">Chaque dimanche soir : échéances, agenda des enfants, économies et un conseil{household.plan === "famille" ? ", par notification et par email" : ", par notification"}.</div></div>
+        <button className="toggle" role="switch" aria-checked={on} aria-label="Le point du dimanche" onClick={basculer} />
+      </div>
+      <button className="link" style={{ marginTop: 10 }} onClick={() => go("semaine")}>Voir ma semaine</button>
+    </section>
+  );
+}
+
 /** Accounts sharing this household: invite a partner by email, see who is in, remove. */
 function FamillePartagee({ api, household, toast }: { api: Api; household: Household; toast: (m: string) => void }) {
   const [data, setData] = useState<Awaited<ReturnType<Api["comptes"]>> | null>(null);
@@ -122,6 +141,8 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
       </section>
 
       <FamillePartagee api={api} household={household} toast={toast} />
+
+      <PointDimanche api={api} household={household} onChanged={() => onPlan(household.plan)} toast={toast} go={go} />
 
       <section className="section">
         <div className="section-head"><h2>Papiers par email</h2>{household.boite_email ? <span className="badge">active</span> : <span className="badge yolk">plan Famille</span>}</div>

@@ -62,10 +62,15 @@ export const CAT_COLORS: Record<string, string> = {
   abonnement: "#d95f45", sante: "#e58aa5", identite: "#8b6f84", garantie: "#6fbf96", education: "#5fa8b8", vehicule: "#3b2a3a", autre: "#d9c6d4",
 };
 
+/** Le nœud papillon de Lucien (logo seul). */
+export function Noeud() {
+  return <svg viewBox="0 0 64 64" aria-hidden><rect width="64" height="64" rx="32" fill="#D95F45" /><path d="M12 21.5c0-2.6 2.7-4.3 5-3.2l11.5 6.2v15l-11.5 6.2c-2.3 1.1-5-.6-5-3.2z" fill="#FBF4F0" /><path d="M52 21.5c0-2.6-2.7-4.3-5-3.2l-11.5 6.2v15l11.5 6.2c2.3 1.1 5-.6 5-3.2z" fill="#FBF4F0" /><rect x="26.5" y="24.5" width="11" height="15" rx="4" fill="#E9B23A" /></svg>;
+}
+
 export function Logo() {
   return (
     <span className="brand">
-      <svg viewBox="0 0 64 64" aria-hidden><rect width="64" height="64" rx="32" fill="#D95F45" /><path d="M12 21.5c0-2.6 2.7-4.3 5-3.2l11.5 6.2v15l-11.5 6.2c-2.3 1.1-5-.6-5-3.2z" fill="#FBF4F0" /><path d="M52 21.5c0-2.6-2.7-4.3-5-3.2l-11.5 6.2v15l11.5 6.2c2.3 1.1 5-.6 5-3.2z" fill="#FBF4F0" /><rect x="26.5" y="24.5" width="11" height="15" rx="4" fill="#E9B23A" /></svg>
+      <Noeud />
       Lucien
     </span>
   );

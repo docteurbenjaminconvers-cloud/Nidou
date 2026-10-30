@@ -1,6 +1,7 @@
 import { Bell } from "../notifications";
 import type { BudgetReport, ChargesReport, Deadline, Doc, FamilleReport, Household } from "../types";
 import { DateChip, daysUntil, fmtDate, fmtEuro, Logo, relative } from "../ui";
+import { SemaineCarte, calculerSemaine } from "./Semaine";
 
 export function Today({ household, deadlines, docs, charges, budget, go, onDone, unread, famille }: {
   household: Household; deadlines: Deadline[]; docs: Doc[]; charges: ChargesReport | null; budget: BudgetReport | null;
@@ -32,6 +33,8 @@ export function Today({ household, deadlines, docs, charges, budget, go, onDone,
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" /></svg>
         <span>Demander à Lucien…</span>
       </button>
+
+      <SemaineCarte point={calculerSemaine(household, deadlines, docs, budget, famille ?? null)} go={go} />
 
       {household.essai?.actif && (household.essai.jours_restants ?? 0) > 2 && (
         <div className="confidence ok" style={{ display: "flex", justifyContent: "space-between", width: "100%", marginBottom: 14 }}>

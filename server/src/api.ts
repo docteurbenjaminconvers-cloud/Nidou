@@ -16,6 +16,7 @@ import { banquesFR, BANQUES_DEMO, ebConnectHousehold, ebFinishHousehold, ensureE
 import { envoyerEmail } from "./mail.js";
 import { envoyerPush, pushOn } from "./push.js";
 import { appliquerAbonnement, capaciteComptes, creerCheckout, FORMULES, portail, resumeAbonnement, traiterWebhook, type Formule } from "./abonnement.js";
+import { pointDuFoyer } from "./hebdo.js";
 import { AUTH_ON, consommerLien, cookieHeader, demanderLien, emailValide, sessionToken } from "./auth.js";
 import { familleReport, echeancesFamille, JOURS, coutsParMembre } from "./famille.js";
 import { boiteAddress, fromBrevo, processInboundEmail, type InboundEmail } from "./inbox.js";
@@ -230,6 +231,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
       assistant: etatAssistant(db, db.getHousehold(h.id)!),
       veille: { ouverte: V.veilleOuverte(), capacite: V.capaciteVeilles(db, db.getHousehold(h.id)!), en_cours: V.veillesEnCours(db, h.id) },
       boite_recus: db.listInboxMessages(h.id, 10),
+      hebdo: db.getHousehold(h.id)!.hebdo !== 0,
     });
   });
 
@@ -253,7 +255,8 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
 
   api.patch("/household", async (c) => {
     const h = household(c);
-    const body = z.object({ plan: z.enum(["gratuit", "famille"]).optional(), terminer_essai: z.boolean().optional(), nom: z.string().min(1).max(60).optional() }).parse(await c.req.json());
+    const body = z.object({ plan: z.enum(["gratuit", "famille"]).optional(), terminer_essai: z.boolean().optional(), nom: z.string().min(1).max(60).optional(), hebdo: z.boolean().optional() }).parse(await c.req.json());
+    if (body.hebdo !== undefined) db.setHebdo(h.id, body.hebdo);
     if (body.plan) db.setPlan(h.id, body.plan);
     if (body.nom) db.renameHousehold(h.id, body.nom);
     if (body.terminer_essai) db.setTrialEnd(h.id, new Date(0).toISOString());
@@ -443,6 +446,9 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
 
   // ---------- deadlines ----------
   /** Stored deadlines (from documents) merged with the computed family ones (anniversaries, aides, réinscriptions…). */
+  /** « La semaine de Lucien » as the server computes it for the Sunday email (the app computes the same thing locally). */
+  api.get("/semaine", (c) => c.json(pointDuFoyer(db, db.getHousehold(household(c).id)!)));
+
   api.get("/deadlines", (c) => {
     const h = household(c);
     const from = c.req.query("from"), to = c.req.query("to"), done = c.req.query("done") === "1";

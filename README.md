@@ -66,6 +66,16 @@ Le cadre, pensé pour protéger la personne d'abord et la famille ensuite contre
 
 `LUCIEN_VEILLE=1` ouvre la fonction. **À ne faire qu'après validation par un avocat** (consentement, mesures de protection, RGPD : données financières d'un tiers vulnérable, analyse d'impact). Sans fournisseur bancaire configuré, la banque est simulée avec un relevé fictif contenant des schémas d'arnaque.
 
+## La semaine de Lucien (point du dimanche)
+
+Un point hebdomadaire dans la voix du majordome : échéances de la semaine (et celles en retard), agenda des enfants jour par jour (la cantine est seulement comptée), le geste d'économie qui rapporte le plus, les papiers à vérifier et un conseil différent chaque semaine.
+
+- `server/src/semaine.ts` : fonction pure `pointSemaine()`, sans dépendance au serveur. L'appli l'importe telle quelle (`web/src/screens/Semaine.tsx`, y compris en démo), le serveur s'en sert pour l'envoi. Une seule règle des deux côtés.
+- Dans l'appli : carte « Votre semaine avec Lucien » sous la barre de l'accueil, écran `#/semaine`. Le dimanche après midi, la semaine affichée est celle qui commence le lendemain.
+- Envoi : le dimanche à partir de 17 h (heure de Paris), rattrapage le lundi matin, une fois par semaine ISO (`rappels_envoyes`, clé `hebdo:AAAA-Www`). Notification pour tous, email HTML en plus pour le plan Famille (`server/src/hebdo.ts`). Rien n'est envoyé si la semaine est vide.
+- Désactivable : Réglages, « Le point du dimanche » (`PATCH /api/household {hebdo}`, colonne `households.hebdo`). `GET /api/semaine` renvoie le point calculé par le serveur.
+- Connecteur : outil `semaine` (« qu'est-ce qui nous attend cette semaine ? »), sans le volet budget quand la banque est exclue.
+
 ## Connecteur MCP
 
 Point d'entrée : `http://localhost:3000/mcp` (transport HTTP « streamable », sans état).
