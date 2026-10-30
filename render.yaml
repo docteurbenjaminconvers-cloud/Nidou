@@ -1,5 +1,6 @@
 # Démo publique de Nidou sur Render (offre gratuite) : appli, API et connecteur IA, avec la famille de démonstration.
 # Données fictives, effacées à chaque redémarrage. Pas pour de vraies familles.
+# Mise en ligne automatique à chaque envoi sur main, une fois les tests GitHub passés (autoDeployTrigger: checksPass).
 services:
   - type: web
     name: nidou-demo
@@ -7,6 +8,8 @@ services:
     plan: free
     region: frankfurt
     healthCheckPath: /health
+    branch: main
+    autoDeployTrigger: checksPass
     envVars:
       - key: NIDOU_AUTH
         value: "0"
@@ -16,3 +19,6 @@ services:
         value: /tmp/nidou
       - key: NIDOU_VEILLE
         value: "1"
+      # Facultatif : sans clé, la lecture des papiers et l'assistant restent en mode démo. Render la demande à la création.
+      - key: ANTHROPIC_API_KEY
+        sync: false
