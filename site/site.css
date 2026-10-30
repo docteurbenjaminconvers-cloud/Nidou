@@ -52,12 +52,14 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 @media (max-width: 860px) { .nav nav a:not(.btn) { display: none; } .nav nav { gap: 10px; } }
 @media (max-width: 720px) {
   .brand { font-size: 21px; gap: 8px; } .brand svg { width: 28px; height: 28px; }
-  .nav nav .btn { max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; padding: 8px 14px; min-height: 38px; }
+  .nav nav .btn { white-space: nowrap; font-size: 14px; padding: 8px 16px; min-height: 40px; }
   .nav nav .lang svg { display: none; }
   .nav nav .lang select { padding: 4px 6px; font-size: 13px; }
 }
 
 /* ---------- buttons ---------- */
+.nav .btn .short { display: none; }
+@media (max-width: 720px) { .nav .btn .long { display: none; } .nav .btn .short { display: inline; } }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 12px 24px; border-radius: 999px; border: 0; background: var(--nest); color: #fff; font-weight: 800; font-size: 16px; text-decoration: none; cursor: pointer; font-family: inherit; box-shadow: 0 10px 24px rgba(217, 95, 69, 0.30); transition: transform .15s, box-shadow .15s; }
 .btn:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(217, 95, 69, 0.36); }
 .btn:active { transform: scale(0.98); }
