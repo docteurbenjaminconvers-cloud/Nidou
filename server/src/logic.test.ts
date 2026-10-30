@@ -84,3 +84,50 @@ test("la base enregistre et journalise les accès MCP", () => {
   assert.equal(log.length, 1);
   assert.equal(log[0].outil, "echeances");
 });
+
+test("connecteur : un contrat reconduit tacitement garde une date de fin à venir", async () => {
+  const { dateFinCourante } = await import("./deadlines.js");
+  assert.equal(dateFinCourante({ category: "assurance", periodicite: "mensuel", date_fin: "2026-10-25" }, TODAY), "2027-10-25");
+  assert.equal(dateFinCourante({ category: "identite", periodicite: null, date_fin: "2026-10-25" }, TODAY), "2026-10-25");
+});
+
+test("charges fixes : cantine par enfant et activités comptées une seule fois", async () => {
+  const { lignesFamille } = await import("./charges.js");
+  const { coutsParMembre } = await import("./famille.js");
+  const db = new Db(":memory:");
+  const h = seedDemo(db);
+  const lignes = lignesFamille(coutsParMembre(db.listMembers(h.id), db.listActivites(h.id)));
+  const r = chargesReport(db.listDocuments(h.id), TODAY, lignes);
+  const cantines = r.charges.filter((c) => /cantine|demi-pension/i.test(c.titre));
+  assert.equal(cantines.length, 2, cantines.map((c) => c.titre).join(", "));
+  assert.equal(cantines.reduce((s, c) => s + c.montant_mensuel, 0), 126);
+  assert.ok(r.charges.some((c) => c.category === "activites" && c.titre.startsWith("Piano")));
+  assert.ok(r.charges.every((c) => !c.date_fin || c.source !== "contrat" || c.category !== "assurance" || c.date_fin >= TODAY), "assurances reconduites");
+});
+
+test("contrôle technique : rappel explicite du prochain contrôle", () => {
+  const db = new Db(":memory:");
+  const h = db.createHousehold("t");
+  const doc = db.insertDocument({
+    household_id: h.id, member_id: null, title: "Contrôle technique — Peugeot 3008", category: "vehicule", organisme: "Autosur", numero_contrat: null,
+    montant: 79, periodicite: "unique", date_document: "2024-12-19", date_debut: null, date_fin: "2026-12-19",
+    preavis_jours: null, resume: "Contrôle technique favorable, prochain contrôle dans 2 ans.", texte: null, fichier: null, mime: null, confiance: 1,
+  });
+  const d = deadlinesFor(doc, TODAY);
+  assert.equal(d.length, 1);
+  assert.equal(d[0].titre, "Prochain contrôle technique : Peugeot 3008");
+  assert.match(d[0].note ?? "", /au plus tard/);
+});
+
+test("assurance : préavis dépassé, la note du renouvellement le signale", () => {
+  const db = new Db(":memory:");
+  const h = db.createHousehold("t");
+  const doc = db.insertDocument({
+    household_id: h.id, member_id: null, title: "Auto", category: "assurance", organisme: "MAIF", numero_contrat: "X",
+    montant: 612, periodicite: "annuel", date_document: "2024-11-29", date_debut: "2024-11-29", date_fin: "2026-11-29",
+    preavis_jours: 60, resume: null, texte: null, fichier: null, mime: null, confiance: 1,
+  });
+  const renew = deadlinesFor(doc, TODAY).find((x) => x.type === "renouvellement");
+  assert.match(renew?.note ?? "", /préavis de 60 jours est dépassé/);
+  assert.match(renew?.note ?? "", /loi Hamon/);
+});

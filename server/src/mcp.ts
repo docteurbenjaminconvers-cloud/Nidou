@@ -1,9 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { z } from "zod";
-import { familleReport, JOURS } from "./famille.js";
-import type { Db } from "./db.js";
-import { chargesReport } from "./charges.js";
+import { familleReport, JOURS, coutsParMembre } from "./famille.js";
+import { dateFinCourante } from "./deadlines.js";
+import type { Db, DocumentRow } from "./db.js";
+import { chargesReport, lignesFamille } from "./charges.js";
 import { publicDoc } from "./api.js";
 import { budgetReport } from "./budget.js";
 
@@ -20,6 +21,13 @@ export function createMcpServer(db: Db, householdId: string) {
   const visible = () => db.listDocuments(householdId).filter((d) => !excluded.has(d.category));
   const log = (outil: string, args: unknown) => db.logMcpAccess(householdId, outil, args);
   const text = (data: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] });
+  // Internal identifiers that mean nothing to an assistant and only leak structure.
+  const sansFoyer = <T extends { household_id?: unknown }>({ household_id, ...rest }: T) => rest;
+  // End of the current term: a contract renewed by tacit reconduction is still running.
+  const fin = (d: DocumentRow) => {
+    const courante = dateFinCourante(d);
+    return courante !== d.date_fin ? { date_fin: courante, reconduit_tacitement: true, date_fin_initiale: d.date_fin } : { date_fin: d.date_fin };
+  };
 
   server.registerTool(
     "lister_documents",
@@ -37,7 +45,7 @@ export function createMcpServer(db: Db, householdId: string) {
         const needle = q.toLowerCase();
         docs = docs.filter((d) => [d.title, d.organisme, d.resume, d.numero_contrat].some((v) => v?.toLowerCase().includes(needle)));
       }
-      return text(docs.map((d) => ({ id: d.id, titre: d.title, categorie: d.category, organisme: d.organisme, montant: d.montant, periodicite: d.periodicite, date_fin: d.date_fin, resume: d.resume })));
+      return text(docs.map((d) => ({ id: d.id, titre: d.title, categorie: d.category, organisme: d.organisme, montant: d.montant, periodicite: d.periodicite, ...fin(d), resume: d.resume })));
     }
   );
 
@@ -52,7 +60,7 @@ export function createMcpServer(db: Db, householdId: string) {
       log("detail_document", { id });
       const d = db.getDocument(id);
       if (!d || d.household_id !== householdId || excluded.has(d.category)) return text({ erreur: "Document introuvable ou hors périmètre du connecteur." });
-      return text({ ...publicDoc(d), echeances: db.listDeadlines(householdId, { includeDone: true }).filter((x) => x.document_id === d.id) });
+      return text({ ...sansFoyer(publicDoc(d)), ...fin(d), echeances: db.listDeadlines(householdId, { includeDone: true }).filter((x) => x.document_id === d.id).map(sansFoyer) });
     }
   );
 
@@ -90,7 +98,7 @@ export function createMcpServer(db: Db, householdId: string) {
       const end = new Date(Date.now() + 90 * 864e5).toISOString().slice(0, 10);
       const excludedDocIds = new Set(db.listDocuments(householdId).filter((d) => excluded.has(d.category)).map((d) => d.id));
       const items = db.listDeadlines(householdId, { from: from ?? today, to: to ?? end }).filter((d) => !d.document_id || !excludedDocIds.has(d.document_id));
-      return text(items);
+      return text(items.map(sansFoyer));
     }
   );
 
@@ -103,7 +111,9 @@ export function createMcpServer(db: Db, householdId: string) {
     },
     async () => {
       log("charges_fixes", {});
-      const r = chargesReport(visible());
+      // Canteen and paid activities are recurring costs too: taken from the family, not from contracts.
+      const lignes = lignesFamille(coutsParMembre(db.listMembers(householdId), db.listActivites(householdId))).filter((l) => !excluded.has(l.category));
+      const r = chargesReport(visible(), undefined, lignes);
       return text(r);
     }
   );
@@ -118,11 +128,12 @@ export function createMcpServer(db: Db, householdId: string) {
     async ({ q }) => {
       log("rechercher", { q });
       const docs = db.listDocuments(householdId, { q }).filter((d) => !excluded.has(d.category));
-      return text(docs.map((d) => ({ id: d.id, titre: d.title, categorie: d.category, organisme: d.organisme, resume: d.resume, extrait: d.texte?.slice(0, 300) ?? null })));
+      return text(docs.map((d) => ({ id: d.id, titre: d.title, categorie: d.category, organisme: d.organisme, resume: d.resume, ...correspondance(d, q) })));
     }
   );
 
-  server.registerTool(
+  // Not offered at all when the bank scope is excluded: an assistant would only call it to get an error.
+  if (!excluded.has("banque")) server.registerTool(
     "analyse_depenses",
     {
       title: "Analyse des dépenses et économies faciles",
@@ -132,7 +143,6 @@ export function createMcpServer(db: Db, householdId: string) {
     },
     async () => {
       log("analyse_depenses", {});
-      if (excluded.has("banque")) return text({ erreur: "Le périmètre « banque » est exclu du connecteur. Modifiez NIDOU_MCP_EXCLUDE pour l'activer." });
       const r = budgetReport(db.listTransactions(householdId), db.listDocuments(householdId), db.listDecisions(householdId));
       const { recurrences, ...rest } = r;
       return text({ ...rest, recurrences: recurrences.map((x) => ({ marchand: x.marchand, categorie: x.categorie, mensuel: x.mensuel_equivalent, jour: x.jour_du_mois, contrat_connu: Boolean(x.contrat_id) })) });
@@ -140,6 +150,23 @@ export function createMcpServer(db: Db, householdId: string) {
   );
 
   return server;
+}
+
+const CHAMPS: [keyof DocumentRow, string][] = [["title", "titre"], ["organisme", "organisme"], ["numero_contrat", "numéro"], ["resume", "résumé"], ["texte", "contenu"]];
+
+/** Where the search term was found, with a short excerpt around it (the full text is never returned). */
+function correspondance(d: DocumentRow, q: string): { trouve_dans: string | null; extrait: string | null } {
+  const needle = q.toLowerCase();
+  for (const [champ, label] of CHAMPS) {
+    const v = d[champ];
+    if (typeof v !== "string") continue;
+    const i = v.toLowerCase().indexOf(needle);
+    if (i < 0) continue;
+    const start = Math.max(0, i - 80), end = Math.min(v.length, i + needle.length + 120);
+    const extrait = (start > 0 ? "…" : "") + v.slice(start, end).replace(/\s+/g, " ").trim() + (end < v.length ? "…" : "");
+    return { trouve_dans: label, extrait };
+  }
+  return { trouve_dans: null, extrait: null };
 }
 
 /** Handles one HTTP request for the MCP endpoint (stateless: a fresh transport per request). */

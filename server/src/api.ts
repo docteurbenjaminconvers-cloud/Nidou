@@ -5,7 +5,7 @@ import { join } from "node:path";
 import type { Db, DocumentRow } from "./db.js";
 import { extractDocument, heuristicExtract } from "./extract.js";
 import { deadlinesFor } from "./deadlines.js";
-import { chargesReport } from "./charges.js";
+import { chargesReport, lignesFamille } from "./charges.js";
 import { generateLetter, templateLetter } from "./letters.js";
 import { rappelsEssai, rappelsEcheances } from "./rappels.js";
 import * as V from "./veille.js";
@@ -16,7 +16,7 @@ import { envoyerEmail } from "./mail.js";
 import { envoyerPush, pushOn } from "./push.js";
 import { appliquerAbonnement, capaciteComptes, creerCheckout, FORMULES, portail, resumeAbonnement, traiterWebhook, type Formule } from "./abonnement.js";
 import { AUTH_ON, COOKIE, consommerLien, cookieHeader, demanderLien, emailValide, readCookie } from "./auth.js";
-import { familleReport, echeancesFamille, JOURS } from "./famille.js";
+import { familleReport, echeancesFamille, JOURS, coutsParMembre } from "./famille.js";
 import { boiteAddress, fromBrevo, processInboundEmail, type InboundEmail } from "./inbox.js";
 import { parseStatement, merchantOf, categorise, ruleCategory, fingerprint, TX_CATEGORIES, TX_LABEL, type ParsedTx } from "./transactions.js";
 import { budgetReport } from "./budget.js";
@@ -470,7 +470,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
   // ---------- charges fixes ----------
   api.get("/charges", (c) => {
     const h = household(c);
-    const report = chargesReport(db.listDocuments(h.id));
+    const report = chargesReport(db.listDocuments(h.id), undefined, lignesFamille(coutsParMembre(db.listMembers(h.id), db.listActivites(h.id))));
     if (h.plan === "gratuit") {
       // Free plan: totals and the first alert only; full detail is a paid feature.
       return c.json({ ...report, alertes: report.alertes.slice(0, 1), apercu: true, alertes_total: report.alertes.length });

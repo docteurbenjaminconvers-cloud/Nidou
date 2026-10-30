@@ -20,6 +20,30 @@ function addYears(iso: string, years: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** Contracts renewed by tacit reconduction (insurance, energy, telecom, subscriptions…). */
+export const ROLLING: ReadonlySet<string> = new Set(["assurance", "energie", "telecom", "abonnement", "logement", "banque"]);
+
+/**
+ * The end of the contract's current term. A rolling contract whose stored end date has passed has been
+ * tacitly renewed: its term moves forward by whole years until it lies in the future. Other documents
+ * keep their stored date.
+ */
+export function dateFinCourante(doc: Pick<DocumentRow, "category" | "periodicite" | "date_fin">, today = new Date().toISOString().slice(0, 10)): string | null {
+  if (!doc.date_fin || !ROLLING.has(doc.category) || !doc.periodicite || doc.periodicite === "unique") return doc.date_fin;
+  let fin = doc.date_fin;
+  while (fin < today) fin = addYears(fin, 1);
+  return fin;
+}
+
+/** Contrôle technique: the stored end date is the deadline for the next inspection. */
+function isControleTechnique(doc: DocumentRow) {
+  return doc.category === "vehicule" && /contr[ôo]le\s+technique/i.test(doc.title);
+}
+
+function frDate(iso: string) {
+  return new Date(iso + "T00:00:00Z").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+}
+
 /**
  * Derives the deadlines a household should be reminded of from one document.
  * Rules are deliberately simple and explainable; every reminder names why it exists.
@@ -29,7 +53,7 @@ export function deadlinesFor(doc: DocumentRow, today = new Date().toISOString().
   const org = doc.organisme ? ` (${doc.organisme})` : "";
 
   // Rolling contracts (insurance, energy, telecom, subscriptions): yearly renewal + notice window.
-  const rolling: Set<string> = new Set(["assurance", "energie", "telecom", "abonnement", "logement", "banque"]);
+  const rolling = ROLLING;
   // Without a known end date, only insurance is assumed to renew yearly; contracts with no notice
   // period (cancel-anytime subscriptions) get no reminder — they are handled by the charges report.
   const tacit = Boolean(doc.date_fin) || doc.category === "assurance";
@@ -49,12 +73,23 @@ export function deadlinesFor(doc: DocumentRow, today = new Date().toISOString().
           note: `Préavis de ${preavis} jours avant le renouvellement du ${renewal}${org}. Au-delà, le contrat se renouvelle automatiquement.`,
         });
       }
+      // Notice already missed for this term: for insurance held more than a year, French law still allows
+      // cancelling at any time (loi Hamon for car/home, résiliation infra-annuelle for complémentaire santé).
+      const debut = doc.date_debut ?? doc.date_document;
+      const plusDunAn = Boolean(debut && addYears(debut, 1) <= today);
+      const note =
+        limite < today && doc.category === "assurance"
+          ? `Le préavis de ${preavis} jours est dépassé pour cette échéance${org}.` +
+            (plusDunAn
+              ? " Après un an de contrat, une assurance auto, habitation ou une complémentaire santé peut toutefois être résiliée à tout moment (loi Hamon, résiliation infra-annuelle) : comparer les tarifs reste utile."
+              : " Comparer le tarif pour l'échéance suivante.")
+          : `Comparer le tarif avant reconduction${org}.`;
       out.push({
         titre: `Renouvellement : ${doc.title}`,
         type: "renouvellement",
         date: renewal,
         rappel_jours: 7,
-        note: `Comparer le tarif avant reconduction${org}.`,
+        note,
       });
     }
   }
@@ -80,7 +115,17 @@ export function deadlinesFor(doc: DocumentRow, today = new Date().toISOString().
             : doc.category === "impots" ? "declaration"
               : "echeance";
     const lead = type === "expiration" ? 90 : type === "garantie" ? 30 : 14;
-    if (doc.date_fin >= today) {
+    if (doc.date_fin >= today && isControleTechnique(doc)) {
+      const vehicule = doc.title.split(/\s+[—–-]\s+/).slice(1).join(" — ");
+      const dernier = doc.date_document ? ` Dernier contrôle le ${frDate(doc.date_document)}${org}.` : "";
+      out.push({
+        titre: `Prochain contrôle technique${vehicule ? ` : ${vehicule}` : ""}`,
+        type: "echeance",
+        date: doc.date_fin,
+        rappel_jours: 30,
+        note: `À faire au plus tard ce jour-là : prendre rendez-vous quelques semaines avant.${dernier} Rouler sans contrôle technique valide expose à une amende.`,
+      });
+    } else if (doc.date_fin >= today) {
       out.push({
         titre: `${labelFor(type)} : ${doc.title}`,
         type,

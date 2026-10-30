@@ -1,7 +1,17 @@
 import type { DocumentRow } from "./db.js";
+import { dateFinCourante } from "./deadlines.js";
+
+/** A recurring family cost that comes from the household's members and activities rather than a contract. */
+export interface LigneFamille {
+  titre: string;
+  category: "education" | "activites";
+  mensuel: number;
+}
 
 export interface Charge {
-  document_id: string;
+  /** null for a family line (cantine, activity) that has no document behind it. */
+  document_id: string | null;
+  source: "contrat" | "famille";
   titre: string;
   category: string;
   organisme: string | null;
@@ -9,6 +19,7 @@ export interface Charge {
   periodicite: "mensuel" | "trimestriel" | "annuel";
   montant_mensuel: number;
   montant_annuel: number;
+  /** End of the current term (rolled forward after a tacit renewal). */
   date_fin: string | null;
 }
 
@@ -32,7 +43,9 @@ export interface ChargesReport {
 const FACTOR: Record<Charge["periodicite"], number> = { mensuel: 1, trimestriel: 1 / 3, annuel: 1 / 12 };
 
 /** Builds the household's recurring charges and savings alerts from its documents. */
-export function chargesReport(docs: DocumentRow[], today = new Date().toISOString().slice(0, 10)): ChargesReport {
+export function chargesReport(docs: DocumentRow[], today = new Date().toISOString().slice(0, 10), famille: LigneFamille[] = []): ChargesReport {
+  // When the family's canteen costs are known per child, a canteen invoice would count them twice.
+  const cantineParMembre = famille.some((l) => l.category === "education");
   // Several documents can describe the same contract (successive invoices, a new payment schedule):
   // keep the most recent one per contract number so the total counts each contract once.
   const latestByContract = new Map<string, DocumentRow>();
@@ -46,9 +59,11 @@ export function chargesReport(docs: DocumentRow[], today = new Date().toISOStrin
   for (const d of latestByContract.values()) {
     if (!d.montant || !d.periodicite || d.periodicite === "unique") continue;
     if (d.date_fin && d.date_fin < today && !isRolling(d.category)) continue;
+    if (cantineParMembre && d.category === "education" && /cantine|demi-pension|restauration scolaire/i.test(d.title)) continue;
     const mensuel = d.montant * FACTOR[d.periodicite];
     charges.push({
       document_id: d.id,
+      source: "contrat",
       titre: d.title,
       category: d.category,
       organisme: d.organisme,
@@ -56,7 +71,22 @@ export function chargesReport(docs: DocumentRow[], today = new Date().toISOStrin
       periodicite: d.periodicite,
       montant_mensuel: round2(mensuel),
       montant_annuel: round2(mensuel * 12),
-      date_fin: d.date_fin,
+      date_fin: dateFinCourante(d, today),
+    });
+  }
+  for (const l of famille) {
+    if (!(l.mensuel > 0)) continue;
+    charges.push({
+      document_id: null,
+      source: "famille",
+      titre: l.titre,
+      category: l.category,
+      organisme: null,
+      montant_periode: round2(l.mensuel),
+      periodicite: "mensuel",
+      montant_mensuel: round2(l.mensuel),
+      montant_annuel: round2(l.mensuel * 12),
+      date_fin: null,
     });
   }
   charges.sort((a, b) => b.montant_mensuel - a.montant_mensuel);
@@ -96,7 +126,7 @@ function buildAlerts(docs: DocumentRow[], charges: Charge[], total: number, toda
         titre: `${g.length} contrats chez ${g[0].organisme ?? g[0].titre}`,
         detail: `Vérifier qu'il ne s'agit pas d'un doublon : ${g.map((c) => `${c.titre} (${c.montant_mensuel} €/mois)`).join(", ")}.`,
         economie_estimee: round2((g.reduce((s, c) => s + c.montant_mensuel, 0) - cheapest) * 12),
-        document_ids: g.map((c) => c.document_id),
+        document_ids: ids(g),
       });
     }
   }
@@ -109,7 +139,7 @@ function buildAlerts(docs: DocumentRow[], charges: Charge[], total: number, toda
       titre: `${streaming.length} abonnements en cours`,
       detail: `${streaming.map((c) => c.titre).join(", ")}. Garder ceux réellement utilisés ce mois-ci.`,
       economie_estimee: round2(smallest.montant_mensuel * 12),
-      document_ids: streaming.map((c) => c.document_id),
+      document_ids: ids(streaming),
     });
   }
 
@@ -140,7 +170,8 @@ function buildAlerts(docs: DocumentRow[], charges: Charge[], total: number, toda
 
   // 3. Not renegotiated: insurance / energy / telecom contracts older than 2 years.
   for (const c of charges) {
-    const d = byId.get(c.document_id)!;
+    const d = c.document_id ? byId.get(c.document_id) : undefined;
+    if (!d) continue;
     const start = d.date_debut ?? d.date_document;
     if (!start) continue;
     const years = (Date.parse(today) - Date.parse(start)) / (365.25 * 864e5);
@@ -151,7 +182,7 @@ function buildAlerts(docs: DocumentRow[], charges: Charge[], total: number, toda
         titre: `${c.titre} : ${Math.floor(years)} ans sans renégociation`,
         detail: "Les tarifs d'entrée des concurrents sont souvent 10 à 20 % plus bas. Demander un devis comparatif.",
         economie_estimee: round2(c.montant_annuel * 0.1),
-        document_ids: [c.document_id],
+        document_ids: ids([c]),
       });
     }
   }
@@ -165,13 +196,27 @@ function buildAlerts(docs: DocumentRow[], charges: Charge[], total: number, toda
         titre: `${c.titre} pèse ${Math.round((c.montant_mensuel / total) * 100)} % des charges fixes`,
         detail: "C'est le poste où un effort de négociation rapporte le plus.",
         economie_estimee: null,
-        document_ids: [c.document_id],
+        document_ids: ids([c]),
       });
     }
   }
 
   const order = { important: 0, attention: 1, info: 2 };
   return alerts.sort((a, b) => order[a.gravite] - order[b.gravite] || (b.economie_estimee ?? 0) - (a.economie_estimee ?? 0));
+}
+
+function ids(charges: Charge[]): string[] {
+  return charges.map((c) => c.document_id).filter((x): x is string => Boolean(x));
+}
+
+/** Family lines (canteen and paid activities per member) for the charges report. */
+export function lignesFamille(couts: { prenom: string; cantine: number; lignes: { titre: string; mensuel: number }[] }[]): LigneFamille[] {
+  const out: LigneFamille[] = [];
+  for (const m of couts) {
+    if (m.cantine > 0) out.push({ titre: `Cantine — ${m.prenom}`, category: "education", mensuel: m.cantine });
+    for (const l of m.lignes) out.push({ titre: `${l.titre} — ${m.prenom}`, category: "activites", mensuel: l.mensuel });
+  }
+  return out;
 }
 
 function isRolling(category: string) {
