@@ -49,6 +49,9 @@ p { margin: 0; }
 .top .sub { color: var(--mist); font-size: 14px; }
 .brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 18px; letter-spacing: -0.02em; }
 .brand svg { width: 26px; height: 26px; }
+.home-brand { margin-bottom: 10px; }
+.home-brand .brand { font-family: var(--display); font-style: italic; font-weight: 600; font-size: 21px; color: var(--plum); gap: 9px; }
+.home-brand .brand svg { width: 30px; height: 30px; }
 
 .tabs { position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--tab-h) + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom);
   background: rgba(246, 247, 244, 0.92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--line); z-index: 20; }

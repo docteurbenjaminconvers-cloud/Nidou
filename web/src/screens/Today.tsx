@@ -1,6 +1,6 @@
 import { Bell } from "../notifications";
 import type { BudgetReport, ChargesReport, Deadline, Doc, FamilleReport, Household } from "../types";
-import { DateChip, daysUntil, fmtDate, fmtEuro, relative } from "../ui";
+import { DateChip, daysUntil, fmtDate, fmtEuro, Logo, relative } from "../ui";
 
 export function Today({ household, deadlines, docs, charges, budget, go, onDone, unread, famille }: {
   household: Household; deadlines: Deadline[]; docs: Doc[]; charges: ChargesReport | null; budget: BudgetReport | null;
@@ -21,6 +21,7 @@ export function Today({ household, deadlines, docs, charges, budget, go, onDone,
     <div className="screen">
       <div className="top">
         <div>
+          <div className="home-brand"><Logo /></div>
           <h1>{hello}</h1>
           <p className="sub">{household.nom}</p>
         </div>
