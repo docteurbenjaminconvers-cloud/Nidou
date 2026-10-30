@@ -75,6 +75,15 @@ Point d'entrée : `http://localhost:3000/mcp` (transport HTTP « streamable », 
 
 Test : `NIDOU_URL=http://localhost:3000/mcp NIDOU_MCP_TOKEN=… node server/mcp-smoke.mjs`
 
+
+### Brancher le connecteur dans Claude
+
+Chaque foyer a une **adresse personnelle** : `https://<serveur>/mcp/<jeton>` (Réglages → Connecteur IA → Copier). Dans claude.ai : Réglages → Connecteurs → Ajouter un connecteur personnalisé, coller l'adresse. Les outils qui acceptent un en-tête (Claude Desktop, Cursor) peuvent aussi utiliser `https://<serveur>/mcp` avec `Authorization: Bearer <jeton>`. « Régénérer l'adresse » révoque l'ancienne.
+
+### Démo publique en un clic (Render)
+
+`render.yaml` décrit un serveur de démonstration gratuit (famille fictive, données effacées à chaque redémarrage) : https://render.com/deploy?repo=https://github.com/docteurbenjaminconvers-cloud/Nidou
+
 ## Structure
 
 ```

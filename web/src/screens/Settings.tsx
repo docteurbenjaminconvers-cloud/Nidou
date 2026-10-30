@@ -143,15 +143,14 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
       <section className="section">
         <div className="section-head"><h2>Connecteur IA</h2>{household.plan === "famille" ? <span className="badge">actif</span> : <span className="badge yolk">plan Famille</span>}</div>
         <p style={{ marginBottom: 10 }}>Demandez à Claude ou ChatGPT « quand expire mon assurance auto ? » : l'assistant interroge vos papiers, en lecture seule, et chaque accès est journalisé.</p>
-        <div className="settings-row"><div><div className="t">Adresse du connecteur</div><div className="s">À ajouter comme connecteur MCP distant</div></div></div>
-        <div className="code" style={{ marginTop: 8 }}>{mcpUrl}</div>
-        {household.mcp_token && (
+        {household.mcp_token ? (
           <>
-            <div className="settings-row"><div><div className="t">Jeton d'accès de votre nid</div><div className="s">À coller comme « Bearer token » ; propre à votre foyer</div></div><button className="link" onClick={async () => { try { await navigator.clipboard.writeText(household.mcp_token!); toast("Jeton copié"); } catch { toast(household.mcp_token!); } }}>Copier</button></div>
-            <div className="code" style={{ marginTop: 8 }}>{household.mcp_token}</div>
-            <button className="link" style={{ marginTop: 8 }} onClick={async () => { const t = await api.regenererMcp(); toast("Nouveau jeton : " + t.slice(0, 6) + "…"); onPlan(household.plan); }}>Régénérer le jeton (révoque l'ancien)</button>
+            <div className="settings-row"><div><div className="t">Adresse personnelle du connecteur</div><div className="s">Dans Claude : Réglages → Connecteurs → Ajouter un connecteur personnalisé, puis collez-la. Gardez-la pour vous : elle ouvre vos papiers.</div></div><button className="link" onClick={async () => { const u = `${mcpUrl}/${household.mcp_token}`; try { await navigator.clipboard.writeText(u); toast("Adresse copiée"); } catch { toast(u); } }}>Copier</button></div>
+            <div className="code" style={{ marginTop: 8, wordBreak: "break-all" }}>{mcpUrl}/{household.mcp_token}</div>
+            <p className="note" style={{ marginTop: 8 }}>Pour un outil qui accepte un en-tête d'autorisation (Claude Desktop, Cursor) : adresse {mcpUrl} et « Bearer » suivi du jeton.</p>
+            <button className="link" style={{ marginTop: 8 }} onClick={async () => { const t = await api.regenererMcp(); toast("Nouveau jeton : " + t.slice(0, 6) + "…"); onPlan(household.plan); }}>Régénérer l'adresse (révoque l'ancienne)</button>
           </>
-        )}
+        ) : <p className="note">L'adresse personnelle du connecteur apparaît ici avec le plan Famille.</p>}
         <div className="settings-row"><div><div className="t">Santé et banque exclues</div><div className="s">Ces dossiers ne sont jamais lus par le connecteur</div></div><button className="toggle" role="switch" aria-checked="true" onClick={() => toast("Réglé côté serveur (NIDOU_MCP_EXCLUDE)")} /></div>
         <div className="settings-row"><div><div className="t">Lecture seule</div><div className="s">Aucune action sans confirmation dans Nidou</div></div><button className="toggle" role="switch" aria-checked="true" onClick={() => toast("L'écriture arrivera plus tard, toujours avec confirmation")} /></div>
       </section>

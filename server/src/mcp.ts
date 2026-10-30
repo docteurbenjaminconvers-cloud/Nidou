@@ -147,10 +147,11 @@ export function createMcpServer(db: Db, householdId: string) {
  * The bearer token identifies the household (each household has its own `mcp_token`, shown in the app's settings).
  * NIDOU_MCP_TOKEN, if set, remains accepted for the first household (single-household prototype).
  */
-export async function handleMcpRequest(db: Db, req: Request): Promise<Response> {
+export async function handleMcpRequest(db: Db, req: Request, pathToken?: string): Promise<Response> {
   const unauthorized = () => new Response(JSON.stringify({ error: "non autorisé" }), { status: 401, headers: { "content-type": "application/json", "www-authenticate": "Bearer" } });
   const auth = req.headers.get("authorization") ?? "";
-  const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  // claude.ai custom connectors only take a URL: the token may also sit in the path (/mcp/<token>).
+  const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : (pathToken ?? "").trim();
   if (!bearer) return unauthorized();
   let h = db.householdByMcpToken(bearer);
   if (!h && process.env.NIDOU_MCP_TOKEN && bearer === process.env.NIDOU_MCP_TOKEN) h = db.firstHousehold();

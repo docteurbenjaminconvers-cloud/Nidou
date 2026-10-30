@@ -36,6 +36,7 @@ app.route("/api", createApi(db, { uploadDir: join(DATA_DIR, "uploads") }));
 
 // MCP endpoint (streamable HTTP). Claude Desktop / claude.ai: https://<host>/mcp
 app.all("/mcp", (c) => handleMcpRequest(db, c.req.raw));
+app.all("/mcp/:token", (c) => handleMcpRequest(db, c.req.raw, c.req.param("token")));
 
 // Public waitlist endpoint used by the marketing site (site/).
 app.post("/api/waitlist", async (c) => {

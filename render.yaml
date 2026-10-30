@@ -1,0 +1,18 @@
+# Démo publique de Nidou sur Render (offre gratuite) : appli, API et connecteur IA, avec la famille de démonstration.
+# Données fictives, effacées à chaque redémarrage. Pas pour de vraies familles.
+services:
+  - type: web
+    name: nidou-demo
+    runtime: docker
+    plan: free
+    region: frankfurt
+    healthCheckPath: /health
+    envVars:
+      - key: NIDOU_AUTH
+        value: "0"
+      - key: NIDOU_SEED
+        value: "1"
+      - key: NIDOU_DATA
+        value: /tmp/nidou
+      - key: NIDOU_VEILLE
+        value: "1"
