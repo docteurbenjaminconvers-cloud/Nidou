@@ -9,7 +9,8 @@ declare let self: ServiceWorkerGlobalScope & { __WB_MANIFEST: Parameters<typeof 
 // Offline shell (precached build) ; API and MCP are never cached.
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
-registerRoute(new NavigationRoute(createHandlerBoundToURL("index.html"), { denylist: [/^\/api/, /^\/mcp/] }));
+// Le site vitrine (/site) et les pages publiques servies par le serveur ne doivent jamais être remplacés par l'appli.
+registerRoute(new NavigationRoute(createHandlerBoundToURL("index.html"), { denylist: [/^\/api/, /^\/mcp/, /^\/site(\/|$)/, /^\/health/] }));
 registerRoute(({ url }) => url.pathname.startsWith("/api/"), new NetworkFirst({ cacheName: "lucien-api", networkTimeoutSeconds: 4 }), "GET");
 
 self.addEventListener("install", () => self.skipWaiting());
