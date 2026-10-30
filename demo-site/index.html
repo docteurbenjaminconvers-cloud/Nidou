@@ -84,7 +84,7 @@
     <div class="hero-art" aria-label="Aperçu de l'application Lucien">
       <figure class="device back"><img src="img/app-reveal.webp" width="300" height="649" alt="Écran Lucien : 1 949 € d'économies faciles trouvées par an" loading="eager"></figure>
       <figure class="device front">
-        <video id="hero-video" src="video/lucien-visite.mp4" poster="video/lucien-visite.webp" width="300" height="649" autoplay muted loop playsinline preload="metadata" aria-label="Visite de l'appli Lucien : l'accueil, les économies trouvées dans un relevé, l'agenda, les papiers"></video>
+        <video id="hero-video" src="video/lucien-visite.mp4" poster="video/lucien-visite.webp" width="300" height="649" autoplay muted loop playsinline preload="auto" aria-label="Visite de l'appli Lucien : l'accueil, les économies trouvées dans un relevé, l'agenda, les papiers"></video>
         <button class="vid-toggle" id="vid-toggle" type="button" aria-label="Mettre la vidéo en pause">❚❚</button>
       </figure>
       <div class="float f1"><span class="dot ember"></span><span data-i18n="b1">Préavis : plus que 12 jours</span></div>
@@ -441,7 +441,15 @@
     if (reduce) { vid.removeAttribute("autoplay"); vid.pause(); }
     vbtn.addEventListener("click", function () { if (vid.paused) { userPaused = false; vid.play().catch(function () {}); } else { userPaused = true; vid.pause(); } });
     vid.addEventListener("play", setBtn); vid.addEventListener("pause", setBtn); setBtn(); window.addEventListener("lucien:lang", setBtn);
-    if ("IntersectionObserver" in window && !reduce) new IntersectionObserver(function (en) { if (en[0].isIntersecting) { if (!userPaused) vid.play().catch(function () {}); } else vid.pause(); }, { threshold: 0.2 }).observe(vid);
+    // iPhone : la lecture automatique peut être bloquée (mode économie d'énergie…) : on relance au premier geste.
+    vid.muted = true; vid.defaultMuted = true; vid.playsInline = true;
+    function lancer() { if (!reduce && !userPaused && vid.paused) vid.play().catch(attendreGeste); }
+    function attendreGeste() {
+      var go = function () { ["touchstart", "pointerdown", "scroll", "keydown"].forEach(function (e) { removeEventListener(e, go, true); }); lancer(); };
+      ["touchstart", "pointerdown", "scroll", "keydown"].forEach(function (e) { addEventListener(e, go, { capture: true, passive: true, once: true }); });
+    }
+    vid.addEventListener("canplay", lancer, { once: true });
+    if ("IntersectionObserver" in window && !reduce) new IntersectionObserver(function (en) { if (en[0].isIntersecting) lancer(); else vid.pause(); }, { threshold: 0.2 }).observe(vid);
   }
 
   // ---- tour: arrows scroll one card ----
