@@ -386,3 +386,33 @@ b, strong { font-weight: 800; }
 .bank-picker button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 12px; background: none; border: 0; text-align: left; font: inherit; font-weight: 700; color: inherit; cursor: pointer; }
 .bank-picker img { border-radius: 8px; object-fit: contain; }
 .bank-dot { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: var(--moss-soft); color: var(--nest); font-weight: 800; }
+
+/* ---------- assistant « Demander à Nidou » ---------- */
+.ask { display: flex; align-items: center; gap: 10px; width: 100%; margin: 0 0 16px; padding: 13px 16px; border-radius: 999px; border: 2px solid var(--lilac-soft); background: var(--white); color: var(--mist); font: inherit; font-weight: 600; text-align: left; box-shadow: var(--shadow); }
+.ask svg { width: 20px; height: 20px; color: var(--lilac-ink); flex: 0 0 auto; }
+.assistant .fil { display: flex; flex-direction: column; gap: 10px; padding-bottom: 8px; }
+.bulle { max-width: 88%; padding: 11px 14px; border-radius: 18px; line-height: 1.45; font-size: 15px; }
+.bulle-texte { white-space: pre-wrap; }
+.bulle.user { align-self: flex-end; background: var(--nest); color: var(--white); border-bottom-right-radius: 6px; }
+.bulle.assistant { align-self: flex-start; background: var(--white); border: 1px solid var(--line); border-bottom-left-radius: 6px; }
+.bulle.erreur { background: var(--yolk-soft); border-color: transparent; }
+.bulle.attente { display: inline-flex; gap: 5px; padding: 14px 16px; }
+.bulle.attente span { width: 7px; height: 7px; border-radius: 50%; background: var(--lilac); animation: nidou-pulse 1s infinite ease-in-out; }
+.bulle.attente span:nth-child(2) { animation-delay: 0.15s; }
+.bulle.attente span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes nidou-pulse { 0%, 100% { opacity: 0.3; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.chip { border: 1px solid var(--line); background: var(--lilac-soft); color: var(--lilac-ink); border-radius: 999px; padding: 7px 12px; font: inherit; font-size: 13.5px; font-weight: 600; text-align: left; }
+.assistant-vide { margin: 4px 0 14px; }
+.courrier { margin-top: 10px; border: 1px dashed var(--line); border-radius: 12px; background: var(--paper); }
+.courrier-head { display: flex; justify-content: space-between; gap: 10px; padding: 8px 12px; border-bottom: 1px dashed var(--line); font-size: 13.5px; }
+.courrier pre { margin: 0; padding: 10px 12px; max-height: 260px; overflow: auto; white-space: pre-wrap; font: 13px/1.45 var(--font); }
+.assistant-saisie { position: sticky; bottom: calc(var(--tab-h) + 8px); display: flex; gap: 8px; padding: 8px; margin-top: 8px; background: var(--white); border: 1px solid var(--line); border-radius: 999px; box-shadow: var(--shadow); }
+.assistant-saisie input { flex: 1; min-width: 0; border: 0; background: none; padding: 0 10px; font: inherit; font-size: 16px; outline: none; }
+.assistant-saisie .btn { min-height: 40px; width: 44px; padding: 0; box-shadow: none; }
+/* connector tutorial */
+.etapes { list-style: none; padding: 0; margin: 14px 0 26px; }
+.etapes li { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px dashed var(--line); }
+.etapes .t { font-weight: 700; }
+.etapes .s { color: var(--ink); font-size: 14px; margin-top: 2px; line-height: 1.45; }
+.etape-num { flex: 0 0 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--lilac-soft); color: var(--lilac-ink); font-weight: 800; font-size: 14px; }

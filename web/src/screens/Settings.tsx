@@ -141,11 +141,26 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
       </section>
 
       <section className="section">
+        <div className="section-head"><h2>Assistant Nidou</h2>{household.assistant?.option ? <span className="badge">actif</span> : <span className="badge yolk">option</span>}</div>
+        <p style={{ marginBottom: 10 }}>Posez vos questions directement dans Nidou : « qu'est-ce que je dois faire ce mois-ci ? », « résilie mon assurance auto ». Sans compte Claude ni ChatGPT.</p>
+        <div className="settings-row">
+          <div><div className="t">{household.assistant?.option ? "Option active" : `${fmtPrix(household.assistant?.prix.mensuel ?? 2.9)} par mois ou ${fmtPrix(household.assistant?.prix.annuel ?? 29)} par an`}</div><div className="s">{household.assistant?.option ? `${household.assistant.restantes} questions restantes ce mois-ci, sur ${household.assistant.quota}` : household.assistant?.acces === "essai" ? `Essai : ${household.assistant.restantes} questions offertes` : "Jusqu'à 300 questions par mois, en plus de votre formule"}</div></div>
+          {household.assistant?.option
+            ? <button className="link" onClick={async () => { if (!confirm("Retirer l'option assistant ?")) return; try { await api.assistantOption(false); onPlan(household.plan); toast("Option retirée"); } catch (e) { toast((e as Error).message); } }}>Retirer</button>
+            : household.plan === "famille"
+              ? <button className="link" onClick={async () => { try { await api.assistantOption(true); onPlan(household.plan); toast("Assistant activé"); } catch (e) { toast((e as Error).message); } }}>Ajouter</button>
+              : <span className="badge yolk">avec une formule</span>}
+        </div>
+        <button className="link" style={{ marginTop: 10 }} onClick={() => go("assistant")}>Ouvrir l'assistant</button>
+      </section>
+
+      <section className="section">
         <div className="section-head"><h2>Connecteur IA</h2>{household.plan === "famille" ? <span className="badge">actif</span> : <span className="badge yolk">plan Famille</span>}</div>
         <p style={{ marginBottom: 10 }}>Demandez à Claude ou ChatGPT « quand expire mon assurance auto ? » : l'assistant interroge vos papiers, en lecture seule, et chaque accès est journalisé.</p>
+        <button className="btn ghost block" style={{ marginBottom: 10 }} onClick={() => go("connecteur")}>Brancher Nidou sur Claude ou ChatGPT : le tuto</button>
         {household.mcp_token ? (
           <>
-            <div className="settings-row"><div><div className="t">Adresse personnelle du connecteur</div><div className="s">Dans Claude : Réglages → Connecteurs → Ajouter un connecteur personnalisé, puis collez-la. Gardez-la pour vous : elle ouvre vos papiers.</div></div><button className="link" onClick={async () => { const u = `${mcpUrl}/${household.mcp_token}`; try { await navigator.clipboard.writeText(u); toast("Adresse copiée"); } catch { toast(u); } }}>Copier</button></div>
+            <div className="settings-row"><div><div className="t">Adresse personnelle du connecteur</div><div className="s">À coller dans Claude ou ChatGPT (voir le tuto). Gardez-la pour vous : elle ouvre vos papiers.</div></div><button className="link" onClick={async () => { const u = `${mcpUrl}/${household.mcp_token}`; try { await navigator.clipboard.writeText(u); toast("Adresse copiée"); } catch { toast(u); } }}>Copier</button></div>
             <div className="code" style={{ marginTop: 8, wordBreak: "break-all" }}>{mcpUrl}/{household.mcp_token}</div>
             <p className="note" style={{ marginTop: 8 }}>Pour un outil qui accepte un en-tête d'autorisation (Claude Desktop, Cursor) : adresse {mcpUrl} et « Bearer » suivi du jeton.</p>
             <button className="link" style={{ marginTop: 8 }} onClick={async () => { const t = await api.regenererMcp(); toast("Nouveau jeton : " + t.slice(0, 6) + "…"); onPlan(household.plan); }}>Régénérer l'adresse (révoque l'ancienne)</button>

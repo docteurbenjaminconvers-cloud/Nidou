@@ -81,6 +81,16 @@ export interface Household {
   comptes?: number;
   boite_recus?: { message_id: string; expediteur: string | null; objet: string | null; documents: number; quand: string }[];
   notifications?: "push" | "push+email";
+  assistant?: AssistantEtat;
+}
+
+export interface AssistantEtat {
+  disponible: boolean; acces: "option" | "essai" | "aucun"; quota: number; utilisees: number; restantes: number;
+  en_pause: boolean; prix: { mensuel: number; annuel: number }; option: boolean;
+}
+export interface AssistantMessage { role: "user" | "assistant"; content: string }
+export interface AssistantReponse {
+  reponse: string; liens: { type: "doc"; id: string; titre: string }[]; courrier: { titre: string; texte: string } | null; etat: AssistantEtat;
 }
 
 export interface Charge {

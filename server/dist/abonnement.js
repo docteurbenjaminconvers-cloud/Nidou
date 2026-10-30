@@ -83,6 +83,30 @@ export async function ajouterVeillePayante(db, h, periode) {
     // the webhook (customer.subscription.updated) sets veilles_supp from the billed quantity
     return { simule: false, total: actuel + 1 };
 }
+/**
+ * « Demander à Nidou » option (2,90 €/mois ou 29 €/an), added to or removed from the existing subscription.
+ * Stripe prices: STRIPE_PRICE_ASSISTANT_MENSUEL / _ANNUEL, matched to the subscription's own period.
+ */
+export async function basculerAssistant(db, h, actif) {
+    const set = (v) => db.raw.prepare("UPDATE households SET assistant_option = ? WHERE id = ?").run(v ? 1 : 0, h.id);
+    if (!stripeOn()) {
+        set(actif);
+        return { simule: true, actif };
+    }
+    if (!h.stripe_subscription_id)
+        throw new Error("Choisissez d'abord une formule Solo, Duo ou Tribu.");
+    const price = process.env[`STRIPE_PRICE_ASSISTANT_${(h.abonnement_periode ?? "mensuel").toUpperCase()}`];
+    if (!price)
+        throw new Error("Prix Stripe de l'assistant manquant (STRIPE_PRICE_ASSISTANT_MENSUEL / _ANNUEL).");
+    const sub = await stripe().subscriptions.retrieve(h.stripe_subscription_id);
+    const item = sub.items.data.find((i) => i.price.id === price);
+    if (actif && !item)
+        await stripe().subscriptionItems.create({ subscription: sub.id, price, quantity: 1, proration_behavior: "create_prorations" });
+    if (!actif && item)
+        await stripe().subscriptionItems.del(item.id, { proration_behavior: "create_prorations" });
+    set(actif); // the webhook confirms it from the billed items
+    return { simule: false, actif };
+}
 export async function portail(h) {
     if (!stripeOn() || !h.stripe_customer_id)
         return null;
@@ -141,6 +165,11 @@ export function appliquerEvenement(db, event) {
             return "subscription: foyer inconnu";
         const statut = event.type === "customer.subscription.deleted" ? "canceled" : o.status ?? "active";
         appliquerAbonnement(db, h, { customer: o.customer ?? null, subscription: o.id, statut, formule: formuleDe(), periode: periodeDe(), fin: finDe() });
+        const prixAssistant = [process.env.STRIPE_PRICE_ASSISTANT_MENSUEL, process.env.STRIPE_PRICE_ASSISTANT_ANNUEL].filter(Boolean);
+        if (prixAssistant.length) {
+            const on = statut !== "canceled" && (o.items?.data ?? []).some((i) => prixAssistant.includes(i.price.id));
+            db.raw.prepare("UPDATE households SET assistant_option = ? WHERE id = ?").run(on ? 1 : 0, h.id);
+        }
         const prixVeille = [process.env.STRIPE_PRICE_VEILLE_MENSUEL, process.env.STRIPE_PRICE_VEILLE_ANNUEL].filter(Boolean);
         if (prixVeille.length) {
             const n = statut === "canceled" ? 0 : (o.items?.data ?? []).filter((i) => prixVeille.includes(i.price.id)).reduce((s2, i) => s2 + (i.quantity ?? 1), 0);

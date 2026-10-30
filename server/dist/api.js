@@ -8,7 +8,8 @@ import { chargesReport, lignesFamille } from "./charges.js";
 import { generateLetter, templateLetter } from "./letters.js";
 import { rappelsEssai, rappelsEcheances } from "./rappels.js";
 import * as V from "./veille.js";
-import { ajouterVeillePayante } from "./abonnement.js";
+import { ajouterVeillePayante, basculerAssistant } from "./abonnement.js";
+import { AssistantErreur, ensureAssistantSchema, etatAssistant, repondre } from "./assistant.js";
 import { bridge, eb, fournisseur, notifierAlertes, synchroniserFoyer, synchroniserVeille } from "./banques.js";
 import { banquesFR, BANQUES_DEMO, ebConnectHousehold, ebFinishHousehold, ensureEbSchema, linkExtra, newState } from "./enablebanking.js";
 import { envoyerPush, pushOn } from "./push.js";
@@ -41,6 +42,7 @@ const freeCapEur = () => Number(process.env.NIDOU_IA_PLAFOND_GRATUIT_EUR ?? 2000
 export function createApi(db, opts) {
     const api = new Hono();
     V.ensureVeilleSchema(db);
+    ensureAssistantSchema(db);
     ensureEbSchema(db);
     const secure = () => (process.env.NIDOU_PUBLIC_URL ?? "").startsWith("https://");
     // ---------- auth (magic link) ----------
@@ -217,6 +219,7 @@ export function createApi(db, opts) {
             abonnement: resumeAbonnement(db.getHousehold(h.id)),
             comptes: db.usersOfHousehold(h.id).length,
             capacite_comptes: capaciteComptes(db, db.getHousehold(h.id)),
+            assistant: etatAssistant(db, db.getHousehold(h.id)),
             veille: { ouverte: V.veilleOuverte(), capacite: V.capaciteVeilles(db, db.getHousehold(h.id)), en_cours: V.veillesEnCours(db, h.id) },
             boite_recus: db.listInboxMessages(h.id, 10),
         });
@@ -739,6 +742,37 @@ export function createApi(db, opts) {
             return new Response("﻿" + csv, { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="journal-veille-${v.id.slice(0, 8)}.csv"` } });
         }
         return c.json({ verification: V.verifierJournal(db, v.id), lignes });
+    });
+    // ---------- assistant « Demander à Nidou » (option payante) ----------
+    api.get("/assistant", (c) => c.json(etatAssistant(db, db.getHousehold(household(c).id))));
+    api.post("/assistant", async (c) => {
+        const h = db.getHousehold(household(c).id);
+        const body = z.object({ messages: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(4000) })).min(1).max(40) }).safeParse(await c.req.json().catch(() => null));
+        if (!body.success)
+            return c.json({ error: "requete", message: "Question illisible." }, 400);
+        try {
+            const u = currentUser(c);
+            return c.json(await repondre(db, h, body.data.messages, { nom: u?.prenom ?? null }));
+        }
+        catch (e) {
+            if (e instanceof AssistantErreur)
+                return c.json({ error: e.code, message: e.message, etat: etatAssistant(db, h) }, e.code === "acces" ? 402 : e.code === "quota" ? 429 : e.code === "requete" ? 400 : 503);
+            throw e;
+        }
+    });
+    api.post("/abonnement/assistant", async (c) => {
+        if (!isOwner(c))
+            return c.json({ error: "proprietaire", message: "Seul le propriétaire du nid gère l'abonnement." }, 403);
+        const h = db.getHousehold(household(c).id);
+        const body = z.object({ actif: z.boolean() }).parse(await c.req.json().catch(() => ({ actif: true })));
+        if (body.actif && db.effectivePlan(h) !== "famille")
+            return c.json({ error: "plan", message: "L'assistant s'ajoute à une formule Solo, Duo ou Tribu." }, 402);
+        try {
+            return c.json({ ...(await basculerAssistant(db, h, body.actif)), etat: etatAssistant(db, db.getHousehold(h.id)) });
+        }
+        catch (e) {
+            return c.json({ error: "paiement", message: e.message }, 400);
+        }
     });
     api.post("/abonnement/veille", async (c) => {
         const h = household(c);

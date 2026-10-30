@@ -1,3 +1,4 @@
+import type { AssistantEtat, AssistantMessage, AssistantReponse } from "./types";
 import type { Activite, BankStatus, BudgetAction, BudgetReport, ChargesReport, Deadline, Doc, FamilleReport, Household, ImportResult, Member, Mesure, Temoin, Banque, BanquesReport, Veille, VeillesReport, VuePersonne } from "./types";
 import demoFamille from "./demo/famille.json";
 import demoBudget from "./demo/budget.json";
@@ -50,6 +51,8 @@ export interface Api {
   annulerInvitation(token: string): Promise<void>;
   retirerCompte(userId: string): Promise<void>;
   regenererMcp(): Promise<string>;
+  assistant(messages: AssistantMessage[]): Promise<AssistantReponse>;
+  assistantOption(actif: boolean): Promise<AssistantEtat>;
   renommer(nom: string): Promise<void>;
   checkout(formule: "solo" | "duo" | "tribu", periode: "mensuel" | "annuel"): Promise<{ url: string; simule: boolean }>;
   pushCle(): Promise<{ actif: boolean; cle: string | null; appareils: number }>;
@@ -143,6 +146,8 @@ const serverApi: Api = {
   annulerInvitation: async (token) => { await call(`/invitations/${token}`, { method: "DELETE" }); },
   retirerCompte: async (id) => { await call(`/foyer/comptes/${id}`, { method: "DELETE" }); },
   regenererMcp: async () => (await call<{ token: string }>("/mcp/regenerer", { method: "POST" })).token,
+  assistant: (messages) => call("/assistant", json({ messages })),
+  assistantOption: async (actif) => (await call<{ etat: AssistantEtat }>("/abonnement/assistant", json({ actif }))).etat,
   renommer: async (nom) => { await call("/household", json({ nom }, "PATCH")); },
   checkout: (formule, periode) => call("/abonnement/checkout", json({ formule, periode })),
   pushCle: () => call("/push/cle"),
@@ -179,13 +184,15 @@ function makeDemoApi(): Api {
     invitations: [] as { token: string; email: string; prenom: string | null; expire_le: string }[],
     veilles: [] as (Veille & { jeton: string; historique: { quand: string; acteur: string; action: string; details: string; empreinte: string }[] })[],
     veillesSupp: 0,
+    assistantOption: false,
+    assistantQuestions: 0,
   };
   // Demo of the watch: same rules as the server, on a fictional statement (pension, then a scam unfolding).
   const veilleDemo = makeVeilleDemo(state, () => state.household, () => state.famille.membres);
   const today = () => new Date().toISOString().slice(0, 10);
   return {
     mode: "demo",
-    household: async () => ({ ...state.household, documents: state.docs.length, comptes: state.comptes.length }),
+    household: async () => ({ ...state.household, documents: state.docs.length, comptes: state.comptes.length, assistant: assistantEtatDemo(state) }),
     setPlan: async (plan) => {
       state.household.plan = plan;
       // Demo: switching to free simulates the end of the trial (bare free plan: no AI reading, no statement import, no bank).
@@ -270,6 +277,15 @@ function makeDemoApi(): Api {
     annulerInvitation: async (token) => { state.invitations = state.invitations.filter((i) => i.token !== token); },
     retirerCompte: async (id) => { state.comptes = state.comptes.filter((c) => c.id !== id); },
     regenererMcp: async () => "demo-" + crypto.randomUUID().slice(0, 8),
+    assistant: async (messages) => {
+      const e = assistantEtatDemo(state);
+      if (e.acces === "aucun") throw new ApiError(402, "acces", "L'assistant Nidou est une option à 2,90 € par mois, en plus d'une formule.");
+      if (e.restantes <= 0) throw new ApiError(429, "quota", "Les questions offertes pendant la démo sont épuisées.");
+      await new Promise((r) => setTimeout(r, 900));
+      state.assistantQuestions++;
+      return { ...assistantDemo(messages.at(-1)?.content ?? "", state.docs, state.deadlines, demoChargesFamille as ChargesReport), etat: assistantEtatDemo(state) };
+    },
+    assistantOption: async (actif) => { state.assistantOption = actif; return assistantEtatDemo(state); },
     renommer: async (nom) => { state.household.nom = nom; },
     checkout: async (formule, periode) => { state.household.plan = "famille"; state.household.plan_souscrit = "famille"; state.household.capacite_comptes = { solo: 1, duo: 2, tribu: 6 }[formule]; state.household.abonnement = { stripe: false, statut: "simule", formule, periode, fin: new Date(Date.now() + (periode === "annuel" ? 365 : 30) * 864e5).toISOString().slice(0, 10), prix: { mensuel: 9.9, annuel: 99 }, gerable: false }; return { url: "", simule: true }; },
     portail: async () => ({ url: "" }),
@@ -409,3 +425,59 @@ export async function getApi(): Promise<Api> {
 }
 
 export { ApiError };
+
+
+// ---------- assistant, demo: the same answers the server gives, scripted on the demo household ----------
+function assistantEtatDemo(state: { household: Household; assistantOption: boolean; assistantQuestions: number }): AssistantEtat {
+  const enEssai = Boolean(state.household.essai?.actif) && state.household.plan_souscrit !== "famille";
+  const acces = state.household.plan === "famille" && state.assistantOption ? "option" : enEssai || state.household.plan === "famille" ? "essai" : "aucun";
+  const quota = acces === "option" ? 300 : acces === "essai" ? 20 : 0;
+  return { disponible: true, acces, quota, utilisees: state.assistantQuestions, restantes: Math.max(0, quota - state.assistantQuestions), en_pause: false, prix: { mensuel: 2.9, annuel: 29 }, option: state.assistantOption };
+}
+
+function assistantDemo(q: string, docs: Doc[], deadlines: Deadline[], charges: ChargesReport): Omit<AssistantReponse, "etat"> {
+  const t = q.toLowerCase();
+  const euro = (n: number) => `${Math.round(n).toLocaleString("fr-FR")} €`;
+  const date = (iso: string) => new Date(iso + "T00:00:00Z").toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "UTC" });
+  const doc = (re: RegExp) => docs.find((d) => re.test(`${d.title} ${d.organisme ?? ""}`));
+  const assuranceAuto = docs.find((d) => d.category === "assurance" && /auto|peugeot|v[ée]hicule/i.test(d.title));
+  const lien = (d?: Doc) => (d ? [{ type: "doc" as const, id: d.id, titre: d.title }] : []);
+  if (/r[ée]sili|lettre|courrier/.test(t)) {
+    const d = /auto|voiture|maif/.test(t) ? assuranceAuto : docs.find((x) => x.organisme && t.includes(x.organisme.toLowerCase())) ?? assuranceAuto;
+    if (d) {
+      const texte = `[Votre nom]\n[Votre adresse]\n\n${d.organisme ?? "Service client"}\n\nLe ${date(new Date().toISOString().slice(0, 10))}\n\nRéférence : contrat n° ${d.numero_contrat ?? "[numéro]"}\nObjet : Résiliation de mon contrat — ${d.title}\n\nMadame, Monsieur,\n\nPar la présente, je vous informe de ma décision de résilier le contrat référencé ci-dessus.\n\nJe vous remercie de prendre en compte cette résiliation à la date la plus proche possible et de m'adresser une confirmation écrite précisant la date effective de fin de contrat.\n\nJe vous prie d'agréer, Madame, Monsieur, l'expression de mes salutations distinguées.\n\n[Votre nom]`;
+      const auto = d.category === "assurance" && /auto|peugeot/i.test(d.title);
+      return {
+        reponse: auto
+          ? `J'ai préparé le courrier pour ${d.title} (${d.organisme}). Le préavis de l'échéance annuelle est dépassé, mais après un an de contrat la loi Hamon permet de résilier à tout moment. Pour une assurance auto, le plus simple est de souscrire ailleurs : le nouvel assureur envoie lui-même la résiliation. Complétez nom et adresse avant l'envoi.`
+          : `Voici le courrier de résiliation pour ${d.title}. Complétez votre nom et votre adresse, puis envoyez-le en recommandé avec accusé de réception.`,
+        liens: lien(d), courrier: { titre: `Résiliation — ${d.title}`, texte },
+      };
+    }
+  }
+  if (/[ée]conom|budget|cher|payer moins|d[ée]pens/.test(t)) {
+    const top = charges.alertes.filter((a) => a.economie_estimee).slice(0, 3);
+    const total = top.reduce((s, a) => s + (a.economie_estimee ?? 0), 0);
+    return {
+      reponse: `Trois pistes rapides, environ ${euro(total)} par an :\n${top.map((a) => `• ${a.titre} : jusqu'à ${euro(a.economie_estimee!)} par an`).join("\n")}\nLe plus simple pour commencer : la box Orange, plus engagée, se renégocie en un appel.`,
+      liens: top.flatMap((a) => (a.document_ids.length === 1 ? lien(docs.find((d) => d.id === a.document_ids[0])) : [])),
+      courrier: null,
+    };
+  }
+  if (/expir|passeport|carte d'identit|papier d'identit/.test(t)) {
+    const d = doc(/passeport/i);
+    return { reponse: d ? `Le passeport de Léa expire le ${date(d.date_fin!)}. Les délais en mairie peuvent dépasser deux mois : prenez rendez-vous dès maintenant.` : "Je ne trouve pas de papier d'identité dans vos documents.", liens: lien(d), courrier: null };
+  }
+  if (/[ée]ch[ée]ance|semaine|mois|bient[ôo]t|à faire|a faire|rappel|quand/.test(t)) {
+    const n = deadlines.filter((d) => !d.fait).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 4);
+    return { reponse: `Les prochaines échéances :\n${n.map((d) => `• ${date(d.date)} : ${d.titre}`).join("\n")}`, liens: n.flatMap((d) => lien(docs.find((x) => x.id === d.document_id))).slice(0, 3), courrier: null };
+  }
+  if (/assurance|auto|voiture|maif/.test(t)) {
+    const d = assuranceAuto;
+    return { reponse: d ? `${d.title} chez ${d.organisme}, contrat n° ${d.numero_contrat} : ${euro(d.montant ?? 0)} par an, tous risques, franchise 300 €. Renouvellement le ${date(d.date_fin!)}.` : "Je ne trouve pas d'assurance auto.", liens: lien(d), courrier: null };
+  }
+  return {
+    reponse: "Dans cette démo, je réponds aux questions sur les échéances, les économies, l'assurance auto, les papiers d'identité, et je prépare des courriers de résiliation. Avec le serveur Nidou, l'assistant lit tous vos papiers.",
+    liens: [], courrier: null,
+  };
+}
