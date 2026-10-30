@@ -216,7 +216,7 @@ export class Db {
             this.raw.exec("ALTER TABLE households ADD COLUMN situation TEXT");
         if (!cols.includes("mcp_token"))
             this.raw.exec("ALTER TABLE households ADD COLUMN mcp_token TEXT");
-        for (const [col] of [["stripe_customer_id"], ["stripe_subscription_id"], ["abonnement_statut"], ["abonnement_periode"], ["abonnement_fin"]]) {
+        for (const [col] of [["stripe_customer_id"], ["stripe_subscription_id"], ["abonnement_statut"], ["abonnement_periode"], ["abonnement_fin"], ["formule"]]) {
             if (!cols.includes(col))
                 this.raw.exec(`ALTER TABLE households ADD COLUMN ${col} TEXT`);
         }
@@ -242,7 +242,7 @@ export class Db {
     /** New households start a reverse trial: full Famille plan for `trialDays`, then back to free. */
     createHousehold(nom, trialDays = 15) {
         const essai_fin = trialDays > 0 ? new Date(Date.now() + trialDays * 864e5).toISOString() : null;
-        const row = { id: randomUUID(), nom, plan: "gratuit", essai_fin, boite_code: newBoiteCode(), situation: null, mcp_token: newToken(), stripe_customer_id: null, stripe_subscription_id: null, abonnement_statut: null, abonnement_periode: null, abonnement_fin: null, cree_le: this.now() };
+        const row = { id: randomUUID(), nom, plan: "gratuit", essai_fin, boite_code: newBoiteCode(), situation: null, mcp_token: newToken(), stripe_customer_id: null, stripe_subscription_id: null, abonnement_statut: null, abonnement_periode: null, abonnement_fin: null, formule: null, cree_le: this.now() };
         this.raw
             .prepare("INSERT INTO households (id, nom, plan, essai_fin, boite_code, mcp_token, cree_le) VALUES (?, ?, ?, ?, ?, ?, ?)")
             .run(row.id, row.nom, row.plan, row.essai_fin, row.boite_code, row.mcp_token, row.cree_le);

@@ -4,19 +4,23 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { extractDocument, heuristicExtract } from "./extract.js";
 import { deadlinesFor } from "./deadlines.js";
-import { chargesReport } from "./charges.js";
+import { chargesReport, lignesFamille } from "./charges.js";
 import { generateLetter, templateLetter } from "./letters.js";
 import { rappelsEssai, rappelsEcheances } from "./rappels.js";
+import * as V from "./veille.js";
+import { ajouterVeillePayante } from "./abonnement.js";
+import { bridge, eb, fournisseur, notifierAlertes, synchroniserFoyer, synchroniserVeille } from "./banques.js";
+import { banquesFR, BANQUES_DEMO, ebConnectHousehold, ebFinishHousehold, ensureEbSchema, linkExtra, newState } from "./enablebanking.js";
 import { envoyerPush, pushOn } from "./push.js";
-import { appliquerAbonnement, creerCheckout, portail, resumeAbonnement, traiterWebhook } from "./abonnement.js";
+import { appliquerAbonnement, capaciteComptes, creerCheckout, FORMULES, portail, resumeAbonnement, traiterWebhook } from "./abonnement.js";
 import { AUTH_ON, COOKIE, consommerLien, cookieHeader, demanderLien, emailValide, readCookie } from "./auth.js";
-import { familleReport, echeancesFamille } from "./famille.js";
+import { familleReport, echeancesFamille, coutsParMembre } from "./famille.js";
 import { boiteAddress, fromBrevo, processInboundEmail } from "./inbox.js";
 import { parseStatement, merchantOf, categorise, ruleCategory, fingerprint, TX_CATEGORIES, TX_LABEL } from "./transactions.js";
 import { budgetReport } from "./budget.js";
 import { demoStatement } from "./seed-statement.js";
 import Anthropic from "@anthropic-ai/sdk";
-import { bridgeConfig, BridgeClient, syncHousehold, simulatedConnect, simulatedSync, verifyBridgeSignature } from "./bridge.js";
+import { simulatedConnect, simulatedSync, verifyBridgeSignature } from "./bridge.js";
 /**
  * Plans. Every household starts with a 15-day reverse trial of the full Famille plan, then falls back to a bare free plan:
  * documents are read locally (no AI call), no statement import, no bank connection, push notifications only.
@@ -25,7 +29,7 @@ import { bridgeConfig, BridgeClient, syncHousehold, simulatedConnect, simulatedS
  */
 export const FREE_LIMITS = {
     documents: 50,
-    members: 2,
+    comptes: 1, // people who log in; member cards without a login (children, elderly parent) are unlimited on every plan
     lettersPerMonth: 3,
     iaLecturesParMois: Number(process.env.NIDOU_IA_LECTURES_GRATUIT ?? 0),
     importReleves: false,
@@ -36,6 +40,8 @@ export const TRIAL_DAYS = Number(process.env.NIDOU_ESSAI_JOURS ?? 15);
 const freeCapEur = () => Number(process.env.NIDOU_IA_PLAFOND_GRATUIT_EUR ?? 2000);
 export function createApi(db, opts) {
     const api = new Hono();
+    V.ensureVeilleSchema(db);
+    ensureEbSchema(db);
     const secure = () => (process.env.NIDOU_PUBLIC_URL ?? "").startsWith("https://");
     // ---------- auth (magic link) ----------
     api.post("/auth/demander", async (c) => {
@@ -66,7 +72,7 @@ export function createApi(db, opts) {
      * without a session every route answers 401 `non_connecte`. NIDOU_AUTH=0 keeps the single-household prototype.
      */
     api.use("*", async (c, next) => {
-        if (c.req.path.includes("/auth/") || c.req.path.endsWith("/inbox") || c.req.path.endsWith("/bank/webhook") || c.req.path.endsWith("/bank/callback") || c.req.path.endsWith("/stripe/webhook") || c.req.path.endsWith("/abonnement/simule") || c.req.path.endsWith("/waitlist"))
+        if (c.req.path.includes("/auth/") || c.req.path.endsWith("/inbox") || c.req.path.endsWith("/bank/webhook") || c.req.path.endsWith("/bank/callback") || c.req.path.endsWith("/bank/eb/callback") || c.req.path.endsWith("/stripe/webhook") || c.req.path.endsWith("/abonnement/simule") || c.req.path.endsWith("/waitlist") || c.req.path.includes("/veille/p/") || c.req.path.endsWith("/veille/callback"))
             return next();
         let row;
         let user = null;
@@ -87,6 +93,16 @@ export function createApi(db, opts) {
             if (!row) {
                 row = db.createHousehold("Ma famille", TRIAL_DAYS);
                 db.addMember(row.id, "Moi", "adulte");
+            }
+        }
+        // Accounts beyond the formule's capacity are paused (owner first, then by join date); the owner always keeps access.
+        if (user) {
+            const ordre = db.usersOfHousehold(row.id).sort((a, b) => Number(b.role === "proprietaire") - Number(a.role === "proprietaire") || a.rejoint_le.localeCompare(b.rejoint_le));
+            const rang = ordre.findIndex((u) => u.id === user.id);
+            const cap = capaciteComptes(db, row);
+            if (rang >= cap && !c.req.path.endsWith("/auth/moi") && !c.req.path.endsWith("/auth/deconnexion")) {
+                const proprio = ordre[0];
+                return c.json({ error: "compte_en_pause", message: `Le nid « ${row.nom} » est en formule ${cap === 1 ? "gratuite (1 personne)" : `${cap} personnes`}. ${proprio?.prenom ?? "Le propriétaire"} peut passer à une formule plus grande pour vous rendre l'accès ; vos papiers vous attendent.` }, 402);
             }
         }
         // `plan` is the plan in force today (trial counts as Famille); `plan_souscrit` is what is paid for.
@@ -112,8 +128,14 @@ export function createApi(db, opts) {
         const email = body.email.trim().toLowerCase();
         if (!emailValide(email))
             return c.json({ error: "email", message: "Adresse email invalide." }, 400);
-        if (h.plan === "gratuit" && db.usersOfHousehold(h.id).length + db.listInvitations(h.id).length >= FREE_LIMITS.members) {
-            return c.json({ error: "limite_plan", message: `Le plan gratuit est limité à ${FREE_LIMITS.members} comptes.` }, 402);
+        const cap = capaciteComptes(db, db.getHousehold(h.id));
+        if (db.usersOfHousehold(h.id).length + db.listInvitations(h.id).length >= cap) {
+            const msg = h.plan === "gratuit"
+                ? "Le plan gratuit est réservé à une personne. Avec Duo, votre conjoint·e se connecte aussi ; avec Tribu, jusqu'à 6 personnes."
+                : cap < FORMULES.tribu.comptes
+                    ? `Votre formule accepte ${cap} personne${cap > 1 ? "s" : ""} connectée${cap > 1 ? "s" : ""}. Passez à ${cap === 1 ? "Duo ou Tribu" : "Tribu"} pour en inviter plus.`
+                    : `La formule Tribu accepte jusqu'à ${cap} personnes connectées.`;
+            return c.json({ error: "limite_comptes", message: msg, capacite: cap }, 402);
         }
         const u = currentUser(c);
         const r = await demanderLien(db, email, { household_id: h.id, prenom: body.prenom, invite_par: u?.prenom ?? db.listMembers(h.id)[0]?.prenom ?? null });
@@ -138,8 +160,12 @@ export function createApi(db, opts) {
     // ---------- abonnement (Stripe) ----------
     api.post("/abonnement/checkout", async (c) => {
         const h = household(c);
-        const body = z.object({ periode: z.enum(["mensuel", "annuel"]) }).parse(await c.req.json());
-        const r = await creerCheckout(db, db.getHousehold(h.id), body.periode, currentUser(c)?.email ?? null);
+        const body = z.object({ formule: z.enum(["solo", "duo", "tribu"]).default("duo"), periode: z.enum(["mensuel", "annuel"]) }).parse(await c.req.json());
+        const comptes = db.usersOfHousehold(h.id).length;
+        if (comptes > FORMULES[body.formule].comptes) {
+            return c.json({ error: "formule_trop_petite", message: `${comptes} personnes se connectent à ce nid : la formule ${FORMULES[body.formule].nom} en accepte ${FORMULES[body.formule].comptes}. Choisissez une formule plus grande ou retirez un compte.` }, 400);
+        }
+        const r = await creerCheckout(db, db.getHousehold(h.id), body.formule, body.periode, currentUser(c)?.email ?? null);
         return c.json(r);
     });
     api.post("/abonnement/portail", async (c) => {
@@ -152,9 +178,10 @@ export function createApi(db, opts) {
             return c.json({ error: "stripe_actif" }, 400);
         const h = db.getHousehold(c.req.query("h") ?? "");
         const periode = c.req.query("periode") === "annuel" ? "annuel" : "mensuel";
+        const formule = (["solo", "duo", "tribu"].includes(c.req.query("formule") ?? "") ? c.req.query("formule") : "duo");
         if (!h)
             return c.json({ error: "introuvable" }, 404);
-        appliquerAbonnement(db, h, { statut: "simule", periode, fin: new Date(Date.now() + (periode === "annuel" ? 365 : 30) * 864e5).toISOString().slice(0, 10) });
+        appliquerAbonnement(db, h, { statut: "simule", formule, periode, fin: new Date(Date.now() + (periode === "annuel" ? 365 : 30) * 864e5).toISOString().slice(0, 10) });
         return c.redirect("/#/settings?paiement=ok");
     });
     api.post("/stripe/webhook", async (c) => {
@@ -189,6 +216,8 @@ export function createApi(db, opts) {
             utilisateur: currentUser(c),
             abonnement: resumeAbonnement(db.getHousehold(h.id)),
             comptes: db.usersOfHousehold(h.id).length,
+            capacite_comptes: capaciteComptes(db, db.getHousehold(h.id)),
+            veille: { ouverte: V.veilleOuverte(), capacite: V.capaciteVeilles(db, db.getHousehold(h.id)), en_cours: V.veillesEnCours(db, h.id) },
             boite_recus: db.listInboxMessages(h.id, 10),
         });
     });
@@ -230,9 +259,6 @@ export function createApi(db, opts) {
     api.post("/members", async (c) => {
         const h = household(c);
         const body = memberSchema.parse(await c.req.json());
-        if (h.plan === "gratuit" && db.listMembers(h.id).length >= FREE_LIMITS.members) {
-            return c.json({ error: "limite_plan", message: `Le plan gratuit est limité à ${FREE_LIMITS.members} membres.` }, 402);
-        }
         const { prenom, role, ...extra } = body;
         return c.json(db.addMember(h.id, prenom, role, extra), 201);
     });
@@ -431,7 +457,7 @@ export function createApi(db, opts) {
     // ---------- charges fixes ----------
     api.get("/charges", (c) => {
         const h = household(c);
-        const report = chargesReport(db.listDocuments(h.id));
+        const report = chargesReport(db.listDocuments(h.id), undefined, lignesFamille(coutsParMembre(db.listMembers(h.id), db.listActivites(h.id))));
         if (h.plan === "gratuit") {
             // Free plan: totals and the first alert only; full detail is a paid feature.
             return c.json({ ...report, alertes: report.alertes.slice(0, 1), apercu: true, alertes_total: report.alertes.length });
@@ -517,13 +543,13 @@ export function createApi(db, opts) {
     });
     api.get("/budget/categories", (c) => c.json(TX_CATEGORIES.map((k) => ({ cle: k, libelle: TX_LABEL[k] }))));
     // ---------- connexion bancaire (Bridge) ----------
-    const bridge = () => { const cfg = bridgeConfig(); return cfg ? { cfg, client: new BridgeClient(cfg) } : null; };
     api.get("/bank/status", (c) => {
         const h = household(c);
         const link = db.getBankLink(h.id);
         return c.json({
-            fournisseur: bridge() ? "bridge" : "simule",
+            fournisseur: link?.fournisseur === "simule" ? "simule" : link?.fournisseur ?? fournisseur(),
             connecte: link?.statut === "connecte",
+            expire_le: link ? linkExtra(db, h.id)?.expire_le ?? null : null,
             statut: link?.statut ?? "aucune",
             derniere_synchro: link?.derniere_synchro ?? null,
             comptes: db.listBankAccounts(h.id).map((a) => ({ id: a.id, nom: a.nom, banque: a.banque, solde: a.solde, devise: a.devise, maj_le: a.maj_le })),
@@ -534,9 +560,14 @@ export function createApi(db, opts) {
         const h = household(c);
         if (h.plan === "gratuit")
             return c.json({ error: "limite_plan", message: "La connexion bancaire automatique fait partie du plan Famille." }, 402);
-        const b = bridge();
-        if (!b)
+        const f = fournisseur();
+        if (f === "simule")
             return c.json(await simulatedConnect(db, h.id));
+        if (f === "enablebanking") {
+            const body = z.object({ aspsp: z.object({ name: z.string(), country: z.string().length(2), maximum_consent_validity: z.number().optional() }) }).parse(await c.req.json());
+            return c.json(await ebConnectHousehold(db, eb(), h.id, body.aspsp));
+        }
+        const b = bridge();
         const body = z.object({ email: z.string().email() }).parse(await c.req.json().catch(() => ({})));
         let userUuid = db.getBankLink(h.id)?.user_uuid;
         if (!userUuid) {
@@ -556,11 +587,10 @@ export function createApi(db, opts) {
         const link = userUuid ? db.getBankLinkByUser(userUuid) : undefined;
         if (link && success) {
             try {
-                const b = bridge();
-                if (b)
-                    await syncHousehold(db, b.client, link.household_id);
-                else
+                if (link.fournisseur === "simule" || fournisseur() === "simule")
                     await simulatedSync(db, link.household_id);
+                else
+                    await synchroniserFoyer(db, link.household_id);
             }
             catch (e) {
                 db.upsertBankLink({ ...link, statut: "erreur" });
@@ -571,19 +601,244 @@ export function createApi(db, opts) {
     });
     api.post("/bank/sync", async (c) => {
         const h = household(c);
-        const b = bridge();
         try {
-            return c.json(b ? await syncHousehold(db, b.client, h.id) : await simulatedSync(db, h.id));
+            const link = db.getBankLink(h.id);
+            return c.json(!link || link.fournisseur === "simule" || fournisseur() === "simule" ? await simulatedSync(db, h.id) : await synchroniserFoyer(db, h.id));
         }
         catch (e) {
             return c.json({ error: "synchro", message: e instanceof Error ? e.message : "Synchronisation impossible" }, 502);
         }
     });
-    api.delete("/bank", (c) => {
+    /** Banks the family can pick (Enable Banking needs Nidou to show the list; Bridge shows its own). */
+    api.get("/bank/banques", async (c) => {
+        const c2 = eb();
+        return c.json({ fournisseur: fournisseur(), banques: c2 ? await banquesFR(c2) : BANQUES_DEMO });
+    });
+    /** Enable Banking sends the person back here, for the household (state "h.") or a protected relative (state "v."). */
+    api.get("/bank/eb/callback", async (c) => {
+        const state = c.req.query("state") ?? "", code = c.req.query("code"), err = c.req.query("error");
+        const client = eb();
+        if (state.startsWith("v.")) {
+            const v = V.veilleParBridgeUser(db, `attente:${state}`);
+            if (!v)
+                return c.redirect("/");
+            if (client && code && !err) {
+                try {
+                    const s = await client.createSession(code);
+                    V.setBanque(db, v, { bridge_user_uuid: `eb:${s.session_id}`, banque_connectee: 1 });
+                    V.journaliser(db, v.id, "Banque", "connexion_banque", { fournisseur: "enablebanking", banque: s.aspsp?.name ?? null, comptes: (s.accounts ?? []).length, autorisation_jusqu_au: s.access?.valid_until?.slice(0, 10) ?? null });
+                    await synchroniserVeille(db, V.veilleParId(db, v.id)).catch((e) => console.error("veille sync :", e));
+                    return c.redirect(`/#/consentement/${v.jeton}?banque=ok`);
+                }
+                catch (e) {
+                    console.error("veille session :", e);
+                }
+            }
+            return c.redirect(`/#/consentement/${v.jeton}?banque=abandon`);
+        }
+        if (!client || !code || err)
+            return c.redirect("/#budget?bank=abandon");
+        try {
+            const hid = await ebFinishHousehold(db, client, state, code);
+            if (!hid)
+                return c.redirect("/#budget?bank=abandon");
+            await synchroniserFoyer(db, hid).catch((e) => console.error("sync après connexion :", e));
+            return c.redirect("/#budget");
+        }
+        catch (e) {
+            console.error("eb callback :", e);
+            return c.redirect("/#budget?bank=abandon");
+        }
+    });
+    api.delete("/bank", async (c) => {
+        const link = db.getBankLink(household(c).id);
+        if (link?.fournisseur === "enablebanking" && !link.user_uuid.startsWith("attente:"))
+            await eb()?.deleteSession(link.user_uuid).catch(() => { });
         db.deleteBankLink(household(c).id);
         return c.json({ ok: true });
     });
     /** Bridge webhook: `item.refreshed` (and friends) → sync that user's household. Signed with BridgeApi-Signature. */
+    // ---------- veille bancaire d'un proche (anti-arnaque, lecture seule) ----------
+    const fermee = (c) => c.json({ error: "fonction_fermee", message: "La veille bancaire d'un proche ouvrira après validation juridique." }, 403);
+    const acteurDe = (c) => { const u = currentUser(c); return u ? (u.prenom ? `${u.prenom} (${u.email})` : u.email) : "Aidant"; };
+    const publicUrl = () => (process.env.NIDOU_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, "");
+    const lienPersonne = (v) => `${publicUrl()}/#/consentement/${v.jeton}`;
+    const resumeVeille = (v) => {
+        const m = db.getMember(v.member_id);
+        const al = V.alertes(db, v.id);
+        return { id: v.id, member_id: v.member_id, prenom: m?.prenom ?? "?", statut: v.statut, mesure: v.mesure, mesure_label: V.MESURE_LABEL[v.mesure], aidant: v.aidant_nom, aidant_qualite: v.aidant_qualite,
+            temoins: JSON.parse(v.temoins), consentement_le: v.consentement_le, consentement_expire: v.consentement_expire, accords: (v.consentement_par ?? "").split(",").filter(Boolean),
+            qui_consent: m ? V.quiConsent(v, m.prenom) : null, banque_connectee: Boolean(v.banque_connectee), alertes_non_vues: al.filter((a) => !a.vue).length, alertes_urgentes: al.filter((a) => a.gravite === "urgente" && !a.vue).length,
+            lien_personne: v.statut === "terminee" ? null : lienPersonne(v), fin_le: v.fin_le, motif_fin: v.motif_fin };
+    };
+    /** Alerts reach the aidant's devices and the witnesses by email (paid plans), the same text for everyone. */
+    /** Ending a watch also closes the bank consent at the source, not just in Nidou. */
+    const fermerBanqueVeille = async (v) => {
+        if (v.bridge_user_uuid?.startsWith("eb:"))
+            await eb()?.deleteSession(v.bridge_user_uuid.slice(3)).catch((e) => console.error("fermeture session :", e));
+    };
+    const notifier = (v, nouvelles) => notifierAlertes(db, v, nouvelles);
+    api.get("/veilles", (c) => {
+        const h = household(c);
+        const row = db.getHousehold(h.id);
+        return c.json({ ouverte: V.veilleOuverte(), capacite: V.capaciteVeilles(db, row), en_cours: V.veillesEnCours(db, h.id), prix: V.PRIX_VEILLE, veilles: V.veillesDuFoyer(db, h.id).map(resumeVeille) });
+    });
+    api.post("/veilles", async (c) => {
+        if (!V.veilleOuverte())
+            return fermee(c);
+        const h = household(c);
+        const body = z.object({
+            member_id: z.string(), mesure: z.enum(["aucune", "curatelle", "tutelle", "habilitation_familiale", "mandat_protection_future"]),
+            acte_document_id: z.string().nullable().default(null), aidant_qualite: z.string().nullable().default(null),
+            temoins: z.array(z.object({ nom: z.string(), email: z.string().email().nullable().default(null) })).max(6).default([]),
+            personne_peut_consentir: z.boolean().default(false),
+        }).parse(await c.req.json());
+        try {
+            const v = V.creerVeille(db, db.getHousehold(h.id), { ...body, aidant_user_id: currentUser(c)?.id ?? null, aidant_nom: acteurDe(c) });
+            return c.json(resumeVeille(v), 201);
+        }
+        catch (e) {
+            if (e instanceof V.RefusVeille)
+                return c.json({ error: e.code, message: e.message }, e.code === "veille_payante" ? 402 : 400);
+            throw e;
+        }
+    });
+    const maVeille = (c) => { const v = V.veilleParId(db, c.req.param("id")); return v && v.household_id === household(c).id ? v : null; };
+    api.get("/veilles/:id", (c) => {
+        const v = maVeille(c);
+        if (!v)
+            return c.json({ error: "introuvable" }, 404);
+        if (v.statut === "active")
+            V.marquerConsultation(db, v, acteurDe(c));
+        return c.json({ ...resumeVeille(v), alertes: v.statut === "active" || v.statut === "suspendue" ? V.alertes(db, v.id) : [], journal: V.verifierJournal(db, v.id) });
+    });
+    api.post("/veilles/:id/vue", (c) => {
+        const v = maVeille(c);
+        if (!v)
+            return c.json({ error: "introuvable" }, 404);
+        db.raw.prepare("UPDATE veille_alertes SET vue = 1 WHERE veille_id = ?").run(v.id);
+        return c.json({ ok: true });
+    });
+    api.post("/veilles/:id/terminer", async (c) => {
+        const v = maVeille(c);
+        if (!v)
+            return c.json({ error: "introuvable" }, 404);
+        const body = z.object({ motif: z.enum(["deces", "fin_mesure", "demande_aidant"]) }).parse(await c.req.json());
+        await fermerBanqueVeille(v);
+        return c.json(resumeVeille(V.terminer(db, v, acteurDe(c), body.motif)));
+    });
+    /** Tamper-evident log, as JSON (with the chain check) or CSV for a lawyer or a notary. */
+    api.get("/veilles/:id/journal", (c) => {
+        const v = maVeille(c);
+        if (!v)
+            return c.json({ error: "introuvable" }, 404);
+        const lignes = V.journal(db, v.id);
+        if (c.req.query("format") === "csv") {
+            const esc = (x) => `"${String(x ?? "").replace(/"/g, '""')}"`;
+            const csv = ["quand;acteur;action;details;empreinte_precedente;empreinte", ...lignes.map((l) => [l.quand, l.acteur, l.action, l.details, l.empreinte_prec, l.empreinte].map(esc).join(";"))].join("\n");
+            return new Response("﻿" + csv, { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="journal-veille-${v.id.slice(0, 8)}.csv"` } });
+        }
+        return c.json({ verification: V.verifierJournal(db, v.id), lignes });
+    });
+    api.post("/abonnement/veille", async (c) => {
+        const h = household(c);
+        const body = z.object({ periode: z.enum(["mensuel", "annuel"]).default("mensuel") }).parse(await c.req.json().catch(() => ({})));
+        try {
+            return c.json(await ajouterVeillePayante(db, db.getHousehold(h.id), body.periode));
+        }
+        catch (e) {
+            return c.json({ error: "paiement", message: e.message }, 400);
+        }
+    });
+    // --- page personnelle de la personne protégée (sans compte : son lien suffit) ---
+    const parJeton = (c) => V.veilleParJeton(db, c.req.param("jeton"));
+    api.get("/veille/p/:jeton", (c) => {
+        const v = parJeton(c);
+        if (!v)
+            return c.json({ error: "introuvable", message: "Ce lien n'est plus valable." }, 404);
+        return c.json(V.vuePersonne(db, v));
+    });
+    api.post("/veille/p/:jeton/consentir", async (c) => {
+        if (!V.veilleOuverte())
+            return fermee(c);
+        const v = parJeton(c);
+        if (!v)
+            return c.json({ error: "introuvable" }, 404);
+        const body = z.object({ nom_signataire: z.string(), en_qualite_de: z.enum(["personne", "representant"]), accepte: z.boolean() }).parse(await c.req.json());
+        try {
+            V.consentir(db, v, body);
+            return c.json(V.vuePersonne(db, V.veilleParId(db, v.id)));
+        }
+        catch (e) {
+            if (e instanceof V.RefusVeille)
+                return c.json({ error: e.code, message: e.message }, 400);
+            throw e;
+        }
+    });
+    api.post("/veille/p/:jeton/retirer", async (c) => {
+        const v = parJeton(c);
+        if (!v)
+            return c.json({ error: "introuvable" }, 404);
+        const body = z.object({ nom: z.string().default("La personne protégée") }).parse(await c.req.json().catch(() => ({})));
+        await fermerBanqueVeille(v);
+        V.terminer(db, v, body.nom.trim() || "La personne protégée", "retrait_consentement");
+        const m = db.getMember(v.member_id);
+        await envoyerPush(db, v.household_id, { titre: `${m.prenom} a retiré son accord`, corps: "La veille bancaire est arrêtée. Les opérations seront effacées.", url: `/#/veille/${v.id}`, tag: `veille-${v.id}` });
+        return c.json(V.vuePersonne(db, V.veilleParId(db, v.id)));
+    });
+    /** The person connects her own bank herself (her code never goes through the aidant). */
+    api.post("/veille/p/:jeton/banque", async (c) => {
+        if (!V.veilleOuverte())
+            return fermee(c);
+        const v = parJeton(c);
+        if (!v)
+            return c.json({ error: "introuvable" }, 404);
+        if (v.statut !== "active")
+            return c.json({ error: "consentement", message: "La banque se connecte une fois l'accord donné." }, 400);
+        const f = fournisseur();
+        if (f === "simule") {
+            V.setBanque(db, v, { banque_connectee: 1 });
+            const r = V.ajouterOperations(db, V.veilleParId(db, v.id), V.operationsSimulees());
+            V.journaliser(db, v.id, "Banque", "connexion_banque", { fournisseur: "simulé", operations: r.ajoutees });
+            await notifier(v, r.nouvelles);
+            return c.json({ url: null, ...V.vuePersonne(db, V.veilleParId(db, v.id)) });
+        }
+        if (f === "enablebanking") {
+            const body = z.object({ aspsp: z.object({ name: z.string(), country: z.string().length(2), maximum_consent_validity: z.number().optional() }) }).parse(await c.req.json());
+            const state = `v.${newState()}`;
+            V.setBanque(db, v, { bridge_user_uuid: `attente:${state}` });
+            const { url } = await eb().startAuth({ name: body.aspsp.name, country: body.aspsp.country }, state, body.aspsp.maximum_consent_validity);
+            return c.json({ url });
+        }
+        const b = bridge();
+        const body = z.object({ email: z.string().email().nullable().default(null) }).parse(await c.req.json().catch(() => ({})));
+        let uuid = v.bridge_user_uuid;
+        if (!uuid) {
+            uuid = (await b.client.createUser(`nidou-veille-${v.id}`)).uuid;
+            V.setBanque(db, v, { bridge_user_uuid: uuid });
+        }
+        const { access_token } = await b.client.userToken(uuid);
+        const session = await b.client.connectSession(access_token, body.email ?? `veille+${v.id.slice(0, 8)}@nidou.fr`, v.id, "/api/veille/callback");
+        return c.json({ url: session.url });
+    });
+    const syncVeille = (v) => synchroniserVeille(db, v);
+    api.get("/veille/p/:jeton/banques", async (c) => {
+        if (!parJeton(c))
+            return c.json({ error: "introuvable" }, 404);
+        const c2 = eb();
+        return c.json({ fournisseur: fournisseur(), banques: c2 ? await banquesFR(c2) : BANQUES_DEMO });
+    });
+    api.get("/veille/callback", async (c) => {
+        const v = V.veilleParBridgeUser(db, c.req.query("user_uuid") ?? "");
+        if (!v)
+            return c.redirect("/");
+        if (c.req.query("success") === "true") {
+            V.setBanque(db, v, { banque_connectee: 1 });
+            V.journaliser(db, v.id, "Banque", "connexion_banque", { fournisseur: "bridge" });
+            await syncVeille(V.veilleParId(db, v.id)).catch((e) => console.error("veille sync :", e));
+        }
+        return c.redirect(`/#/consentement/${v.jeton}?banque=${c.req.query("success") === "true" ? "ok" : "abandon"}`);
+    });
     api.post("/bank/webhook", async (c) => {
         const raw = await c.req.text();
         const b = bridge();
@@ -603,8 +858,11 @@ export function createApi(db, opts) {
             const link = db.getBankLinkByUser(String(userUuid));
             if (link && b) {
                 // Respond fast, sync in the background (Bridge retries slow endpoints).
-                syncHousehold(db, b.client, link.household_id).catch((e) => console.error("webhook sync :", e));
+                synchroniserFoyer(db, link.household_id).catch((e) => console.error("webhook sync :", e));
             }
+            const veille = V.veilleParBridgeUser(db, String(userUuid));
+            if (veille && b)
+                syncVeille(veille).catch((e) => console.error("webhook veille :", e));
         }
         return c.json({ ok: true });
     });

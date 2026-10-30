@@ -24,7 +24,7 @@ export interface Charge {
 }
 
 export interface Alert {
-  type: "doublon" | "hausse" | "non_renegocie" | "echeance_proche" | "poids";
+  type: "doublon" | "hausse" | "non_renegocie" | "fin_engagement" | "resiliable" | "echeance_proche" | "poids";
   gravite: "info" | "attention" | "important";
   titre: string;
   detail: string;
@@ -168,10 +168,62 @@ function buildAlerts(docs: DocumentRow[], charges: Charge[], total: number, toda
     }
   }
 
-  // 3. Not renegotiated: insurance / energy / telecom contracts older than 2 years.
+  // 3. Commitment over or ending soon: the household can switch or negotiate without cancellation fees.
+  //    One alert per contract, and it replaces the generic "not renegotiated" one below.
+  const libres = new Set<string>();
   for (const c of charges) {
     const d = c.document_id ? byId.get(c.document_id) : undefined;
-    if (!d) continue;
+    if (!d || !["telecom", "energie", "abonnement", "assurance"].includes(c.category)) continue;
+    const engagement = engagementDe(d, today);
+    if (!engagement) continue;
+    libres.add(c.document_id!);
+    const taux = c.category === "telecom" ? 0.2 : 0.1;
+    alerts.push(
+      engagement.fin === null || engagement.fin < today
+        ? {
+            type: "fin_engagement",
+            gravite: "attention",
+            titre: `${c.titre} : plus d'engagement`,
+            detail: `Vous pouvez ${CHANGER[c.category] ?? "résilier"} ou demander une baisse sans frais de résiliation.${c.category === "telecom" ? " Les offres d'entrée box + mobile sont souvent 20 à 30 % moins chères." : ""}`,
+            economie_estimee: round2(c.montant_annuel * taux),
+            document_ids: ids([c]),
+          }
+        : {
+            type: "fin_engagement",
+            gravite: "info",
+            titre: `${c.titre} : fin d'engagement le ${frDate(engagement.fin)}`,
+            detail: "Ensuite, le contrat se résilie ou se renégocie sans frais. Bon moment pour comparer.",
+            economie_estimee: round2(c.montant_annuel * taux),
+            document_ids: ids([c]),
+          }
+    );
+  }
+
+  // 4. Insurance held more than a year (car, home, complementary health): cancellable at any time
+  //    (loi Hamon, résiliation infra-annuelle), even when the yearly notice window has been missed.
+  const resiliables = new Set<string>();
+  for (const c of charges) {
+    const d = c.document_id ? byId.get(c.document_id) : undefined;
+    if (!d || c.category !== "assurance" || libres.has(d.id) || !hamon(d.title)) continue;
+    const start = d.date_debut ?? d.date_document;
+    if (!start) continue;
+    const years = (Date.parse(today) - Date.parse(start)) / (365.25 * 864e5);
+    if (years < 1 || years >= 2) continue; // from 2 years on, the "not renegotiated" alert says it
+    resiliables.add(d.id);
+    alerts.push({
+      type: "resiliable",
+      gravite: "info",
+      titre: `${c.titre} : résiliable à tout moment`,
+      detail: "Après un an de contrat, la loi permet de changer d'assureur quand vous voulez, sans attendre l'échéance. Un devis moins cher suffit : le nouvel assureur s'occupe de la résiliation.",
+      economie_estimee: round2(c.montant_annuel * 0.1),
+      document_ids: ids([c]),
+    });
+  }
+
+  // 5. Not renegotiated: insurance / energy / telecom contracts older than 2 years.
+  for (const c of charges) {
+    const d = c.document_id ? byId.get(c.document_id) : undefined;
+    if (!d || libres.has(d.id) || resiliables.has(d.id)) continue;
     const start = d.date_debut ?? d.date_document;
     if (!start) continue;
     const years = (Date.parse(today) - Date.parse(start)) / (365.25 * 864e5);
@@ -180,14 +232,14 @@ function buildAlerts(docs: DocumentRow[], charges: Charge[], total: number, toda
         type: "non_renegocie",
         gravite: "info",
         titre: `${c.titre} : ${Math.floor(years)} ans sans renégociation`,
-        detail: "Les tarifs d'entrée des concurrents sont souvent 10 à 20 % plus bas. Demander un devis comparatif.",
+        detail: `Les tarifs d'entrée des concurrents sont souvent 10 à 20 % plus bas. Demander un devis comparatif.${c.category === "assurance" && hamon(d.title) ? " Résiliable à tout moment : le nouvel assureur s'occupe de la résiliation." : ""}`,
         economie_estimee: round2(c.montant_annuel * 0.1),
         document_ids: ids([c]),
       });
     }
   }
 
-  // 4. Weight: one charge above 35 % of the total.
+  // 6. Weight: one charge above 35 % of the total.
   for (const c of charges) {
     if (total > 0 && c.montant_mensuel / total > 0.35 && charges.length >= 3) {
       alerts.push({
@@ -203,6 +255,30 @@ function buildAlerts(docs: DocumentRow[], charges: Charge[], total: number, toda
 
   const order = { important: 0, attention: 1, info: 2 };
   return alerts.sort((a, b) => order[a.gravite] - order[b.gravite] || (b.economie_estimee ?? 0) - (a.economie_estimee ?? 0));
+}
+
+const CHANGER: Record<string, string> = { telecom: "changer d'opérateur", energie: "changer de fournisseur", assurance: "changer d'assureur", abonnement: "résilier" };
+
+/** Car, home and complementary-health insurance: cancellable at any time after one year (loi Hamon, RIA). */
+function hamon(title: string) {
+  return /auto|moto|v[ée]hicule|habitation|maison|appartement|logement|mutuelle|sant[ée]|compl[ée]mentaire/i.test(title);
+}
+
+/**
+ * The contract's minimum commitment, when the document mentions one.
+ * `fin: null` = said to be over without a date. Returns null when there is none, or when it ends more than 45 days away.
+ */
+export function engagementDe(d: Pick<DocumentRow, "title" | "resume" | "date_fin">, today: string): { fin: string | null } | null {
+  const txt = `${d.title} ${d.resume ?? ""}`;
+  if (/sans engagement/i.test(txt)) return null;
+  if (/engagement\s+(termin|échu|echu|fini|expir|écoulé|ecoule)|fin d'engagement (atteinte|passée|passee)/i.test(txt)) return { fin: null };
+  if (!/engag/i.test(txt) || !d.date_fin) return null;
+  const jours = (Date.parse(d.date_fin) - Date.parse(today)) / 864e5;
+  return jours <= 45 ? { fin: d.date_fin } : null;
+}
+
+function frDate(iso: string) {
+  return new Date(iso + "T00:00:00Z").toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "UTC" });
 }
 
 function ids(charges: Charge[]): string[] {

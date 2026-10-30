@@ -3,7 +3,8 @@ import type { Db, HouseholdRow } from "./db.js";
 import { budgetReport } from "./budget.js";
 import { envoyerPush } from "./push.js";
 import { envoyerEmail } from "./mail.js";
-import { echeancesFamille } from "./famille.js";
+import { echeancesFamille, coutsParMembre } from "./famille.js";
+import { chargesReport, lignesFamille } from "./charges.js";
 
 export interface Rappel {
   cle: string;            // unique per household: essai:j2 | essai:dernier | essai:termine
@@ -53,6 +54,27 @@ export function rappelsEcheances(db: Db, h: HouseholdRow, now = new Date()): Rap
   return out;
 }
 
+/**
+ * Savings alerts on the household's contracts (price increase, duplicate, commitment over…), pushed once each.
+ * Only "important" and "attention" ones: "info" alerts stay on the Budget screen. One per pass, so a new account
+ * is not flooded on its first day. The free plan sees only the first alert in the app, so only that one is pushed.
+ * A new increase on the same contract comes from a new document, hence a new key and a new push.
+ */
+export function rappelsAlertes(db: Db, h: HouseholdRow): Rappel[] {
+  const lignes = lignesFamille(coutsParMembre(db.listMembers(h.id), db.listActivites(h.id)));
+  let alertes = chargesReport(db.listDocuments(h.id), undefined, lignes).alertes;
+  if (db.effectivePlan(h) !== "famille") alertes = alertes.slice(0, 1);
+  const deja = new Set(db.listRappels(h.id).map((r) => r.cle));
+  for (const a of alertes) {
+    if (a.gravite === "info") continue;
+    const cle = `alerte:${a.type}:${[...a.document_ids].sort().join(",")}`;
+    if (deja.has(cle)) continue;
+    const gain = a.economie_estimee ? ` Jusqu'à ${euro(a.economie_estimee)} par an.` : "";
+    return [{ cle, titre: a.titre, corps: `${a.detail}${gain}`, route: a.document_ids.length === 1 ? `#/doc/${a.document_ids[0]}` : "#/budget" }];
+  }
+  return [];
+}
+
 /** Default transport: push to every device of the household; email too for Famille households (free = push only). */
 export async function transportParDefaut(db: Db, h: HouseholdRow, r: Rappel) {
   const n = await envoyerPush(db, h.id, { titre: r.titre, corps: r.corps, url: `/${r.route}`, tag: r.cle.split(":")[0] });
@@ -62,11 +84,11 @@ export async function transportParDefaut(db: Db, h: HouseholdRow, r: Rappel) {
   if (!n) console.log(`[rappel] ${h.nom} · ${r.cle} · ${r.titre}`);
 }
 
-/** Daily pass over every household: trial reminders and deadline reminders, each sent once. */
+/** Daily pass over every household: trial reminders, deadline reminders and savings alerts, each sent once. */
 export async function passeQuotidienne(db: Db, envoyer: (h: HouseholdRow, r: Rappel) => Promise<void> = (h, r) => transportParDefaut(db, h, r)) {
   let n = 0;
   for (const h of db.listHouseholds()) {
-    for (const r of [...rappelsEssai(db, h), ...rappelsEcheances(db, h)]) {
+    for (const r of [...rappelsEssai(db, h), ...rappelsEcheances(db, h), ...rappelsAlertes(db, h)]) {
       if (db.marquerRappel(h.id, r.cle)) { await envoyer(h, r); n++; }
     }
   }

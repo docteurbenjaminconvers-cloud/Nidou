@@ -7,6 +7,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Db } from "./db.js";
 import { createApi } from "./api.js";
+import { demarrerSynchroBanques } from "./banques.js";
 import { demarrerRappels } from "./rappels.js";
 import { handleMcpRequest } from "./mcp.js";
 import { seedDemo } from "./seed.js";
@@ -31,6 +32,7 @@ app.use("/api/*", cors());
 app.route("/api", createApi(db, { uploadDir: join(DATA_DIR, "uploads") }));
 // MCP endpoint (streamable HTTP). Claude Desktop / claude.ai: https://<host>/mcp
 app.all("/mcp", (c) => handleMcpRequest(db, c.req.raw));
+app.all("/mcp/:token", (c) => handleMcpRequest(db, c.req.raw, c.req.param("token")));
 // Public waitlist endpoint used by the marketing site (site/).
 app.post("/api/waitlist", async (c) => {
     const body = await c.req.json().catch(() => ({}));
@@ -51,6 +53,7 @@ if (existsSync(WEB_DIST)) {
     app.get("*", serveStatic({ path: join(WEB_DIST, "index.html").replace(process.cwd() + "/", "") }));
 }
 demarrerRappels(db);
+demarrerSynchroBanques(db);
 serve({ fetch: app.fetch, port: PORT }, () => {
     console.log(`Nidou · http://localhost:${PORT}  · API /api · MCP /mcp · IA ${process.env.ANTHROPIC_API_KEY ? "activée" : "désactivée (mode heuristique)"}`);
 });

@@ -38,7 +38,7 @@ export default function App() {
   const [login, setLogin] = useState<string | null | false>(false);
   const [pause, setPause] = useState<string | null>(null); // false: unknown/no, string|null: show login (with optional error code)
 
-  const notifs = useNotifications(deadlines, docs, budget, household);
+  const notifs = useNotifications(deadlines, docs, budget, household, charges);
   const toast = useCallback((m: string) => { setToastMsg(m); setTimeout(() => setToastMsg(null), 2600); }, []);
 
   const reload = useCallback(async (a = api) => {

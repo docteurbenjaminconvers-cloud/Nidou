@@ -106,7 +106,7 @@ export function createMcpServer(db: Db, householdId: string) {
     "charges_fixes",
     {
       title: "Charges fixes et économies possibles",
-      description: "Le budget des dépenses récurrentes du foyer reconstitué à partir des contrats (total mensuel, répartition par catégorie) et les alertes d'économies : doublons, hausses de tarif, contrats non renégociés.",
+      description: "Le budget des dépenses récurrentes du foyer reconstitué à partir des contrats (total mensuel, répartition par catégorie) et les alertes d'économies : doublons, hausses de tarif, fin d'engagement, assurances résiliables à tout moment (loi Hamon), contrats non renégociés.",
       inputSchema: {},
     },
     async () => {

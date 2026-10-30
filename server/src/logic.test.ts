@@ -131,3 +131,20 @@ test("assurance : préavis dépassé, la note du renouvellement le signale", () 
   assert.match(renew?.note ?? "", /préavis de 60 jours est dépassé/);
   assert.match(renew?.note ?? "", /loi Hamon/);
 });
+
+test("alertes : engagement terminé, assurance résiliable à tout moment, sans doublon d'alerte", () => {
+  const db = new Db(":memory:");
+  const h = db.createHousehold("t");
+  const base = { household_id: h.id, member_id: null, texte: null, fichier: null, mime: null, confiance: 1 };
+  const box = db.insertDocument({ ...base, title: "Fibre + mobile", category: "telecom", organisme: "Orange", numero_contrat: "O1", montant: 65, periodicite: "mensuel", date_document: "2024-04-01", date_debut: "2024-04-01", date_fin: null, preavis_jours: 10, resume: "Engagement terminé." });
+  const sport = db.insertDocument({ ...base, title: "Salle de sport", category: "abonnement", organisme: "Basic-Fit", numero_contrat: "B1", montant: 30, periodicite: "mensuel", date_document: "2025-11-01", date_debut: "2025-11-01", date_fin: "2026-11-20", preavis_jours: 30, resume: "Engagement 12 mois." });
+  db.insertDocument({ ...base, title: "Netflix", category: "abonnement", organisme: "Netflix", numero_contrat: null, montant: 13, periodicite: "mensuel", date_document: "2026-10-01", date_debut: "2024-01-01", date_fin: "2026-11-10", preavis_jours: 0, resume: "Sans engagement." });
+  const auto = db.insertDocument({ ...base, title: "Assurance auto — 3008", category: "assurance", organisme: "MAIF", numero_contrat: "A1", montant: 612, periodicite: "annuel", date_document: "2025-03-01", date_debut: "2025-03-01", date_fin: "2027-03-01", preavis_jours: 60, resume: null });
+  const r = chargesReport(db.listDocuments(h.id), TODAY);
+  const fin = r.alertes.filter((a) => a.type === "fin_engagement");
+  assert.deepEqual(fin.map((a) => a.document_ids[0]).sort(), [box.id, sport.id].sort(), "Orange (terminé) et Basic-Fit (dans 23 jours), pas Netflix");
+  assert.equal(fin.find((a) => a.document_ids[0] === box.id)?.gravite, "attention");
+  assert.equal(fin.find((a) => a.document_ids[0] === sport.id)?.gravite, "info");
+  assert.ok(!r.alertes.some((a) => a.type === "non_renegocie" && a.document_ids[0] === box.id), "pas d'alerte « non renégocié » en double sur la box");
+  assert.ok(r.alertes.some((a) => a.type === "resiliable" && a.document_ids[0] === auto.id), "assurance auto de plus d'un an : loi Hamon");
+});

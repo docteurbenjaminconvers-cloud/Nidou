@@ -53,7 +53,7 @@ export function Budget({ api, charges, budget, household, go, onUpgrade, onChang
         {charges.apercu && hidden > 0 && (
           <div className="lock">
             <b>{hidden} autre{hidden > 1 ? "s" : ""} alerte{hidden > 1 ? "s" : ""} d'économie</b>
-            <p>Le plan Famille affiche toutes les alertes : doublons, hausses de tarif, contrats jamais renégociés.</p>
+            <p>Le plan Famille affiche toutes les alertes : doublons, hausses de tarif, fins d'engagement, contrats jamais renégociés.</p>
             <button className="btn" onClick={onUpgrade}>Découvrir le plan Famille</button>
           </div>
         )}

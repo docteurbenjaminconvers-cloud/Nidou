@@ -89,7 +89,7 @@ export interface Charge {
 }
 
 export interface Alert {
-  type: "doublon" | "hausse" | "non_renegocie" | "echeance_proche" | "poids";
+  type: "doublon" | "hausse" | "non_renegocie" | "fin_engagement" | "resiliable" | "echeance_proche" | "poids";
   gravite: "info" | "attention" | "important";
   titre: string; detail: string; economie_estimee: number | null; document_ids: string[];
 }

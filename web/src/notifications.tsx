@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { BudgetReport, Deadline, Doc, Household } from "./types";
+import type { BudgetReport, ChargesReport, Deadline, Doc, Household } from "./types";
 import type { Api } from "./api";
 import { PushCard } from "./push";
 import { daysUntil, fmtEuro, relative } from "./ui";
@@ -24,7 +24,7 @@ function writeSet(s: Set<string>) {
 }
 
 /** Builds the family's notification feed from the loaded state. The server will push the same items later. */
-export function buildNotifications(deadlines: Deadline[], docs: Doc[], budget: BudgetReport | null, household?: Household | null): Notif[] {
+export function buildNotifications(deadlines: Deadline[], docs: Doc[], budget: BudgetReport | null, household?: Household | null, charges?: ChargesReport | null): Notif[] {
   const out: Notif[] = [];
   const today = new Date().toISOString().slice(0, 10);
   // Reverse trial: a reminder two days before the end (day 13), one on the last day, and a recap once the account is back on free.
@@ -70,6 +70,15 @@ export function buildNotifications(deadlines: Deadline[], docs: Doc[], budget: B
       });
     }
   }
+  // Savings alerts on contracts (increase, duplicate, commitment over…): the "info" ones stay on the Budget screen.
+  for (const a of charges?.alertes ?? []) {
+    if (a.gravite === "info") continue;
+    out.push({
+      id: `c:${a.type}:${[...a.document_ids].sort().join(",")}`, kind: "economie", titre: a.titre,
+      detail: a.economie_estimee ? `Jusqu'à ${fmtEuro(a.economie_estimee)} par an · ${a.detail}` : a.detail,
+      quand: today, route: a.document_ids.length === 1 ? { s: "doc", id: a.document_ids[0] } : { s: "budget" }, urgent: false,
+    });
+  }
   for (const d of docs) {
     if (!d.verifie && (d.confiance ?? 1) < 0.7) {
       out.push({ id: `v:${d.id}`, kind: "verifier", titre: `À vérifier : ${d.title}`, detail: "L'extraction est incertaine. Confirmez les dates et le montant.", quand: d.cree_le.slice(0, 10), route: { s: "doc", id: d.id }, urgent: false });
@@ -78,9 +87,9 @@ export function buildNotifications(deadlines: Deadline[], docs: Doc[], budget: B
   return out.sort((a, b) => Number(b.urgent) - Number(a.urgent) || a.quand.localeCompare(b.quand));
 }
 
-export function useNotifications(deadlines: Deadline[], docs: Doc[], budget: BudgetReport | null, household?: Household | null) {
+export function useNotifications(deadlines: Deadline[], docs: Doc[], budget: BudgetReport | null, household?: Household | null, charges?: ChargesReport | null) {
   const [read, setRead] = useState<Set<string>>(readSet);
-  const items = buildNotifications(deadlines, docs, budget, household);
+  const items = buildNotifications(deadlines, docs, budget, household, charges);
   const unread = items.filter((n) => !read.has(n.id)).length;
   const markRead = (id: string) => { const s = new Set(read); s.add(id); setRead(s); writeSet(s); };
   const markAll = () => { const s = new Set(items.map((n) => n.id)); setRead(s); writeSet(s); };
