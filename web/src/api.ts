@@ -455,6 +455,13 @@ function assistantDemo(q: string, docs: Doc[], deadlines: Deadline[], charges: C
       };
     }
   }
+  if (/comment|o[ùu] (est|sont|trouve|je)|ajout|scann|photo|invit|conjoint|notification|prix|combien co[ûu]te|formule|abonnement/.test(t) && !/r[ée]sili/.test(t)) {
+    const ecran = (id: string, titre: string) => [{ type: "ecran" as const, id, titre }];
+    if (/ajout|scann|photo|papier|document/.test(t)) return { reponse: "Touchez le bouton + au centre de la barre du bas, puis prenez le papier en photo ou choisissez un PDF. Nidou le lit, remplit les champs et crée les rappels : vérifiez-les et enregistrez. Astuce : vous pouvez aussi transférer vos emails à votre adresse Nidou (Réglages, « Papiers par email »).", liens: ecran("add", "Ajouter un papier"), courrier: null };
+    if (/invit|conjoint/.test(t)) return { reponse: "Dans Réglages, rubrique « Famille partagée », saisissez l'email de votre conjoint : il reçoit un lien et voit les mêmes papiers et rappels. La formule Duo couvre 2 personnes connectées, Tribu jusqu'à 6.", liens: ecran("settings", "Réglages"), courrier: null };
+    if (/notification/.test(t)) return { reponse: "Ouvrez la cloche en haut de l'accueil, puis activez les notifications en bas de l'écran : Nidou vous prévient avant chaque échéance et dès qu'une économie est repérée.", liens: ecran("notifs", "Notifications"), courrier: null };
+    return { reponse: "Gratuit pour 1 personne. Solo 6,90 € par mois, Duo 9,90 € (2 personnes), Tribu 13,90 € (jusqu'à 6), ou 10 fois le prix mensuel à l'année. Tout est compris dans chaque formule ; l'assistant est une option à 2,90 € par mois. Sans engagement.", liens: ecran("settings", "Réglages"), courrier: null };
+  }
   if (/[ée]conom|budget|cher|payer moins|d[ée]pens/.test(t)) {
     const top = charges.alertes.filter((a) => a.economie_estimee).slice(0, 3);
     const total = top.reduce((s, a) => s + (a.economie_estimee ?? 0), 0);
@@ -477,7 +484,7 @@ function assistantDemo(q: string, docs: Doc[], deadlines: Deadline[], charges: C
     return { reponse: d ? `${d.title} chez ${d.organisme}, contrat n° ${d.numero_contrat} : ${euro(d.montant ?? 0)} par an, tous risques, franchise 300 €. Renouvellement le ${date(d.date_fin!)}.` : "Je ne trouve pas d'assurance auto.", liens: lien(d), courrier: null };
   }
   return {
-    reponse: "Dans cette démo, je réponds aux questions sur les échéances, les économies, l'assurance auto, les papiers d'identité, et je prépare des courriers de résiliation. Avec le serveur Nidou, l'assistant lit tous vos papiers.",
+    reponse: "Dans cette démo, je réponds aux questions sur les échéances, les économies, l'assurance auto, les papiers d'identité, le fonctionnement de l'appli, et je prépare des courriers de résiliation. Avec le serveur Nidou, l'assistant lit tous vos papiers.",
     liens: [], courrier: null,
   };
 }

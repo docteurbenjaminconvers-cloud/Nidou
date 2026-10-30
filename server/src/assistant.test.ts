@@ -75,3 +75,16 @@ test("assistant : refuse sans option, au-delà du quota, et coûte une fraction 
   const c = coutCentimes({ input_tokens: 1000, output_tokens: 200, cache_read_input_tokens: 3000 });
   assert.ok(c > 0.015 && c < 0.025, String(c));
 });
+
+test("assistant : connaît le mode d'emploi et ouvre le bon écran", async () => {
+  const { db, h } = foyer();
+  const m = fauxModele([
+    () => ({ stop_reason: "tool_use", content: [{ type: "tool_use", id: "e1", name: "ouvrir_ecran", input: { ecran: "add" } }] }),
+    () => ({ stop_reason: "end_turn", content: [{ type: "text", text: "Touchez le bouton + au centre." }] }),
+  ]);
+  const r = await repondre(db, h, [{ role: "user", content: "Comment j'ajoute un papier ?" }], {}, m.client);
+  assert.deepEqual(r.liens, [{ type: "ecran", id: "add", titre: "Ajouter un papier" }]);
+  const sys = m.recus[0].system[0].text as string;
+  assert.match(sys, /bouton \+ au centre/);
+  assert.match(sys, /Duo \(jusqu'à 2 personnes\) 9,90 € par mois/);
+});

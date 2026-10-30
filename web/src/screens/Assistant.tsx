@@ -87,7 +87,7 @@ export function Assistant({ api, household, go, onBack, onChanged, toast }: { ap
                     <pre>{b.courrier.texte}</pre>
                   </div>
                 )}
-                {!!b.liens?.length && <div className="chips">{b.liens.map((l) => <button key={l.id} className="chip" onClick={() => go("doc", l.id)}>Voir : {l.titre}</button>)}</div>}
+                {!!b.liens?.length && <div className="chips">{b.liens.map((l) => <button key={l.type + l.id} className="chip" onClick={() => (l.type === "doc" ? go("doc", l.id) : go(l.id))}>{l.type === "doc" ? `Voir : ${l.titre}` : `Ouvrir : ${l.titre}`}</button>)}</div>}
                 {b.erreur && etat?.acces === "essai" && etat.restantes <= 0 && household.plan === "famille" && <button className="btn" style={{ marginTop: 8 }} onClick={activer}>Ajouter l'assistant · {fmt(etat.prix.mensuel)} / mois</button>}
               </div>
             ))}

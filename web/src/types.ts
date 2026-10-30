@@ -90,7 +90,7 @@ export interface AssistantEtat {
 }
 export interface AssistantMessage { role: "user" | "assistant"; content: string }
 export interface AssistantReponse {
-  reponse: string; liens: { type: "doc"; id: string; titre: string }[]; courrier: { titre: string; texte: string } | null; etat: AssistantEtat;
+  reponse: string; liens: { type: "doc" | "ecran"; id: string; titre: string }[]; courrier: { titre: string; texte: string } | null; etat: AssistantEtat;
 }
 
 export interface Charge {
