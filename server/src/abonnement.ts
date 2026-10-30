@@ -12,7 +12,7 @@ import type { Db, HouseholdRow } from "./db.js";
  */
 export const stripeOn = () => Boolean(process.env.STRIPE_SECRET_KEY);
 const stripe = () => new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2025-08-27.basil" as never });
-const publicUrl = () => (process.env.NIDOU_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, "");
+const publicUrl = () => (process.env.LUCIEN_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, "");
 export type Periode = "mensuel" | "annuel";
 export type Formule = "solo" | "duo" | "tribu";
 export const FORMULES: Record<Formule, { nom: string; comptes: number; prix: Record<Periode, number> }> = {
@@ -81,7 +81,7 @@ export async function ajouterVeillePayante(db: Db, h: HouseholdRow, periode: Per
 }
 
 /**
- * « Demander à Nidou » option (2,90 €/mois ou 29 €/an), added to or removed from the existing subscription.
+ * « Demander à Lucien » option (2,90 €/mois ou 29 €/an), added to or removed from the existing subscription.
  * Stripe prices: STRIPE_PRICE_ASSISTANT_MENSUEL / _ANNUEL, matched to the subscription's own period.
  */
 export async function basculerAssistant(db: Db, h: HouseholdRow, actif: boolean): Promise<{ simule: boolean; actif: boolean }> {

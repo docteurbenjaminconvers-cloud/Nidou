@@ -174,7 +174,7 @@ export function conseilsFamille(h: HouseholdRow, members: MemberRow[], activites
   }
   for (const m of aCharge) {
     out.push({ cle: `aidant:${m.id}`, titre: `Vous aidez ${m.prenom} : ce qui est déductible`, detail: "La pension versée à un ascendant dans le besoin est déductible, et les frais d'hébergement en établissement ouvrent droit à une réduction d'impôt. Selon l'âge et l'autonomie : APA, aide ménagère, congé de proche aidant indemnisé (AJPA).", categorie: "impots", membre: m.prenom, source: "https://www.pour-les-personnes-agees.gouv.fr", montant_indicatif: null });
-    out.push({ cle: `protection:${m.id}`, titre: `Papiers de ${m.prenom} : avec son accord`, detail: "Nidou peut ranger les papiers d'un proche avec son consentement. S'il est sous tutelle ou curatelle, c'est le tuteur ou le curateur qui autorise l'accès, en particulier à la banque. Pensez au mandat de protection future tant que la personne peut le signer.", categorie: "legal", membre: m.prenom, source: "https://www.service-public.fr", montant_indicatif: null });
+    out.push({ cle: `protection:${m.id}`, titre: `Papiers de ${m.prenom} : avec son accord`, detail: "Lucien peut ranger les papiers d'un proche avec son consentement. S'il est sous tutelle ou curatelle, c'est le tuteur ou le curateur qui autorise l'accès, en particulier à la banque. Pensez au mandat de protection future tant que la personne peut le signer.", categorie: "legal", membre: m.prenom, source: "https://www.service-public.fr", montant_indicatif: null });
   }
   if (h.situation === "couple" && adultes.length >= 2) {
     out.push({ cle: "couple_declaration", titre: "En couple : déclaration commune ou séparée ?", detail: "Mariés ou pacsés : déclaration commune par défaut, intéressante quand les revenus sont inégaux. En concubinage : deux déclarations, et les enfants rattachés à l'un ou l'autre ; répartir les enfants peut optimiser les parts.", categorie: "impots", membre: null, source: "https://www.impots.gouv.fr", montant_indicatif: null });
@@ -187,7 +187,7 @@ export function conseilsFamille(h: HouseholdRow, members: MemberRow[], activites
     out.push({ cle: "budget_enfants", titre: `Les enfants coûtent ${Math.round(totalEnfants)} € par mois en cantine et activités`, detail: "Fixez une enveloppe par enfant et revoyez-la à chaque réinscription (juin). Les activités non fréquentées depuis deux mois sont des abonnements fantômes comme les autres.", categorie: "budget", membre: null, source: "", montant_indicatif: Math.round(totalEnfants) });
   }
   if (members.length >= 2 && !activites.length) {
-    out.push({ cle: "agenda_vide", titre: "Remplissez l'agenda de la semaine", detail: "Activités, cantine, garde alternée : une fois saisies, Nidou vous rappelle les fins de saison, calcule le coût mensuel et affiche qui est où chaque jour.", categorie: "organisation", membre: null, source: "", montant_indicatif: null });
+    out.push({ cle: "agenda_vide", titre: "Remplissez l'agenda de la semaine", detail: "Activités, cantine, garde alternée : une fois saisies, Lucien vous rappelle les fins de saison, calcule le coût mensuel et affiche qui est où chaque jour.", categorie: "organisation", membre: null, source: "", montant_indicatif: null });
   }
   return out;
 }

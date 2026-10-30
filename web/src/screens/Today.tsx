@@ -29,7 +29,7 @@ export function Today({ household, deadlines, docs, charges, budget, go, onDone,
 
       <button className="ask" onClick={() => go("assistant")}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" /></svg>
-        <span>Demander à Nidou…</span>
+        <span>Demander à Lucien…</span>
       </button>
 
       {household.essai?.actif && (household.essai.jours_restants ?? 0) > 2 && (
@@ -58,10 +58,10 @@ export function Today({ household, deadlines, docs, charges, budget, go, onDone,
       )}
       {household.essai?.actif && (docs.length === 0 || !budget?.nb_transactions || household.membres.length < 2) && (
         <section className="section steps" aria-label="Vos premiers gestes">
-          <div className="section-head"><h2>Votre nid en 3 gestes</h2><span className="badge">{[docs.length > 0, !!budget?.nb_transactions, household.membres.length >= 2].filter(Boolean).length}/3</span></div>
+          <div className="section-head"><h2>Votre foyer en 3 gestes</h2><span className="badge">{[docs.length > 0, !!budget?.nb_transactions, household.membres.length >= 2].filter(Boolean).length}/3</span></div>
           <ol>
             <li className={docs.length > 0 ? "done" : ""}><button onClick={() => go("add")}><i /><div><b>Photographiez un papier</b><span>30 secondes : il se range et crée ses rappels tout seul</span></div></button></li>
-            <li className={budget?.nb_transactions ? "done" : ""}><button onClick={() => go("budget")}><i /><div><b>Connectez votre banque</b><span>1 minute : Nidou chiffre vos économies faciles</span></div></button></li>
+            <li className={budget?.nb_transactions ? "done" : ""}><button onClick={() => go("budget")}><i /><div><b>Connectez votre banque</b><span>1 minute : Lucien chiffre vos économies faciles</span></div></button></li>
             <li className={household.membres.length >= 2 ? "done" : ""}><button onClick={() => go("settings")}><i /><div><b>Ajoutez votre conjoint</b><span>les papiers et les rappels se partagent</span></div></button></li>
           </ol>
         </section>
@@ -83,7 +83,7 @@ export function Today({ household, deadlines, docs, charges, budget, go, onDone,
       ) : (
         <section className="nest calm">
           <p className="kicker">Rien à l'horizon</p>
-          <p className="what">Ajoutez un premier papier : Nidou repère les dates et crée les rappels.</p>
+          <p className="what">Ajoutez un premier papier : Lucien repère les dates et crée les rappels.</p>
           <div className="row"><button className="btn light" onClick={() => go("add")}>Ajouter un papier</button></div>
         </section>
       )}

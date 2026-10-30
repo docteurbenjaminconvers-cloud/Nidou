@@ -1,11 +1,11 @@
-// Smoke test: talks to the Nidou MCP endpoint like Claude or ChatGPT would.
+// Smoke test: talks to the Lucien MCP endpoint like Claude or ChatGPT would.
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
-const url = process.env.NIDOU_URL ?? "http://localhost:3000/mcp";
-const token = process.env.NIDOU_MCP_TOKEN ?? "";
+const url = process.env.LUCIEN_URL ?? "http://localhost:3000/mcp";
+const token = process.env.LUCIEN_MCP_TOKEN ?? "";
 const t = new StreamableHTTPClientTransport(new URL(url), { requestInit: { headers: token ? { authorization: `Bearer ${token}` } : {} } });
-const c = new Client({ name: "nidou-smoke", version: "0" });
+const c = new Client({ name: "lucien-smoke", version: "0" });
 await c.connect(t);
 const tools = await c.listTools();
 console.log("outils:", tools.tools.map((x) => x.name).join(", "));

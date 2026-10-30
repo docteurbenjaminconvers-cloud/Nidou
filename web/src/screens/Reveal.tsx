@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { BudgetReport } from "../types";
 import { fmtEuro } from "../ui";
 
-export const REVEAL_KEY = "nidou.revelation.vue";
+export const REVEAL_KEY = "lucien.revelation.vue";
 
 /**
  * The "wow" moment of the trial: shown once, right after the first bank connection or statement import.
@@ -36,9 +36,9 @@ export function Reveal({ budget, onClose, go, toast }: { budget: BudgetReport; o
   useEffect(() => { if (step === 2) { const t = setTimeout(() => setStep(3), 400 + top.length * 350); return () => clearTimeout(t); } }, [step, top.length]);
 
   const share = async () => {
-    const text = `Nidou vient de trouver ${fmtEuro(total)} par an d'économies cachées dans mes prélèvements, en 1 minute. Essai gratuit 15 jours : https://nidou.fr`;
+    const text = `Lucien vient de trouver ${fmtEuro(total)} par an d'économies cachées dans mes prélèvements, en 1 minute. Essai gratuit 15 jours : https://monlucien.fr`;
     try {
-      if (navigator.share) await navigator.share({ title: "Nidou", text });
+      if (navigator.share) await navigator.share({ title: "Lucien", text });
       else { await navigator.clipboard.writeText(text); toast("Message copié, à coller où vous voulez"); }
     } catch {}
   };
@@ -49,7 +49,7 @@ export function Reveal({ budget, onClose, go, toast }: { budget: BudgetReport; o
         {step === 0 && (
           <div className="reveal-analyse">
             <span className="spinner big" />
-            <p>Nidou analyse {budget.nb_transactions} opérations sur {budget.periode.mois} mois…</p>
+            <p>Lucien analyse {budget.nb_transactions} opérations sur {budget.periode.mois} mois…</p>
             <small>abonnements, hausses, doublons, frais</small>
           </div>
         )}
@@ -68,7 +68,7 @@ export function Reveal({ budget, onClose, go, toast }: { budget: BudgetReport; o
             </ul>
             {step >= 3 && (
               <div className="reveal-actions">
-                <p className="reveal-more">{budget.actions_total > top.length ? `et ${budget.actions_total - top.length} autres pistes dans votre Budget. ` : ""}Nidou refait le tour à chaque nouvelle opération.</p>
+                <p className="reveal-more">{budget.actions_total > top.length ? `et ${budget.actions_total - top.length} autres pistes dans votre Budget. ` : ""}Lucien refait le tour à chaque nouvelle opération.</p>
                 <button className="btn block" onClick={() => { onClose(); go("budget"); }}>Décider, en 2 minutes</button>
                 <button className="btn light block" onClick={share}>Partager cette trouvaille</button>
                 <button className="link" style={{ marginTop: 6 }} onClick={onClose}>Plus tard</button>

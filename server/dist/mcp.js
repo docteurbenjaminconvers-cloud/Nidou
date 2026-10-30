@@ -7,15 +7,15 @@ import { chargesReport, lignesFamille } from "./charges.js";
 import { publicDoc } from "./api.js";
 import { budgetReport } from "./budget.js";
 /**
- * Nidou MCP server — read-only access to a household's papers for any MCP-compatible assistant
+ * Lucien MCP server — read-only access to a household's papers for any MCP-compatible assistant
  * (Claude, ChatGPT, Cursor…). Every call is written to the household's access log so the family
  * can see which AI looked at what.
  *
- * Scope control: a household can exclude categories from the connector (NIDOU_MCP_EXCLUDE, comma list).
+ * Scope control: a household can exclude categories from the connector (LUCIEN_MCP_EXCLUDE, comma list).
  */
 export function createMcpServer(db, householdId) {
-    const server = new McpServer({ name: "nidou", version: "0.1.0" });
-    const excluded = new Set((process.env.NIDOU_MCP_EXCLUDE ?? "sante,banque").split(",").map((s) => s.trim()).filter(Boolean));
+    const server = new McpServer({ name: "lucien", version: "0.1.0" });
+    const excluded = new Set((process.env.LUCIEN_MCP_EXCLUDE ?? "sante,banque").split(",").map((s) => s.trim()).filter(Boolean));
     const visible = () => db.listDocuments(householdId).filter((d) => !excluded.has(d.category));
     const log = (outil, args) => db.logMcpAccess(householdId, outil, args);
     const text = (data) => ({ content: [{ type: "text", text: JSON.stringify(data, null, 2) }] });
@@ -134,7 +134,7 @@ function correspondance(d, q) {
 /** Handles one HTTP request for the MCP endpoint (stateless: a fresh transport per request). */
 /**
  * The bearer token identifies the household (each household has its own `mcp_token`, shown in the app's settings).
- * NIDOU_MCP_TOKEN, if set, remains accepted for the first household (single-household prototype).
+ * LUCIEN_MCP_TOKEN, if set, remains accepted for the first household (single-household prototype).
  */
 export async function handleMcpRequest(db, req, pathToken) {
     const unauthorized = () => new Response(JSON.stringify({ error: "non autorisé" }), { status: 401, headers: { "content-type": "application/json", "www-authenticate": "Bearer" } });
@@ -144,7 +144,7 @@ export async function handleMcpRequest(db, req, pathToken) {
     if (!bearer)
         return unauthorized();
     let h = db.householdByMcpToken(bearer);
-    if (!h && process.env.NIDOU_MCP_TOKEN && bearer === process.env.NIDOU_MCP_TOKEN)
+    if (!h && process.env.LUCIEN_MCP_TOKEN && bearer === process.env.LUCIEN_MCP_TOKEN)
         h = db.firstHousehold();
     if (!h)
         return unauthorized();

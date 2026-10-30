@@ -18,7 +18,7 @@ export interface BridgeConfig {
   clientId: string;
   clientSecret: string;
   webhookSecret: string;
-  publicUrl: string;        // https://app.nidou.fr — used for callback_url
+  publicUrl: string;        // https://app.monlucien.fr — used for callback_url
   baseUrl: string;          // https://api.bridgeapi.io
   version: string;          // 2025-01-15
 }
@@ -30,7 +30,7 @@ export function bridgeConfig(): BridgeConfig | null {
     clientId: BRIDGE_CLIENT_ID,
     clientSecret: BRIDGE_CLIENT_SECRET,
     webhookSecret: process.env.BRIDGE_WEBHOOK_SECRET ?? "",
-    publicUrl: (process.env.NIDOU_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, ""),
+    publicUrl: (process.env.LUCIEN_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, ""),
     baseUrl: process.env.BRIDGE_BASE_URL ?? "https://api.bridgeapi.io",
     version: process.env.BRIDGE_VERSION ?? "2025-01-15",
   };

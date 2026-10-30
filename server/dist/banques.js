@@ -4,7 +4,7 @@ import { envoyerPush } from "./push.js";
 import { bridgeConfig, BridgeClient, mapTransactions, syncHousehold } from "./bridge.js";
 import { ebConfig, EbClient, ebSyncHousehold, mapEbTransactions } from "./enablebanking.js";
 export function fournisseur() {
-    const force = process.env.NIDOU_BANQUE;
+    const force = process.env.LUCIEN_BANQUE;
     if (force === "bridge" && bridgeConfig())
         return "bridge";
     if (ebConfig())
@@ -26,7 +26,7 @@ export async function notifierAlertes(db, v, nouvelles) {
     await envoyerPush(db, v.household_id, { titre, corps: nouvelles[0].titre, url: `/#/veille/${v.id}`, tag: `veille-${v.id}` });
     for (const t of JSON.parse(v.temoins))
         if (t.email)
-            await envoyerEmail({ to: t.email, subject: titre, text: `${corps}\n\nVous recevez ces alertes en tant que témoin désigné par ${v.aidant_nom}, avec l'accord de ${m.prenom}. Nidou ne voit le compte qu'en lecture.` });
+            await envoyerEmail({ to: t.email, subject: titre, text: `${corps}\n\nVous recevez ces alertes en tant que témoin désigné par ${v.aidant_nom}, avec l'accord de ${m.prenom}. Lucien ne voit le compte qu'en lecture.` });
 }
 /** Pulls the protected person's operations (read only) and raises alerts. `bridge_user_uuid` holds "eb:<session>" for Enable Banking. */
 export async function synchroniserVeille(db, v) {
@@ -79,7 +79,7 @@ export async function synchroniserFoyer(db, householdId) {
     return syncHousehold(db, b.client, householdId);
 }
 /**
- * Enable Banking has no account webhook: Nidou fetches every 6 hours (PSD2 allows four unattended fetches a day).
+ * Enable Banking has no account webhook: Lucien fetches every 6 hours (PSD2 allows four unattended fetches a day).
  * Bridge pushes `item.refreshed` webhooks instead, so only Enable Banking links are polled here.
  */
 export async function tacheBanques(db) {

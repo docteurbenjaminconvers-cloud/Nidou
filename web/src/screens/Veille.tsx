@@ -48,7 +48,7 @@ export function VeilleCard({ api, membre, go }: { api: Api; membre: Member; go: 
         </button>
       ) : (
         <>
-          <p className="note">Arnaques au faux conseiller, coupons prépayés, virements vers un inconnu, démarchage : Nidou regarde le compte de {membre.prenom} en lecture seule et vous prévient, avec son accord ou celui de son représentant légal.</p>
+          <p className="note">Arnaques au faux conseiller, coupons prépayés, virements vers un inconnu, démarchage : Lucien regarde le compte de {membre.prenom} en lecture seule et vous prévient, avec son accord ou celui de son représentant légal.</p>
           {!r.ouverte && <div className="confidence" style={{ display: "block" }}>Cette fonction ouvrira après validation par notre avocat. Le cadre est prêt : accord écrit, témoins, journal infalsifiable, retrait à tout moment.</div>}
           {r.ouverte && <button className="btn" onClick={() => go("veille-nouvelle", membre.id)}>Mettre en place la veille</button>}
         </>
@@ -115,7 +115,7 @@ export function VeilleNouvelle({ api, memberId, onBack, go, toast }: { api: Api;
           </div>
           {peut === false && (
             <div className="confidence" style={{ display: "block", marginTop: 12 }}>
-              Sans son accord, ni vous ni Nidou ne pouvez regarder son compte. Il faut une mesure de protection, demandée au juge des contentieux de la protection du tribunal judiciaire : l'habilitation familiale est la plus simple quand la famille est d'accord. Le formulaire et le certificat médical circonstancié sont expliqués sur <a href="https://www.service-public.fr/particuliers/vosdroits/F33367" target="_blank" rel="noreferrer">service-public.fr</a>.
+              Sans son accord, ni vous ni Lucien ne pouvez regarder son compte. Il faut une mesure de protection, demandée au juge des contentieux de la protection du tribunal judiciaire : l'habilitation familiale est la plus simple quand la famille est d'accord. Le formulaire et le certificat médical circonstancié sont expliqués sur <a href="https://www.service-public.fr/particuliers/vosdroits/F33367" target="_blank" rel="noreferrer">service-public.fr</a>.
             </div>
           )}
         </section>
@@ -191,8 +191,8 @@ export function VeilleDetail({ api, id, onBack, toast }: { api: Api; id: string;
 
   const partager = async () => {
     if (!v.lien_personne) return;
-    const texte = `Voici ta page Nidou pour la veille de ton compte. Tu y vois qui reçoit les alertes, et tu peux tout arrêter quand tu veux.`;
-    try { if (navigator.share) { await navigator.share({ title: "Nidou", text: texte, url: v.lien_personne }); return; } } catch { return; }
+    const texte = `Voici ta page Lucien pour la veille de ton compte. Tu y vois qui reçoit les alertes, et tu peux tout arrêter quand tu veux.`;
+    try { if (navigator.share) { await navigator.share({ title: "Lucien", text: texte, url: v.lien_personne }); return; } } catch { return; }
     try { await navigator.clipboard.writeText(v.lien_personne); toast("Lien copié"); } catch { prompt("Lien à transmettre", v.lien_personne); }
   };
   const vu = async () => { await api.veilleVue(v.id); await load(); };
@@ -225,7 +225,7 @@ export function VeilleDetail({ api, id, onBack, toast }: { api: Api; id: string;
         <section className="section">
           <div className="section-head"><h2>Alertes</h2>{(v.alertes ?? []).some((a) => !a.vue) && <button className="link" onClick={vu}>Tout marquer comme vu</button>}</div>
           {!v.banque_connectee ? <p className="note">{v.prenom} n'a pas encore connecté sa banque depuis sa page. Renvoyez-lui le lien si besoin.</p>
-            : (v.alertes ?? []).length === 0 ? <p className="note">Rien d'inhabituel. Nidou vous prévient au moindre virement vers un inconnu, achat de coupon, retrait en série ou nouveau prélèvement.</p>
+            : (v.alertes ?? []).length === 0 ? <p className="note">Rien d'inhabituel. Lucien vous prévient au moindre virement vers un inconnu, achat de coupon, retrait en série ou nouveau prélèvement.</p>
             : (v.alertes ?? []).map((a) => (
               <div key={a.id} className={`alert ${a.gravite === "urgente" ? "important" : "attention"}`} style={{ opacity: a.vue ? 0.6 : 1 }}>
                 <i />
@@ -323,7 +323,7 @@ export function ConsentPage({ api, jeton }: { api: Api; jeton: string }) {
         <p className="detail-sub">La veille de votre compte est arrêtée. Plus personne ne reçoit d'alerte, et vos opérations seront effacées. Vous pouvez fermer cette page.</p>
       ) : (
         <>
-          <p className="detail-sub">{vue.aidant}{vue.aidant_qualite ? `, ${vue.aidant_qualite.toLowerCase()},` : ""} vous propose que Nidou surveille votre compte en banque contre les arnaques.</p>
+          <p className="detail-sub">{vue.aidant}{vue.aidant_qualite ? `, ${vue.aidant_qualite.toLowerCase()},` : ""} vous propose que Lucien surveille votre compte en banque contre les arnaques.</p>
 
           <section className="section">
             <div className="section-head"><h2>Ce que ça veut dire</h2></div>
@@ -408,7 +408,7 @@ export function ConsentPage({ api, jeton }: { api: Api; jeton: string }) {
           Démo : ici, vous voyez la page que recevrait {vue.prenom}. <button className="link" onClick={() => history.back()}>Revenir à la veille côté aidant</button>
         </div>
       )}
-      <p className="note" style={{ marginTop: 24 }}>Nidou · nid « {vue.nid} ». Une question, un doute sur cette page : appelez votre banque au numéro inscrit sur votre carte, jamais un numéro reçu par message.</p>
+      <p className="note" style={{ marginTop: 24 }}>Lucien · foyer « {vue.nid} ». Une question, un doute sur cette page : appelez votre banque au numéro inscrit sur votre carte, jamais un numéro reçu par message.</p>
     </>
   );
 }

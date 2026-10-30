@@ -387,7 +387,7 @@ b, strong { font-weight: 800; }
 .bank-picker img { border-radius: 8px; object-fit: contain; }
 .bank-dot { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: var(--moss-soft); color: var(--nest); font-weight: 800; }
 
-/* ---------- assistant « Demander à Nidou » ---------- */
+/* ---------- assistant « Demander à Lucien » ---------- */
 .ask { display: flex; align-items: center; gap: 10px; width: 100%; margin: 0 0 16px; padding: 13px 16px; border-radius: 999px; border: 2px solid var(--lilac-soft); background: var(--white); color: var(--mist); font: inherit; font-weight: 600; text-align: left; box-shadow: var(--shadow); }
 .ask svg { width: 20px; height: 20px; color: var(--lilac-ink); flex: 0 0 auto; }
 .assistant .fil { display: flex; flex-direction: column; gap: 10px; padding-bottom: 8px; }
@@ -397,10 +397,10 @@ b, strong { font-weight: 800; }
 .bulle.assistant { align-self: flex-start; background: var(--white); border: 1px solid var(--line); border-bottom-left-radius: 6px; }
 .bulle.erreur { background: var(--yolk-soft); border-color: transparent; }
 .bulle.attente { display: inline-flex; gap: 5px; padding: 14px 16px; }
-.bulle.attente span { width: 7px; height: 7px; border-radius: 50%; background: var(--lilac); animation: nidou-pulse 1s infinite ease-in-out; }
+.bulle.attente span { width: 7px; height: 7px; border-radius: 50%; background: var(--lilac); animation: lucien-pulse 1s infinite ease-in-out; }
 .bulle.attente span:nth-child(2) { animation-delay: 0.15s; }
 .bulle.attente span:nth-child(3) { animation-delay: 0.3s; }
-@keyframes nidou-pulse { 0%, 100% { opacity: 0.3; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+@keyframes lucien-pulse { 0%, 100% { opacity: 0.3; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .chip { border: 1px solid var(--line); background: var(--lilac-soft); color: var(--lilac-ink); border-radius: 999px; padding: 7px 12px; font: inherit; font-size: 13.5px; font-weight: 600; text-align: left; }
 .assistant-vide { margin: 4px 0 14px; }

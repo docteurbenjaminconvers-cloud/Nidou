@@ -7,7 +7,7 @@ test("adresse de transfert : un email transféré devient un papier avec ses éc
   const db = new Db(":memory:");
   const h = db.createHousehold("Test", 15); // trial → famille
   const to = boiteAddress(h.boite_code)!;
-  assert.match(to, /^nid-[a-z0-9]{6}@in\.nidou\.fr$/);
+  assert.match(to, /^foyer-[a-z0-9]{6}@in\.monlucien\.fr$/);
   assert.equal(codeFromAddress(to), h.boite_code);
   const mail = {
     message_id: "<m1@example>", to: [to], from: "noreply@maif.fr", subject: "Fwd: Avis d'échéance",
@@ -26,7 +26,7 @@ test("adresse de transfert : un email transféré devient un papier avec ses éc
   const again = await processInboundEmail(db, mail, { plan });
   assert.deepEqual(again, { statut: "ignore", raison: "deja_traite" });
   // unknown recipient / free plan
-  assert.deepEqual(await processInboundEmail(db, { ...mail, message_id: "m2", to: ["nid-zzzzzz@in.nidou.fr"] }, { plan }), { statut: "ignore", raison: "destinataire_inconnu" });
+  assert.deepEqual(await processInboundEmail(db, { ...mail, message_id: "m2", to: ["foyer-zzzzzz@in.monlucien.fr"] }, { plan }), { statut: "ignore", raison: "destinataire_inconnu" });
   assert.deepEqual(await processInboundEmail(db, { ...mail, message_id: "m3" }, { plan: () => "gratuit" }), { statut: "ignore", raison: "plan_gratuit" });
 });
 

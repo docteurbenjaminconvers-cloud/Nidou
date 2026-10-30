@@ -42,7 +42,7 @@ export function Spending({ api, budget, household, go, onChanged, onUpgrade, toa
   const importLock = (
     <div className="lock" style={{ marginTop: 0, marginBottom: 14 }}>
       <b>L'analyse des dépenses fait partie du plan Famille</b>
-      <p>Connexion bancaire ou import de relevés : Nidou repère les abonnements fantômes, les hausses, les doublons et les frais évitables, et chiffre chaque économie.</p>
+      <p>Connexion bancaire ou import de relevés : Lucien repère les abonnements fantômes, les hausses, les doublons et les frais évitables, et chiffre chaque économie.</p>
       <button className="btn" onClick={onUpgrade}>Découvrir le plan Famille</button>
     </div>
   );
@@ -56,7 +56,7 @@ export function Spending({ api, budget, household, go, onChanged, onUpgrade, toa
             <BankLink api={api} household={household} onChanged={onChanged} onUpgrade={onUpgrade} toast={toast} />
             <div className="lock" style={{ marginTop: 0 }}>
               <b>Ou importez un relevé</b>
-              <p>Export CSV de votre banque, PDF ou lignes collées. Nidou repère les abonnements fantômes, les hausses, les doublons et les frais évitables.</p>
+              <p>Export CSV de votre banque, PDF ou lignes collées. Lucien repère les abonnements fantômes, les hausses, les doublons et les frais évitables.</p>
               <ImportBox busy={busy} err={err} texte={texte} setTexte={setTexte} pick={pick} onFile={(f) => doImport({ file: f })} onText={() => doImport({ texte })} onDemo={() => doImport({ demo: true })} />
             </div>
           </>
@@ -150,7 +150,7 @@ export function Spending({ api, budget, household, go, onChanged, onUpgrade, toa
             <li key={r.cle} className="row-item" style={{ gridTemplateColumns: "1fr auto" }}>
               <div>
                 <div className="t" style={{ textTransform: "capitalize" }}>{r.marchand}</div>
-                <div className="s">{r.jour_du_mois ? `le ${r.jour_du_mois} du mois · ` : ""}{r.contrat_id ? <button className="link" style={{ fontSize: 13 }} onClick={() => go("doc", r.contrat_id!)}>contrat connu</button> : "aucun contrat dans Nidou"}</div>
+                <div className="s">{r.jour_du_mois ? `le ${r.jour_du_mois} du mois · ` : ""}{r.contrat_id ? <button className="link" style={{ fontSize: 13 }} onClick={() => go("doc", r.contrat_id!)}>contrat connu</button> : "aucun contrat dans Lucien"}</div>
               </div>
               <div className="r">{fmtEuro(r.mensuel_equivalent)}<small>/ mois</small></div>
             </li>

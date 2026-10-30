@@ -7,11 +7,11 @@ import { ebConfig, EbClient, ebSyncHousehold, mapEbTransactions } from "./enable
 
 /**
  * Which bank connector runs: Enable Banking when its keys are set (billed per connected account, calls included),
- * otherwise Bridge, otherwise the simulated bank. NIDOU_BANQUE=bridge forces Bridge when both are configured.
+ * otherwise Bridge, otherwise the simulated bank. LUCIEN_BANQUE=bridge forces Bridge when both are configured.
  */
 export type Fournisseur = "enablebanking" | "bridge" | "simule";
 export function fournisseur(): Fournisseur {
-  const force = process.env.NIDOU_BANQUE;
+  const force = process.env.LUCIEN_BANQUE;
   if (force === "bridge" && bridgeConfig()) return "bridge";
   if (ebConfig()) return "enablebanking";
   if (bridgeConfig()) return "bridge";
@@ -28,7 +28,7 @@ export async function notifierAlertes(db: Db, v: V.VeilleRow, nouvelles: V.Alert
   const titre = `${urgent ? "Alerte" : "À vérifier"} sur le compte de ${m.prenom}`;
   const corps = nouvelles.map((a) => `• ${a.titre}`).join("\n");
   await envoyerPush(db, v.household_id, { titre, corps: nouvelles[0].titre, url: `/#/veille/${v.id}`, tag: `veille-${v.id}` });
-  for (const t of JSON.parse(v.temoins) as V.Temoin[]) if (t.email) await envoyerEmail({ to: t.email, subject: titre, text: `${corps}\n\nVous recevez ces alertes en tant que témoin désigné par ${v.aidant_nom}, avec l'accord de ${m.prenom}. Nidou ne voit le compte qu'en lecture.` });
+  for (const t of JSON.parse(v.temoins) as V.Temoin[]) if (t.email) await envoyerEmail({ to: t.email, subject: titre, text: `${corps}\n\nVous recevez ces alertes en tant que témoin désigné par ${v.aidant_nom}, avec l'accord de ${m.prenom}. Lucien ne voit le compte qu'en lecture.` });
 }
 
 /** Pulls the protected person's operations (read only) and raises alerts. `bridge_user_uuid` holds "eb:<session>" for Enable Banking. */
@@ -70,7 +70,7 @@ export async function synchroniserFoyer(db: Db, householdId: string) {
 }
 
 /**
- * Enable Banking has no account webhook: Nidou fetches every 6 hours (PSD2 allows four unattended fetches a day).
+ * Enable Banking has no account webhook: Lucien fetches every 6 hours (PSD2 allows four unattended fetches a day).
  * Bridge pushes `item.refreshed` webhooks instead, so only Enable Banking links are polled here.
  */
 export async function tacheBanques(db: Db): Promise<{ foyers: number; veilles: number; erreurs: number }> {

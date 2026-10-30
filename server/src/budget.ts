@@ -13,7 +13,7 @@ export interface Recurrence {
   derniere_date: string;
   jour_du_mois: number | null;
   mensuel_equivalent: number;
-  contrat_id: string | null; // document Nidou rapproché
+  contrat_id: string | null; // document Lucien rapproché
 }
 
 export interface Action {
@@ -138,7 +138,7 @@ export function budgetReport(txs: TransactionRow[], docs: DocumentRow[], decisio
       push({
         cle: `fantome:${r.cle}`, type: "fantome", priorite: 1, effort: "2 min",
         titre: `${cap(r.marchand)} : ${fmt(r.montant_moyen)} chaque ${r.frequence === "mensuel" ? "mois" : r.frequence === "hebdomadaire" ? "semaine" : "année"}`,
-        detail: `Prélevé ${r.occurrences} fois, aucun contrat enregistré dans Nidou. Si vous ne l'utilisez plus, résiliez avant le ${r.jour_du_mois ?? "prochain prélèvement"}.`,
+        detail: `Prélevé ${r.occurrences} fois, aucun contrat enregistré dans Lucien. Si vous ne l'utilisez plus, résiliez avant le ${r.jour_du_mois ?? "prochain prélèvement"}.`,
         economie_annuelle: round2(r.mensuel_equivalent * 12), marchand: r.marchand, document_id: null,
       });
     }
@@ -158,19 +158,19 @@ export function budgetReport(txs: TransactionRow[], docs: DocumentRow[], decisio
     }
   }
 
-  // 3. Recurring charge with no contract in Nidou (insurance, telecom, energy) → add the paper.
+  // 3. Recurring charge with no contract in Lucien (insurance, telecom, energy) → add the paper.
   for (const r of recs) {
     if (!r.contrat_id && ["assurance", "telecom", "energie", "logement"].includes(r.categorie)) {
       push({
         cle: `sans_contrat:${r.cle}`, type: "sans_contrat", priorite: 3, effort: "2 min",
-        titre: `${cap(r.marchand)} prélève ${fmt(r.mensuel_equivalent)} / mois sans contrat dans Nidou`,
-        detail: "Ajoutez le contrat ou la dernière facture : Nidou pourra surveiller l'échéance et comparer le tarif.",
+        titre: `${cap(r.marchand)} prélève ${fmt(r.mensuel_equivalent)} / mois sans contrat dans Lucien`,
+        detail: "Ajoutez le contrat ou la dernière facture : Lucien pourra surveiller l'échéance et comparer le tarif.",
         economie_annuelle: 0, marchand: r.marchand, document_id: null,
       });
     }
   }
 
-  // 4. Contract in Nidou with no matching debit over the last 2 months (cancelled? paid elsewhere?)
+  // 4. Contract in Lucien with no matching debit over the last 2 months (cancelled? paid elsewhere?)
   const lastTwo = months.slice(-2);
   for (const d of docs) {
     if (!d.montant || d.periodicite !== "mensuel") continue;

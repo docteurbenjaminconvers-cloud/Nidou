@@ -14,8 +14,8 @@ export default defineConfig({
       injectManifest: { globPatterns: ["**/*.{js,css,html,svg,png}"] },
       includeAssets: ["icon.svg", "icon-192.png", "icon-512.png"],
       manifest: {
-        name: "Nidou — l'assistant de votre famille",
-        short_name: "Nidou",
+        name: "Lucien — l'assistant de votre famille",
+        short_name: "Lucien",
         description: "Papiers, échéances et charges fixes de la famille, gérés par l'IA.",
         lang: "fr",
         theme_color: "#FBF4F0",

@@ -128,7 +128,7 @@ export interface HouseholdRow {
   nom: string;
   plan: "gratuit" | "famille";
   essai_fin: string | null;
-  boite_code: string | null;   // suffix of the household's forwarding address (nid-<code>@in.nidou.fr)
+  boite_code: string | null;   // suffix of the household's forwarding address (foyer-<code>@in.monlucien.fr)
   situation: string | null;    // seul | couple
   mcp_token: string | null;    // bearer token of this household's MCP connector
   stripe_customer_id: string | null;
@@ -345,7 +345,7 @@ export function newBoiteCode(): string {
 export class Db {
   readonly raw: DatabaseSync;
 
-  constructor(path: string = process.env.NIDOU_DB ?? "nidou.sqlite") {
+  constructor(path: string = process.env.LUCIEN_DB ?? "lucien.sqlite") {
     this.raw = new DatabaseSync(path);
     this.raw.exec("PRAGMA foreign_keys = ON;");
     this.raw.exec(SCHEMA);

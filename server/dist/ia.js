@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 export function provider() {
-    const p = (process.env.NIDOU_IA_PROVIDER ?? (process.env.ANTHROPIC_API_KEY ? "anthropic" : process.env.MISTRAL_API_KEY ? "mistral" : ""));
+    const p = (process.env.LUCIEN_IA_PROVIDER ?? (process.env.ANTHROPIC_API_KEY ? "anthropic" : process.env.MISTRAL_API_KEY ? "mistral" : ""));
     if (p === "anthropic" && process.env.ANTHROPIC_API_KEY)
         return "anthropic";
     if (p === "mistral" && process.env.MISTRAL_API_KEY)
@@ -13,12 +13,12 @@ export function modelFor(tier) {
         return null;
     if (p === "anthropic") {
         return tier === "rapide"
-            ? { provider: p, model: process.env.NIDOU_MODEL_RAPIDE ?? "claude-haiku-5-5", cout_lecture_centimes: Number(process.env.NIDOU_COUT_RAPIDE_CENTIMES ?? 0.5) }
-            : { provider: p, model: process.env.NIDOU_MODEL_PRECIS ?? process.env.NIDOU_MODEL ?? "claude-sonnet-5-5", cout_lecture_centimes: Number(process.env.NIDOU_COUT_PRECIS_CENTIMES ?? 2) };
+            ? { provider: p, model: process.env.LUCIEN_MODEL_RAPIDE ?? "claude-haiku-5-5", cout_lecture_centimes: Number(process.env.LUCIEN_COUT_RAPIDE_CENTIMES ?? 0.5) }
+            : { provider: p, model: process.env.LUCIEN_MODEL_PRECIS ?? process.env.LUCIEN_MODEL ?? "claude-sonnet-5-5", cout_lecture_centimes: Number(process.env.LUCIEN_COUT_PRECIS_CENTIMES ?? 2) };
     }
     return tier === "rapide"
-        ? { provider: p, model: process.env.NIDOU_MODEL_RAPIDE ?? "mistral-small-latest", cout_lecture_centimes: Number(process.env.NIDOU_COUT_RAPIDE_CENTIMES ?? 0.4) }
-        : { provider: p, model: process.env.NIDOU_MODEL_PRECIS ?? "mistral-medium-latest", cout_lecture_centimes: Number(process.env.NIDOU_COUT_PRECIS_CENTIMES ?? 1.5) };
+        ? { provider: p, model: process.env.LUCIEN_MODEL_RAPIDE ?? "mistral-small-latest", cout_lecture_centimes: Number(process.env.LUCIEN_COUT_RAPIDE_CENTIMES ?? 0.4) }
+        : { provider: p, model: process.env.LUCIEN_MODEL_PRECIS ?? "mistral-medium-latest", cout_lecture_centimes: Number(process.env.LUCIEN_COUT_PRECIS_CENTIMES ?? 1.5) };
 }
 /** Asks the model for one structured JSON answer. Returns the parsed object and the model used. */
 export async function structured(call) {

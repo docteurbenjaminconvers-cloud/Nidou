@@ -1,9 +1,9 @@
-# Démo publique de Nidou sur Render (offre gratuite) : appli, API et connecteur IA, avec la famille de démonstration.
+# Démo publique de Lucien sur Render (offre gratuite) : appli, API et connecteur IA, avec la famille de démonstration.
 # Données fictives, effacées à chaque redémarrage. Pas pour de vraies familles.
 # Mise en ligne automatique à chaque envoi sur main, une fois les tests GitHub passés (autoDeployTrigger: checksPass).
 services:
   - type: web
-    name: nidou-demo
+    name: lucien-demo
     runtime: docker
     plan: free
     region: frankfurt
@@ -11,13 +11,13 @@ services:
     branch: main
     autoDeployTrigger: checksPass
     envVars:
-      - key: NIDOU_AUTH
+      - key: LUCIEN_AUTH
         value: "0"
-      - key: NIDOU_SEED
+      - key: LUCIEN_SEED
         value: "1"
-      - key: NIDOU_DATA
-        value: /tmp/nidou
-      - key: NIDOU_VEILLE
+      - key: LUCIEN_DATA
+        value: /tmp/lucien
+      - key: LUCIEN_VEILLE
         value: "1"
       # Facultatif : sans clé, la lecture des papiers et l'assistant restent en mode démo. Render la demande à la création.
       - key: ANTHROPIC_API_KEY

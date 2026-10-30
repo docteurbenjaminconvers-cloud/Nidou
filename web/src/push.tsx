@@ -64,11 +64,11 @@ export function PushCard({ api, toast }: { api: Api; toast: (m: string) => void 
   const p = usePush(api);
   const TEXTE: Record<PushEtat, string> = {
     indisponible: "Ce navigateur ne prend pas en charge les notifications sur l'écran verrouillé.",
-    ios_non_installe: "Sur iPhone, ajoutez d'abord Nidou à l'écran d'accueil (Partager → Sur l'écran d'accueil), puis revenez ici.",
+    ios_non_installe: "Sur iPhone, ajoutez d'abord Lucien à l'écran d'accueil (Partager → Sur l'écran d'accueil), puis revenez ici.",
     serveur_sans_cle: "Les notifications push seront activées à la mise en production (clés VAPID côté serveur).",
-    refuse: "Les notifications sont bloquées pour Nidou dans les réglages du téléphone.",
+    refuse: "Les notifications sont bloquées pour Lucien dans les réglages du téléphone.",
     inactif: "Recevez vos rappels d'échéances et vos économies même quand l'appli est fermée.",
-    actif: "Ce téléphone reçoit les rappels de Nidou.",
+    actif: "Ce téléphone reçoit les rappels de Lucien.",
   };
   return (
     <div className="lock" style={{ marginTop: 12 }}>

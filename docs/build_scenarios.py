@@ -3,7 +3,7 @@ from openpyxl import load_workbook
 from openpyxl.styles import Font, PatternFill
 import subprocess, sys
 RECALC = "/root/.claude/skills/synced/26c5500e-6130-40f6-999a-03ee2ab6084b_cd0ad7a5-8dc3-40e4-9491-98a4eee14b5e/xlsx/scripts/recalc.py"
-SRC = "/home/claude/nidou/docs/Nidou-previsionnel.xlsx"
+SRC = "/home/claude/lucien/docs/Lucien-previsionnel.xlsx"
 def run(changes):
     wb = load_workbook(SRC); hy = wb["Hypothèses"]; labels = {hy.cell(r, 1).value: r for r in range(1, hy.max_row + 1)}
     for k, v in changes.items(): hy.cell(labels[k], 2, v)
@@ -26,7 +26,7 @@ ws = wb.create_sheet("Scénarios", 0)
 F = lambda **k: Font(name="Arial", **k)
 ws.column_dimensions["A"].width = 72
 for c in "BCDEF": ws.column_dimensions[c].width = 14
-ws["A1"] = "Nidou — résultat mensuel avant impôt selon les hypothèses (€)"; ws["A1"].font = F(bold=True, size=13)
+ws["A1"] = "Lucien — résultat mensuel avant impôt selon les hypothèses (€)"; ws["A1"].font = F(bold=True, size=13)
 ws["A2"] = "Valeurs figées, calculées à partir de l'onglet Hypothèses. Pour rejouer un scénario, modifiez les cellules jaunes de cet onglet : le Prévisionnel se recalcule. L'onglet Lancement 3 mois donne la trésorerie des premiers mois."; ws["A2"].font = F(italic=True, size=9)
 for j, h in enumerate(["Scénario", "1 000 abonnés", "5 000", "20 000", "100 000", "500 000"]):
     c = ws.cell(4, 1 + j, h); c.font = F(bold=True); c.fill = PatternFill("solid", fgColor="EEEEEE")

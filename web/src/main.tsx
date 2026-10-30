@@ -3,6 +3,16 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./styles.css";
 
+// Ancien nom (Nidou) : les préférences gardées sur le téléphone (email, nom, langue…) passent sous le nouveau nom.
+try {
+  for (const k of Object.keys(localStorage)) {
+    if (!k.startsWith("nidou.")) continue;
+    const nouvelle = "lucien." + k.slice("nidou.".length);
+    if (localStorage.getItem(nouvelle) === null) localStorage.setItem(nouvelle, localStorage.getItem(k)!);
+    localStorage.removeItem(k);
+  }
+} catch {}
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <App />

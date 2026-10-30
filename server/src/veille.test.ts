@@ -8,9 +8,9 @@ import { appliquerAbonnement } from "./abonnement.js";
 const json = { "content-type": "application/json" };
 
 test("veille : fermée par défaut tant que l'avocat n'a pas validé", async () => {
-  delete process.env.NIDOU_VEILLE; process.env.NIDOU_AUTH = "0";
+  delete process.env.LUCIEN_VEILLE; process.env.LUCIEN_AUTH = "0";
   const db = new Db(":memory:");
-  const api = createApi(db, { uploadDir: "/tmp/nidou-test-uploads" });
+  const api = createApi(db, { uploadDir: "/tmp/lucien-test-uploads" });
   db.createHousehold("Test");
   const r = await api.request("/veilles", { method: "POST", headers: json, body: JSON.stringify({ member_id: "x", mesure: "aucune" }) });
   assert.equal(r.status, 403);
@@ -18,9 +18,9 @@ test("veille : fermée par défaut tant que l'avocat n'a pas validé", async () 
 });
 
 test("veille : consentement, alertes anti-arnaque, journal infalsifiable, retrait", async () => {
-  process.env.NIDOU_VEILLE = "1"; process.env.NIDOU_AUTH = "0";
+  process.env.LUCIEN_VEILLE = "1"; process.env.LUCIEN_AUTH = "0";
   const db = new Db(":memory:");
-  const api = createApi(db, { uploadDir: "/tmp/nidou-test-uploads" });
+  const api = createApi(db, { uploadDir: "/tmp/lucien-test-uploads" });
   const h = db.createHousehold("Test");
   const mamie = db.addMember(h.id, "Josette", "parent_a_charge");
   const enfant = db.addMember(h.id, "Léo", "enfant");
@@ -74,7 +74,7 @@ test("veille : consentement, alertes anti-arnaque, journal infalsifiable, retrai
 });
 
 test("veille : une incluse dans Tribu, les suivantes payantes, rien en gratuit", async () => {
-  process.env.NIDOU_VEILLE = "1";
+  process.env.LUCIEN_VEILLE = "1";
   const db = new Db(":memory:");
   V.ensureVeilleSchema(db);
   const h = db.createHousehold("Test");
@@ -91,7 +91,7 @@ test("veille : une incluse dans Tribu, les suivantes payantes, rien en gratuit",
 });
 
 test("veille : un consentement expiré suspend la veille", () => {
-  process.env.NIDOU_VEILLE = "1";
+  process.env.LUCIEN_VEILLE = "1";
   const db = new Db(":memory:");
   V.ensureVeilleSchema(db);
   const h = db.createHousehold("Test");

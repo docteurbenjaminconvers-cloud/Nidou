@@ -7,9 +7,9 @@ import { categorise, merchantOf, fingerprint, type ParsedTx } from "./transactio
  * Enable Banking (enablebanking.com) — account information under PSD2, billed per connected account per month
  * (calls, data volume and re-authorisations are included). Default bank connector when configured.
  *
- * Flow: the family picks its bank in Nidou (list from GET /aspsps) → POST /auth gives the bank's own login page →
+ * Flow: the family picks its bank in Lucien (list from GET /aspsps) → POST /auth gives the bank's own login page →
  * the bank redirects to /api/bank/eb/callback with a code → POST /sessions opens a session listing the accounts →
- * Nidou fetches balances and transactions itself (no AIS webhook), at most every 6 hours: PSD2 allows four
+ * Lucien fetches balances and transactions itself (no AIS webhook), at most every 6 hours: PSD2 allows four
  * unattended fetches a day per account. The consent lasts up to 180 days, then the person reconnects.
  *
  * Auth: every request carries a JWT signed RS256 with the application's private key, `kid` = application id.
@@ -18,7 +18,7 @@ import { categorise, merchantOf, fingerprint, type ParsedTx } from "./transactio
 export interface EbConfig {
   appId: string;
   privateKey: string;
-  publicUrl: string;       // https://app.nidou.fr — the redirect URL must be whitelisted in the Enable Banking control panel
+  publicUrl: string;       // https://app.monlucien.fr — the redirect URL must be whitelisted in the Enable Banking control panel
   baseUrl: string;         // https://api.enablebanking.com
   consentDays: number;     // 180 by default (bank maximum may be lower; the bank's own limit wins)
 }
@@ -30,7 +30,7 @@ export function ebConfig(): EbConfig | null {
   if (!appId || !key) return null;
   return {
     appId, privateKey: key,
-    publicUrl: (process.env.NIDOU_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, ""),
+    publicUrl: (process.env.LUCIEN_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, ""),
     baseUrl: process.env.ENABLEBANKING_BASE_URL ?? "https://api.enablebanking.com",
     consentDays: Number(process.env.ENABLEBANKING_CONSENT_DAYS ?? 180),
   };

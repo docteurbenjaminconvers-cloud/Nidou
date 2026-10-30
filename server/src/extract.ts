@@ -52,7 +52,7 @@ const JSON_SCHEMA = {
   },
 } as const;
 
-const SYSTEM = `Tu es le moteur d'extraction de Nidou, un assistant qui gère les papiers d'une famille.
+const SYSTEM = `Tu es le moteur d'extraction de Lucien, un assistant qui gère les papiers d'une famille.
 On te donne un document (contrat, facture, courrier, attestation, pièce d'identité, ordonnance…).
 Extrais les champs demandés avec rigueur :
 - Les dates au format AAAA-MM-JJ. Si seule une date de début et une durée (ex. « 1 an ») sont connues, calcule la date de fin.
@@ -81,7 +81,7 @@ export async function extractDocument(input: ExtractInput, opts: { precisOnly?: 
   content.push({ type: "text", text: `Date du jour : ${new Date().toISOString().slice(0, 10)}. Extrais les champs.` });
 
   const tool = { name: "enregistrer_extraction", description: "Enregistre les champs extraits du document.", schema: JSON_SCHEMA as unknown as Record<string, unknown> };
-  const seuil = Number(process.env.NIDOU_SEUIL_CONFIANCE ?? 0.7);
+  const seuil = Number(process.env.LUCIEN_SEUIL_CONFIANCE ?? 0.7);
 
   if (!opts.precisOnly) {
     try {

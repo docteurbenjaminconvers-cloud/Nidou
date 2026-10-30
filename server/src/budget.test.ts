@@ -78,7 +78,7 @@ test("le rapport produit des actions classées : fantômes, hausse EDF, frais, s
   assert.equal(r2.economies_decidees, r.actions[0].economie_annuelle);
 });
 
-test("les contrats Nidou sont rapprochés des prélèvements", async () => {
+test("les contrats Lucien sont rapprochés des prélèvements", async () => {
   const { db, h } = await loadDemo();
   const r = budgetReport(db.listTransactions(h.id), db.listDocuments(h.id), {}, TODAY);
   const orange = r.recurrences.find((x) => x.marchand.includes("orange"));

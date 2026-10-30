@@ -202,7 +202,7 @@ export function newBoiteCode() {
 }
 export class Db {
     raw;
-    constructor(path = process.env.NIDOU_DB ?? "nidou.sqlite") {
+    constructor(path = process.env.LUCIEN_DB ?? "lucien.sqlite") {
         this.raw = new DatabaseSync(path);
         this.raw.exec("PRAGMA foreign_keys = ON;");
         this.raw.exec(SCHEMA);

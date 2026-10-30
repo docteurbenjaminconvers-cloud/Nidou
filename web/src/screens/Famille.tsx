@@ -58,7 +58,7 @@ export function Famille({ api, household, go, unread, onChanged, toast }: { api:
                 <div style={{ display: "flex", gap: 10, marginTop: 10 }}><button className="btn" onClick={addMember}>Ajouter</button><button className="btn ghost" onClick={() => setAdding(null)}>Annuler</button></div>
               </div>
             )}
-            {items.length === 0 && adding !== g.add && <p className="note">{g.add === "enfant" ? "Ajoutez vos enfants : école, cantine, activités, et Nidou suit les dates qui comptent." : g.add === "adulte" ? "Vous, et votre conjoint·e le cas échéant." : "Un parent âgé ou une personne dont vous gérez les papiers, avec son accord."}</p>}
+            {items.length === 0 && adding !== g.add && <p className="note">{g.add === "enfant" ? "Ajoutez vos enfants : école, cantine, activités, et Lucien suit les dates qui comptent." : g.add === "adulte" ? "Vous, et votre conjoint·e le cas échéant." : "Un parent âgé ou une personne dont vous gérez les papiers, avec son accord."}</p>}
             <ul className="list">
               {items.map((m) => {
                 const cout = f.couts.find((c) => c.member_id === m.id);
@@ -195,7 +195,7 @@ export function MembreDetail({ api, id, onBack, go, onChanged, toast }: { api: A
 
       <section className="section">
         <div className="section-head"><h2>Activités</h2><button className="link" onClick={() => go("activite", `nouvelle:${m.id}`)}>Ajouter</button></div>
-        {acts.length === 0 ? <p className="note">Sport, musique, soutien, garde : avec le jour, l'heure, le lieu et le coût, Nidou dessine la semaine et compte le budget.</p> : (
+        {acts.length === 0 ? <p className="note">Sport, musique, soutien, garde : avec le jour, l'heure, le lieu et le coût, Lucien dessine la semaine et compte le budget.</p> : (
           <ul className="list">
             {acts.map((a) => (
               <li key={a.id}><button className="row-item" style={{ gridTemplateColumns: "1fr auto" }} onClick={() => go("activite", a.id)}>
@@ -210,7 +210,7 @@ export function MembreDetail({ api, id, onBack, go, onChanged, toast }: { api: A
       {estProtegeable(m) && <VeilleCard api={api} membre={m} go={go} />}
 
       {estProtegeable(m) && (
-        <div className="confidence" style={{ display: "block", width: "100%" }}>Les papiers de {m.prenom} se rangent dans Nidou avec son accord. Sous tutelle ou curatelle, c'est le tuteur ou le curateur qui autorise, notamment pour la banque.</div>
+        <div className="confidence" style={{ display: "block", width: "100%" }}>Les papiers de {m.prenom} se rangent dans Lucien avec son accord. Sous tutelle ou curatelle, c'est le tuteur ou le curateur qui autorise, notamment pour la banque.</div>
       )}
 
       <div style={{ marginTop: 20 }}>
@@ -253,7 +253,7 @@ export function ActiviteDetail({ api, id, onBack, onChanged, toast }: { api: Api
         <div className="field"><span>Fin de saison</span><input type="date" value={a.date_fin ?? ""} onChange={(e) => set("date_fin", e.target.value)} /></div>
         <div className="field"><span>Note</span><input value={a.note ?? ""} placeholder="Tenue, covoiturage, contact…" onChange={(e) => set("note", e.target.value)} /></div>
       </div>
-      <p className="note" style={{ marginBottom: 14 }}>Avec une date de fin, Nidou vous rappelle la réinscription un mois avant : c'est le moment de renégocier ou d'arrêter.</p>
+      <p className="note" style={{ marginBottom: 14 }}>Avec une date de fin, Lucien vous rappelle la réinscription un mois avant : c'est le moment de renégocier ou d'arrêter.</p>
       <div className="actions">
         <button className="btn" onClick={save}>{isNew ? "Ajouter" : "Enregistrer"}</button>
         {!isNew && <button className="btn danger" onClick={async () => { await api.deleteActivite(id); toast("Activité supprimée"); onChanged(); onBack(); }}>Supprimer</button>}

@@ -1,11 +1,13 @@
 import { envoyerEmail } from "./mail.js";
 /**
  * Accounts without passwords: a magic link by email. The same mechanism carries invitations to join a household.
- * NIDOU_AUTH=0 keeps the single-household prototype mode (no login) for local development and the demo seed.
+ * LUCIEN_AUTH=0 keeps the single-household prototype mode (no login) for local development and the demo seed.
  */
-export const AUTH_ON = () => process.env.NIDOU_AUTH !== "0";
-export const COOKIE = "nidou_session";
-const publicUrl = () => (process.env.NIDOU_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, "");
+export const AUTH_ON = () => process.env.LUCIEN_AUTH !== "0";
+export const COOKIE = "lucien_session";
+/** Cookie de session de l'ancien nom (Nidou) : encore lu, pour ne déconnecter personne au changement de nom. */
+export const ANCIEN_COOKIE = "nidou_session";
+const publicUrl = () => (process.env.LUCIEN_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, "");
 export const emailValide = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
 /** Login link. Returns the link itself only when no email transport is configured (dev), so the UI can show it. */
 export async function demanderLien(db, email, opts = {}) {
@@ -15,10 +17,10 @@ export async function demanderLien(db, email, opts = {}) {
     const h = opts.household_id ? db.getHousehold(opts.household_id) : null;
     const envoye = await envoyerEmail({
         to: email,
-        subject: invitation ? `${opts.invite_par ?? "Un proche"} vous invite dans le nid « ${h?.nom ?? "famille"} »` : "Votre lien de connexion Nidou",
+        subject: invitation ? `${opts.invite_par ?? "Un proche"} vous invite dans le foyer « ${h?.nom ?? "famille"} »` : "Votre lien de connexion Lucien",
         text: invitation
-            ? `${opts.invite_par ?? "Un proche"} partage avec vous les papiers, les échéances et le budget de « ${h?.nom}» sur Nidou.\n\nRejoindre le nid : ${lien}\n\nCe lien est valable 7 jours.`
-            : `Bonjour,\n\nVoici votre lien pour ouvrir Nidou : ${lien}\n\nIl est valable 30 minutes et ne sert qu'une fois. Si vous n'avez rien demandé, ignorez cet email.`,
+            ? `${opts.invite_par ?? "Un proche"} partage avec vous les papiers, les échéances et le budget de « ${h?.nom}» sur Lucien.\n\nRejoindre le foyer : ${lien}\n\nCe lien est valable 7 jours.`
+            : `Bonjour,\n\nVoici votre lien pour ouvrir Lucien : ${lien}\n\nIl est valable 30 minutes et ne sert qu'une fois. Si vous n'avez rien demandé, ignorez cet email.`,
     });
     return { envoye, lien: envoye ? null : lien };
 }
@@ -61,3 +63,5 @@ export function readCookie(header, name) {
     const m = (header ?? "").match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`));
     return m ? decodeURIComponent(m[1]) : null;
 }
+/** Jeton de session : cookie actuel, sinon celui de l'ancien nom. */
+export const sessionToken = (header) => readCookie(header, COOKIE) ?? readCookie(header, ANCIEN_COOKIE);

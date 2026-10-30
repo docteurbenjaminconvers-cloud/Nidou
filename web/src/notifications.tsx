@@ -14,7 +14,7 @@ export interface Notif {
   urgent: boolean;
 }
 
-const READ_KEY = "nidou.notifs.lues";
+const READ_KEY = "lucien.notifs.lues";
 
 function readSet(): Set<string> {
   try { return new Set(JSON.parse(localStorage.getItem(READ_KEY) ?? "[]")); } catch { return new Set(); }
@@ -116,7 +116,7 @@ export function NotificationsScreen({ items, read, markRead, markAll, go, onBack
     <div className="screen">
       <button className="back" onClick={onBack}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>Retour</button>
       <div className="top"><div><h1>Notifications</h1><p className="sub">{items.length ? `${items.filter((n) => !read.has(n.id)).length} non lue${items.filter((n) => !read.has(n.id)).length > 1 ? "s" : ""}` : "Rien à signaler"}</p></div>{items.length > 0 && <button className="link" onClick={markAll}>Tout lire</button>}</div>
-      {items.length === 0 && <div className="empty"><b>Tout est calme</b>Nidou vous préviendra avant chaque échéance et dès qu'une économie est repérée.</div>}
+      {items.length === 0 && <div className="empty"><b>Tout est calme</b>Lucien vous préviendra avant chaque échéance et dès qu'une économie est repérée.</div>}
       <ul className="list">
         {items.map((n) => (
           <li key={n.id}>

@@ -16,7 +16,7 @@ export function ebConfig() {
         return null;
     return {
         appId, privateKey: key,
-        publicUrl: (process.env.NIDOU_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, ""),
+        publicUrl: (process.env.LUCIEN_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, ""),
         baseUrl: process.env.ENABLEBANKING_BASE_URL ?? "https://api.enablebanking.com",
         consentDays: Number(process.env.ENABLEBANKING_CONSENT_DAYS ?? 180),
     };

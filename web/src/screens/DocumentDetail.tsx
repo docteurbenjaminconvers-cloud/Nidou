@@ -11,7 +11,7 @@ export function DocumentDetail({ api, id, onBack, onChanged, toast }: { api: Api
   const [draft, setDraft] = useState<Partial<Doc>>({});
   const [letter, setLetter] = useState<string | null>(null);
   const [letterKind, setLetterKind] = useState<"resiliation" | "reclamation" | "remboursement" | null>(null);
-  const [nom, setNom] = useState(() => localStorage.getItem("nidou.nom") ?? "");
+  const [nom, setNom] = useState(() => localStorage.getItem("lucien.nom") ?? "");
   const [motif, setMotif] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -48,7 +48,7 @@ export function DocumentDetail({ api, id, onBack, onChanged, toast }: { api: Api
   const writeLetter = async () => {
     if (!letterKind || !nom.trim()) return;
     setBusy(true);
-    localStorage.setItem("nidou.nom", nom);
+    localStorage.setItem("lucien.nom", nom);
     try { setLetter(await api.letter({ document_id: doc.id, kind: letterKind, nom, motif: motif || undefined })); }
     finally { setBusy(false); }
   };

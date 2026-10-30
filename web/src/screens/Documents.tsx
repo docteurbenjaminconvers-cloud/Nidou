@@ -11,7 +11,7 @@ export function Documents({ docs, go, unread }: { docs: Doc[]; go: (s: string, i
 
   return (
     <div className="screen">
-      <div className="top"><div><h1>Papiers</h1><p className="sub">{docs.length} document{docs.length > 1 ? "s" : ""} dans le nid</p></div><Bell unread={unread} onClick={() => go("notifs")} /></div>
+      <div className="top"><div><h1>Papiers</h1><p className="sub">{docs.length} document{docs.length > 1 ? "s" : ""} dans le foyer</p></div><Bell unread={unread} onClick={() => go("notifs")} /></div>
       <input className="search" placeholder="Chercher un contrat, un organisme, un numéro…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Rechercher" />
       <div className="pills" role="group" aria-label="Catégories">
         <button className="pill" aria-pressed={cat === ""} onClick={() => setCat("")}>Tous</button>

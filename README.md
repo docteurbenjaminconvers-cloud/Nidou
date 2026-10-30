@@ -1,4 +1,6 @@
-# Nidou — l'assistant de votre famille
+# Lucien — le majordome de votre famille
+
+> Anciennement « Nidou » (renommé le 30/10/2026). Les anciens réglages restent compris : variables `NIDOU_*` (lues comme `LUCIEN_*`), base `nidou.sqlite` (reprise sous `lucien.sqlite` au démarrage), cookie `nidou_session`, en-tête `x-nidou-secret` et adresses `nid-<code>@`.
 
 Prototype fonctionnel : papiers et échéances, charges fixes, analyse des dépenses réelles (import de relevés bancaires) avec économies faciles, notifications, courriers, connecteur MCP en lecture, PWA mobile.
 
@@ -10,7 +12,7 @@ Prérequis : Node 22 ou plus récent.
 npm install
 cp server/.env.example server/.env   # puis renseigner ANTHROPIC_API_KEY
 npm run build --workspace=web        # construit la PWA
-NIDOU_SEED=1 npm start --workspace=server
+LUCIEN_SEED=1 npm start --workspace=server
 ```
 
 Ouvrir http://localhost:3000. Sans `ANTHROPIC_API_KEY`, l'extraction tourne en mode heuristique (champs à vérifier) ; avec la clé, Claude lit photos, PDF et textes.
@@ -19,16 +21,16 @@ En développement : `npm run dev` lance le serveur (port 3000) et Vite (port 517
 
 ## Comptes et foyer partagé
 
-- Connexion **sans mot de passe** : `POST /api/auth/demander {email}` envoie un lien (valable 30 min, usage unique) ; `GET /api/auth/lien?token=…` ouvre une session (cookie `nidou_session`, 90 jours, HttpOnly). Première connexion = création du compte et du nid, avec l'essai de 15 jours.
+- Connexion **sans mot de passe** : `POST /api/auth/demander {email}` envoie un lien (valable 30 min, usage unique) ; `GET /api/auth/lien?token=…` ouvre une session (cookie `lucien_session`, 90 jours, HttpOnly). Première connexion = création du compte et du nid, avec l'essai de 15 jours.
 - **Invitation** du conjoint ou d'un proche : `POST /api/invitations {email, prenom}` envoie un lien de 7 jours qui rattache le compte au même foyer (rôle `membre` ; l'inviteur est `proprietaire`). `GET /api/foyer/comptes`, `DELETE /api/foyer/comptes/:user_id` (propriétaire), `DELETE /api/invitations/:token`. Gratuit : 2 comptes ; Famille : 6.
-- Emails via Brevo (`BREVO_API_KEY`, `NIDOU_EMAIL_FROM`) ; sans clé, le lien est affiché dans la console et renvoyé dans la réponse (`lien`) pour le développement.
-- `NIDOU_AUTH=0` conserve le prototype mono-foyer sans connexion (tests, démo locale). Avec `NIDOU_SEED=1`, le compte `demo@nidou.fr` possède la famille de démonstration.
+- Emails via Brevo (`BREVO_API_KEY`, `LUCIEN_EMAIL_FROM`) ; sans clé, le lien est affiché dans la console et renvoyé dans la réponse (`lien`) pour le développement.
+- `LUCIEN_AUTH=0` conserve le prototype mono-foyer sans connexion (tests, démo locale). Avec `LUCIEN_SEED=1`, le compte `demo@monlucien.fr` possède la famille de démonstration.
 - Le connecteur MCP s'authentifie avec le **jeton du foyer** (`households.mcp_token`, affiché et régénérable dans les réglages) ; refusé hors plan Famille (`402`).
 
 ## Formules et paiement (Stripe)
 
 - **Gratuit** : 1 personne connectée. **Solo** 6,90 € / mois ou 69 € / an (1 personne), **Duo** 9,90 € ou 99 € (2 personnes), **Tribu** 13,90 € ou 139 € (jusqu'à 6). L'annuel vaut 10 mois. On compte les personnes qui se connectent ; les fiches sans connexion (enfants, parents âgés) sont illimitées partout. L'essai de 15 jours donne Tribu.
-- `server/src/abonnement.ts` : `FORMULES`, `capaciteComptes()`. Les invitations au-delà de la capacité sont refusées (`402 limite_comptes`) ; si un nid passe à une formule plus petite (fin d'essai, changement dans le portail Stripe), les comptes en trop sont mis en pause (`402 compte_en_pause`), le propriétaire puis les plus anciens gardent l'accès. Le checkout refuse une formule plus petite que le nombre de personnes déjà connectées.
+- `server/src/abonnement.ts` : `FORMULES`, `capaciteComptes()`. Les invitations au-delà de la capacité sont refusées (`402 limite_comptes`) ; si un foyer passe à une formule plus petite (fin d'essai, changement dans le portail Stripe), les comptes en trop sont mis en pause (`402 compte_en_pause`), le propriétaire puis les plus anciens gardent l'accès. Le checkout refuse une formule plus petite que le nombre de personnes déjà connectées.
 - Le webhook déduit la formule du prix réellement facturé (variables `STRIPE_PRICE_<FORMULE>_<PERIODE>`), ce qui suit aussi les changements faits dans le portail Stripe.
 
 - `POST /api/abonnement/checkout {formule: solo|duo|tribu, periode: mensuel|annuel}` crée une session Stripe Checkout (abonnement, codes promo autorisés, retour sur `/#/settings?paiement=ok|annule`). `POST /api/abonnement/portail` ouvre le portail de facturation (carte, factures, résiliation).
@@ -37,43 +39,43 @@ En développement : `npm run dev` lance le serveur (port 3000) et Vite (port 517
 
 ## Plans, essai inversé et coûts d'IA
 
-- Chaque foyer commence par **15 jours de plan Famille complet** (`NIDOU_ESSAI_JOURS`), sans carte, puis passe en **Gratuit nu** en gardant ses papiers, ses échéances et les opérations déjà importées. `db.effectivePlan()` donne le plan en vigueur.
+- Chaque foyer commence par **15 jours de plan Famille complet** (`LUCIEN_ESSAI_JOURS`), sans carte, puis passe en **Gratuit nu** en gardant ses papiers, ses échéances et les opérations déjà importées. `db.effectivePlan()` donne le plan en vigueur.
 - **Gratuit nu** (`FREE_LIMITS`) : 50 documents, 2 membres, lecture locale des documents sans aucun appel IA, pas d'import de relevés (`402 limite_plan`), pas de connexion bancaire, courriers sur modèle, notifications push seulement. Coût direct par compte : stockage et push, ≈ 1 centime par mois.
-- **Effet « whaou » de l'essai** : carte « Votre nid en 3 gestes » sur l'accueil (papier, banque, conjoint) et écran de révélation (`web/src/screens/Reveal.tsx`) à la première connexion bancaire ou au premier import : compteur animé jusqu'aux économies annuelles, les trois plus grosses pistes, bouton de partage (Web Share). Affiché une fois (`nidou.revelation.vue`), à chaque fois en démo.
+- **Effet « whaou » de l'essai** : carte « Votre foyer en 3 gestes » sur l'accueil (papier, banque, conjoint) et écran de révélation (`web/src/screens/Reveal.tsx`) à la première connexion bancaire ou au premier import : compteur animé jusqu'aux économies annuelles, les trois plus grosses pistes, bouton de partage (Web Share). Affiché une fois (`lucien.revelation.vue`), à chaque fois en démo.
 - **Organisation familiale** (`server/src/famille.ts`) : situation (seul/couple), membres typés (adulte, enfant, parent ou personne à charge) avec date de naissance, établissement, classe, cantine (jours, coût), activités (jour, heures, lieu, coût mensuel, fin de saison). Calculés à la volée : agenda de la semaine, coût mensuel par enfant, échéances familiales fusionnées dans `/api/deadlines` (anniversaires, ARS, bourses, Parcoursup, dossier CROUS, réinscriptions de juin, fin de saison, déclaration de revenus ; `PATCH /api/deadlines/f:<cle>` pour les cocher) et conseils dérivés de la composition (aides, impôts, budget, organisation, cadre légal pour les personnes à charge), chacun avec sa source officielle. Routes : `GET/PATCH /api/famille`, `POST/PATCH/DELETE /api/members/:id`, `/api/activites/:id`. Outil MCP `famille` (sans dates de naissance).
-- **Papiers par email** (`server/src/inbox.ts`) : chaque foyer a une adresse de transfert `nid-<code>@NIDOU_INBOX_DOMAIN` (réglages). Le fournisseur de réception poste les emails sur `POST /api/inbox?secret=NIDOU_INBOX_SECRET` (format générique ou webhook Brevo « inbound parsing ») ; pièces jointes PDF/images lues d'abord, sinon le corps nettoyé des citations ; un document par pièce, échéances dérivées, `source = email`, chaque message traité une seule fois. Réservé à l'essai et au plan Famille. Pas d'OAuth : Nidou ne lit jamais la boîte, seulement ce qui lui est transféré.
+- **Papiers par email** (`server/src/inbox.ts`) : chaque foyer a une adresse de transfert `foyer-<code>@LUCIEN_INBOX_DOMAIN` (réglages). Le fournisseur de réception poste les emails sur `POST /api/inbox?secret=LUCIEN_INBOX_SECRET` (format générique ou webhook Brevo « inbound parsing ») ; pièces jointes PDF/images lues d'abord, sinon le corps nettoyé des citations ; un document par pièce, échéances dérivées, `source = email`, chaque message traité une seule fois. Réservé à l'essai et au plan Famille. Pas d'OAuth : Lucien ne lit jamais la boîte, seulement ce qui lui est transféré.
 - **Rappels** (`server/src/rappels.ts`) : fin d'essai (J-2, dernier jour, lendemain avec les économies en attente) et échéances (au début de la fenêtre `rappel_jours` et le jour même, papiers et dates familiales) ; une passe toutes les 6 h, chaque rappel envoyé une seule fois par foyer (`rappels_envoyes`). Transport : push sur tous les appareils du foyer, plus email pour le plan Famille. `GET /api/rappels` liste les rappels envoyés et dus.
 - **Push** (`server/src/push.ts`, `web/src/sw.ts`, `web/src/push.tsx`) : Web Push standard avec clés VAPID (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`). `GET /api/push/cle`, `POST/DELETE /api/push/abonner`, `POST /api/push/test`. Le service worker (workbox `injectManifest`) affiche la notification et ouvre la bonne page au clic ; les abonnements morts (404/410) sont supprimés. Sur iPhone, l'appli doit être ajoutée à l'écran d'accueil (iOS 16.4+). Sans clés : rappels dans la console.
-- `NIDOU_IA_LECTURES_GRATUIT` (0 par défaut) permet de rouvrir plus tard quelques lectures IA par mois sur le gratuit, toujours sous le plafond global `NIDOU_IA_PLAFOND_GRATUIT_EUR`.
-- **IA** (`server/src/ia.ts`) : fournisseur Anthropic ou Mistral ; modèle rapide d'abord (Haiku), modèle précis (Sonnet) seulement si la confiance est sous `NIDOU_SEUIL_CONFIANCE`. Chaque lecture est comptée avec son coût estimé ; `GET /api/ia/depense` donne la dépense du mois.
-- Le prévisionnel `docs/Nidou-previsionnel.xlsx` (onglets Scénarios, Hypothèses, Lancement 3 mois, Prévisionnel) se régénère avec `python3 docs/build_previsionnel.py && python3 docs/build_lancement.py && python3 docs/build_scenarios.py`.
+- `LUCIEN_IA_LECTURES_GRATUIT` (0 par défaut) permet de rouvrir plus tard quelques lectures IA par mois sur le gratuit, toujours sous le plafond global `LUCIEN_IA_PLAFOND_GRATUIT_EUR`.
+- **IA** (`server/src/ia.ts`) : fournisseur Anthropic ou Mistral ; modèle rapide d'abord (Haiku), modèle précis (Sonnet) seulement si la confiance est sous `LUCIEN_SEUIL_CONFIANCE`. Chaque lecture est comptée avec son coût estimé ; `GET /api/ia/depense` donne la dépense du mois.
+- Le prévisionnel `docs/Lucien-previsionnel.xlsx` (onglets Scénarios, Hypothèses, Lancement 3 mois, Prévisionnel) se régénère avec `python3 docs/build_previsionnel.py && python3 docs/build_lancement.py && python3 docs/build_scenarios.py`.
 
 ## Veille bancaire d'un proche (fermée par défaut)
 
-Pour un parent âgé ou une personne aidée : Nidou lit son compte **en lecture seule** et prévient l'aidant et les témoins en cas de virement vers un inconnu, d'achat de coupon prépayé, de cryptomonnaie, de retraits en série ou de nouveaux prélèvements. Le module est dans `server/src/veille.ts`, les écrans dans `web/src/screens/Veille.tsx`.
+Pour un parent âgé ou une personne aidée : Lucien lit son compte **en lecture seule** et prévient l'aidant et les témoins en cas de virement vers un inconnu, d'achat de coupon prépayé, de cryptomonnaie, de retraits en série ou de nouveaux prélèvements. Le module est dans `server/src/veille.ts`, les écrans dans `web/src/screens/Veille.tsx`.
 
 Le cadre, pensé pour protéger la personne d'abord et la famille ensuite contre les litiges :
 
-- **Consentement selon la situation juridique** : sans mesure, la personne donne son accord elle-même (si elle ne le peut plus, Nidou refuse et renvoie vers le juge des contentieux de la protection) ; en curatelle, elle et son curateur ; en tutelle, habilitation familiale ou mandat de protection future, le représentant, avec le jugement ou le mandat joint.
-- **Page personnelle de la personne** (`/#/consentement/<jeton>`, sans compte) : ce que voit Nidou, qui reçoit les alertes, les dernières consultations, l'accord, la connexion de **sa** banque par elle-même, et le **retrait seule, à tout moment**.
+- **Consentement selon la situation juridique** : sans mesure, la personne donne son accord elle-même (si elle ne le peut plus, Lucien refuse et renvoie vers le juge des contentieux de la protection) ; en curatelle, elle et son curateur ; en tutelle, habilitation familiale ou mandat de protection future, le représentant, avec le jugement ou le mandat joint.
+- **Page personnelle de la personne** (`/#/consentement/<jeton>`, sans compte) : ce que voit Lucien, qui reçoit les alertes, les dernières consultations, l'accord, la connexion de **sa** banque par elle-même, et le **retrait seule, à tout moment**.
 - **Témoins** : d'autres proches reçoivent exactement les mêmes alertes ; personne ne surveille seul.
 - **Journal infalsifiable** : chaque demande, accord, consultation, alerte et fin est chaînée par SHA-256 à la précédente ; toute modification casse la chaîne. Export CSV pour un notaire ou un juge.
-- **Accord valable un an**, puis suspension automatique ; fin au décès (le compte relève alors du notaire), à la fin de la mesure ou au retrait ; opérations effacées après `NIDOU_VEILLE_CONSERVATION_JOURS`.
+- **Accord valable un an**, puis suspension automatique ; fin au décès (le compte relève alors du notaire), à la fin de la mesure ou au retrait ; opérations effacées après `LUCIEN_VEILLE_CONSERVATION_JOURS`.
 - **Engagement de loyauté** de l'aidant à la création.
 - **Facturation** : une veille comprise dans Tribu, les suivantes (et en Solo ou Duo) à 3,90 € / mois ou 39 € / an (`STRIPE_PRICE_VEILLE_*`, ligne ajoutée à l'abonnement avec prorata).
 
-`NIDOU_VEILLE=1` ouvre la fonction. **À ne faire qu'après validation par un avocat** (consentement, mesures de protection, RGPD : données financières d'un tiers vulnérable, analyse d'impact). Sans fournisseur bancaire configuré, la banque est simulée avec un relevé fictif contenant des schémas d'arnaque.
+`LUCIEN_VEILLE=1` ouvre la fonction. **À ne faire qu'après validation par un avocat** (consentement, mesures de protection, RGPD : données financières d'un tiers vulnérable, analyse d'impact). Sans fournisseur bancaire configuré, la banque est simulée avec un relevé fictif contenant des schémas d'arnaque.
 
 ## Connecteur MCP
 
 Point d'entrée : `http://localhost:3000/mcp` (transport HTTP « streamable », sans état).
 
-- Protégé par le jeton du foyer (en-tête `Authorization: Bearer …`, réglages de l'appli) ; `NIDOU_MCP_TOKEN` reste accepté pour le premier foyer.
-- Lecture seule : `lister_documents`, `detail_document`, `echeances`, `charges_fixes`, `rechercher`, `analyse_depenses` (ce dernier nécessite d'ôter `banque` de `NIDOU_MCP_EXCLUDE`).
-- Catégories exclues par défaut : `sante,banque` (`NIDOU_MCP_EXCLUDE`).
+- Protégé par le jeton du foyer (en-tête `Authorization: Bearer …`, réglages de l'appli) ; `LUCIEN_MCP_TOKEN` reste accepté pour le premier foyer.
+- Lecture seule : `lister_documents`, `detail_document`, `echeances`, `charges_fixes`, `rechercher`, `analyse_depenses` (ce dernier nécessite d'ôter `banque` de `LUCIEN_MCP_EXCLUDE`).
+- Catégories exclues par défaut : `sante,banque` (`LUCIEN_MCP_EXCLUDE`).
 - Chaque appel est journalisé (`GET /api/mcp/log`, visible dans les réglages de l'appli).
 
-Test : `NIDOU_URL=http://localhost:3000/mcp NIDOU_MCP_TOKEN=… node server/mcp-smoke.mjs`
+Test : `LUCIEN_URL=http://localhost:3000/mcp LUCIEN_MCP_TOKEN=… node server/mcp-smoke.mjs`
 
 
 ### Brancher le connecteur dans Claude
@@ -109,16 +111,16 @@ server/src/api.ts        API REST (Hono)
 server/src/seed.ts       famille de démonstration (fictive)
 web/src                  PWA React : Aujourd'hui, Agenda, Papiers, Ajout, Budget, Famille (membres, activités), Réglages
 demo/                    page de démo autonome (données d'exemple, sans serveur)
-site/                    site vitrine nidou.fr : accueil (promesse, fonctionnement, connecteur IA, tarifs, FAQ, liste d'attente), mentions légales, confidentialité
+site/                    site vitrine monlucien.fr : accueil (promesse, fonctionnement, connecteur IA, tarifs, FAQ, liste d'attente), mentions légales, confidentialité
 ```
 
 ## Style visuel « Cocon »
 
-Palette et composants définis dans `web/src/styles.css` (variables `:root` puis bloc de surcharges « Cocon ») : crème rosé `#FBF4F0`, corail `#D95F45` (action), lilas `#B89BD9`, pêche `#F6D5C8`, menthe `#CDEBDD` (argent gagné), soleil `#E9B23A`, prune `#3B2A3A` (texte, barre d'onglets). Titres et grands chiffres en Fraunces italique, corps en Nunito. Boutons et étiquettes en pilules, cartes blanches à ombre douce, barre d'onglets en capsule flottante. La maquette de référence est le canevas Claude Design « Nidou — refonte visuelle » (style B).
+Palette et composants définis dans `web/src/styles.css` (variables `:root` puis bloc de surcharges « Cocon ») : crème rosé `#FBF4F0`, corail `#D95F45` (action), lilas `#B89BD9`, pêche `#F6D5C8`, menthe `#CDEBDD` (argent gagné), soleil `#E9B23A`, prune `#3B2A3A` (texte, barre d'onglets). Titres et grands chiffres en Fraunces italique, corps en Nunito. Boutons et étiquettes en pilules, cartes blanches à ombre douce, barre d'onglets en capsule flottante. La maquette de référence est le canevas Claude Design « Lucien — refonte visuelle » (style B).
 
 ## Site vitrine
 
-`site/` est un site statique (HTML + CSS, sans framework) à déposer tel quel chez n'importe quel hébergeur (Netlify, Vercel, OVH…) sous nidou.fr. Le formulaire de liste d'attente appelle `POST /api/waitlist` du serveur Nidou : en production, servir le site et l'API sur le même domaine, ou autoriser `nidou.fr` dans le CORS de l'API. Les mentions légales contiennent des crochets `[…]` à compléter (société, siège, hébergeur).
+`site/` est un site statique (HTML + CSS, sans framework) à déposer tel quel chez n'importe quel hébergeur (Netlify, Vercel, OVH…) sous monlucien.fr. Le formulaire de liste d'attente appelle `POST /api/waitlist` du serveur Lucien : en production, servir le site et l'API sur le même domaine, ou autoriser `monlucien.fr` dans le CORS de l'API. Les mentions légales contiennent des crochets `[…]` à compléter (société, siège, hébergeur).
 
 Le site est en français ; `site/i18n.js` contient les versions anglaise, espagnole, italienne et arabe (sens droite-à-gauche géré). La langue est détectée depuis le navigateur et modifiable par le sélecteur du menu.
 
@@ -136,13 +138,13 @@ Le fournisseur se choisit tout seul (`server/src/banques.ts`) : **Enable Banking
 
 Facturé par compte bancaire connecté et par mois : les appels, le volume et les renouvellements d'autorisation sont compris, donc les synchronisations ne coûtent rien de plus. `server/src/enablebanking.ts` :
 
-1. `GET /api/bank/banques` donne la liste des banques françaises (`GET /aspsps`, en cache un jour) ; la famille choisit la sienne dans Nidou.
+1. `GET /api/bank/banques` donne la liste des banques françaises (`GET /aspsps`, en cache un jour) ; la famille choisit la sienne dans Lucien.
 2. `POST /api/bank/connect {aspsp}` appelle `POST /auth` (autorisation de 180 jours au plus, `state` = `h.<aléa>` pour un foyer, `v.<aléa>` pour la veille d'un proche) ; la personne se connecte sur la page de **sa** banque.
 3. La banque revient sur `GET /api/bank/eb/callback?code&state` : `POST /sessions` ouvre la session et liste les comptes ; première synchronisation (soldes, opérations comptabilisées des 90 derniers jours, pagination `continuation_key`, référence de la banque comme empreinte, donc jamais de doublon).
-4. Pas de webhook pour la lecture des comptes : Nidou relit toutes les **6 heures** (`demarrerSynchroBanques`), soit le maximum de 4 lectures par jour sans la personne prévue par la DSP2, avec 3 jours de recouvrement.
+4. Pas de webhook pour la lecture des comptes : Lucien relit toutes les **6 heures** (`demarrerSynchroBanques`), soit le maximum de 4 lectures par jour sans la personne prévue par la DSP2, avec 3 jours de recouvrement.
 5. Fin d'autorisation : l'appli prévient 14 jours avant et propose « Renouveler ». `DELETE /api/bank`, l'arrêt d'une veille ou le retrait d'accord ferment aussi la session chez la banque (`DELETE /sessions/{id}`).
 
-Chaque requête porte un JWT RS256 signé avec la clé privée de l'application (`kid` = identifiant de l'application). À déclarer dans le Control Panel Enable Banking : la redirect URL `NIDOU_PUBLIC_URL/api/bank/eb/callback`.
+Chaque requête porte un JWT RS256 signé avec la clé privée de l'application (`kid` = identifiant de l'application). À déclarer dans le Control Panel Enable Banking : la redirect URL `LUCIEN_PUBLIC_URL/api/bank/eb/callback`.
 
 ### Bridge (secours)
 
@@ -153,13 +155,13 @@ Chaque requête porte un JWT RS256 signé avec la clé privée de l'application 
 3. `GET /v3/aggregation/accounts` et `/transactions` (pagination `next_uri`, reprise par `since` avec 24 h de recouvrement) alimentent la table `transactions`. Les opérations `future` ou `deleted` sont ignorées ; l'identifiant Bridge sert d'empreinte, donc jamais de doublon.
 4. Le webhook `POST /api/bank/webhook` (signature `BridgeApi-Signature`, HMAC-SHA256, rotation de secret gérée) relance la synchronisation à chaque `item.refreshed`.
 
-À configurer dans le dashboard Bridge : l'application (Client-Id / Client-Secret), un webhook vers `NIDOU_PUBLIC_URL/api/bank/webhook`, et le domaine de redirection. Sans clés, le serveur bascule sur une banque simulée (même parcours, données fictives).
+À configurer dans le dashboard Bridge : l'application (Client-Id / Client-Secret), un webhook vers `LUCIEN_PUBLIC_URL/api/bank/webhook`, et le domaine de redirection. Sans clés, le serveur bascule sur une banque simulée (même parcours, données fictives).
 
 Réservé au plan Famille (`402 limite_plan` sinon). `DELETE /api/bank` supprime la connexion et les comptes.
 
 ## Production
 
-`Dockerfile` (image unique : appli, API, MCP, site), `deploy/docker-compose.yml` (Caddy en HTTPS automatique devant l'application, sauvegarde quotidienne), `deploy/Caddyfile` (site sur `nidou.fr`, appli sur `app.nidou.fr`, en-têtes de sécurité), `server/scripts/sauvegarde.mjs` (copie cohérente de la base à chaud et des fichiers, 14 jours gardés). Guide pas à pas pour un VPS OVH : `deploy/DEPLOIEMENT.md`. Les tests et la construction de l'image tournent sur GitHub Actions à chaque envoi (`.github/workflows/ci.yml`).
+`Dockerfile` (image unique : appli, API, MCP, site), `deploy/docker-compose.yml` (Caddy en HTTPS automatique devant l'application, sauvegarde quotidienne), `deploy/Caddyfile` (site sur `monlucien.fr`, appli sur `app.monlucien.fr`, en-têtes de sécurité), `server/scripts/sauvegarde.mjs` (copie cohérente de la base à chaud et des fichiers, 14 jours gardés). Guide pas à pas pour un VPS OVH : `deploy/DEPLOIEMENT.md`. Les tests et la construction de l'image tournent sur GitHub Actions à chaque envoi (`.github/workflows/ci.yml`).
 
 ## Avant une mise en production
 

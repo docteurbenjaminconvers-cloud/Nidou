@@ -39,7 +39,7 @@ const JSON_SCHEMA = {
         confiance: { type: "number", description: "0 à 1 : confiance globale dans l'extraction" },
     },
 };
-const SYSTEM = `Tu es le moteur d'extraction de Nidou, un assistant qui gère les papiers d'une famille.
+const SYSTEM = `Tu es le moteur d'extraction de Lucien, un assistant qui gère les papiers d'une famille.
 On te donne un document (contrat, facture, courrier, attestation, pièce d'identité, ordonnance…).
 Extrais les champs demandés avec rigueur :
 - Les dates au format AAAA-MM-JJ. Si seule une date de début et une durée (ex. « 1 an ») sont connues, calcule la date de fin.
@@ -68,7 +68,7 @@ export async function extractDocument(input, opts = {}) {
         content.push({ type: "text", text: `Nom du fichier : ${input.nomFichier}` });
     content.push({ type: "text", text: `Date du jour : ${new Date().toISOString().slice(0, 10)}. Extrais les champs.` });
     const tool = { name: "enregistrer_extraction", description: "Enregistre les champs extraits du document.", schema: JSON_SCHEMA };
-    const seuil = Number(process.env.NIDOU_SEUIL_CONFIANCE ?? 0.7);
+    const seuil = Number(process.env.LUCIEN_SEUIL_CONFIANCE ?? 0.7);
     if (!opts.precisOnly) {
         try {
             const r = await structured({ tier: "rapide", system: SYSTEM, content, tool });

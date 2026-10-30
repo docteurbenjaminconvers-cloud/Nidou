@@ -15,15 +15,15 @@ import { FORMULES, type Formule } from "./abonnement.js";
  *  3. Transparence : la personne voit qui a accès ; les proches désignés (« témoins ») reçoivent les mêmes alertes.
  *  4. Journal chaîné (empreintes SHA-256) : toute modification ultérieure se détecte ; exportable.
  *  5. Fin automatique : retrait du consentement, décès déclaré, fin de mesure, consentement expiré (suspension).
- *  6. Opérations du proche séparées du budget familial, effacées après la fin (NIDOU_VEILLE_CONSERVATION_JOURS).
+ *  6. Opérations du proche séparées du budget familial, effacées après la fin (LUCIEN_VEILLE_CONSERVATION_JOURS).
  *
- * La fonction est fermée par défaut (NIDOU_VEILLE=1 pour l'ouvrir) tant que les conditions n'ont pas été validées par un avocat.
+ * La fonction est fermée par défaut (LUCIEN_VEILLE=1 pour l'ouvrir) tant que les conditions n'ont pas été validées par un avocat.
  */
 
-export const veilleOuverte = () => process.env.NIDOU_VEILLE === "1";
+export const veilleOuverte = () => process.env.LUCIEN_VEILLE === "1";
 export const CONSENTEMENT_JOURS = 365;
 export const PRIX_VEILLE = { mensuel: 3.9, annuel: 39 };
-const conservationJours = () => Number(process.env.NIDOU_VEILLE_CONSERVATION_JOURS ?? 90);
+const conservationJours = () => Number(process.env.LUCIEN_VEILLE_CONSERVATION_JOURS ?? 90);
 
 export type Mesure = "aucune" | "curatelle" | "tutelle" | "habilitation_familiale" | "mandat_protection_future";
 export type Statut = "attente_consentement" | "active" | "suspendue" | "terminee";
@@ -146,11 +146,11 @@ export function creerVeille(db: Db, h: HouseholdRow, input: {
   temoins?: Temoin[]; personne_peut_consentir: boolean;
 }): VeilleRow {
   const m = db.getMember(input.member_id);
-  if (!m || m.household_id !== h.id) throw new RefusVeille("membre", "Personne introuvable dans ce nid.");
+  if (!m || m.household_id !== h.id) throw new RefusVeille("membre", "Personne introuvable dans ce foyer.");
   if (m.role !== "parent_a_charge" && m.role !== "autre_a_charge") throw new RefusVeille("membre", "La veille bancaire concerne un parent ou une personne aidée.");
   if (veillesDuFoyer(db, h.id).some((v) => v.member_id === m.id && v.statut !== "terminee")) throw new RefusVeille("doublon", `Une veille existe déjà pour ${m.prenom}.`);
   if (input.mesure === "aucune" && !input.personne_peut_consentir) {
-    throw new RefusVeille("consentement_impossible", `Sans mesure de protection, ${m.prenom} doit pouvoir donner son accord elle-même. Si ce n'est plus possible, une mesure doit être demandée au juge des contentieux de la protection (tribunal judiciaire) : tutelle, curatelle ou habilitation familiale. Nidou ne peut pas l'activer à sa place.`);
+    throw new RefusVeille("consentement_impossible", `Sans mesure de protection, ${m.prenom} doit pouvoir donner son accord elle-même. Si ce n'est plus possible, une mesure doit être demandée au juge des contentieux de la protection (tribunal judiciaire) : tutelle, curatelle ou habilitation familiale. Lucien ne peut pas l'activer à sa place.`);
   }
   if (input.mesure !== "aucune") {
     const doc = input.acte_document_id ? db.getDocument(input.acte_document_id) : undefined;
@@ -212,14 +212,14 @@ export function entretienVeilles(db: Db): { suspendues: number; effacees: number
   let suspendues = 0, effacees = 0;
   for (const v of db.raw.prepare("SELECT * FROM veilles WHERE statut = 'active' AND consentement_expire < ?").all(now()) as unknown as VeilleRow[]) {
     majVeille(db, v.id, { statut: "suspendue" });
-    journaliser(db, v.id, "Nidou", "suspension", { motif: "consentement expiré, à renouveler" });
+    journaliser(db, v.id, "Lucien", "suspension", { motif: "consentement expiré, à renouveler" });
     suspendues++;
   }
   const limite = new Date(Date.now() - conservationJours() * 864e5).toISOString();
   for (const v of db.raw.prepare("SELECT * FROM veilles WHERE statut = 'terminee' AND fin_le < ?").all(limite) as unknown as VeilleRow[]) {
     const n = Number(db.raw.prepare("DELETE FROM veille_operations WHERE veille_id = ?").run(v.id).changes);
     db.raw.prepare("DELETE FROM veille_alertes WHERE veille_id = ?").run(v.id);
-    if (n) { journaliser(db, v.id, "Nidou", "effacement", { operations: n }); effacees += n; }
+    if (n) { journaliser(db, v.id, "Lucien", "effacement", { operations: n }); effacees += n; }
   }
   return { suspendues, effacees };
 }
@@ -288,7 +288,7 @@ function analyser(db: Db, v: VeilleRow): Alerte[] {
   const ins = db.raw.prepare("INSERT OR IGNORE INTO veille_alertes (id, veille_id, operation_id, type, gravite, titre, detail, quand) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
   for (const a of detecterAlertes(ops)) {
     const r = ins.run(randomUUID(), v.id, a.operation_id, a.type, a.gravite, a.titre, a.detail, now());
-    if (Number(r.changes)) { journaliser(db, v.id, "Nidou", "alerte", { type: a.type, gravite: a.gravite, titre: a.titre }); nouvelles.push(a); }
+    if (Number(r.changes)) { journaliser(db, v.id, "Lucien", "alerte", { type: a.type, gravite: a.gravite, titre: a.titre }); nouvelles.push(a); }
   }
   return nouvelles;
 }
@@ -324,7 +324,7 @@ export function vuePersonne(db: Db, v: VeilleRow) {
     temoins: JSON.parse(v.temoins) as Temoin[], banque_connectee: Boolean(v.banque_connectee),
     acces: [{ nom: v.aidant_nom, role: v.aidant_qualite ?? "aidant" }, ...(JSON.parse(v.temoins) as Temoin[]).map((t) => ({ nom: t.nom, role: "témoin, reçoit les mêmes alertes" }))],
     engagements: [
-      "Nidou ne voit vos opérations qu'en lecture : personne ne peut faire de virement ni rien modifier sur votre compte.",
+      "Lucien ne voit vos opérations qu'en lecture : personne ne peut faire de virement ni rien modifier sur votre compte.",
       "Vous n'avez jamais à donner votre code bancaire à quelqu'un d'autre ; vous vous connectez vous-même à votre banque.",
       "Vous voyez ici qui reçoit les alertes. Chaque consultation est notée dans un journal que l'on ne peut pas modifier.",
       `Votre accord vaut un an. Vous pouvez le retirer à tout moment, seul·e, depuis cette page.`,

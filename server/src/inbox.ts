@@ -3,10 +3,10 @@ import { extractDocument } from "./extract.js";
 import { deadlinesFor } from "./deadlines.js";
 
 /**
- * Forwarding address: each household owns `nid-<code>@<NIDOU_INBOX_DOMAIN>`. Any email forwarded there (by hand or by a
+ * Forwarding address: each household owns `foyer-<code>@<LUCIEN_INBOX_DOMAIN>`. Any email forwarded there (by hand or by a
  * Gmail/Outlook rule) is read like a photo in the app: attachments (PDF, images) first, otherwise the body.
  * No OAuth, no access to the mailbox itself. The mail provider (Brevo inbound parsing, OVH, Postmark…) posts the parsed
- * message to POST /api/inbox?secret=NIDOU_INBOX_SECRET in the generic shape below; a Brevo adapter is included.
+ * message to POST /api/inbox?secret=LUCIEN_INBOX_SECRET in the generic shape below; a Brevo adapter is included.
  */
 export interface InboundEmail {
   message_id: string;
@@ -17,15 +17,15 @@ export interface InboundEmail {
   attachments: { nom: string; mime: string; base64: string }[];
 }
 
-export const INBOX_DOMAIN = () => process.env.NIDOU_INBOX_DOMAIN ?? "in.nidou.fr";
-export const boiteAddress = (code: string | null) => (code ? `nid-${code}@${INBOX_DOMAIN()}` : null);
+export const INBOX_DOMAIN = () => process.env.LUCIEN_INBOX_DOMAIN ?? "in.monlucien.fr";
+export const boiteAddress = (code: string | null) => (code ? `foyer-${code}@${INBOX_DOMAIN()}` : null);
 
 const MAX_ATTACHMENTS = 5;
 const MAX_BYTES = 15 * 1024 * 1024;
 const READABLE = /^(application\/pdf|image\/(jpeg|png|gif|webp))$/;
 
 export function codeFromAddress(addr: string): string | null {
-  const m = addr.toLowerCase().match(/nid-([a-z0-9]{6})@/);
+  const m = addr.toLowerCase().match(/(?:foyer|nid)-([a-z0-9]{6})@/);
   return m ? m[1] : null;
 }
 

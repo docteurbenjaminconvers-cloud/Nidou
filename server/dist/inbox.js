@@ -1,12 +1,12 @@
 import { extractDocument } from "./extract.js";
 import { deadlinesFor } from "./deadlines.js";
-export const INBOX_DOMAIN = () => process.env.NIDOU_INBOX_DOMAIN ?? "in.nidou.fr";
-export const boiteAddress = (code) => (code ? `nid-${code}@${INBOX_DOMAIN()}` : null);
+export const INBOX_DOMAIN = () => process.env.LUCIEN_INBOX_DOMAIN ?? "in.monlucien.fr";
+export const boiteAddress = (code) => (code ? `foyer-${code}@${INBOX_DOMAIN()}` : null);
 const MAX_ATTACHMENTS = 5;
 const MAX_BYTES = 15 * 1024 * 1024;
 const READABLE = /^(application\/pdf|image\/(jpeg|png|gif|webp))$/;
 export function codeFromAddress(addr) {
-    const m = addr.toLowerCase().match(/nid-([a-z0-9]{6})@/);
+    const m = addr.toLowerCase().match(/(?:foyer|nid)-([a-z0-9]{6})@/);
     return m ? m[1] : null;
 }
 /** Strips quoted replies and signatures so the model reads the forwarded content, not the chit-chat around it. */

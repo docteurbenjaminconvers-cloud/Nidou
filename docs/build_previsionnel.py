@@ -1,4 +1,4 @@
-"""Builds docs/Nidou-previsionnel.xlsx : hypothèses éditables + compte de résultat mensuel par palier d'abonnés."""
+"""Builds docs/Lucien-previsionnel.xlsx : hypothèses éditables + compte de résultat mensuel par palier d'abonnés."""
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.comments import Comment
@@ -23,7 +23,7 @@ hy.title = "Hypothèses"
 hy.column_dimensions["A"].width = 58
 hy.column_dimensions["B"].width = 16
 hy.column_dimensions["C"].width = 70
-hy["A1"] = "Nidou — hypothèses du prévisionnel"; hy["A1"].font = H
+hy["A1"] = "Lucien — hypothèses du prévisionnel"; hy["A1"].font = H
 hy["A2"] = "Cellules en bleu sur fond jaune : à modifier librement. Tout le reste se recalcule."; hy["A2"].font = Font(name=FONT, italic=True)
 
 rows = [
@@ -43,7 +43,7 @@ rows = [
     ("Churn mensuel des abonnés", 0.03, PCT, "3 % par mois : ordre de grandeur des applis grand public bien notées"),
     ("COÛTS VARIABLES (par foyer et par mois)", None, None, None),
     ("IA — extraction de documents, foyer payant (€)", 0.05, EUR2, "≈ 5 documents/mois : modèle rapide (Haiku ≈ 0,5 c) avec repli sur le modèle précis (Sonnet ≈ 2 c) pour 15 % des documents, + catégorisation bancaire + courriers"),
-    ("IA — foyer gratuit (€)", 0.0, EUR2, "Gratuit nu : lecture locale sans IA, pas d'import de relevés ni de banque. 0 € d'IA (NIDOU_IA_LECTURES_GRATUIT=0 ; un quota rouvrable plus tard reste plafonné par NIDOU_IA_PLAFOND_GRATUIT_EUR)"),
+    ("IA — foyer gratuit (€)", 0.0, EUR2, "Gratuit nu : lecture locale sans IA, pas d'import de relevés ni de banque. 0 € d'IA (LUCIEN_IA_LECTURES_GRATUIT=0 ; un quota rouvrable plus tard reste plafonné par LUCIEN_IA_PLAFOND_GRATUIT_EUR)"),
     ("Agrégation bancaire Bridge, par compte connecté (€)", 1.0, EUR2, "Tarif public indicatif 0,5 à 2 € par compte et par mois ; à négocier au volume"),
     ("Part des abonnés qui connectent leur banque", 0.6, PCT, "Hypothèse"),
     ("Nombre de comptes connectés par foyer connecté", lambda R: f"=1.1*{R['Part des abonnés en Solo']}+2*{R['Part des abonnés en Tribu']}+1.4*(1-{R['Part des abonnés en Solo']}-{R['Part des abonnés en Tribu']})", '0.00', "Calculé : 1,1 compte en Solo, 1,4 en Duo (compte joint + un perso), 2 en Tribu"),
@@ -101,7 +101,7 @@ for row in hy.iter_rows(min_row=1, max_row=r + 1):
 pv = wb.create_sheet("Prévisionnel")
 pv.column_dimensions["A"].width = 52
 for j in range(len(tiers)): pv.column_dimensions[get_column_letter(2 + j)].width = 18
-pv["A1"] = "Nidou — compte de résultat mensuel par palier d'abonnés payants"; pv["A1"].font = H
+pv["A1"] = "Lucien — compte de résultat mensuel par palier d'abonnés payants"; pv["A1"].font = H
 pv["A2"] = "Régime de croisière à chaque palier (hors phase de lancement). Montants hors taxes, par mois."; pv["A2"].font = Font(name=FONT, italic=True)
 
 def L(j): return get_column_letter(2 + j)
@@ -163,5 +163,5 @@ for rr in pv.iter_rows(min_row=3, max_row=row):
         if c.font.name != FONT: c.font = Font(name=FONT, bold=c.font.bold, color=c.font.color)
 
 # L'onglet Scénarios est ajouté séparément (valeurs figées) après génération.
-wb.save("/home/claude/nidou/docs/Nidou-previsionnel.xlsx")
+wb.save("/home/claude/lucien/docs/Lucien-previsionnel.xlsx")
 print("ok")

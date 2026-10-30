@@ -11,7 +11,7 @@ export function BankLink({ api, household, onChanged, onUpgrade, toast, compact 
 }) {
   const [status, setStatus] = useState<BankStatus | null>(null);
   const [busy, setBusy] = useState(false);
-  const [email, setEmail] = useState(() => localStorage.getItem("nidou.email") ?? "");
+  const [email, setEmail] = useState(() => localStorage.getItem("lucien.email") ?? "");
   const [err, setErr] = useState<string | null>(null);
   const [banques, setBanques] = useState<Banque[] | null>(null);
 
@@ -21,8 +21,8 @@ export function BankLink({ api, household, onChanged, onUpgrade, toast, compact 
   const connect = async (aspsp?: Banque) => {
     setBusy(true); setErr(null);
     try {
-      try { localStorage.setItem("nidou.email", email); } catch {}
-      // Enable Banking: Nidou shows the bank list first, then sends the family to its bank's own login page.
+      try { localStorage.setItem("lucien.email", email); } catch {}
+      // Enable Banking: Lucien shows the bank list first, then sends the family to its bank's own login page.
       if (!aspsp && status?.fournisseur === "enablebanking") { setBanques((await api.banques()).banques); return; }
       const { url } = await api.bankConnect(email || "famille@example.org", aspsp);
       if (url && url.startsWith("http")) { location.href = url; return; }     // Bridge Connect (real)
@@ -78,7 +78,7 @@ export function BankLink({ api, household, onChanged, onUpgrade, toast, compact 
   return (
     <div className="lock" style={{ marginTop: 0, marginBottom: 14 }}>
       <b>Connecter ma banque</b>
-      <p>Vos opérations arrivent automatiquement, chaque jour, via un agrégateur agréé par la Banque de France (DSP2). Nidou ne voit jamais vos identifiants bancaires.</p>
+      <p>Vos opérations arrivent automatiquement, chaque jour, via un agrégateur agréé par la Banque de France (DSP2). Lucien ne voit jamais vos identifiants bancaires.</p>
       {household.plan === "gratuit" ? (
         <button className="btn" onClick={onUpgrade}>Inclus dans le plan Famille</button>
       ) : (

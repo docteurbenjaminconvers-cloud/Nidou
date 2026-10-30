@@ -6,16 +6,16 @@ import { consommerLien, demanderLien } from "./auth.js";
 import { appliquerAbonnement } from "./abonnement.js";
 
 test("comptes : invitations limitées par la formule, compte en trop mis en pause", async () => {
-  process.env.NIDOU_AUTH = "1";
+  process.env.LUCIEN_AUTH = "1";
   const db = new Db(":memory:");
-  const api = createApi(db, { uploadDir: "/tmp/nidou-test-uploads" });
+  const api = createApi(db, { uploadDir: "/tmp/lucien-test-uploads" });
   const login = async (email: string, household_id?: string) => {
     const r = await demanderLien(db, email, { household_id, prenom: email.split("@")[0] });
     const c = consommerLien(db, new URL(r.lien!).searchParams.get("token")!, 15);
     assert.ok(c.ok); return c.ok ? c : null!;
   };
   const a = await login("a@x.fr");
-  const ck = (s: string) => ({ cookie: `nidou_session=${s}`, "content-type": "application/json" });
+  const ck = (s: string) => ({ cookie: `lucien_session=${s}`, "content-type": "application/json" });
   const inviter = (sess: string, email: string) => api.request("/invitations", { method: "POST", headers: ck(sess), body: JSON.stringify({ email, prenom: null }) });
   // trial (Tribu): inviting works
   assert.equal((await inviter(a.session, "b@x.fr")).status, 201);

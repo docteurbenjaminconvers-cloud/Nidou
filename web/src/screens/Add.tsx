@@ -29,7 +29,7 @@ export function Add({ api, onBack, onAdded, toast, household }: { api: Api; onBa
   return (
     <div className="screen">
       <Back onClick={onBack} />
-      <div className="top"><div><h1>Ajouter un papier</h1><p className="sub">Nidou lit le document, range la catégorie, extrait les dates et crée les rappels.</p></div></div>
+      <div className="top"><div><h1>Ajouter un papier</h1><p className="sub">Lucien lit le document, range la catégorie, extrait les dates et crée les rappels.</p></div></div>
 
       <div
         className={`dropzone ${drag ? "active" : ""}`}

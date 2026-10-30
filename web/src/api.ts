@@ -10,7 +10,7 @@ import demoCharges from "./demo/charges.json";
 import demoChargesFamille from "./demo/charges-famille.json";
 
 /**
- * Data layer. Talks to the Nidou server under /api. When the server is unreachable (the published
+ * Data layer. Talks to the Lucien server under /api. When the server is unreachable (the published
  * demo page, for instance) it switches to an in-memory demo household so every screen stays usable.
  */
 export interface Api {
@@ -180,7 +180,7 @@ function makeDemoApi(): Api {
     bank: false,
     decisions: {} as Record<string, string>,
     famille: structuredClone(demoFamille) as unknown as FamilleReport,
-    comptes: [{ id: "u1", email: "demo@nidou.fr", prenom: "Moi", role: "proprietaire", rejoint_le: "2026-10-01T09:00:00.000Z" }, { id: "u2", email: "camille@example.org", prenom: "Camille", role: "membre", rejoint_le: "2026-10-02T18:30:00.000Z" }],
+    comptes: [{ id: "u1", email: "demo@monlucien.fr", prenom: "Moi", role: "proprietaire", rejoint_le: "2026-10-01T09:00:00.000Z" }, { id: "u2", email: "camille@example.org", prenom: "Camille", role: "membre", rejoint_le: "2026-10-02T18:30:00.000Z" }],
     invitations: [] as { token: string; email: string; prenom: string | null; expire_le: string }[],
     veilles: [] as (Veille & { jeton: string; historique: { quand: string; acteur: string; action: string; details: string; empreinte: string }[] })[],
     veillesSupp: 0,
@@ -212,7 +212,7 @@ function makeDemoApi(): Api {
         id: crypto.randomUUID(), title: name.replace(/\.[a-z0-9]+$/i, ""), category: "autre", organisme: null, numero_contrat: null,
         montant: (texte ?? "").match(/(\d+[,.]?\d*)\s*€/)?.[1] ? parseFloat((texte ?? "").match(/(\d+[,.]?\d*)\s*€/)![1].replace(",", ".")) : null,
         periodicite: /mois/i.test(texte ?? "") ? "mensuel" : null, date_document: today(), date_debut: null, date_fin: null, preavis_jours: null,
-        resume: "Mode démo : l'extraction IA complète fonctionne avec le serveur Nidou.", confiance: 0.3, verifie: 0, member_id: null, cree_le: new Date().toISOString(),
+        resume: "Mode démo : l'extraction IA complète fonctionne avec le serveur Lucien.", confiance: 0.3, verifie: 0, member_id: null, cree_le: new Date().toISOString(),
       };
       state.docs.unshift(d);
       return { ...d, echeances: [] };
@@ -267,7 +267,7 @@ function makeDemoApi(): Api {
     },
     updateActivite: async (id, patch) => { const a = state.famille.activites.find((x) => x.id === id)!; Object.assign(a, patch); return a; },
     deleteActivite: async (id) => { state.famille.activites = state.famille.activites.filter((x) => x.id !== id); },
-    moi: async () => ({ user: { id: "u1", email: "demo@nidou.fr", prenom: "Moi" }, auth: false, foyers: [{ id: state.household.id, nom: state.household.nom, role: "proprietaire" }] }),
+    moi: async () => ({ user: { id: "u1", email: "demo@monlucien.fr", prenom: "Moi" }, auth: false, foyers: [{ id: state.household.id, nom: state.household.nom, role: "proprietaire" }] }),
     demanderLien: async () => ({ ok: true, envoye: false, lien: null }),
     deconnexion: async () => {},
     comptes: async () => ({ comptes: state.comptes, invitations: state.invitations }),
@@ -279,7 +279,7 @@ function makeDemoApi(): Api {
     regenererMcp: async () => "demo-" + crypto.randomUUID().slice(0, 8),
     assistant: async (messages) => {
       const e = assistantEtatDemo(state);
-      if (e.acces === "aucun") throw new ApiError(402, "acces", "L'assistant Nidou est une option à 2,90 € par mois, en plus d'une formule.");
+      if (e.acces === "aucun") throw new ApiError(402, "acces", "L'assistant Lucien est une option à 2,90 € par mois, en plus d'une formule.");
       if (e.restantes <= 0) throw new ApiError(429, "quota", "Les questions offertes pendant la démo sont épuisées.");
       await new Promise((r) => setTimeout(r, 900));
       state.assistantQuestions++;
@@ -296,7 +296,7 @@ function makeDemoApi(): Api {
     ...veilleDemo,
     letter: async ({ kind, nom }) => {
       const d = state.docs[0];
-      return `${nom}\n\n${d?.organisme ?? "Service client"}\n\nObjet : ${kind === "resiliation" ? "Résiliation" : kind === "reclamation" ? "Réclamation" : "Demande de remboursement"} — ${d?.title ?? ""}\n\nMadame, Monsieur,\n\n(Mode démo : le courrier complet est rédigé par le serveur Nidou.)\n\n${nom}`;
+      return `${nom}\n\n${d?.organisme ?? "Service client"}\n\nObjet : ${kind === "resiliation" ? "Résiliation" : kind === "reclamation" ? "Réclamation" : "Demande de remboursement"} — ${d?.title ?? ""}\n\nMadame, Monsieur,\n\n(Mode démo : le courrier complet est rédigé par le serveur Lucien.)\n\n${nom}`;
     },
   };
 }
@@ -350,7 +350,7 @@ function makeVeilleDemo(state: VeilleDemoState, household: () => Household, memb
     qui_consent: qui(v), accords_donnes: v.accords, consentement_le: v.consentement_le, consentement_expire: v.consentement_expire, temoins: v.temoins, banque_connectee: v.banque_connectee,
     acces: [{ nom: v.aidant, role: v.aidant_qualite ?? "aidant" }, ...v.temoins.map((t) => ({ nom: t.nom, role: "témoin, reçoit les mêmes alertes" }))],
     engagements: [
-      "Nidou ne voit vos opérations qu'en lecture : personne ne peut faire de virement ni rien modifier sur votre compte.",
+      "Lucien ne voit vos opérations qu'en lecture : personne ne peut faire de virement ni rien modifier sur votre compte.",
       "Vous n'avez jamais à donner votre code bancaire à quelqu'un d'autre ; vous vous connectez vous-même à votre banque.",
       "Vous voyez ici qui reçoit les alertes. Chaque consultation est notée dans un journal que l'on ne peut pas modifier.",
       "Votre accord vaut un an. Vous pouvez le retirer à tout moment, seul·e, depuis cette page.",
@@ -363,12 +363,12 @@ function makeVeilleDemo(state: VeilleDemoState, household: () => Household, memb
       const m = membres().find((x) => x.id === input.member_id);
       if (!m) throw new ApiError(400, "membre", "Personne introuvable.");
       if (state.veilles.some((v) => v.member_id === m.id && v.statut !== "terminee")) throw new ApiError(400, "doublon", `Une veille existe déjà pour ${m.prenom}.`);
-      if (input.mesure === "aucune" && !input.personne_peut_consentir) throw new ApiError(400, "consentement_impossible", `Sans mesure de protection, ${m.prenom} doit pouvoir donner son accord elle-même. Si ce n'est plus possible, une mesure doit être demandée au juge des contentieux de la protection : tutelle, curatelle ou habilitation familiale. Nidou ne peut pas l'activer à sa place.`);
+      if (input.mesure === "aucune" && !input.personne_peut_consentir) throw new ApiError(400, "consentement_impossible", `Sans mesure de protection, ${m.prenom} doit pouvoir donner son accord elle-même. Si ce n'est plus possible, une mesure doit être demandée au juge des contentieux de la protection : tutelle, curatelle ou habilitation familiale. Lucien ne peut pas l'activer à sa place.`);
       if (input.mesure !== "aucune" && !input.acte_document_id) throw new ApiError(400, "acte_manquant", "Joignez le jugement ou le mandat (ajoutez-le dans Papiers, puis choisissez-le ici).");
       if (input.mesure !== "aucune" && !input.aidant_qualite?.trim()) throw new ApiError(400, "qualite", "Précisez votre qualité dans la mesure (tuteur, curateur, personne habilitée, mandataire).");
       if (enCours() >= capacite()) throw new ApiError(402, "veille_payante", household().plan === "gratuit" ? "La veille bancaire d'un proche demande une formule payante." : "La veille d'un proche coûte 3,90 € par mois (39 € par an) ; la formule Tribu en comprend une.");
       const v = { id: crypto.randomUUID(), jeton: crypto.randomUUID().replace(/-/g, ""), member_id: m.id, prenom: m.prenom, statut: "attente_consentement" as const, mesure: input.mesure, mesure_label: MESURE[input.mesure],
-        aidant: "Moi (demo@nidou.fr)", aidant_qualite: input.aidant_qualite, temoins: input.temoins.filter((t) => t.nom.trim()), consentement_le: null, consentement_expire: null, accords: [], qui_consent: null,
+        aidant: "Moi (demo@monlucien.fr)", aidant_qualite: input.aidant_qualite, temoins: input.temoins.filter((t) => t.nom.trim()), consentement_le: null, consentement_expire: null, accords: [], qui_consent: null,
         banque_connectee: false, alertes_non_vues: 0, alertes_urgentes: 0, lien_personne: "", fin_le: null, motif_fin: null, historique: [] };
       v.lien_personne = `${location.origin}${location.pathname}#/consentement/${v.jeton}`;
       log(v, v.aidant, "demande", { personne: m.prenom, mesure: v.mesure });
@@ -457,9 +457,9 @@ function assistantDemo(q: string, docs: Doc[], deadlines: Deadline[], charges: C
   }
   if (/comment|o[ùu] (est|sont|trouve|je)|ajout|scann|photo|invit|conjoint|notification|prix|combien co[ûu]te|formule|abonnement/.test(t) && !/r[ée]sili/.test(t)) {
     const ecran = (id: string, titre: string) => [{ type: "ecran" as const, id, titre }];
-    if (/ajout|scann|photo|papier|document/.test(t)) return { reponse: "Touchez le bouton + au centre de la barre du bas, puis prenez le papier en photo ou choisissez un PDF. Nidou le lit, remplit les champs et crée les rappels : vérifiez-les et enregistrez. Astuce : vous pouvez aussi transférer vos emails à votre adresse Nidou (Réglages, « Papiers par email »).", liens: ecran("add", "Ajouter un papier"), courrier: null };
+    if (/ajout|scann|photo|papier|document/.test(t)) return { reponse: "Touchez le bouton + au centre de la barre du bas, puis prenez le papier en photo ou choisissez un PDF. Lucien le lit, remplit les champs et crée les rappels : vérifiez-les et enregistrez. Astuce : vous pouvez aussi transférer vos emails à votre adresse Lucien (Réglages, « Papiers par email »).", liens: ecran("add", "Ajouter un papier"), courrier: null };
     if (/invit|conjoint/.test(t)) return { reponse: "Dans Réglages, rubrique « Famille partagée », saisissez l'email de votre conjoint : il reçoit un lien et voit les mêmes papiers et rappels. La formule Duo couvre 2 personnes connectées, Tribu jusqu'à 6.", liens: ecran("settings", "Réglages"), courrier: null };
-    if (/notification/.test(t)) return { reponse: "Ouvrez la cloche en haut de l'accueil, puis activez les notifications en bas de l'écran : Nidou vous prévient avant chaque échéance et dès qu'une économie est repérée.", liens: ecran("notifs", "Notifications"), courrier: null };
+    if (/notification/.test(t)) return { reponse: "Ouvrez la cloche en haut de l'accueil, puis activez les notifications en bas de l'écran : Lucien vous prévient avant chaque échéance et dès qu'une économie est repérée.", liens: ecran("notifs", "Notifications"), courrier: null };
     return { reponse: "Gratuit pour 1 personne. Solo 6,90 € par mois, Duo 9,90 € (2 personnes), Tribu 13,90 € (jusqu'à 6), ou 10 fois le prix mensuel à l'année. Tout est compris dans chaque formule ; l'assistant est une option à 2,90 € par mois. Sans engagement.", liens: ecran("settings", "Réglages"), courrier: null };
   }
   if (/[ée]conom|budget|cher|payer moins|d[ée]pens/.test(t)) {
@@ -484,7 +484,7 @@ function assistantDemo(q: string, docs: Doc[], deadlines: Deadline[], charges: C
     return { reponse: d ? `${d.title} chez ${d.organisme}, contrat n° ${d.numero_contrat} : ${euro(d.montant ?? 0)} par an, tous risques, franchise 300 €. Renouvellement le ${date(d.date_fin!)}.` : "Je ne trouve pas d'assurance auto.", liens: lien(d), courrier: null };
   }
   return {
-    reponse: "Dans cette démo, je réponds aux questions sur les échéances, les économies, l'assurance auto, les papiers d'identité, le fonctionnement de l'appli, et je prépare des courriers de résiliation. Avec le serveur Nidou, l'assistant lit tous vos papiers.",
+    reponse: "Dans cette démo, je réponds aux questions sur les échéances, les économies, l'assurance auto, les papiers d'identité, le fonctionnement de l'appli, et je prépare des courriers de résiliation. Avec le serveur Lucien, l'assistant lit tous vos papiers.",
     liens: [], courrier: null,
   };
 }

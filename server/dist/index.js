@@ -1,8 +1,9 @@
+import "./env-compat.js";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, renameSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Db } from "./db.js";
@@ -15,14 +16,20 @@ import { demoStatement } from "./seed-statement.js";
 import { parseStatement, merchantOf, categorise, fingerprint } from "./transactions.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 3000);
-const DATA_DIR = process.env.NIDOU_DATA ?? join(__dirname, "..", "data");
-const WEB_DIST = process.env.NIDOU_WEB ?? join(__dirname, "..", "..", "web", "dist");
+const DATA_DIR = process.env.LUCIEN_DATA ?? join(__dirname, "..", "data");
+const WEB_DIST = process.env.LUCIEN_WEB ?? join(__dirname, "..", "..", "web", "dist");
 mkdirSync(DATA_DIR, { recursive: true });
-const db = new Db(join(DATA_DIR, "nidou.sqlite"));
-if (process.env.NIDOU_SEED === "1" && !db.firstHousehold()) {
+// Ancien nom de la base (Nidou) : repris tel quel au premier démarrage sous Lucien.
+for (const ext of ["", "-wal", "-shm"]) {
+    const ancien = join(DATA_DIR, "nidou.sqlite" + ext), nouveau = join(DATA_DIR, "lucien.sqlite" + ext);
+    if (existsSync(ancien) && !existsSync(join(DATA_DIR, "lucien.sqlite")))
+        renameSync(ancien, nouveau);
+}
+const db = new Db(join(DATA_DIR, "lucien.sqlite"));
+if (process.env.LUCIEN_SEED === "1" && !db.firstHousehold()) {
     const h = seedDemo(db);
-    // Demo account: demo@nidou.fr owns the demo household (log in with that address; the link is printed in the console without BREVO_API_KEY).
-    db.joinHousehold(h.id, db.createUser("demo@nidou.fr", "Moi").id, "proprietaire");
+    // Demo account: demo@monlucien.fr owns the demo household (log in with that address; the link is printed in the console without BREVO_API_KEY).
+    db.joinHousehold(h.id, db.createUser("demo@monlucien.fr", "Moi").id, "proprietaire");
     const parsed = parseStatement(demoStatement(), "Compte joint (démo)");
     const cats = await categorise(parsed);
     db.insertTransactions(parsed.map((t, i) => ({ household_id: h.id, compte: t.compte, date: t.date, libelle: t.libelle, marchand: merchantOf(t.libelle), montant: t.montant, categorie: cats[i], empreinte: fingerprint(h.id, t) })));
@@ -42,7 +49,7 @@ app.post("/api/waitlist", async (c) => {
     const added = db.addToWaitlist(email, body.situation ? String(body.situation).slice(0, 80) : null, body.source ? String(body.source).slice(0, 80) : null);
     return c.json({ ok: true, nouveau: added, position: db.countWaitlist() });
 });
-// Marketing site (site/) served under /site when present; in production it lives on nidou.fr.
+// Marketing site (site/) served under /site when present; in production it lives on monlucien.fr.
 const SITE_DIR = join(__dirname, "..", "..", "site");
 if (existsSync(SITE_DIR))
     app.use("/site/*", serveStatic({ root: SITE_DIR.replace(process.cwd() + "/", ""), rewriteRequestPath: (p) => p.replace(/^\/site/, "") }));
@@ -55,5 +62,5 @@ if (existsSync(WEB_DIST)) {
 demarrerRappels(db);
 demarrerSynchroBanques(db);
 serve({ fetch: app.fetch, port: PORT }, () => {
-    console.log(`Nidou · http://localhost:${PORT}  · API /api · MCP /mcp · IA ${process.env.ANTHROPIC_API_KEY ? "activée" : "désactivée (mode heuristique)"}`);
+    console.log(`Lucien · http://localhost:${PORT}  · API /api · MCP /mcp · IA ${process.env.ANTHROPIC_API_KEY ? "activée" : "désactivée (mode heuristique)"}`);
 });

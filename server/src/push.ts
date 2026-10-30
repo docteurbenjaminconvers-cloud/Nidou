@@ -9,7 +9,7 @@ export const pushOn = () => Boolean(process.env.VAPID_PUBLIC_KEY && process.env.
 let configured = false;
 function setup() {
   if (configured || !pushOn()) return;
-  webpush.setVapidDetails(process.env.VAPID_SUBJECT ?? "mailto:bonjour@nidou.fr", process.env.VAPID_PUBLIC_KEY!, process.env.VAPID_PRIVATE_KEY!);
+  webpush.setVapidDetails(process.env.VAPID_SUBJECT ?? "mailto:bonjour@monlucien.fr", process.env.VAPID_PUBLIC_KEY!, process.env.VAPID_PRIVATE_KEY!);
   configured = true;
 }
 
@@ -21,7 +21,7 @@ export async function envoyerPush(db: Db, household_id: string, m: PushMessage):
   if (!pushOn()) { console.log(`[push ×${subs.length} → foyer ${household_id}] ${m.titre} — ${m.corps}`); return 0; }
   setup();
   let ok = 0;
-  const payload = JSON.stringify({ title: m.titre, body: m.corps, url: m.url ?? "/#/notifs", tag: m.tag ?? "nidou", icon: "/icon-192.png", badge: "/icon-192.png" });
+  const payload = JSON.stringify({ title: m.titre, body: m.corps, url: m.url ?? "/#/notifs", tag: m.tag ?? "lucien", icon: "/icon-192.png", badge: "/icon-192.png" });
   for (const s of subs) {
     try {
       await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 86400, urgency: "normal" });

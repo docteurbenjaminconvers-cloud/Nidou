@@ -3,7 +3,7 @@ from openpyxl import load_workbook
 from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
 
-SRC = "/home/claude/nidou/docs/Nidou-previsionnel.xlsx"
+SRC = "/home/claude/lucien/docs/Lucien-previsionnel.xlsx"
 wb = load_workbook(SRC)
 if "Lancement 3 mois" in wb.sheetnames: del wb["Lancement 3 mois"]
 ws = wb.create_sheet("Lancement 3 mois", 1)
@@ -15,7 +15,7 @@ ws.column_dimensions["A"].width = 60
 for c in "BCDE": ws.column_dimensions[c].width = 15
 ws.column_dimensions["F"].width = 70
 
-ws["A1"] = "Nidou — lancement : ce que coûtent les 3 premiers mois"; ws["A1"].font = F(bold=True, size=13)
+ws["A1"] = "Lucien — lancement : ce que coûtent les 3 premiers mois"; ws["A1"].font = F(bold=True, size=13)
 ws["A2"] = "Cellules bleues sur fond jaune : modifiables. Hypothèses de coût unitaire reprises de l'onglet Hypothèses (vert)."; ws["A2"].font = F(italic=True, size=9)
 
 # ---- inputs
@@ -27,7 +27,7 @@ inputs = [
     ("Churn mensuel des payants", [0.03, 0.03, 0.03], PCT, ""),
     ("Part des inscrits en essai qui connectent leur banque", [0.5, 0.5, 0.5], PCT, "Pendant l'essai, Bridge est ouvert : c'est le principal coût de l'essai"),
     ("Documents lus par l'IA pendant l'essai, par inscrit", [8, 8, 8], INT, "Modèle rapide (0,5 c) ; 15 % repassent en modèle précis (2 c)"),
-    ("Documents lus par l'IA par compte gratuit et par mois (après essai)", [0, 0, 0], INT, "Gratuit nu : lecture locale sans IA, pas d'import de relevés ni de banque (NIDOU_IA_LECTURES_GRATUIT=0)"),
+    ("Documents lus par l'IA par compte gratuit et par mois (après essai)", [0, 0, 0], INT, "Gratuit nu : lecture locale sans IA, pas d'import de relevés ni de banque (LUCIEN_IA_LECTURES_GRATUIT=0)"),
 ]
 inp = {}
 for label, vals, fmt, note in inputs:

@@ -12,9 +12,9 @@ const SUGGESTIONS = [
 ];
 
 const fmt = (n: number) => `${n.toLocaleString("fr-FR", { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 })} €`;
-const CLE = "nidou.assistant.fil";
+const CLE = "lucien.assistant.fil";
 
-/** « Demander à Nidou » : a chat over the family's own papers, a paid option on top of a formule. */
+/** « Demander à Lucien » : a chat over the family's own papers, a paid option on top of a formule. */
 export function Assistant({ api, household, go, onBack, onChanged, toast }: { api: Api; household: Household; go: (s: string, id?: string) => void; onBack: () => void; onChanged: () => void; toast: (m: string) => void }) {
   const [fil, setFil] = useState<Bulle[]>(() => { try { return JSON.parse(sessionStorage.getItem(CLE) ?? "[]"); } catch { return []; } });
   const [texte, setTexte] = useState("");
@@ -49,25 +49,25 @@ export function Assistant({ api, household, go, onBack, onChanged, toast }: { ap
     <div className="screen assistant">
       <button className="back" onClick={onBack}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>Retour</button>
       <div className="top">
-        <div><h1>Demander à Nidou</h1><p className="sub">{etat && !ferme ? `${etat.acces === "essai" ? "Essai" : "Option assistant"} · ${etat.restantes} question${etat.restantes > 1 ? "s" : ""} restante${etat.restantes > 1 ? "s" : ""} ce mois-ci` : "Vos papiers, vos échéances, vos économies, en une question"}</p></div>
+        <div><h1>Demander à Lucien</h1><p className="sub">{etat && !ferme ? `${etat.acces === "essai" ? "Essai" : "Option assistant"} · ${etat.restantes} question${etat.restantes > 1 ? "s" : ""} restante${etat.restantes > 1 ? "s" : ""} ce mois-ci` : "Vos papiers, vos échéances, vos économies, en une question"}</p></div>
         {fil.length > 0 && <button className="link" onClick={() => setFil([])}>Effacer</button>}
       </div>
 
       {ferme ? (
         <div className="plan-card on" style={{ marginTop: 6 }}>
-          <h3>L'assistant Nidou</h3>
+          <h3>L'assistant Lucien</h3>
           <ul>
             <li>« Qu'est-ce que je dois faire ce mois-ci ? »</li>
             <li>« Où est-ce que je peux économiser ? »</li>
             <li>« Résilie mon assurance auto » : le courrier est prêt, vous n'avez plus qu'à l'envoyer</li>
-            <li>Il lit vos papiers dans Nidou, jamais vos dossiers santé et banque, et ne fait rien sans vous</li>
+            <li>Il lit vos papiers dans Lucien, jamais vos dossiers santé et banque, et ne fait rien sans vous</li>
           </ul>
           <div className="tier-price" style={{ marginTop: 10 }}><b>{fmt(etat?.prix.mensuel ?? 2.9)}</b><span> / mois</span></div>
           <p className="note">ou {fmt(etat?.prix.annuel ?? 29)} par an · jusqu'à 300 questions par mois · en plus de votre formule, sans engagement</p>
           {household.plan === "famille"
             ? <button className="btn block" style={{ marginTop: 12 }} onClick={activer}>Ajouter l'assistant</button>
             : <button className="btn block" style={{ marginTop: 12 }} onClick={() => go("settings")}>Choisir d'abord une formule</button>}
-          <p className="note" style={{ marginTop: 10 }}>Vous avez déjà Claude ou ChatGPT ? Le connecteur Nidou, inclus dans votre formule, fait la même chose depuis votre assistant. <button className="link" onClick={() => go("connecteur")}>Voir comment</button></p>
+          <p className="note" style={{ marginTop: 10 }}>Vous avez déjà Claude ou ChatGPT ? Le connecteur Lucien, inclus dans votre formule, fait la même chose depuis votre assistant. <button className="link" onClick={() => go("connecteur")}>Voir comment</button></p>
         </div>
       ) : (
         <>

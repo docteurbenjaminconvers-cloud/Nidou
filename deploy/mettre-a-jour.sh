@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Met Nidou à jour sur le serveur, sans risque :
+# Met Lucien à jour sur le serveur, sans risque :
 #   1. sauvegarde de la base avant de toucher à quoi que ce soit ;
 #   2. récupère la dernière version de main et reconstruit ;
 #   3. vérifie que l'appli répond (/health) pendant 2 minutes au plus ;
@@ -15,7 +15,7 @@ principal() {
   cd deploy
 
   compose() { docker compose "$@"; }
-  repond() { compose exec -T nidou node -e "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" >/dev/null 2>&1; }
+  repond() { compose exec -T lucien node -e "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" >/dev/null 2>&1; }
   attendre() {
     for _ in $(seq 1 24); do
       if repond; then return 0; fi
@@ -27,9 +27,9 @@ principal() {
   AVANT="$(git -C "$DEPOT" rev-parse HEAD)"
   echo "Version en ligne : ${AVANT:0:7}"
 
-  if compose ps --status running --services 2>/dev/null | grep -qx nidou; then
+  if compose ps --status running --services 2>/dev/null | grep -qx lucien; then
     echo "Sauvegarde de la base avant mise à jour…"
-    compose exec -T nidou node scripts/sauvegarde.mjs
+    compose exec -T lucien node scripts/sauvegarde.mjs
   fi
 
   git -C "$DEPOT" fetch --quiet origin main
@@ -50,7 +50,7 @@ principal() {
   fi
 
   echo "L'appli ne répond pas après la mise à jour : retour à ${AVANT:0:7}." >&2
-  compose logs --tail=80 nidou >&2 || true
+  compose logs --tail=80 lucien >&2 || true
   git -C "$DEPOT" reset --quiet --hard "$AVANT"
   compose up -d --build --remove-orphans
   if attendre; then echo "Version précédente rétablie (${AVANT:0:7})." >&2; else echo "ATTENTION : la version précédente ne répond pas non plus." >&2; fi

@@ -14,7 +14,7 @@ import { bridge, eb, fournisseur, notifierAlertes, synchroniserFoyer, synchronis
 import { banquesFR, BANQUES_DEMO, ebConnectHousehold, ebFinishHousehold, ensureEbSchema, linkExtra, newState } from "./enablebanking.js";
 import { envoyerPush, pushOn } from "./push.js";
 import { appliquerAbonnement, capaciteComptes, creerCheckout, FORMULES, portail, resumeAbonnement, traiterWebhook } from "./abonnement.js";
-import { AUTH_ON, COOKIE, consommerLien, cookieHeader, demanderLien, emailValide, readCookie } from "./auth.js";
+import { AUTH_ON, consommerLien, cookieHeader, demanderLien, emailValide, sessionToken } from "./auth.js";
 import { familleReport, echeancesFamille, coutsParMembre } from "./famille.js";
 import { boiteAddress, fromBrevo, processInboundEmail } from "./inbox.js";
 import { parseStatement, merchantOf, categorise, ruleCategory, fingerprint, TX_CATEGORIES, TX_LABEL } from "./transactions.js";
@@ -25,26 +25,26 @@ import { simulatedConnect, simulatedSync, verifyBridgeSignature } from "./bridge
 /**
  * Plans. Every household starts with a 15-day reverse trial of the full Famille plan, then falls back to a bare free plan:
  * documents are read locally (no AI call), no statement import, no bank connection, push notifications only.
- * The free AI quota is 0 by default; NIDOU_IA_LECTURES_GRATUIT lets a later experiment reopen a few AI readings per month,
- * still under the global monthly budget NIDOU_IA_PLAFOND_GRATUIT_EUR shared by all free households.
+ * The free AI quota is 0 by default; LUCIEN_IA_LECTURES_GRATUIT lets a later experiment reopen a few AI readings per month,
+ * still under the global monthly budget LUCIEN_IA_PLAFOND_GRATUIT_EUR shared by all free households.
  */
 export const FREE_LIMITS = {
     documents: 50,
     comptes: 1, // people who log in; member cards without a login (children, elderly parent) are unlimited on every plan
     lettersPerMonth: 3,
-    iaLecturesParMois: Number(process.env.NIDOU_IA_LECTURES_GRATUIT ?? 0),
+    iaLecturesParMois: Number(process.env.LUCIEN_IA_LECTURES_GRATUIT ?? 0),
     importReleves: false,
     banque: false,
     notifications: "push",
 };
-export const TRIAL_DAYS = Number(process.env.NIDOU_ESSAI_JOURS ?? 15);
-const freeCapEur = () => Number(process.env.NIDOU_IA_PLAFOND_GRATUIT_EUR ?? 2000);
+export const TRIAL_DAYS = Number(process.env.LUCIEN_ESSAI_JOURS ?? 15);
+const freeCapEur = () => Number(process.env.LUCIEN_IA_PLAFOND_GRATUIT_EUR ?? 2000);
 export function createApi(db, opts) {
     const api = new Hono();
     V.ensureVeilleSchema(db);
     ensureAssistantSchema(db);
     ensureEbSchema(db);
-    const secure = () => (process.env.NIDOU_PUBLIC_URL ?? "").startsWith("https://");
+    const secure = () => (process.env.LUCIEN_PUBLIC_URL ?? "").startsWith("https://");
     // ---------- auth (magic link) ----------
     api.post("/auth/demander", async (c) => {
         const body = z.object({ email: z.string() }).parse(await c.req.json());
@@ -63,7 +63,7 @@ export function createApi(db, opts) {
         return c.redirect("/#/home");
     });
     api.post("/auth/deconnexion", (c) => {
-        const t = readCookie(c.req.header("cookie"), COOKIE);
+        const t = sessionToken(c.req.header("cookie"));
         if (t)
             db.deleteSession(t);
         c.header("set-cookie", cookieHeader(null, secure()));
@@ -71,7 +71,7 @@ export function createApi(db, opts) {
     });
     /**
      * Household resolution. With accounts on (default), the session cookie gives the user and their household;
-     * without a session every route answers 401 `non_connecte`. NIDOU_AUTH=0 keeps the single-household prototype.
+     * without a session every route answers 401 `non_connecte`. LUCIEN_AUTH=0 keeps the single-household prototype.
      */
     api.use("*", async (c, next) => {
         if (c.req.path.includes("/auth/") || c.req.path.endsWith("/inbox") || c.req.path.endsWith("/bank/webhook") || c.req.path.endsWith("/bank/callback") || c.req.path.endsWith("/bank/eb/callback") || c.req.path.endsWith("/stripe/webhook") || c.req.path.endsWith("/abonnement/simule") || c.req.path.endsWith("/waitlist") || c.req.path.includes("/veille/p/") || c.req.path.endsWith("/veille/callback"))
@@ -79,10 +79,10 @@ export function createApi(db, opts) {
         let row;
         let user = null;
         if (AUTH_ON()) {
-            const t = readCookie(c.req.header("cookie"), COOKIE);
+            const t = sessionToken(c.req.header("cookie"));
             user = t ? db.userBySession(t) ?? null : null;
             if (!user)
-                return c.json({ error: "non_connecte", message: "Connectez-vous pour ouvrir votre nid." }, 401);
+                return c.json({ error: "non_connecte", message: "Connectez-vous pour ouvrir votre espace." }, 401);
             row = db.householdsOfUser(user.id)[0];
             if (!row) {
                 row = db.createHousehold(user.prenom ? `Famille de ${user.prenom}` : "Ma famille", TRIAL_DAYS);
@@ -104,7 +104,7 @@ export function createApi(db, opts) {
             const cap = capaciteComptes(db, row);
             if (rang >= cap && !c.req.path.endsWith("/auth/moi") && !c.req.path.endsWith("/auth/deconnexion")) {
                 const proprio = ordre[0];
-                return c.json({ error: "compte_en_pause", message: `Le nid « ${row.nom} » est en formule ${cap === 1 ? "gratuite (1 personne)" : `${cap} personnes`}. ${proprio?.prenom ?? "Le propriétaire"} peut passer à une formule plus grande pour vous rendre l'accès ; vos papiers vous attendent.` }, 402);
+                return c.json({ error: "compte_en_pause", message: `Le foyer « ${row.nom} » est en formule ${cap === 1 ? "gratuite (1 personne)" : `${cap} personnes`}. ${proprio?.prenom ?? "Le propriétaire"} peut passer à une formule plus grande pour vous rendre l'accès ; vos papiers vous attendent.` }, 402);
             }
         }
         // `plan` is the plan in force today (trial counts as Famille); `plan_souscrit` is what is paid for.
@@ -153,7 +153,7 @@ export function createApi(db, opts) {
     api.delete("/foyer/comptes/:user_id", (c) => {
         const h = household(c), u = currentUser(c);
         if (!isOwner(c))
-            return c.json({ error: "proprietaire", message: "Seul le propriétaire du nid peut retirer un compte." }, 403);
+            return c.json({ error: "proprietaire", message: "Seul le propriétaire du foyer peut retirer un compte." }, 403);
         if (u && u.id === c.req.param("user_id"))
             return c.json({ error: "soi_meme", message: "Vous ne pouvez pas vous retirer vous-même." }, 400);
         db.leaveHousehold(h.id, c.req.param("user_id"));
@@ -165,7 +165,7 @@ export function createApi(db, opts) {
         const body = z.object({ formule: z.enum(["solo", "duo", "tribu"]).default("duo"), periode: z.enum(["mensuel", "annuel"]) }).parse(await c.req.json());
         const comptes = db.usersOfHousehold(h.id).length;
         if (comptes > FORMULES[body.formule].comptes) {
-            return c.json({ error: "formule_trop_petite", message: `${comptes} personnes se connectent à ce nid : la formule ${FORMULES[body.formule].nom} en accepte ${FORMULES[body.formule].comptes}. Choisissez une formule plus grande ou retirez un compte.` }, 400);
+            return c.json({ error: "formule_trop_petite", message: `${comptes} personnes se connectent à ce foyer : la formule ${FORMULES[body.formule].nom} en accepte ${FORMULES[body.formule].comptes}. Choisissez une formule plus grande ou retirez un compte.` }, 400);
         }
         const r = await creerCheckout(db, db.getHousehold(h.id), body.formule, body.periode, currentUser(c)?.email ?? null);
         return c.json(r);
@@ -225,12 +225,12 @@ export function createApi(db, opts) {
         });
     });
     /**
-     * Inbound email webhook (forwarding address). Protected by NIDOU_INBOX_SECRET (query `secret` or header `x-nidou-secret`).
+     * Inbound email webhook (forwarding address). Protected by LUCIEN_INBOX_SECRET (query `secret` or header `x-lucien-secret`; the old `x-nidou-secret` is still accepted).
      * Accepts the generic InboundEmail shape, an array of them, or Brevo's inbound-parsing payload ({ items: [...] }).
      */
     api.post("/inbox", async (c) => {
-        const secret = process.env.NIDOU_INBOX_SECRET;
-        if (secret && c.req.query("secret") !== secret && c.req.header("x-nidou-secret") !== secret)
+        const secret = process.env.LUCIEN_INBOX_SECRET;
+        if (secret && c.req.query("secret") !== secret && c.req.header("x-lucien-secret") !== secret && c.req.header("x-nidou-secret") !== secret)
             return c.json({ error: "non_autorise" }, 401);
         const body = await c.req.json();
         const generic = z.object({
@@ -574,7 +574,7 @@ export function createApi(db, opts) {
         const body = z.object({ email: z.string().email() }).parse(await c.req.json().catch(() => ({})));
         let userUuid = db.getBankLink(h.id)?.user_uuid;
         if (!userUuid) {
-            const externalId = `nidou-${h.id}`;
+            const externalId = `lucien-${h.id}`;
             const user = await b.client.createUser(externalId);
             userUuid = user.uuid;
             db.upsertBankLink({ household_id: h.id, fournisseur: "bridge", user_uuid: userUuid, external_user_id: externalId, derniere_synchro: null, curseur: null, statut: "en_attente" });
@@ -612,7 +612,7 @@ export function createApi(db, opts) {
             return c.json({ error: "synchro", message: e instanceof Error ? e.message : "Synchronisation impossible" }, 502);
         }
     });
-    /** Banks the family can pick (Enable Banking needs Nidou to show the list; Bridge shows its own). */
+    /** Banks the family can pick (Enable Banking needs Lucien to show the list; Bridge shows its own). */
     api.get("/bank/banques", async (c) => {
         const c2 = eb();
         return c.json({ fournisseur: fournisseur(), banques: c2 ? await banquesFR(c2) : BANQUES_DEMO });
@@ -664,7 +664,7 @@ export function createApi(db, opts) {
     // ---------- veille bancaire d'un proche (anti-arnaque, lecture seule) ----------
     const fermee = (c) => c.json({ error: "fonction_fermee", message: "La veille bancaire d'un proche ouvrira après validation juridique." }, 403);
     const acteurDe = (c) => { const u = currentUser(c); return u ? (u.prenom ? `${u.prenom} (${u.email})` : u.email) : "Aidant"; };
-    const publicUrl = () => (process.env.NIDOU_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, "");
+    const publicUrl = () => (process.env.LUCIEN_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, "");
     const lienPersonne = (v) => `${publicUrl()}/#/consentement/${v.jeton}`;
     const resumeVeille = (v) => {
         const m = db.getMember(v.member_id);
@@ -675,7 +675,7 @@ export function createApi(db, opts) {
             lien_personne: v.statut === "terminee" ? null : lienPersonne(v), fin_le: v.fin_le, motif_fin: v.motif_fin };
     };
     /** Alerts reach the aidant's devices and the witnesses by email (paid plans), the same text for everyone. */
-    /** Ending a watch also closes the bank consent at the source, not just in Nidou. */
+    /** Ending a watch also closes the bank consent at the source, not just in Lucien. */
     const fermerBanqueVeille = async (v) => {
         if (v.bridge_user_uuid?.startsWith("eb:"))
             await eb()?.deleteSession(v.bridge_user_uuid.slice(3)).catch((e) => console.error("fermeture session :", e));
@@ -743,7 +743,7 @@ export function createApi(db, opts) {
         }
         return c.json({ verification: V.verifierJournal(db, v.id), lignes });
     });
-    // ---------- assistant « Demander à Nidou » (option payante) ----------
+    // ---------- assistant « Demander à Lucien » (option payante) ----------
     api.get("/assistant", (c) => c.json(etatAssistant(db, db.getHousehold(household(c).id))));
     api.post("/assistant", async (c) => {
         const h = db.getHousehold(household(c).id);
@@ -762,7 +762,7 @@ export function createApi(db, opts) {
     });
     api.post("/abonnement/assistant", async (c) => {
         if (!isOwner(c))
-            return c.json({ error: "proprietaire", message: "Seul le propriétaire du nid gère l'abonnement." }, 403);
+            return c.json({ error: "proprietaire", message: "Seul le propriétaire du foyer gère l'abonnement." }, 403);
         const h = db.getHousehold(household(c).id);
         const body = z.object({ actif: z.boolean() }).parse(await c.req.json().catch(() => ({ actif: true })));
         if (body.actif && db.effectivePlan(h) !== "famille")
@@ -848,11 +848,11 @@ export function createApi(db, opts) {
         const body = z.object({ email: z.string().email().nullable().default(null) }).parse(await c.req.json().catch(() => ({})));
         let uuid = v.bridge_user_uuid;
         if (!uuid) {
-            uuid = (await b.client.createUser(`nidou-veille-${v.id}`)).uuid;
+            uuid = (await b.client.createUser(`lucien-veille-${v.id}`)).uuid;
             V.setBanque(db, v, { bridge_user_uuid: uuid });
         }
         const { access_token } = await b.client.userToken(uuid);
-        const session = await b.client.connectSession(access_token, body.email ?? `veille+${v.id.slice(0, 8)}@nidou.fr`, v.id, "/api/veille/callback");
+        const session = await b.client.connectSession(access_token, body.email ?? `veille+${v.id.slice(0, 8)}@monlucien.fr`, v.id, "/api/veille/callback");
         return c.json({ url: session.url });
     });
     const syncVeille = (v) => synchroniserVeille(db, v);
@@ -923,10 +923,10 @@ export function createApi(db, opts) {
     /** Sends a test notification to this household's devices. */
     api.post("/push/test", async (c) => {
         const h = household(c);
-        const n = await envoyerPush(db, h.id, { titre: "Nidou est prêt", corps: "Vous recevrez ici vos rappels d'échéances et vos économies.", url: "/#/notifs", tag: "test" });
+        const n = await envoyerPush(db, h.id, { titre: "Lucien est prêt", corps: "Vous recevrez ici vos rappels d'échéances et vos économies.", url: "/#/notifs", tag: "test" });
         return c.json({ ok: true, envoyes: n, actif: pushOn() });
     });
-    api.get("/ia/depense", (c) => c.json({ ...db.iaDepenseMois(), plafond_gratuit_eur: freeCapEur(), fournisseur: process.env.NIDOU_IA_PROVIDER ?? (process.env.ANTHROPIC_API_KEY ? "anthropic" : process.env.MISTRAL_API_KEY ? "mistral" : "aucun") }));
+    api.get("/ia/depense", (c) => c.json({ ...db.iaDepenseMois(), plafond_gratuit_eur: freeCapEur(), fournisseur: process.env.LUCIEN_IA_PROVIDER ?? (process.env.ANTHROPIC_API_KEY ? "anthropic" : process.env.MISTRAL_API_KEY ? "mistral" : "aucun") }));
     // ---------- MCP access log ----------
     api.get("/mcp/log", (c) => c.json(db.listMcpAccess(household(c).id)));
     return api;
@@ -939,7 +939,7 @@ export function publicDoc(d) {
 async function pdfStatementToCsv(buf) {
     const client = new Anthropic();
     const res = await client.messages.create({
-        model: process.env.NIDOU_MODEL ?? "claude-sonnet-5-5",
+        model: process.env.LUCIEN_MODEL ?? "claude-sonnet-5-5",
         max_tokens: 8000,
         system: "Tu convertis un relevé bancaire en CSV. Une ligne par opération : date au format JJ/MM/AAAA;libellé complet;montant signé (négatif pour un débit, virgule décimale). Première ligne : Date;Libellé;Montant. Aucun autre texte.",
         messages: [{ role: "user", content: [{ type: "document", source: { type: "base64", media_type: "application/pdf", data: buf.toString("base64") } }, { type: "text", text: "Convertis ce relevé." }] }],

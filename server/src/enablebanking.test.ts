@@ -36,7 +36,7 @@ test("enable banking : montants signés, libellé lisible, opérations en attent
 
 test("enable banking : connexion du foyer et d'un proche, synchro, fermeture du consentement", async () => {
   process.env.ENABLEBANKING_APP_ID = "app-123"; process.env.ENABLEBANKING_PRIVATE_KEY = privateKey;
-  process.env.NIDOU_AUTH = "0"; process.env.NIDOU_VEILLE = "1";
+  process.env.LUCIEN_AUTH = "0"; process.env.LUCIEN_VEILLE = "1";
   const d = (n: number) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
   const states: string[] = []; const appels: string[] = []; let pages = 0;
   const vieux = globalThis.fetch;
@@ -64,7 +64,7 @@ test("enable banking : connexion du foyer et d'un proche, synchro, fermeture du 
 
   try {
     const db = new Db(":memory:");
-    const api = createApi(db, { uploadDir: "/tmp/nidou-test-uploads" });
+    const api = createApi(db, { uploadDir: "/tmp/lucien-test-uploads" });
     const h = db.createHousehold("Test");
     const json = { "content-type": "application/json" };
 

@@ -44,7 +44,7 @@ export function rappelsEcheances(db, h, now = new Date()) {
         if (!first)
             continue;
         const quand = jours === 0 ? "Aujourd'hui" : jours === 1 ? "Demain" : `Dans ${jours} jours`;
-        out.push({ cle: `echeance:${d.id}:${d.date}:${jours === 0 ? "j" : "avant"}`, titre: `${quand} : ${d.titre.replace(/^[^:]+:\s*/, "")}`, corps: d.note ?? "Ouvrez Nidou pour voir le détail.", route: d.document_id ? `#/doc/${d.document_id}` : "#/deadlines" });
+        out.push({ cle: `echeance:${d.id}:${d.date}:${jours === 0 ? "j" : "avant"}`, titre: `${quand} : ${d.titre.replace(/^[^:]+:\s*/, "")}`, corps: d.note ?? "Ouvrez Lucien pour voir le détail.", route: d.document_id ? `#/doc/${d.document_id}` : "#/deadlines" });
     }
     return out;
 }
@@ -76,7 +76,7 @@ export async function transportParDefaut(db, h, r) {
     const n = await envoyerPush(db, h.id, { titre: r.titre, corps: r.corps, url: `/${r.route}`, tag: r.cle.split(":")[0] });
     if (db.effectivePlan(h) === "famille") {
         for (const u of db.usersOfHousehold(h.id))
-            await envoyerEmail({ to: u.email, subject: r.titre, text: `${r.corps}\n\nOuvrir Nidou : ${(process.env.NIDOU_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, "")}/${r.route}` });
+            await envoyerEmail({ to: u.email, subject: r.titre, text: `${r.corps}\n\nOuvrir Lucien : ${(process.env.LUCIEN_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, "")}/${r.route}` });
     }
     if (!n)
         console.log(`[rappel] ${h.nom} · ${r.cle} · ${r.titre}`);

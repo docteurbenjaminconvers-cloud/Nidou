@@ -1,4 +1,4 @@
-# Nidou — image de production (appli PWA + API + connecteur MCP + site vitrine)
+# Lucien — image de production (appli PWA + API + connecteur MCP + site vitrine)
 # Étape 1 : dépendances et compilation
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
@@ -11,7 +11,7 @@ RUN npm run build && npm prune --omit=dev --workspaces --include-workspace-root
 
 # Étape 2 : image d'exécution, sans outils de compilation
 FROM node:22-bookworm-slim
-ENV NODE_ENV=production PORT=3000 NIDOU_DATA=/data NODE_OPTIONS=--disable-warning=ExperimentalWarning
+ENV NODE_ENV=production PORT=3000 LUCIEN_DATA=/data NODE_OPTIONS=--disable-warning=ExperimentalWarning
 WORKDIR /app
 COPY --from=build /app/package.json ./
 COPY --from=build /app/node_modules ./node_modules

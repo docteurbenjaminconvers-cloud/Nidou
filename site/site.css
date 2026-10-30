@@ -1,4 +1,4 @@
-/* Nidou — site vitrine, style « Cocon » : doux, rond, chaleureux. Une colonne centrée (max 1120px), vraies captures de l'appli, petites animations. */
+/* Lucien — site vitrine, style « Cocon » : doux, rond, chaleureux. Une colonne centrée (max 1120px), vraies captures de l'appli, petites animations. */
 :root {
   --paper: #fbf4f0; --ink: #3b2a3a; --nest: #d95f45; --nest-deep: #b84a33; --moss: #cdebdd; --moss-soft: #e4f3ea; --mint-ink: #1f6b4a;
   --lilac: #b89bd9; --lilac-soft: #ece3f6; --peach: #f6d5c8; --peach-soft: #fbe6dd; --plum: #3b2a3a;
@@ -253,8 +253,8 @@ details p { padding: 0 24px 22px; color: var(--mist); max-width: 70ch; }
 .join > * { position: relative; z-index: 1; }
 .join h2, .join p { color: #fff; }
 .join p { opacity: .85; max-width: 56ch; margin-top: 12px; }
-.nest-art { position: absolute !important; right: clamp(16px, 4vw, 56px); top: clamp(20px, 3vw, 40px); width: clamp(140px, 20vw, 230px); animation: floaty 7s ease-in-out infinite; }
-@media (max-width: 760px) { .nest-art { position: static !important; display: block; width: 150px; margin: 0 0 10px; } }
+.lucien-art { position: absolute !important; right: clamp(16px, 4vw, 56px); top: clamp(20px, 3vw, 40px); width: clamp(140px, 20vw, 230px); animation: floaty 7s ease-in-out infinite; }
+@media (max-width: 760px) { .lucien-art { position: static !important; display: block; width: 150px; margin: 0 0 10px; } }
 .form { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-top: 26px; max-width: 560px; }
 @media (max-width: 560px) { .form { grid-template-columns: 1fr; } }
 .form input, .form select { min-height: 54px; border-radius: 999px; border: 2px solid transparent; padding: 12px 20px; font: inherit; font-size: 16px; font-weight: 700; background: #fff; color: #3b2a3a; width: 100%; }

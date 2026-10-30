@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { Db } from "./db.js";
 import { consommerLien, demanderLien } from "./auth.js";
 
-test("lien magique : création du compte et du nid, puis invitation du conjoint", async () => {
+test("lien magique : création du compte et du foyer, puis invitation du conjoint", async () => {
   const db = new Db(":memory:");
   const r1 = await demanderLien(db, "Benjamin@Example.org", { prenom: "Benjamin" });
   assert.ok(r1.lien && !r1.envoye, "no transport → link returned");
@@ -22,7 +22,7 @@ test("lien magique : création du compte et du nid, puis invitation du conjoint"
   assert.equal(db.listInvitations(c1.household.id).length, 1);
   const c2 = consommerLien(db, t2, 15);
   assert.ok(c2.ok); if (!c2.ok) return;
-  assert.equal(c2.household.id, c1.household.id, "joined the same nest");
+  assert.equal(c2.household.id, c1.household.id, "joined the same household");
   assert.equal(db.usersOfHousehold(c1.household.id).length, 2);
   assert.ok(db.listMembers(c1.household.id).some((m) => m.prenom === "Camille"), "member card created");
   assert.equal(db.listInvitations(c1.household.id).length, 0);

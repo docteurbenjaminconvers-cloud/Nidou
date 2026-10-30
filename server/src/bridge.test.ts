@@ -43,7 +43,7 @@ function fakeBridge() {
 test("le client envoie les en-têtes Bridge et suit la pagination", async () => {
   const { fetchImpl, calls } = fakeBridge();
   const client = new BridgeClient(cfg, fetchImpl);
-  const user = await client.createUser("nidou-h1");
+  const user = await client.createUser("lucien-h1");
   assert.equal(user.uuid, "user-1");
   const tok = await client.userToken(user.uuid);
   const session = await client.connectSession(tok.access_token, "famille@example.org", "h1");

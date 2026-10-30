@@ -10,7 +10,7 @@ import Stripe from "stripe";
  */
 export const stripeOn = () => Boolean(process.env.STRIPE_SECRET_KEY);
 const stripe = () => new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2025-08-27.basil" });
-const publicUrl = () => (process.env.NIDOU_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, "");
+const publicUrl = () => (process.env.LUCIEN_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, "");
 export const FORMULES = {
     solo: { nom: "Solo", comptes: 1, prix: { mensuel: 6.9, annuel: 69 } },
     duo: { nom: "Duo", comptes: 2, prix: { mensuel: 9.9, annuel: 99 } },
@@ -84,7 +84,7 @@ export async function ajouterVeillePayante(db, h, periode) {
     return { simule: false, total: actuel + 1 };
 }
 /**
- * « Demander à Nidou » option (2,90 €/mois ou 29 €/an), added to or removed from the existing subscription.
+ * « Demander à Lucien » option (2,90 €/mois ou 29 €/an), added to or removed from the existing subscription.
  * Stripe prices: STRIPE_PRICE_ASSISTANT_MENSUEL / _ANNUEL, matched to the subscription's own period.
  */
 export async function basculerAssistant(db, h, actif) {

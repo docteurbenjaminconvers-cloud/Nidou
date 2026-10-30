@@ -10,7 +10,7 @@ export function bridgeConfig() {
         clientId: BRIDGE_CLIENT_ID,
         clientSecret: BRIDGE_CLIENT_SECRET,
         webhookSecret: process.env.BRIDGE_WEBHOOK_SECRET ?? "",
-        publicUrl: (process.env.NIDOU_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, ""),
+        publicUrl: (process.env.LUCIEN_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, ""),
         baseUrl: process.env.BRIDGE_BASE_URL ?? "https://api.bridgeapi.io",
         version: process.env.BRIDGE_VERSION ?? "2025-01-15",
     };
