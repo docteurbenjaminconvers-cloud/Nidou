@@ -64,11 +64,32 @@ Ne jamais mettre ce fichier sur GitHub (il est exclu par `.gitignore`).
 - **Brevo** : domaine `nidou.fr` vérifié, expéditeur `bonjour@nidou.fr`, réception « inbound parsing » sur `in.nidou.fr` vers `https://app.nidou.fr/api/inbox?secret=<NIDOU_INBOX_SECRET>`.
 - **Connecteur IA** : chaque famille trouve l'adresse `https://app.nidou.fr/mcp` et son jeton dans ses réglages.
 
-## 6. Mettre à jour
+## 6. Mise en ligne automatique
 
-```bash
-cd ~/nidou && git pull && cd deploy && docker compose up -d --build
-```
+Une fois le serveur installé, chaque envoi sur `main` met la production à jour tout seul, **seulement si les tests sont verts** (workflow « Mise en ligne »). À chaque fois : sauvegarde de la base, nouvelle version, vérification que l'appli répond, et **retour automatique à la version précédente** si elle ne répond pas dans les 2 minutes. Le site vitrine et la démo sur GitHub Pages se mettent déjà à jour de la même façon.
+
+À faire une seule fois :
+
+1. Sur le VPS, créer une clé réservée aux mises en ligne :
+   ```bash
+   ssh-keygen -t ed25519 -N "" -f ~/.ssh/nidou_deploy
+   cat ~/.ssh/nidou_deploy.pub >> ~/.ssh/authorized_keys
+   cat ~/.ssh/nidou_deploy          # clé privée, à copier dans GitHub
+   ssh-keyscan -H localhost          # pour vérifier ; dans GitHub, mettre le résultat de : ssh-keyscan -H <IP du VPS>
+   ```
+2. Sur GitHub : dépôt Nidou → Settings → Environments → **New environment** `production`. Option conseillée : « Required reviewers » avec votre compte, pour valider chaque mise en ligne d'un clic depuis l'appli GitHub.
+3. Dans cet environnement, ajouter les **secrets** :
+   | Secret | Valeur |
+   |---|---|
+   | `VPS_HOST` | adresse IP du VPS |
+   | `VPS_USER` | utilisateur SSH (`ubuntu` par défaut chez OVH) |
+   | `VPS_SSH_KEY` | la clé privée `nidou_deploy` |
+   | `VPS_KNOWN_HOSTS` | le résultat de `ssh-keyscan -H <IP du VPS>`, lancé depuis votre ordinateur |
+   | `VPS_PORT` | facultatif, 22 par défaut |
+
+   et, si besoin, les **variables** `NIDOU_URL` (par défaut `https://app.nidou.fr`) et `NIDOU_DOSSIER` (par défaut `~/nidou`).
+
+Tant que `VPS_HOST` est vide, le workflow ne fait rien. Pour relancer une mise en ligne à la main : onglet Actions → « Mise en ligne » → Run workflow. Ou sur le serveur : `bash ~/nidou/deploy/mettre-a-jour.sh`.
 
 ## 7. Sauvegardes
 
