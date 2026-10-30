@@ -18,6 +18,7 @@ import { ApiError } from "./api";
 import type { FamilleReport } from "./types";
 
 type Route = { s: string; id?: string };
+let revealShown = false;
 
 const TabIcon = ({ d }: { d: string }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={d} /></svg>
@@ -46,8 +47,10 @@ export default function App() {
     const [h, d, dl, c, b, f] = await Promise.all([a.household(), a.documents(), a.deadlines(), a.charges(), a.budget().catch(() => null), a.famille().catch(() => null)]);
     setHousehold(h); setDocs(d); setDeadlines(dl); setCharges(c); setBudget(b); setFamille(f);
     // First time real spending data arrives (bank connected or statement imported): the savings reveal, once.
-    let seen = false; try { seen = a.mode !== "demo" && localStorage.getItem(REVEAL_KEY) === "1"; } catch {}  // demo: replay the reveal every time
+    // Demo: the reveal plays once per visit (not on every reload of the data); for real accounts, once ever.
+    let seen = revealShown; try { seen = seen || (a.mode !== "demo" && localStorage.getItem(REVEAL_KEY) === "1"); } catch {}
     if (b && b.nb_transactions > 0 && b.economies_possibles > 0 && !seen && h.plan === "famille") {
+      revealShown = true;
       try { localStorage.setItem(REVEAL_KEY, "1"); } catch {}
       setReveal(true);
     }

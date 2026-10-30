@@ -59,7 +59,10 @@
 
     <div class="hero-art" aria-label="Aperçu de l'application Nidou">
       <figure class="device back"><img src="img/app-reveal.webp" width="300" height="649" alt="Écran Nidou : 1 949 € d'économies faciles trouvées par an" loading="eager"></figure>
-      <figure class="device front"><img src="img/app-home.webp" width="300" height="649" alt="Écran d'accueil de Nidou : prochaine échéance dans 10 jours, la journée de la famille, les économies" loading="eager"></figure>
+      <figure class="device front">
+        <video id="hero-video" src="video/nidou-visite.mp4" poster="video/nidou-visite.webp" width="300" height="649" autoplay muted loop playsinline preload="metadata" aria-label="Visite de l'appli Nidou : l'accueil, les économies trouvées dans un relevé, l'agenda, les papiers"></video>
+        <button class="vid-toggle" id="vid-toggle" type="button" aria-label="Mettre la vidéo en pause">❚❚</button>
+      </figure>
       <div class="float f1"><span class="dot ember"></span><span data-i18n="b1">Préavis : plus que 12 jours</span></div>
       <div class="float f2"><span class="dot moss"></span><span data-i18n="b2">Facture rangée toute seule</span></div>
       <div class="float f3"><b>+419 €</b><span data-i18n="b3">par an, un abonnement oublié</span></div>
@@ -398,6 +401,17 @@
       if (!en[0].isIntersecting) return; o.disconnect();
       [].slice.call(chat.children).forEach(function (m, i) { setTimeout(function () { m.classList.add("shown"); }, 350 + i * 900); });
     }, { threshold: 0.4 }).observe(chat);
+  }
+
+  // ---- hero video: no autoplay for reduced motion; pause button; pause when off-screen ----
+  var vid = document.getElementById("hero-video"), vbtn = document.getElementById("vid-toggle");
+  if (vid) {
+    var userPaused = false;
+    function setBtn() { vbtn.textContent = vid.paused ? "▶" : "❚❚"; vbtn.setAttribute("aria-label", nidouT(vid.paused ? "vplay" : "vpause")); }
+    if (reduce) { vid.removeAttribute("autoplay"); vid.pause(); }
+    vbtn.addEventListener("click", function () { if (vid.paused) { userPaused = false; vid.play().catch(function () {}); } else { userPaused = true; vid.pause(); } });
+    vid.addEventListener("play", setBtn); vid.addEventListener("pause", setBtn); setBtn(); window.addEventListener("nidou:lang", setBtn);
+    if ("IntersectionObserver" in window && !reduce) new IntersectionObserver(function (en) { if (en[0].isIntersecting) { if (!userPaused) vid.play().catch(function () {}); } else vid.pause(); }, { threshold: 0.2 }).observe(vid);
   }
 
   // ---- tour: arrows scroll one card ----

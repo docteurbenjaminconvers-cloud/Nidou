@@ -90,7 +90,11 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 @media (max-width: 900px) { .hero-art { height: 560px; } }
 @media (max-width: 480px) { .hero-art { height: 500px; } }
 .device { margin: 0; background: var(--white); border-radius: 44px; padding: 10px; box-shadow: var(--shadow-lg); border: 1px solid var(--line); }
-.device img { display: block; width: 100%; height: auto; border-radius: 34px; }
+.device img, .device video { display: block; width: 100%; height: auto; aspect-ratio: 600 / 1298; border-radius: 34px; background: var(--paper); object-fit: cover; }
+.hero-art .front { overflow: visible; }
+.vid-toggle { position: absolute; right: 18px; bottom: 18px; width: 38px; height: 38px; border-radius: 50%; border: 0; background: rgba(59,42,58,.72); color: #fff; font-size: 13px; cursor: pointer; display: grid; place-items: center; opacity: 0; transition: opacity .2s; }
+.hero-art .front:hover .vid-toggle, .vid-toggle:focus-visible { opacity: 1; }
+@media (hover: none) { .vid-toggle { opacity: .85; } }
 .hero-art .device { position: absolute; width: 290px; }
 .hero-art .front { left: 0; top: 10px; z-index: 2; animation: bob 7s ease-in-out infinite; }
 .hero-art .back { right: 0; top: 70px; z-index: 1; transform: rotate(6deg); width: 260px; opacity: .97; }
