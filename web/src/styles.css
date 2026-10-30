@@ -74,7 +74,7 @@ p { margin: 0; }
 .nest.calm .count b { color: var(--white); }
 
 /* ----- stats strip ----- */
-.strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-bottom: 26px; }
+.strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-bottom: 26px; }
 .strip > button { background: none; border: 0; text-align: left; padding: 14px 0; border-right: 1px solid var(--line); padding-left: 12px; }
 .strip > button:first-child { padding-left: 0; }
 .strip > button:last-child { border-right: 0; }
@@ -277,7 +277,10 @@ b, strong { font-weight: 800; }
 .strip > button:nth-child(2) { background: var(--peach); }
 .strip > button:last-child { background: var(--moss); }
 .strip > button:last-child b { color: var(--mint-ink); }
-.strip b { font-size: 24px; }
+.strip > button { min-width: 0; }
+/* the three figures must fit side by side on a phone: the size follows the screen width */
+.strip b { font-size: clamp(16px, 5vw, 24px); white-space: nowrap; }
+.strip span { overflow-wrap: anywhere; }
 
 /* boutons pilules */
 .btn { border-radius: 999px; font-weight: 800; box-shadow: 0 8px 20px rgba(217, 95, 69, 0.28); }
