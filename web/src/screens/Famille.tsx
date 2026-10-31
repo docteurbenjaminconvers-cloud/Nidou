@@ -112,6 +112,7 @@ export function Famille({ api, household, go, unread, onChanged, toast, sel, doc
           <b>{solo ? "Un proche" : "Ajouter"}</b>
         </button>
       </div>
+      {!solo && <button className="partage-lien" onClick={() => go("partages")}><b>Dépenses partagées</b><span>Qui a payé quoi, qui doit combien</span></button>}
 
       {adding && (
         <div className="lock ajout-membre">

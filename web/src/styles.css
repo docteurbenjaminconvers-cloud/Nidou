@@ -896,3 +896,14 @@ b, strong { font-weight: 800; }
 .prevision-lignes { list-style: none; margin: 10px 0 0; padding: 10px 0 0; border-top: 1px solid rgba(0,0,0,.08); display: grid; gap: 6px; font-size: 13.5px; }
 .prevision-lignes li { display: flex; justify-content: space-between; gap: 10px; }
 .prevision-lignes .plus { color: var(--moss-ink, #2f7a55); }
+.partage-lien { all: unset; cursor: pointer; display: grid; gap: 2px; width: 100%; box-sizing: border-box; margin: 4px 0 14px; padding: 12px 16px; border-radius: 16px; background: var(--lilac-soft, #ece3f6); }
+.partage-lien b { font-size: 15px; }
+.partage-lien span { font-size: 13px; color: var(--ink-2, #5b5060); }
+.partages-soldes { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin: 6px 0 16px; }
+.ps { background: var(--white); border-radius: 16px; padding: 12px 14px; display: grid; gap: 2px; }
+.ps span { font-size: 13px; color: var(--ink-2, #5b5060); }
+.ps.plus span { color: var(--moss-ink, #2f7a55); font-weight: 700; }
+.ps.moins span { color: var(--ember); font-weight: 700; }
+.partage-sugg { display: flex; justify-content: space-between; align-items: center; gap: 10px; background: var(--white); border-radius: 14px; padding: 12px 14px; margin-bottom: 8px; font-size: 14.5px; }
+.partage-pour { border: 0; padding: 0; margin: 10px 0 0; display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 14px; }
+.partage-pour legend { font-size: 13px; font-weight: 700; color: var(--ink-2, #5b5060); margin-bottom: 6px; }

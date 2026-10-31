@@ -88,6 +88,7 @@ export function Spending({ api, budget, household, go, onChanged, onUpgrade, toa
           <button onClick={() => {}}><b>{fmtEuro(budget.reste_a_vivre_moyen)}</b><span>reste chaque mois</span></button>
         </div>
         {budget.prevision && <CartePrevision p={budget.prevision} />}
+        <button className="partage-lien" onClick={() => go("partages")}><b>Dépenses partagées</b><span>Courses, sorties, factures avancées : qui doit combien</span></button>
         <p className="note">{budget.nb_transactions} opérations sur {budget.periode.mois} mois · revenus moyens {fmtEuro(budget.revenus_moyenne_mensuelle)} / mois</p>
       </section>
 

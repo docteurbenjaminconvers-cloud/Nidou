@@ -169,6 +169,13 @@ export interface Resiliation {
   cle: string; marchand: string; montant: number; frequence: string; demande_le: string;
   statut: "en_cours" | "confirmee" | "encore_prelevee"; economie_annuelle: number; verification_le: string; message: string;
 }
+/** Shared expenses between the members of a household. */
+export interface DepensePartagee { id: string; date: string; libelle: string; montant: number; paye_par: string; participants: string[]; transaction_id: string | null }
+export interface ReglementPartage { id: string; date: string; de: string; a: string; montant: number }
+export interface EtatPartages {
+  membres: { id: string; prenom: string; role: string }[]; depenses: DepensePartagee[]; reglements: ReglementPartage[];
+  soldes: { member_id: string; prenom: string; solde: number }[]; suggestions: { de: string; a: string; montant: number }[];
+}
 export interface AideResiliation { marchand: string; montant: number; frequence: string; economie_annuelle: number; etapes: string[]; lettre: string }
 
 export interface ImportResult { lues: number; ajoutees: number; doublons: number; de?: string; a?: string }

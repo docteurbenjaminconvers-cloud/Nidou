@@ -24,6 +24,7 @@ import { Login } from "./screens/Login";
 import { Semaine, calculerSemaine } from "./screens/Semaine";
 import { Dossier, Dossiers } from "./screens/Dossiers";
 import { Menage } from "./screens/Menage";
+import { Partages } from "./screens/Partages";
 import { CoupDur, Urgence } from "./screens/Urgence";
 import { ConsentPage, VeilleDetail, VeilleNouvelle } from "./screens/Veille";
 import { ApiError } from "./api";
@@ -115,7 +116,7 @@ export default function App() {
     );
   }
 
-  const tab = route.s === "dossiers" || route.s === "dossier" || route.s === "menage" ? "docs" : route.s === "doc" || route.s === "add" ? "" : route.s === "membre" || route.s === "activite" || route.s === "veille" || route.s === "veille-nouvelle" ? "famille" : route.s;
+  const tab = route.s === "dossiers" || route.s === "dossier" || route.s === "menage" ? "docs" : route.s === "doc" || route.s === "add" ? "" : route.s === "membre" || route.s === "activite" || route.s === "veille" || route.s === "veille-nouvelle" || route.s === "partages" ? "famille" : route.s;
 
   return (
     <FamilleCtx.Provider value={{ api, famille, household, go }}>
@@ -136,6 +137,7 @@ export default function App() {
       {route.s === "coup-dur" && route.id && <CoupDur cle={route.id} docs={docs} go={go} onBack={() => go("urgence")} />}
       {route.s === "menage" && <Menage api={api} docs={docs} go={go} onBack={() => go("docs")} onChanged={reload} toast={toast} />}
       {route.s === "dossiers" && <Dossiers docs={docs} go={go} onBack={() => go("docs")} />}
+      {route.s === "partages" && <Partages api={api} onBack={() => history.back()} toast={toast} />}
       {route.s === "dossier" && route.id && <Dossier cle={route.id} api={api} household={household} docs={docs} go={go} onBack={() => go("dossiers")} toast={toast} />}
       {route.s === "offre" && <Offre api={api} household={household} focus={route.id} onBack={() => history.length > 1 ? history.back() : go("home")} onChange={reload} toast={toast} />}
       {route.s === "espace" && route.id === "budget" && <EspaceBudget api={api} go={go} onBack={() => history.length > 1 ? history.back() : go("home")} toast={toast} />}
@@ -144,7 +146,7 @@ export default function App() {
       {route.s === "semaine" && <Semaine point={calculerSemaine(household, deadlines, docs, budget, famille)} household={household} go={go} onBack={() => history.length > 1 ? history.back() : go("home")} />}
       {route.s === "connecteur" && <Connecteur household={household} go={go} onBack={() => history.length > 1 ? history.back() : go("settings")} toast={toast} />}
       {route.s === "settings" && <Settings api={api} household={household} onBack={() => go("home")} onPlan={() => reload()} toast={toast} go={go} />}
-      {(route.s === "home" || !["deadlines", "docs", "doc", "add", "budget", "settings", "notifs", "famille", "membre", "activite", "veille", "veille-nouvelle", "assistant", "connecteur", "semaine", "dossiers", "dossier", "menage", "urgence", "coup-dur", "offre", "espace"].includes(route.s)) && (
+      {(route.s === "home" || !["deadlines", "docs", "doc", "add", "budget", "settings", "notifs", "famille", "membre", "activite", "veille", "veille-nouvelle", "assistant", "connecteur", "semaine", "dossiers", "dossier", "menage", "urgence", "coup-dur", "offre", "espace", "partages"].includes(route.s)) && (
         <Today api={api} household={household} deadlines={deadlines} docs={docs} charges={charges} budget={budget} go={go} onDone={onDone} unread={notifs.unread} famille={famille} />
       )}
 

@@ -1,4 +1,4 @@
-import type { AssistantEtat, AssistantMessage, AssistantReponse, AideResiliation, Resiliation, Prevision } from "./types";
+import type { AssistantEtat, AssistantMessage, AssistantReponse, AideResiliation, Resiliation, Prevision, DepensePartagee, EtatPartages, ReglementPartage } from "./types";
 import type { Activite, BankStatus, BudgetAction, BudgetReport, ChargesReport, Deadline, Doc, FamilleReport, Household, ImportResult, Member, Mesure, Temoin, Banque, BanquesReport, Veille, VeillesReport, VuePersonne } from "./types";
 import demoFamille from "./demo/famille.json";
 import { MODULES, PACKS, SOCLE, SOCLE_INCLUT, droits, normaliser, type Espace, type ModuleId } from "../../server/src/offre";
@@ -10,6 +10,7 @@ import { demoStatement } from "../../server/src/seed-statement";
 import { etatDossiers } from "../../server/src/dossiers";
 import { grandMenage } from "../../server/src/conservation";
 import { scenarios } from "../../server/src/urgence";
+import { soldes as soldesPartages, suggestions as suggestionsPartages } from "../../server/src/partagesCalcul";
 import { pointSemaine } from "../../server/src/semaine";
 import demoBudget from "./demo/budget.json";
 import demoBudgetFamille from "./demo/budget-famille.json";
@@ -41,6 +42,12 @@ export interface Api {
   decide(cle: string, decision: "garde" | "resilie" | "a_faire"): Promise<void>;
   /** The subscription loop. */
   aideResiliation(cle: string): Promise<AideResiliation>;
+  /** Shared expenses between members. */
+  partages(): Promise<EtatPartages>;
+  ajouterDepensePartagee(d: { date: string; libelle: string; montant: number; paye_par: string; participants: string[]; transaction_id?: string | null }): Promise<EtatPartages>;
+  supprimerDepensePartagee(id: string): Promise<EtatPartages>;
+  regler(r: { de: string; a: string; montant: number }): Promise<EtatPartages>;
+  supprimerReglement(id: string): Promise<EtatPartages>;
   demarrerResiliation(cle: string): Promise<void>;
   annulerResiliation(cle: string): Promise<void>;
   lettreRemboursement(cle: string): Promise<{ lettre: string }>;
@@ -179,6 +186,11 @@ const serverApi: Api = {
   },
   decide: async (cle, decision) => { await call("/budget/decision", json({ cle, decision })); },
   aideResiliation: (cle) => call(`/resiliations/aide?cle=${encodeURIComponent(cle)}`),
+  partages: () => call("/partages"),
+  ajouterDepensePartagee: (d) => call("/partages/depenses", json(d)),
+  supprimerDepensePartagee: (id) => call(`/partages/depenses/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  regler: (r) => call("/partages/reglements", json(r)),
+  supprimerReglement: (id) => call(`/partages/reglements/${encodeURIComponent(id)}`, { method: "DELETE" }),
   demarrerResiliation: async (cle) => { await call("/resiliations", json({ cle })); },
   annulerResiliation: async (cle) => { await call(`/resiliations/${encodeURIComponent(cle)}`, { method: "DELETE" }); },
   lettreRemboursement: (cle) => call(`/resiliations/${encodeURIComponent(cle)}/remboursement`),
@@ -265,6 +277,8 @@ const serverApi: Api = {
 // ---------- demo adapter ----------
 function makeDemoApi(): Api {
   const state = {
+    depensesPartagees: [] as DepensePartagee[],
+    reglementsPartages: [] as ReglementPartage[],
     resiliations: [] as Resiliation[],
     household: structuredClone(demoHousehold) as Household,
     // Papers whose date must stay recent in the demo (payslips, tax notice): dated from today.
@@ -340,6 +354,11 @@ function makeDemoApi(): Api {
       return { lues: 127, ajoutees: 127, doublons: 0 };
     },
     decide: async (cle, decision) => { state.decisions[cle] = decision; },
+    partages: async () => etatPartagesDemo(state.famille.membres, state.depensesPartagees, state.reglementsPartages),
+    ajouterDepensePartagee: async (d) => { state.depensesPartagees.unshift({ id: nouvelId(), ...d, transaction_id: d.transaction_id ?? null }); return etatPartagesDemo(state.famille.membres, state.depensesPartagees, state.reglementsPartages); },
+    supprimerDepensePartagee: async (id) => { state.depensesPartagees = state.depensesPartagees.filter((x) => x.id !== id); return etatPartagesDemo(state.famille.membres, state.depensesPartagees, state.reglementsPartages); },
+    regler: async (r) => { state.reglementsPartages.unshift({ id: nouvelId(), date: new Date().toISOString().slice(0, 10), ...r }); return etatPartagesDemo(state.famille.membres, state.depensesPartagees, state.reglementsPartages); },
+    supprimerReglement: async (id) => { state.reglementsPartages = state.reglementsPartages.filter((x) => x.id !== id); return etatPartagesDemo(state.famille.membres, state.depensesPartagees, state.reglementsPartages); },
     aideResiliation: async (cle: string) => {
       const a = (structuredClone(state.household.plan === "famille" ? demoBudgetFamille : demoBudget) as BudgetReport).actions.find((x) => x.marchand === cle);
       const marchand = (a?.marchand ?? cle).replace(/(^|[\s-])(\p{L})/gu, (_, x: string, y: string) => x + y.toUpperCase()), eco = a?.economie_annuelle ?? 0, montant = Math.round((eco / 12) * 100) / 100;
@@ -652,6 +671,13 @@ export interface VueComptable { prenom: string; nom_comptable: string | null; ex
 
 /** Demo: the same pure functions as the server, on the Martin family's fictional accounts. */
 const nouvelId = () => Math.random().toString(36).slice(2, 10);
+
+/** Demo shared expenses: same arithmetic as the server (server/src/partages.ts, pure functions). */
+function etatPartagesDemo(membres: Member[], depenses: DepensePartagee[], reglements: ReglementPartage[]): EtatPartages {
+  const m = membres.map((x) => ({ id: x.id, prenom: x.prenom, role: x.role }));
+  const s = soldesPartages(depenses, reglements, m);
+  return { membres: m, depenses: structuredClone(depenses), reglements: structuredClone(reglements), soldes: s, suggestions: suggestionsPartages(s) };
+}
 
 /** Demo end-of-month forecast, computed like the server's from a fixed sample (balance, debits, salary, daily spending). */
 function previsionDemo(): Prevision {
