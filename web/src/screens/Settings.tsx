@@ -3,6 +3,7 @@ import type { Api, Partenaire } from "../api";
 import { ApiError } from "../api";
 import type { Household } from "../types";
 import { Back } from "../ui";
+import { choisirLangue, langueChoisie } from "../i18n/traduction";
 
 /** « Le point du dimanche » : la semaine de Lucien, chaque dimanche soir (notification, et email avec la formule complète). */
 function PointDimanche({ api, household, onChanged, toast, go }: { api: Api; household: Household; onChanged: () => void; toast: (m: string) => void; go: (s: string, id?: string) => void }) {
@@ -202,6 +203,10 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
 
       <section className="section">
         <div className="section-head"><h2>Vos données</h2></div>
+        <div className="settings-row"><div><div className="t">Langue de l'appli</div><div className="s">Language of the app</div></div>
+          <select className="in langue-choix" aria-label="Langue / Language" value={langueChoisie()} onChange={(e) => choisirLangue(e.target.value as "fr" | "en")} data-pas-traduire>
+            <option value="fr">Français</option><option value="en">English</option>
+          </select></div>
         <div className="settings-row"><div><div className="t">Hébergement</div><div className="s">Europe · connexion chiffrée · jamais revendu</div></div></div>
         <div className="settings-row"><div><div className="t">Exporter tout</div><div className="s">Vos papiers d'origine et toutes vos données, dans un fichier .zip</div></div><button className="link" onClick={async () => { toast("Préparation de l'export…"); try { await api.exporter(); } catch (e) { toast((e as Error).message); } }}>Exporter</button></div>
         {household.abonnement?.suppression_le && household.titulaire !== false ? (

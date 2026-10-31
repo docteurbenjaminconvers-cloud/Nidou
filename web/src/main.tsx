@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import { demarrerTraduction } from "./i18n/traduction";
 import "./styles.css";
 
 // Ancien nom (Nidou) : les préférences gardées sur le téléphone (email, nom, langue…) passent sous le nouveau nom.
@@ -19,11 +20,13 @@ try {
   if (code && /^[A-Za-z0-9-]{4,20}$/.test(code)) localStorage.setItem("lucien.partenaire", code.toUpperCase());
 } catch {}
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
+// English: the interface is translated as it is displayed (i18n/traduction.ts); French needs nothing.
+const afficher = () => ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <App />
   </React.StrictMode>
 );
+demarrerTraduction().catch((e) => console.error("[traduction]", e)).finally(afficher);
 
 // Rangées de pastilles qui défilent (catégories, situation…) : la pastille touchée vient au centre, dans les deux sens.
 document.addEventListener("click", (e) => {

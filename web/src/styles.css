@@ -907,3 +907,4 @@ b, strong { font-weight: 800; }
 .partage-sugg { display: flex; justify-content: space-between; align-items: center; gap: 10px; background: var(--white); border-radius: 14px; padding: 12px 14px; margin-bottom: 8px; font-size: 14.5px; }
 .partage-pour { border: 0; padding: 0; margin: 10px 0 0; display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 14px; }
 .partage-pour legend { font-size: 13px; font-weight: 700; color: var(--ink-2, #5b5060); margin-bottom: 6px; }
+.langue-choix { width: auto; min-width: 120px; }
