@@ -338,11 +338,17 @@ window.LUCIEN_I18N = {
 
   var initial = "fr";
   try { initial = localStorage.getItem("lucien.lang") || localStorage.getItem("nidou.lang") || ""; } catch (e) {}
+  // a language page (/en/, /es/…) always opens in its own language
+  if (window.LUCIEN_LANG_PAGE) initial = window.LUCIEN_LANG_PAGE;
   if (!initial) {
     var nav = ((navigator.languages && navigator.languages[0]) || navigator.language || "fr").slice(0, 2).toLowerCase();
     initial = dict[nav] ? nav : "fr";
   }
   if (initial !== "fr") apply(initial);
   var sel = document.getElementById("lang");
-  if (sel) { sel.value = initial; sel.addEventListener("change", function () { apply(sel.value); }); }
+  if (sel) { sel.value = initial; sel.addEventListener("change", function () {
+    // on a language page, choosing another language opens that language's page (its own address for search engines)
+    if (window.LUCIEN_LANG_PAGE) { try { localStorage.setItem("lucien.lang", sel.value); } catch (e) {} location.href = "../" + (sel.value === "fr" ? "" : sel.value + "/") + location.hash; return; }
+    apply(sel.value);
+  }); }
 })();
