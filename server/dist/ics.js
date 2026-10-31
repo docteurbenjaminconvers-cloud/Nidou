@@ -5,7 +5,7 @@
  */
 const RRULE_JOUR = ["", "MO", "TU", "WE", "TH", "FR", "SA", "SU"];
 /** RFC 5545 text escaping and 75-octet line folding. */
-const esc = (s) => s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+const esc = (s) => s.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r\n|\r|\n/g, "\\n");
 function plier(ligne) {
     const out = [];
     let cur = "", octets = 0;
@@ -49,13 +49,15 @@ export function agendaIcs(e, now = new Date()) {
             L.push("BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${esc(d.titre)}`, `TRIGGER:-P${d.rappel_jours}D`, "END:VALARM");
         L.push("END:VEVENT");
     }
+    const hh = /^([01]\d|2[0-3]):[0-5]\d$/;
     for (const c of e.creneaux) {
-        if (!c.heure_debut || c.type === "cantine")
-            continue;
+        const h0 = c.heure_debut;
+        if (!h0 || !hh.test(h0) || c.type === "cantine")
+            continue; // only well-formed times reach the feed
         const debut = prochainJour(today, c.jour);
-        const fin = c.heure_fin ?? `${String(Math.min(23, Number(c.heure_debut.slice(0, 2)) + 1)).padStart(2, "0")}${c.heure_debut.slice(2)}`;
-        const uid = `activite-${(c.activite_id ?? `${c.jour}-${c.heure_debut}-${c.titre}`).replace(/[^\w.-]/g, "_")}@monlucien.fr`;
-        L.push("BEGIN:VEVENT", `UID:${uid}`, `DTSTAMP:${stamp}`, `DTSTART;TZID=Europe/Paris:${compact(debut)}T${c.heure_debut.replace(":", "")}00`, `DTEND;TZID=Europe/Paris:${compact(debut)}T${fin.replace(":", "")}00`, `RRULE:FREQ=WEEKLY;BYDAY=${RRULE_JOUR[c.jour]}`, `SUMMARY:${esc(`${c.titre}${c.membre ? ` · ${c.membre}` : ""}`)}`, ...(c.lieu ? [`LOCATION:${esc(c.lieu)}`] : []), "CATEGORIES:Lucien", "END:VEVENT");
+        const fin = (c.heure_fin && hh.test(c.heure_fin) ? c.heure_fin : null) ?? `${String(Math.min(23, Number(h0.slice(0, 2)) + 1)).padStart(2, "0")}${h0.slice(2)}`;
+        const uid = `activite-${(c.activite_id ?? `${c.jour}-${h0}-${c.titre}`).replace(/[^\w.-]/g, "_")}@monlucien.fr`;
+        L.push("BEGIN:VEVENT", `UID:${uid}`, `DTSTAMP:${stamp}`, `DTSTART;TZID=Europe/Paris:${compact(debut)}T${h0.replace(":", "")}00`, `DTEND;TZID=Europe/Paris:${compact(debut)}T${fin.replace(":", "")}00`, `RRULE:FREQ=WEEKLY;BYDAY=${RRULE_JOUR[c.jour]}`, `SUMMARY:${esc(`${c.titre}${c.membre ? ` · ${c.membre}` : ""}`)}`, ...(c.lieu ? [`LOCATION:${esc(c.lieu)}`] : []), "CATEGORIES:Lucien", "END:VEVENT");
     }
     L.push("END:VCALENDAR");
     return L.map(plier).join("\r\n") + "\r\n";

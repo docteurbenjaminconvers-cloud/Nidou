@@ -43,8 +43,21 @@ export const FREE_LIMITS = {
 };
 export const TRIAL_DAYS = Number(process.env.LUCIEN_ESSAI_JOURS ?? 15);
 const freeCapEur = () => Number(process.env.LUCIEN_IA_PLAFOND_GRATUIT_EUR ?? 2000);
+/** Content-Disposition with an ASCII fallback and an RFC 8187 UTF-8 name (', (, ), * encoded too). */
+export function dispositionFichier(type, nom) {
+    const ascii = nom.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\x20-\x7e]|["\\]/g, "_");
+    const utf8 = encodeURIComponent(nom).replace(/['()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
+    return `${type}; filename="${ascii}"; filename*=UTF-8''${utf8}`;
+}
 export function createApi(db, opts) {
     const api = new Hono();
+    // Invalid input (zod) is the caller's mistake: 400 with the first message, not a server error.
+    api.onError((err, c) => {
+        if (err instanceof z.ZodError)
+            return c.json({ error: "saisie_invalide", message: err.issues[0]?.message ?? "Saisie invalide" }, 400);
+        console.error("[api]", err);
+        return c.json({ error: "erreur", message: "Erreur interne" }, 500);
+    });
     V.ensureVeilleSchema(db);
     ensureAssistantSchema(db);
     ensureEbSchema(db);
@@ -299,7 +312,7 @@ export function createApi(db, opts) {
     });
     const activiteSchema = z.object({
         member_id: z.string().nullable().default(null), titre: z.string().min(1), type: z.string().default("autre"),
-        jour: z.number().int().min(1).max(7).nullable().default(null), heure_debut: z.string().nullable().default(null), heure_fin: z.string().nullable().default(null),
+        jour: z.number().int().min(1).max(7).nullable().default(null), heure_debut: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "heure au format HH:MM").nullable().default(null), heure_fin: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "heure au format HH:MM").nullable().default(null),
         lieu: z.string().nullable().default(null), cout_mois: z.number().nullable().default(null), date_debut: z.string().nullable().default(null), date_fin: z.string().nullable().default(null), note: z.string().nullable().default(null),
     });
     api.post("/activites", async (c) => {
@@ -368,7 +381,14 @@ export function createApi(db, opts) {
         if (!buf)
             return c.json({ error: "introuvable" }, 404);
         const nom = `${d.title.replace(/[^\p{L}\p{N} ._-]+/gu, "").trim().slice(0, 80) || "document"}${extname(d.fichier)}`;
-        return new Response(new Uint8Array(buf), { headers: { "content-type": d.mime ?? "application/octet-stream", "content-disposition": `inline; filename*=UTF-8''${encodeURIComponent(nom)}`, "cache-control": "private, no-store" } });
+        // Only PDFs and photos are shown in the browser; anything else (HTML, SVG…) is downloaded, never rendered on our origin.
+        const affichable = /^(application\/pdf|image\/(png|jpeg|webp|gif|heic|heif))$/.test(d.mime ?? "");
+        return new Response(new Uint8Array(buf), { headers: {
+                "content-type": affichable ? d.mime : "application/octet-stream",
+                "content-disposition": dispositionFichier(affichable ? "inline" : "attachment", nom),
+                "x-content-type-options": "nosniff", "content-security-policy": "sandbox; default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; object-src 'self'",
+                "cache-control": "private, no-store",
+            } });
     });
     /** « Dossiers prêts » : for each usual request (rental, CAF, school, loan…), what is ready, too old or missing. */
     api.get("/dossiers", (c) => c.json(etatDossiers(db.listDocuments(household(c).id))));
@@ -394,7 +414,7 @@ export function createApi(db, opts) {
                 fichiers.push({ nom: `${String(n++).padStart(2, "0")} - ${p.libelle.replace(/[^\p{L}\p{N} ._'-]+/gu, " ").replace(/\s+/g, " ").trim().slice(0, 40)} - ${titre}${extname(d.fichier)}`, contenu: buf });
             }
         const nom = `Lucien - ${kit.titre}.zip`;
-        return new Response(new Uint8Array(zip(fichiers)), { headers: { "content-type": "application/zip", "content-disposition": `attachment; filename*=UTF-8''${encodeURIComponent(nom)}`, "cache-control": "private, no-store" } });
+        return new Response(new Uint8Array(zip(fichiers)), { headers: { "content-type": "application/zip", "content-disposition": dispositionFichier("attachment", nom), "x-content-type-options": "nosniff", "cache-control": "private, no-store" } });
     });
     /**
      * Upload: multipart (file + optional texte) or JSON { texte, nomFichier }.

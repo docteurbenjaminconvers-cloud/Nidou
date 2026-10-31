@@ -85,6 +85,7 @@ export function createMcpServer(db, householdId) {
         e.echeances = e.echeances.filter((x) => !x.document_id || !exclus.has(x.document_id));
         if (excluded.has("banque"))
             e.economies = null;
+        e.aVerifier = visible().filter((d) => !d.verifie && (d.confiance ?? 1) < 0.7).length;
         const { notification, ...point } = pointSemaine(e);
         return text(point);
     });
@@ -96,7 +97,9 @@ export function createMcpServer(db, householdId) {
         log("dossier", { demarche });
         const kit = KITS.find((k) => k.cle === demarche);
         const e = etatKit(kit, visible());
-        return text({ ...e, icone: undefined, pieces: e.pieces.map((p) => ({ ...p, documents: p.documents.map(({ fichier, ...d }) => d) })) });
+        // Pieces only found in an excluded folder (bank statements when « banque » is out of scope) are not « missing »: they are out of reach.
+        const horsPerimetre = (cle) => excluded.has("banque") && ["releves", "credits", "rib"].includes(cle);
+        return text({ ...e, icone: undefined, pieces: e.pieces.map((p) => ({ ...p, statut: p.statut !== "ok" && horsPerimetre(p.cle) ? "hors_perimetre_du_connecteur" : p.statut, documents: p.documents.map(({ fichier, ...d }) => d) })) });
     });
     server.registerTool("coup_dur", {
         title: "En cas de coup dur",

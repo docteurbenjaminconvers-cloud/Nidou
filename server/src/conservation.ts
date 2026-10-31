@@ -18,7 +18,7 @@ const REGLES: Regle[] = [
   { cle: "livret", libelle: "Livret de famille, acte d'état civil", match: (_d, t) => /livret de famille|acte de (naissance|mariage|décès|deces)|jugement de divorce/.test(t), garde: { type: "vie" }, detail: "À conserver toute la vie." },
   { cle: "diplome", libelle: "Diplôme", match: (_d, t) => /diplôme|diplome|baccalaur/.test(t), garde: { type: "vie" }, detail: "À conserver toute la vie." },
   { cle: "carnet_sante", libelle: "Carnet de santé, examens", match: (d, t) => d.category === "sante" && /carnet|vaccin|radio|analyse|examen|compte rendu|certificat/.test(t), garde: { type: "vie" }, detail: "Votre histoire médicale : à garder toute la vie." },
-  { cle: "decompte_sante", libelle: "Remboursements de santé", match: (d) => /décompte|decompte|remboursement|relevé de prestations|releve de prestations/.test(d.title.toLowerCase()), garde: { type: "annees", annees: 2, depuis: "document" }, detail: "2 ans : le délai pour contester un remboursement." },
+  { cle: "decompte_sante", libelle: "Remboursements de santé", match: (d) => d.category === "sante" && /décompte|decompte|remboursement|relevé de prestations|releve de prestations/.test(d.title.toLowerCase()), garde: { type: "annees", annees: 2, depuis: "document" }, detail: "2 ans : le délai pour contester un remboursement." },
   { cle: "impot_revenu", libelle: "Avis d'impôt sur le revenu", match: (d, t) => d.category === "impots" && /revenu|avis d'imp[ôo]t|déclaration|declaration/.test(t) && !/fonci|habitation/.test(t), garde: { type: "annees", annees: 3, depuis: "document", fin_annee: true }, detail: "L'administration peut contrôler pendant 3 ans : gardez l'avis et les justificatifs jusqu'à la fin de la 3e année." },
   { cle: "taxe_locale", libelle: "Taxe foncière ou d'habitation", match: (d, t) => d.category === "impots" && /fonci|habitation/.test(t), garde: { type: "annees", annees: 1, depuis: "document", fin_annee: true }, detail: "1 an, jusqu'à la fin de l'année suivante." },
   { cle: "energie", libelle: "Facture d'électricité, de gaz ou d'eau", match: (d) => d.category === "energie" && /facture|échéancier|echeancier|relevé|releve|régularisation|regularisation/.test(d.title.toLowerCase()), garde: { type: "annees", annees: 5, depuis: "document" }, detail: "5 ans : le fournisseur peut réclamer un impayé pendant ce délai." },
@@ -56,6 +56,9 @@ export function conservation(d: DocConservation, today = new Date().toISOString(
   const base = g.depuis === "fin" ? d.date_fin : d.date_document ?? d.cree_le.slice(0, 10);
   if (!base) return null;
   const jusqua = g.fin_annee ? finAnnee(plusAns(base, g.annees)) : plusAns(base, g.annees);
+  // Still running (end date ahead): never offered for the clear-out, whatever the rule says.
+  const enCours = Boolean(d.date_fin && d.date_fin >= today);
+  if (enCours && jusqua < today) return { regle: r.cle, libelle: r.libelle, jusqua: null, garder: "Tant qu'il est en cours", detail: r.detail, peut_jeter: false };
   return { regle: r.cle, libelle: r.libelle, jusqua, garder: jusqua < today ? `Pouvait partir depuis le ${fr(jusqua)}` : `Jusqu'au ${fr(jusqua)}`, detail: r.detail, peut_jeter: jusqua < today };
 }
 

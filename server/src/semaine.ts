@@ -49,7 +49,7 @@ export function semaineIso(isoDate: string): string {
   const d = jour(isoDate);
   d.setUTCDate(d.getUTCDate() + 4 - jourSemaine(isoDate)); // Thursday of that week decides the year
   const debutAnnee = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  const n = Math.ceil(((d.getTime() - debutAnnee.getTime()) / 864e5 + 1) / 7);
+  const n = Math.floor(Math.floor((d.getTime() - debutAnnee.getTime()) / 864e5) / 7) + 1; // d is at noon: whole days only
   return `${d.getUTCFullYear()}-W${String(n).padStart(2, "0")}`;
 }
 
