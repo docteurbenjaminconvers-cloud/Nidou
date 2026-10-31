@@ -1,3 +1,4 @@
+import { budgetIa } from "./iaBudget.js";
 import { createHmac, timingSafeEqual, randomUUID } from "node:crypto";
 import type { Db } from "./db.js";
 import { categorise, merchantOf, fingerprint, type ParsedTx } from "./transactions.js";
@@ -177,7 +178,7 @@ export async function syncHousehold(db: Db, client: BridgeClient, householdId: s
   }
   const raw = await client.transactions(access_token, link.curseur);
   const parsed = mapTransactions(raw, names);
-  const cats = await categorise(parsed);
+  const cats = await categorise(parsed, budgetIa(db, householdId));
   const added = db.insertTransactions(parsed.map((t, i) => ({
     household_id: householdId, compte: t.compte, date: t.date, libelle: t.libelle, marchand: merchantOf(t.libelle), montant: t.montant, categorie: cats[i],
     // Bridge ids are stable: use them so an updated transaction never duplicates.
@@ -204,7 +205,7 @@ export async function simulatedSync(db: Db, householdId: string): Promise<SyncRe
   if (!link) throw new Error("Aucune connexion bancaire pour ce foyer");
   db.upsertBankAccount({ id: "sim:1", household_id: householdId, item_id: "sim-1", nom: "Compte joint", banque: "Banque de démonstration", type: "checking", solde: 2487.91, devise: "EUR", maj_le: new Date().toISOString() });
   const parsed = parseStatement(demoStatement(), "Compte joint");
-  const cats = await categorise(parsed);
+  const cats = await categorise(parsed, budgetIa(db, householdId));
   const added = db.insertTransactions(parsed.map((t, i) => ({ household_id: householdId, compte: t.compte, date: t.date, libelle: t.libelle, marchand: merchantOf(t.libelle), montant: t.montant, categorie: cats[i], empreinte: fingerprint(householdId, t) })));
   const now = new Date().toISOString();
   db.upsertBankLink({ ...link, derniere_synchro: now, curseur: now, statut: "connecte" });

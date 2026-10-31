@@ -3,6 +3,7 @@ import { z } from "zod";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { createHash, randomBytes } from "node:crypto";
 import { exporterFoyer } from "./export.js";
+import { budgetIa, coutAppel } from "./iaBudget.js";
 import { annulerSuppression, arreterALEcheance, demanderSuppression, ensureSuppressionSchema, etatFin, quitterFoyer, reprendreAbonnement } from "./suppression.js";
 import { basename, extname, join } from "node:path";
 import type { Db, DocumentRow, HouseholdRow } from "./db.js";
@@ -21,7 +22,7 @@ import { envoyerPush, pushOn } from "./push.js";
 import { appliquerAbonnement, capaciteComptes, creerCheckout, FORMULES, portail, resumeAbonnement, traiterWebhook, type Formule } from "./abonnement.js";
 import { pointDuFoyer } from "./hebdo.js";
 import { monterEspaces } from "./espaces.js";
-import { monterPartenaires } from "./partenaires.js";
+import { adminOk, monterPartenaires } from "./partenaires.js";
 import { bordereau, etatDossiers, etatKit, KITS } from "./dossiers.js";
 import { zip } from "./zip.js";
 import { agendaIcs } from "./ics.js";
@@ -120,7 +121,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
    * without a session every route answers 401 `non_connecte`. LUCIEN_AUTH=0 keeps the single-household prototype.
    */
   api.use("*", async (c, next) => {
-    if (c.req.path.includes("/auth/") || c.req.path.endsWith("/inbox") || c.req.path.endsWith("/bank/webhook") || c.req.path.endsWith("/bank/callback") || c.req.path.endsWith("/bank/eb/callback") || c.req.path.endsWith("/stripe/webhook") || c.req.path.endsWith("/waitlist") || (c.req.path.endsWith("/partenaires") && c.req.method === "POST") || c.req.path.includes("/admin/partenaires") || c.req.path.includes("/veille/p/") || c.req.path.includes("/comptable/") || /\/agenda\/[^/]+\.ics$/.test(c.req.path) || c.req.path.endsWith("/veille/callback")) return next();
+    if (c.req.path.includes("/auth/") || c.req.path.endsWith("/inbox") || c.req.path.endsWith("/bank/webhook") || c.req.path.endsWith("/bank/callback") || c.req.path.endsWith("/bank/eb/callback") || c.req.path.endsWith("/stripe/webhook") || c.req.path.endsWith("/waitlist") || (c.req.path.endsWith("/partenaires") && c.req.method === "POST") || c.req.path.includes("/admin/partenaires") || (c.req.path.endsWith("/ia/depense") && adminOk(c.req.header("authorization"))) || c.req.path.includes("/veille/p/") || c.req.path.includes("/comptable/") || /\/agenda\/[^/]+\.ics$/.test(c.req.path) || c.req.path.endsWith("/veille/callback")) return next();
     let row;
     let user = null as { id: string; email: string; prenom: string | null } | null;
     if (AUTH_ON()) {
@@ -594,10 +595,13 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     const gratuit = h.plan === "gratuit";
     const quotaOk = !gratuit || db.iaLecturesMois(h.id) < FREE_LIMITS.iaLecturesParMois;
     const capOk = !gratuit || db.iaDepenseMois().gratuit_eur < freeCapEur();
-    const iaAutorisee = quotaOk && capOk;
+    const budget = budgetIa(db, h.id);
+    const budgetOk = gratuit || budget.ok();
+    const iaAutorisee = quotaOk && capOk && budgetOk;
     const ex = iaAutorisee ? await extractDocument({ texte, base64, mime, nomFichier }) : { ...heuristicExtract({ texte, nomFichier }), modele: null };
     if (ex.modele) db.recordIaLecture(h.id, gratuit, ex.modele.cout_lecture_centimes);
-    if (!iaAutorisee) {
+    if (!budgetOk) ex.resume = "Votre foyer a atteint ce mois-ci la limite de lectures par l'IA : ce papier a été lu sans IA. Vérifiez et complétez les champs ; la lecture par l'IA reprend le 1er du mois.";
+    else if (!iaAutorisee) {
       ex.resume = FREE_LIMITS.iaLecturesParMois === 0
         ? "Plan gratuit : document lu localement, sans IA. Vérifiez et complétez les champs. La formule complète lit chaque document avec l'IA."
         : !capOk
@@ -710,9 +714,12 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
       .parse(await c.req.json());
     const doc = db.getDocument(body.document_id);
     if (!doc || doc.household_id !== h.id) return c.json({ error: "introuvable" }, 404);
-    const texte = h.plan === "gratuit"
-      ? templateLetter({ kind: body.kind, doc, expediteur: { nom: body.nom, adresse: body.adresse }, motif: body.motif })
-      : await generateLetter({ kind: body.kind, doc, expediteur: { nom: body.nom, adresse: body.adresse }, motif: body.motif });
+    const budget = budgetIa(db, h.id);
+    const avecIa = h.plan !== "gratuit" && budget.ok(coutAppel("rapide"));
+    const texte = avecIa
+      ? await generateLetter({ kind: body.kind, doc, expediteur: { nom: body.nom, adresse: body.adresse }, motif: body.motif })
+      : templateLetter({ kind: body.kind, doc, expediteur: { nom: body.nom, adresse: body.adresse }, motif: body.motif });
+    if (avecIa) budget.compter(coutAppel("rapide"));
     return c.json({ texte });
   });
 
@@ -755,7 +762,10 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
         const buf = Buffer.from(await f.arrayBuffer());
         if (f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf")) {
           if (!process.env.ANTHROPIC_API_KEY) return c.json({ error: "pdf_sans_ia", message: "La lecture des relevés PDF nécessite la clé API Anthropic. Exportez le relevé en CSV depuis votre banque." }, 400);
+          const budget = budgetIa(db, h.id);
+          if (!budget.ok(coutAppel("precis", 3))) return c.json({ error: "budget_ia", message: "Votre foyer a atteint ce mois-ci la limite de lectures par l'IA. Exportez le relevé en CSV depuis votre banque : il s'importe sans IA." }, 429);
           text = await pdfStatementToCsv(buf);
+          budget.compter(coutAppel("precis", 3));
         } else text = buf.toString("utf8");
       }
     } else {
@@ -765,7 +775,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     }
     const parsed = parseStatement(text, compte);
     if (parsed.length === 0) return c.json({ error: "format", message: "Aucune ligne reconnue. Format attendu : une ligne par opération avec date, libellé et montant (CSV de votre banque)." }, 400);
-    const cats = h.plan === "gratuit" ? parsed.map((t) => ruleCategory(t.libelle, t.montant) ?? "autre") : await categorise(parsed);
+    const cats = h.plan === "gratuit" ? parsed.map((t) => ruleCategory(t.libelle, t.montant) ?? "autre") : await categorise(parsed, budgetIa(db, h.id));
     const added = db.insertTransactions(parsed.map((t: ParsedTx, i: number) => ({
       household_id: h.id, compte: t.compte, date: t.date, libelle: t.libelle, marchand: merchantOf(t.libelle), montant: t.montant, categorie: cats[i], empreinte: fingerprint(h.id, t),
     })));
@@ -1132,7 +1142,8 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     return c.json({ ok: true, envoyes: n, actif: pushOn() });
   });
 
-  api.get("/ia/depense", (c) => c.json({ ...db.iaDepenseMois(), plafond_gratuit_eur: freeCapEur(), fournisseur: process.env.LUCIEN_IA_PROVIDER ?? (process.env.ANTHROPIC_API_KEY ? "anthropic" : process.env.MISTRAL_API_KEY ? "mistral" : "aucun") }));
+  // platform-wide AI spend: for Lucien's admin only (Bearer LUCIEN_ADMIN_TOKEN), never for households
+  api.get("/ia/depense", (c) => adminOk(c.req.header("authorization")) ? c.json({ ...db.iaDepenseMois(), plafond_gratuit_eur: freeCapEur(), fournisseur: process.env.LUCIEN_IA_PROVIDER ?? (process.env.ANTHROPIC_API_KEY ? "anthropic" : process.env.MISTRAL_API_KEY ? "mistral" : "aucun") }) : c.json({ error: "interdit" }, 403));
 
   // ---------- MCP access log ----------
   api.get("/mcp/log", (c) => c.json(db.listMcpAccess(household(c).id)));

@@ -36,7 +36,7 @@ export function joursOfferts(db: Db, h: { id: string; stripe_subscription_id?: s
   return cabinetValide(db, codePartenaire(db, h.id)) ? 30 : 0;
 }
 
-const adminOk = (header: string | undefined) => {
+export const adminOk = (header: string | undefined) => {
   const t = process.env.LUCIEN_ADMIN_TOKEN;
   if (!t || !header) return false;
   const a = Buffer.from(header.replace(/^Bearer\s+/i, "")), b = Buffer.from(t);

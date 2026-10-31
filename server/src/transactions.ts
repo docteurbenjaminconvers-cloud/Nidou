@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { structured, provider } from "./ia.js";
+import { coutAppel, type BudgetIa } from "./iaBudget.js";
 
 export { TX_CATEGORIES, TX_LABEL, type TxCategory } from "./categorie.js";
 import { TX_CATEGORIES, type TxCategory } from "./categorie.js";
@@ -124,10 +125,10 @@ export function ruleCategory(libelle: string, montant: number): TxCategory | nul
 /**
  * Categorises transactions: rules first, then Claude for the leftovers (in one batch), else "autre".
  */
-export async function categorise(items: { libelle: string; montant: number }[]): Promise<TxCategory[]> {
+export async function categorise(items: { libelle: string; montant: number }[], budget?: BudgetIa): Promise<TxCategory[]> {
   const out: (TxCategory | null)[] = items.map((t) => ruleCategory(t.libelle, t.montant));
   const todo = out.map((c, i) => (c === null ? i : -1)).filter((i) => i >= 0);
-  if (todo.length && provider()) {
+  if (todo.length && provider() && (!budget || budget.ok())) {
     const uniq = [...new Set(todo.map((i) => items[i].libelle))].slice(0, 300);
     try {
       const r = await structured({
@@ -137,6 +138,7 @@ export async function categorise(items: { libelle: string; montant: number }[]):
         tool: { name: "classer", description: "Attribue une catégorie à chaque libellé.", schema: { type: "object", required: ["items"], properties: { items: { type: "array", items: { type: "object", required: ["libelle", "categorie"], properties: { libelle: { type: "string" }, categorie: { type: "string", enum: [...TX_CATEGORIES] } } } } } } },
         maxTokens: 4000,
       });
+      budget?.compter(coutAppel("rapide", 2));
       const map = new Map<string, TxCategory>();
       for (const it of (r.data as any).items ?? []) if (TX_CATEGORIES.includes(it.categorie)) map.set(it.libelle, it.categorie);
       for (const i of todo) out[i] = map.get(items[i].libelle) ?? null;

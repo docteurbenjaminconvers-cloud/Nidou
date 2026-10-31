@@ -1,3 +1,4 @@
+import { budgetIa } from "./iaBudget.js";
 import { createSign, randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import type { Db, BankLinkRow } from "./db.js";
@@ -168,7 +169,7 @@ export async function ebSyncHousehold(db: Db, client: EbClient, householdId: str
     db.upsertBankAccount({ id: `eb:${a.uid}`, household_id: householdId, item_id: link.user_uuid, nom, banque, type: null, solde: solde ? Number(solde.balance_amount.amount) : null, devise: solde?.balance_amount.currency ?? "EUR", maj_le: new Date().toISOString() });
     const parsed = mapEbTransactions(await client.transactions(a.uid, from), nom);
     lues += parsed.length;
-    const cats = await categorise(parsed);
+    const cats = await categorise(parsed, budgetIa(db, householdId));
     ajoutees += db.insertTransactions(parsed.map((t, i) => ({
       household_id: householdId, compte: t.compte, date: t.date, libelle: t.libelle, marchand: merchantOf(t.libelle), montant: t.montant, categorie: cats[i],
       empreinte: t.ref ? `eb:${a.uid}:${t.ref}` : fingerprint(householdId, t),

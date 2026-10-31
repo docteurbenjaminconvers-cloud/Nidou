@@ -882,6 +882,31 @@ export class Db {
   // ---------- IA usage: per-household monthly quota + global monthly spend cap ----------
   private month(): string { return this.now().slice(0, 7); }
 
+  /** Estimated AI spend of the household this month, in cents (all AI calls, see iaBudget.ts). */
+  iaCentimesMois(household_id: string): number {
+    this.ensureIaCentimes();
+    const r = this.raw.prepare("SELECT centimes FROM ia_usage WHERE household_id = ? AND mois = ?").get(household_id, this.month()) as { centimes: number } | undefined;
+    return r?.centimes ?? 0;
+  }
+  private iaCentimesPret = false;
+  private ensureIaCentimes() {
+    if (this.iaCentimesPret) return;
+    const cols = (this.raw.prepare("PRAGMA table_info(ia_usage)").all() as unknown as { name: string }[]).map((c) => c.name);
+    if (!cols.includes("centimes")) this.raw.exec("ALTER TABLE ia_usage ADD COLUMN centimes REAL NOT NULL DEFAULT 0");
+    this.iaCentimesPret = true;
+  }
+
+  /** Records an AI call that is not a paper reading (categorisation, letter, PDF statement) and its cost. */
+  recordIaCout(household_id: string, gratuit: boolean, centimes: number) {
+    this.ensureIaCentimes();
+    const m = this.month();
+    this.raw.prepare("INSERT INTO ia_usage (household_id, mois, lectures, centimes) VALUES (?, ?, 0, ?) ON CONFLICT(household_id, mois) DO UPDATE SET centimes = centimes + excluded.centimes").run(household_id, m, centimes);
+    this.raw
+      .prepare(`INSERT INTO ia_depense (mois, centimes_gratuit, centimes_payant) VALUES (?, ?, ?)
+                ON CONFLICT(mois) DO UPDATE SET centimes_gratuit = centimes_gratuit + excluded.centimes_gratuit, centimes_payant = centimes_payant + excluded.centimes_payant`)
+      .run(m, gratuit ? centimes : 0, gratuit ? 0 : centimes);
+  }
+
   iaLecturesMois(household_id: string): number {
     const r = this.raw.prepare("SELECT lectures FROM ia_usage WHERE household_id = ? AND mois = ?").get(household_id, this.month()) as { lectures: number } | undefined;
     return r?.lectures ?? 0;
@@ -889,8 +914,9 @@ export class Db {
 
   /** Records one AI reading and its estimated cost in cents, in the free or paid bucket. */
   recordIaLecture(household_id: string, gratuit: boolean, centimes: number) {
+    this.ensureIaCentimes();
     const m = this.month();
-    this.raw.prepare("INSERT INTO ia_usage (household_id, mois, lectures) VALUES (?, ?, 1) ON CONFLICT(household_id, mois) DO UPDATE SET lectures = lectures + 1").run(household_id, m);
+    this.raw.prepare("INSERT INTO ia_usage (household_id, mois, lectures, centimes) VALUES (?, ?, 1, ?) ON CONFLICT(household_id, mois) DO UPDATE SET lectures = lectures + 1, centimes = centimes + excluded.centimes").run(household_id, m, centimes);
     this.raw
       .prepare(`INSERT INTO ia_depense (mois, centimes_gratuit, centimes_payant) VALUES (?, ?, ?)
                 ON CONFLICT(mois) DO UPDATE SET centimes_gratuit = centimes_gratuit + excluded.centimes_gratuit, centimes_payant = centimes_payant + excluded.centimes_payant`)
