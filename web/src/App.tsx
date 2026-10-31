@@ -128,7 +128,7 @@ export default function App() {
       {route.s === "connecteur" && <Connecteur household={household} go={go} onBack={() => history.length > 1 ? history.back() : go("settings")} toast={toast} />}
       {route.s === "settings" && <Settings api={api} household={household} onBack={() => go("home")} onPlan={() => reload()} toast={toast} go={go} />}
       {(route.s === "home" || !["deadlines", "docs", "doc", "add", "budget", "settings", "notifs", "famille", "membre", "activite", "veille", "veille-nouvelle", "assistant", "connecteur", "semaine", "dossiers", "dossier", "menage", "urgence", "coup-dur"].includes(route.s)) && (
-        <Today household={household} deadlines={deadlines} docs={docs} charges={charges} budget={budget} go={go} onDone={onDone} unread={notifs.unread} famille={famille} />
+        <Today api={api} household={household} deadlines={deadlines} docs={docs} charges={charges} budget={budget} go={go} onDone={onDone} unread={notifs.unread} famille={famille} />
       )}
 
       <nav className="tabs" aria-label="Navigation">

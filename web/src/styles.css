@@ -601,3 +601,14 @@ b, strong { font-weight: 800; }
 .sm-item span { display: block; font-size: 12.5px; color: var(--mist); }
 .sm-jour.today .sm-item { box-shadow: inset 3px 0 0 var(--nest); }
 .fiche-notes { margin-top: 16px; padding: 12px 14px; background: var(--white); border-radius: 14px; }
+
+/* Accueil : la famille en un geste */
+.famille-bandeau { margin: 2px 0 14px; padding: 12px 14px 4px; background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); }
+.fb-tete { display: flex; justify-content: space-between; align-items: baseline; }
+.fb-tete b { font-family: var(--display); font-weight: 600; font-size: 18px; }
+.fb-trombi { margin: 4px -14px 0; padding: 6px 14px 8px; }
+.fb-trombi .trombi-m { width: 66px; }
+.fb-trombi .trombi-m b { font-size: 12.5px; }
+.famille-invite { display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; margin: 2px 0 14px; padding: 12px 14px; border: 0; border-radius: var(--radius); background: var(--white); box-shadow: var(--shadow); color: var(--ink); }
+.famille-invite b { display: block; font-size: 15.5px; }
+.famille-invite span span { display: block; color: var(--mist); font-size: 13px; }

@@ -3,9 +3,11 @@ import type { BudgetReport, ChargesReport, Deadline, Doc, FamilleReport, Househo
 import { DateChip, daysUntil, fmtDate, fmtEuro, Logo, relative } from "../ui";
 import { SemaineCarte, calculerSemaine } from "./Semaine";
 import { UrgenceCarte } from "./Urgence";
+import { Portrait } from "./Famille";
+import type { Api } from "../api";
 
-export function Today({ household, deadlines, docs, charges, budget, go, onDone, unread, famille }: {
-  household: Household; deadlines: Deadline[]; docs: Doc[]; charges: ChargesReport | null; budget: BudgetReport | null;
+export function Today({ api, household, deadlines, docs, charges, budget, go, onDone, unread, famille }: {
+  api: Api; household: Household; deadlines: Deadline[]; docs: Doc[]; charges: ChargesReport | null; budget: BudgetReport | null;
   go: (s: string, id?: string) => void; onDone: (id: string) => void; unread: number; famille?: FamilleReport | null;
 }) {
   const todayIdx = ((new Date().getDay() + 6) % 7) + 1;
@@ -29,6 +31,8 @@ export function Today({ household, deadlines, docs, charges, budget, go, onDone,
         </div>
         <div className="top-actions"><Bell unread={unread} onClick={() => go("notifs")} /><button className="bell" aria-label="Réglages" onClick={() => go("settings")}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z" /></svg></button></div>
       </div>
+
+      {famille && <FamilleBandeau api={api} famille={famille} go={go} />}
 
       <button className="ask" onClick={() => go("assistant")}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" /></svg>
@@ -98,9 +102,15 @@ export function Today({ household, deadlines, docs, charges, budget, go, onDone,
           <div className="section-head"><h2>La famille aujourd'hui</h2><button className="link" onClick={() => go("famille")}>Famille</button></div>
           {cejour.length === 0 ? (
             <p className="note">Rien de prévu aujourd'hui pour {famille.composition.enfants ? "les enfants" : "la famille"}. {famille.conseils.length ? `${famille.conseils.length} conseils vous attendent.` : ""}</p>
-          ) : cejour.map((s, i) => (
-            <div key={i} className="slot" style={{ padding: "6px 0" }}><span className="h">{s.heure_debut ?? "—"}</span><span className="w"><b>{s.titre}</b>{s.membre ? ` · ${s.membre}` : ""}{s.lieu ? <small>{s.lieu}</small> : null}</span></div>
-          ))}
+          ) : cejour.map((s, i) => {
+            const qui = famille.membres.filter((m) => m.id === s.member_id || (!s.member_id && !!s.membre && s.membre.split(", ").includes(m.prenom)));
+            return (
+              <button key={i} className="slot" style={{ padding: "6px 0" }} onClick={() => qui.length === 1 ? go("famille", qui[0].id) : go("famille")}>
+                <span className="h">{s.heure_debut ?? "—"}</span><span className="w"><b>{s.titre}</b>{s.membre ? ` · ${s.membre}` : ""}{s.lieu ? <small>{s.lieu}</small> : null}</span>
+                <span className="visages">{qui.map((m) => <Portrait key={m.id} api={api} m={m} size={26} />)}</span>
+              </button>
+            );
+          })}
         </section>
       )}
       <div className="strip">
@@ -167,5 +177,36 @@ export function Today({ household, deadlines, docs, charges, budget, go, onDone,
       )}
       <UrgenceCarte go={go} />
     </div>
+  );
+}
+
+/** The family at a glance, right under the greeting: one tap on a face opens that person's page. */
+function FamilleBandeau({ api, famille, go }: { api: Api; famille: FamilleReport; go: (s: string, id?: string) => void }) {
+  const ordre = { adulte: 0, enfant: 1, parent_a_charge: 2, autre_a_charge: 3 } as const;
+  const membres = [...famille.membres].sort((a, b) => ordre[a.role] - ordre[b.role] || (b.age ?? 0) - (a.age ?? 0));
+  if (membres.length <= 1) {
+    return (
+      <button className="famille-invite" onClick={() => go("famille")}>
+        <span className="portrait plus" style={{ width: 46, height: 46 }} aria-hidden><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg></span>
+        <span><b>Ajoutez votre famille</b><span>Enfants, conjoint, parents : leurs photos, leur semaine, leurs papiers.</span></span>
+      </button>
+    );
+  }
+  return (
+    <nav className="famille-bandeau" aria-label="Ma famille">
+      <div className="fb-tete"><b>Ma famille</b><button className="link" onClick={() => go("famille")}>Tout voir</button></div>
+      <div className="trombi fb-trombi">
+        {membres.map((m) => (
+          <button key={m.id} className="trombi-m" onClick={() => go("famille", m.id)}>
+            <Portrait api={api} m={m} size={56} />
+            <b>{m.prenom}</b>
+          </button>
+        ))}
+        <button className="trombi-m" onClick={() => go("famille")}>
+          <span className="portrait foyer" style={{ width: 56, height: 56 }} aria-hidden><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="8" r="3" /><circle cx="17" cy="9.5" r="2.4" /><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5M14.5 14.6c.8-.4 1.6-.6 2.5-.6 2.2 0 3.8 1.4 4.3 4" /></svg></span>
+          <b>Tous</b>
+        </button>
+      </div>
+    </nav>
   );
 }
