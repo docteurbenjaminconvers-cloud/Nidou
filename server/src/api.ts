@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { basename, extname, join } from "node:path";
 import type { Db, DocumentRow, HouseholdRow } from "./db.js";
 import { extractDocument, heuristicExtract } from "./extract.js";
@@ -66,6 +66,9 @@ export function dispositionFichier(type: "inline" | "attachment", nom: string): 
   const utf8 = encodeURIComponent(nom).replace(/['()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
   return `${type}; filename="${ascii}"; filename*=UTF-8''${utf8}`;
 }
+
+/** Opaque, stable name of an invitation (a hash of its token, which is a login link and must stay secret). */
+const idInvitation = (token: string) => createHash("sha256").update(token).digest("base64url").slice(0, 16);
 
 export function createApi(db: Db, opts: { uploadDir: string }) {
   const api = new Hono();
@@ -162,7 +165,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
 
   api.get("/foyer/comptes", (c) => {
     const h = household(c);
-    return c.json({ comptes: db.usersOfHousehold(h.id).map((u) => ({ id: u.id, email: u.email, prenom: u.prenom, role: u.role, rejoint_le: u.rejoint_le })), invitations: db.listInvitations(h.id).map((i) => ({ token: i.token, email: i.email, prenom: i.prenom, expire_le: i.expire_le })) });
+    return c.json({ comptes: db.usersOfHousehold(h.id).map((u) => ({ id: u.id, email: u.email, prenom: u.prenom, role: u.role, rejoint_le: u.rejoint_le })), invitations: db.listInvitations(h.id).map((i) => ({ id: idInvitation(i.token), email: i.email, prenom: i.prenom, expire_le: i.expire_le })) });
   });
 
   api.post("/invitations", async (c) => {
@@ -184,9 +187,10 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     return c.json({ ok: true, envoye: r.envoye, lien: r.lien }, 201);
   });
 
-  api.delete("/invitations/:token", (c) => {
-    const l = db.getAuthLink(c.req.param("token"));
-    if (!l || l.household_id !== household(c).id) return c.json({ error: "introuvable" }, 404);
+  // the invitation is named by an opaque id: its token is a login link and never leaves the server
+  api.delete("/invitations/:id", (c) => {
+    const l = db.listInvitations(household(c).id).find((i) => idInvitation(i.token) === c.req.param("id"));
+    if (!l) return c.json({ error: "introuvable" }, 404);
     db.deleteAuthLink(l.token);
     return c.json({ ok: true });
   });
@@ -279,6 +283,8 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
    */
   api.post("/inbox", async (c) => {
     const secret = process.env.LUCIEN_INBOX_SECRET;
+    // production (public https address) without a secret: the inbox stays closed rather than open to anyone
+    if (!secret && (process.env.LUCIEN_PUBLIC_URL ?? "").startsWith("https://")) return c.json({ error: "boite_non_configuree", message: "LUCIEN_INBOX_SECRET manquant : la boîte de réception est fermée." }, 503);
     if (secret && c.req.query("secret") !== secret && c.req.header("x-lucien-secret") !== secret && c.req.header("x-nidou-secret") !== secret) return c.json({ error: "non_autorise" }, 401);
     const body = await c.req.json();
     const generic = z.object({
@@ -621,7 +627,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     const body = z.object({ fait: z.boolean() }).parse(await c.req.json());
     const id = c.req.param("id");
     if (id.startsWith("f:")) db.marquerFamilleFait(household(c).id, id.slice(2), body.fait);
-    else db.setDeadlineDone(id, body.fait);
+    else if (!db.setDeadlineDone(household(c).id, id, body.fait)) return c.json({ error: "introuvable" }, 404);
     return c.json({ ok: true });
   });
 
@@ -669,7 +675,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
 
   api.patch("/transactions/:id", async (c) => {
     const body = z.object({ categorie: z.enum(TX_CATEGORIES) }).parse(await c.req.json());
-    db.updateTransactionCategory(c.req.param("id"), body.categorie);
+    if (!db.updateTransactionCategory(household(c).id, c.req.param("id"), body.categorie)) return c.json({ error: "introuvable" }, 404);
     return c.json({ ok: true });
   });
 
@@ -1055,7 +1061,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
 
   api.delete("/push/abonner", async (c) => {
     const body = z.object({ endpoint: z.string() }).parse(await c.req.json());
-    db.deletePushSubscription(body.endpoint);
+    db.deletePushSubscription(body.endpoint, household(c).id);
     return c.json({ ok: true });
   });
 

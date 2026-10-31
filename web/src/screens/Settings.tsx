@@ -44,7 +44,7 @@ function FamillePartagee({ api, household, toast }: { api: Api; household: House
         <div className="settings-row" key={c.id}><div><div className="t">{c.prenom ?? c.email}{household.utilisateur?.id === c.id ? " (vous)" : ""}</div><div className="s">{c.email} · {c.role === "proprietaire" ? "propriétaire du foyer" : "membre"}</div></div>{owner && household.utilisateur?.id !== c.id && c.role !== "proprietaire" && <button className="link" style={{ color: "var(--ember)" }} onClick={async () => { if (confirm(`Retirer ${c.prenom ?? c.email} du foyer ?`)) { await api.retirerCompte(c.id); toast("Compte retiré"); load(); } }}>Retirer</button>}</div>
       ))}
       {data?.invitations.map((i) => (
-        <div className="settings-row" key={i.token}><div><div className="t">{i.prenom ?? i.email}</div><div className="s">{i.email} · invitation en attente</div></div><button className="link" onClick={async () => { await api.annulerInvitation(i.token); load(); }}>Annuler</button></div>
+        <div className="settings-row" key={i.id}><div><div className="t">{i.prenom ?? i.email}</div><div className="s">{i.email} · invitation en attente</div></div><button className="link" onClick={async () => { await api.annulerInvitation(i.id); load(); }}>Annuler</button></div>
       ))}
       <div className="lock" style={{ marginTop: 12 }}>
         <b>Inviter quelqu'un</b>

@@ -1,5 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
-import { randomBytes, randomUUID } from "node:crypto";
+import { randomBytes, randomUUID, randomInt } from "node:crypto";
 
 export type DocCategory =
   | "assurance"
@@ -357,7 +357,7 @@ export function newToken(): string {
 export function newBoiteCode(): string {
   const alphabet = "abcdefghjkmnpqrstuvwxyz23456789";
   let out = "";
-  for (let i = 0; i < 6; i++) out += alphabet[Math.floor(Math.random() * alphabet.length)];
+  for (let i = 0; i < 6; i++) out += alphabet[randomInt(alphabet.length)];
   return out;
 }
 
@@ -694,8 +694,10 @@ export class Db {
       .run(randomUUID(), s.household_id, s.user_id, s.endpoint, s.p256dh, s.auth, s.appareil, this.now());
   }
 
-  deletePushSubscription(endpoint: string) {
-    this.raw.prepare("DELETE FROM push_subscriptions WHERE endpoint = ?").run(endpoint);
+  /** Without a household: only for the push service's own "this device is gone" answers (404/410). */
+  deletePushSubscription(endpoint: string, household_id?: string) {
+    if (household_id) this.raw.prepare("DELETE FROM push_subscriptions WHERE endpoint = ? AND household_id = ?").run(endpoint, household_id);
+    else this.raw.prepare("DELETE FROM push_subscriptions WHERE endpoint = ?").run(endpoint);
   }
 
   listPushSubscriptions(household_id: string): PushSubscriptionRow[] {
@@ -797,8 +799,9 @@ export class Db {
     return this.raw.prepare(sql).all(...args) as unknown as DeadlineRow[];
   }
 
-  setDeadlineDone(id: string, fait: boolean) {
-    this.raw.prepare("UPDATE deadlines SET fait = ? WHERE id = ?").run(fait ? 1 : 0, id);
+  /** Only within the household: an id from another household changes nothing (returns false). */
+  setDeadlineDone(household_id: string, id: string, fait: boolean): boolean {
+    return Number(this.raw.prepare("UPDATE deadlines SET fait = ? WHERE id = ? AND household_id = ?").run(fait ? 1 : 0, id, household_id).changes) > 0;
   }
 
   // ---------- transactions ----------
@@ -823,8 +826,9 @@ export class Db {
     return this.raw.prepare(sql).all(...args) as unknown as TransactionRow[];
   }
 
-  updateTransactionCategory(id: string, categorie: string) {
-    this.raw.prepare("UPDATE transactions SET categorie = ? WHERE id = ?").run(categorie, id);
+  /** Only within the household: an id from another household changes nothing (returns false). */
+  updateTransactionCategory(household_id: string, id: string, categorie: string): boolean {
+    return Number(this.raw.prepare("UPDATE transactions SET categorie = ? WHERE id = ? AND household_id = ?").run(categorie, id, household_id).changes) > 0;
   }
 
   setDecision(household_id: string, cle: string, decision: string) {

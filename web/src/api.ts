@@ -60,9 +60,9 @@ export interface Api {
   moi(): Promise<{ user: { id: string; email: string; prenom: string | null } | null; auth: boolean; foyers: { id: string; nom: string; role: string }[] }>;
   demanderLien(email: string): Promise<{ ok: boolean; envoye: boolean; lien: string | null }>;
   deconnexion(): Promise<void>;
-  comptes(): Promise<{ comptes: { id: string; email: string; prenom: string | null; role: string; rejoint_le: string }[]; invitations: { token: string; email: string; prenom: string | null; expire_le: string }[] }>;
+  comptes(): Promise<{ comptes: { id: string; email: string; prenom: string | null; role: string; rejoint_le: string }[]; invitations: { id: string; email: string; prenom: string | null; expire_le: string }[] }>;
   inviter(email: string, prenom: string | null): Promise<{ ok: boolean; envoye: boolean; lien: string | null }>;
-  annulerInvitation(token: string): Promise<void>;
+  annulerInvitation(id: string): Promise<void>;
   retirerCompte(userId: string): Promise<void>;
   regenererMcp(): Promise<string>;
   assistant(messages: AssistantMessage[]): Promise<AssistantReponse>;
@@ -177,7 +177,7 @@ const serverApi: Api = {
   deconnexion: async () => { await call("/auth/deconnexion", { method: "POST" }); },
   comptes: () => call("/foyer/comptes"),
   inviter: (email, prenom) => call("/invitations", json({ email, prenom })),
-  annulerInvitation: async (token) => { await call(`/invitations/${token}`, { method: "DELETE" }); },
+  annulerInvitation: async (id) => { await call(`/invitations/${encodeURIComponent(id)}`, { method: "DELETE" }); },
   retirerCompte: async (id) => { await call(`/foyer/comptes/${id}`, { method: "DELETE" }); },
   regenererMcp: async () => (await call<{ token: string }>("/mcp/regenerer", { method: "POST" })).token,
   assistant: (messages) => call("/assistant", json({ messages })),
@@ -230,7 +230,7 @@ function makeDemoApi(): Api {
     decisions: {} as Record<string, string>,
     famille: structuredClone(demoFamille) as unknown as FamilleReport,
     comptes: [{ id: "u1", email: "demo@monlucien.fr", prenom: "Moi", role: "proprietaire", rejoint_le: "2026-10-01T09:00:00.000Z" }, { id: "u2", email: "camille@example.org", prenom: "Camille", role: "membre", rejoint_le: "2026-10-02T18:30:00.000Z" }],
-    invitations: [] as { token: string; email: string; prenom: string | null; expire_le: string }[],
+    invitations: [] as { id: string; email: string; prenom: string | null; expire_le: string }[],
     veilles: [] as (Veille & { jeton: string; historique: { quand: string; acteur: string; action: string; details: string; empreinte: string }[] })[],
     veillesSupp: 0,
     assistantOption: false,
@@ -326,8 +326,8 @@ function makeDemoApi(): Api {
     comptes: async () => ({ comptes: state.comptes, invitations: state.invitations }),
     inviter: async (email, prenom) => {
       const cap = state.household.capacite_comptes ?? 6;
-      if (state.comptes.length + state.invitations.length >= cap) throw new ApiError(402, "limite_comptes", cap === 1 ? "Le plan gratuit est réservé à une personne. Avec Duo, votre conjoint·e se connecte aussi ; avec Tribu, jusqu'à 6 personnes." : `Votre formule accepte ${cap} personnes connectées. Passez à Tribu pour en inviter plus.`); state.invitations.push({ token: crypto.randomUUID(), email, prenom, expire_le: new Date(Date.now() + 7 * 864e5).toISOString() }); return { ok: true, envoye: true, lien: null }; },
-    annulerInvitation: async (token) => { state.invitations = state.invitations.filter((i) => i.token !== token); },
+      if (state.comptes.length + state.invitations.length >= cap) throw new ApiError(402, "limite_comptes", cap === 1 ? "Le plan gratuit est réservé à une personne. Avec Duo, votre conjoint·e se connecte aussi ; avec Tribu, jusqu'à 6 personnes." : `Votre formule accepte ${cap} personnes connectées. Passez à Tribu pour en inviter plus.`); state.invitations.push({ id: crypto.randomUUID(), email, prenom, expire_le: new Date(Date.now() + 7 * 864e5).toISOString() }); return { ok: true, envoye: true, lien: null }; },
+    annulerInvitation: async (id) => { state.invitations = state.invitations.filter((i) => i.id !== id); },
     retirerCompte: async (id) => { state.comptes = state.comptes.filter((c) => c.id !== id); },
     regenererMcp: async () => "demo-" + crypto.randomUUID().slice(0, 8),
     assistant: async (messages) => {
