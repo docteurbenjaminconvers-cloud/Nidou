@@ -43,6 +43,10 @@ export interface Api {
   addMember(m: Partial<Member> & { prenom: string }): Promise<Member>;
   updateMember(id: string, patch: Partial<Member>): Promise<Member>;
   deleteMember(id: string): Promise<void>;
+  setMemberPhoto(id: string, photo: Blob): Promise<Member>;
+  deleteMemberPhoto(id: string): Promise<Member>;
+  /** Where to load a member's portrait from, or null when there is none. */
+  photoUrl(m: Pick<Member, "id" | "photo">): string | null;
   addActivite(a: Partial<Activite> & { titre: string }): Promise<Activite>;
   updateActivite(id: string, patch: Partial<Activite>): Promise<Activite>;
   deleteActivite(id: string): Promise<void>;
@@ -142,6 +146,9 @@ const serverApi: Api = {
   addMember: (m) => call("/members", json(m)),
   updateMember: (id, patch) => call(`/members/${id}`, json(patch, "PATCH")),
   deleteMember: async (id) => { await call(`/members/${id}`, { method: "DELETE" }); },
+  setMemberPhoto: (id, photo) => call(`/members/${id}/photo`, { method: "PUT", body: photo, headers: { "content-type": photo.type || "image/jpeg" } }),
+  deleteMemberPhoto: (id) => call(`/members/${id}/photo`, { method: "DELETE" }),
+  photoUrl: (m) => (m.photo ? `/api/members/${m.id}/photo?v=${encodeURIComponent(m.photo)}` : null),
   addActivite: (a) => call("/activites", json(a)),
   updateActivite: (id, patch) => call(`/activites/${id}`, json(patch, "PATCH")),
   deleteActivite: async (id) => { await call(`/activites/${id}`, { method: "DELETE" }); },
@@ -271,6 +278,10 @@ function makeDemoApi(): Api {
       return row;
     },
     updateMember: async (id, patch) => { const m = state.famille.membres.find((x) => x.id === id)!; Object.assign(m, patch); return m; },
+    setMemberPhoto: async (id, photo) => { const m = state.famille.membres.find((x) => x.id === id)!; m.photo = URL.createObjectURL(photo); return m; },
+    deleteMemberPhoto: async (id) => { const m = state.famille.membres.find((x) => x.id === id)!; m.photo = null; return m; },
+    // Demo portraits are illustrations shipped with the app; a photo picked in the demo stays in the browser (blob:).
+    photoUrl: (m) => (!m.photo ? null : /^(blob:|data:)/.test(m.photo) ? m.photo : `demo/${m.photo}`),
     deleteMember: async (id) => { state.famille.membres = state.famille.membres.filter((x) => x.id !== id); state.famille.activites = state.famille.activites.filter((a) => a.member_id !== id); },
     addActivite: async (a) => {
       const row: Activite = { id: crypto.randomUUID(), member_id: null, type: "autre", jour: null, heure_debut: null, heure_fin: null, lieu: null, cout_mois: null, date_debut: null, date_fin: null, note: null, ...a };

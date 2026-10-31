@@ -65,6 +65,7 @@ export interface MemberRow {
   cantine_jours: string | null; // "lun,mar,jeu,ven"
   cantine_cout_mois: number | null;
   notes: string | null;
+  photo?: string | null;        // file name of the portrait in the upload dir (a fresh name at each change)
 }
 
 export interface ActiviteRow {
@@ -366,7 +367,7 @@ export class Db {
       this.raw.prepare("UPDATE households SET mcp_token = ? WHERE id = ?").run(newToken(), h.id);
     }
     const mcols = (this.raw.prepare("PRAGMA table_info(members)").all() as unknown as { name: string }[]).map((c) => c.name);
-    for (const [col, type] of [["date_naissance", "TEXT"], ["etablissement", "TEXT"], ["classe", "TEXT"], ["cantine_jours", "TEXT"], ["cantine_cout_mois", "REAL"], ["notes", "TEXT"]]) {
+    for (const [col, type] of [["date_naissance", "TEXT"], ["etablissement", "TEXT"], ["classe", "TEXT"], ["cantine_jours", "TEXT"], ["cantine_cout_mois", "REAL"], ["notes", "TEXT"], ["photo", "TEXT"]]) {
       if (!mcols.includes(col)) this.raw.exec(`ALTER TABLE members ADD COLUMN ${col} ${type}`);
     }
     const dcols = (this.raw.prepare("PRAGMA table_info(documents)").all() as unknown as { name: string }[]).map((c) => c.name);
@@ -587,6 +588,10 @@ export class Db {
 
   getMember(id: string): MemberRow | undefined {
     return this.raw.prepare("SELECT * FROM members WHERE id = ?").get(id) as MemberRow | undefined;
+  }
+
+  setMemberPhoto(id: string, photo: string | null) {
+    this.raw.prepare("UPDATE members SET photo = ? WHERE id = ?").run(photo, id);
   }
 
   deleteMember(id: string) {

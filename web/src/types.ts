@@ -41,6 +41,7 @@ export interface Member {
   id: string; prenom: string; role: Role;
   date_naissance?: string | null; etablissement?: string | null; classe?: string | null;
   cantine_jours?: string | null; cantine_cout_mois?: number | null; notes?: string | null;
+  photo?: string | null;
 }
 export interface Activite {
   id: string; member_id: string | null; titre: string; type: string; jour: number | null; heure_debut: string | null; heure_fin: string | null;

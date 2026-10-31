@@ -108,8 +108,8 @@ export default function App() {
   return (
     <div className="app">
       {route.s === "deadlines" && <Deadlines deadlines={deadlines} go={go} onDone={onDone} unread={notifs.unread} semaine={famille?.semaine} extra={<AgendaTelephone api={api} deadlines={deadlines} famille={famille} household={household} toast={toast} />} />}
-      {route.s === "famille" && <Famille api={api} household={household} go={go} unread={notifs.unread} onChanged={reload} toast={toast} />}
-      {route.s === "membre" && route.id && <MembreDetail api={api} id={route.id} onBack={() => go("famille")} go={go} onChanged={reload} toast={toast} />}
+      {route.s === "famille" && <Famille api={api} household={household} go={go} unread={notifs.unread} onChanged={reload} toast={toast} sel={route.id} docs={docs} deadlines={deadlines} />}
+      {route.s === "membre" && route.id && <MembreDetail api={api} id={route.id} onBack={() => go("famille", route.id)} go={go} onChanged={reload} toast={toast} />}
       {route.s === "activite" && route.id && <ActiviteDetail api={api} id={route.id} onBack={() => history.length > 1 ? history.back() : go("famille")} onChanged={reload} toast={toast} />}
       {route.s === "veille-nouvelle" && route.id && <VeilleNouvelle api={api} memberId={route.id} onBack={() => go("membre", route.id)} go={go} toast={toast} />}
       {route.s === "veille" && route.id && <VeilleDetail api={api} id={route.id} onBack={() => history.length > 1 ? history.back() : go("famille")} toast={toast} />}

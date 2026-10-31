@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { randomBytes } from "node:crypto";
 import { basename, extname, join } from "node:path";
 import type { Db, DocumentRow, HouseholdRow } from "./db.js";
 import { extractDocument, heuristicExtract } from "./extract.js";
@@ -50,6 +51,14 @@ export const TRIAL_DAYS = Number(process.env.LUCIEN_ESSAI_JOURS ?? 15);
 const freeCapEur = () => Number(process.env.LUCIEN_IA_PLAFOND_GRATUIT_EUR ?? 2000);
 
 /** Content-Disposition with an ASCII fallback and an RFC 8187 UTF-8 name (', (, ), * encoded too). */
+/** jpg | png | webp from the first bytes, or null: the declared type is never trusted. */
+export function typePhoto(b: Uint8Array): "jpg" | "png" | "webp" | null {
+  if (b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "jpg";
+  if (b.length > 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return "png";
+  if (b.length > 12 && String.fromCharCode(...b.subarray(0, 4)) === "RIFF" && String.fromCharCode(...b.subarray(8, 12)) === "WEBP") return "webp";
+  return null;
+}
+
 export function dispositionFichier(type: "inline" | "attachment", nom: string): string {
   const ascii = nom.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\x20-\x7e]|["\\]/g, "_");
   const utf8 = encodeURIComponent(nom).replace(/['()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
@@ -300,11 +309,51 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     return c.json(db.getMember(m.id));
   });
 
-  api.delete("/members/:id", (c) => {
+  api.delete("/members/:id", async (c) => {
     const m = db.getMember(c.req.param("id"));
     if (!m || m.household_id !== household(c).id) return c.json({ error: "introuvable" }, 404);
+    if (m.photo) await unlink(join(opts.uploadDir, basename(m.photo))).catch(() => {});
     db.deleteMember(m.id);
     return c.json({ ok: true });
+  });
+
+  /**
+   * Portrait of a member. The app sends a small square JPEG/PNG/WebP (resized in the browser); only real images
+   * (checked by their first bytes) are kept, and they are served back as images only, to the household.
+   */
+  api.put("/members/:id/photo", async (c) => {
+    const m = db.getMember(c.req.param("id"));
+    if (!m || m.household_id !== household(c).id) return c.json({ error: "introuvable" }, 404);
+    const buf = Buffer.from(await c.req.arrayBuffer());
+    if (buf.length > 600 * 1024) return c.json({ error: "photo_trop_grosse", message: "Photo trop lourde (600 Ko au plus)." }, 413);
+    const ext = typePhoto(buf);
+    if (!ext) return c.json({ error: "photo_invalide", message: "Format accepté : JPEG, PNG ou WebP." }, 400);
+    await mkdir(opts.uploadDir, { recursive: true });
+    const nom = `membre-${m.id.replace(/[^\w-]/g, "")}-${randomBytes(6).toString("hex")}.${ext}`;
+    await writeFile(join(opts.uploadDir, nom), buf);
+    if (m.photo) await unlink(join(opts.uploadDir, basename(m.photo))).catch(() => {});
+    db.setMemberPhoto(m.id, nom);
+    return c.json(db.getMember(m.id));
+  });
+
+  api.delete("/members/:id/photo", async (c) => {
+    const m = db.getMember(c.req.param("id"));
+    if (!m || m.household_id !== household(c).id) return c.json({ error: "introuvable" }, 404);
+    if (m.photo) await unlink(join(opts.uploadDir, basename(m.photo))).catch(() => {});
+    db.setMemberPhoto(m.id, null);
+    return c.json(db.getMember(m.id));
+  });
+
+  api.get("/members/:id/photo", async (c) => {
+    const m = db.getMember(c.req.param("id"));
+    if (!m || m.household_id !== household(c).id || !m.photo) return c.json({ error: "introuvable" }, 404);
+    const buf = await readFile(join(opts.uploadDir, basename(m.photo))).catch(() => null);
+    const ext = buf && typePhoto(buf);
+    if (!buf || !ext) return c.json({ error: "introuvable" }, 404);
+    return new Response(new Uint8Array(buf), { headers: {
+      "content-type": `image/${ext === "jpg" ? "jpeg" : ext}`, "x-content-type-options": "nosniff",
+      "content-security-policy": "default-src 'none'", "cache-control": "private, max-age=31536000, immutable",
+    } });
   });
 
   // ---------- organisation familiale ----------
