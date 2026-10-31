@@ -1,5 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
-import { randomBytes, randomUUID, randomInt } from "node:crypto";
+import { createHash, randomBytes, randomUUID, randomInt } from "node:crypto";
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS households (
   id TEXT PRIMARY KEY,
@@ -205,6 +205,11 @@ CREATE INDEX IF NOT EXISTS idx_docs_household ON documents(household_id);
 CREATE INDEX IF NOT EXISTS idx_deadlines_household ON deadlines(household_id, date);
 `;
 /** URL-safe random token (sessions, magic links, MCP). */
+/**
+ * Login links and sessions are stored hashed: a copy of the database (a backup, a leak) never holds a token that
+ * opens an account. "h:" marks a stored hash; a raw token (base64url) can never start with it.
+ */
+export const cleJeton = (t) => (t.startsWith("h:") ? t : `h:${createHash("sha256").update(t).digest("hex")}`);
 export function newToken() {
     return randomBytes(24).toString("base64url");
 }
@@ -224,6 +229,7 @@ export class Db {
         // WAL: readers (the nightly backup included) never block writers; wait instead of failing when the file is busy
         if (path !== ":memory:")
             this.raw.exec("PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;");
+        this.hacherJetonsExistants();
         this.raw.exec(SCHEMA);
         // Light migrations for databases created by earlier prototypes.
         const cols = this.raw.prepare("PRAGMA table_info(households)").all().map((c) => c.name);
@@ -307,32 +313,44 @@ export class Db {
         const token = newToken();
         const expire = new Date(Date.now() + (opts.ttlMinutes ?? 30) * 60_000).toISOString();
         this.raw.prepare("INSERT INTO auth_links (token, email, household_id, prenom, invite_par, expire_le) VALUES (?, ?, ?, ?, ?, ?)")
-            .run(token, email.toLowerCase().trim(), opts.household_id ?? null, opts.prenom ?? null, opts.invite_par ?? null, expire);
+            .run(cleJeton(token), email.toLowerCase().trim(), opts.household_id ?? null, opts.prenom ?? null, opts.invite_par ?? null, expire);
         return token;
     }
     getAuthLink(token) {
-        return this.raw.prepare("SELECT * FROM auth_links WHERE token = ?").get(token);
+        return this.raw.prepare("SELECT * FROM auth_links WHERE token = ?").get(cleJeton(token));
     }
     useAuthLink(token) {
-        this.raw.prepare("UPDATE auth_links SET utilise_le = ? WHERE token = ?").run(this.now(), token);
+        this.raw.prepare("UPDATE auth_links SET utilise_le = ? WHERE token = ?").run(this.now(), cleJeton(token));
     }
     listInvitations(household_id) {
         return this.raw.prepare("SELECT * FROM auth_links WHERE household_id = ? AND utilise_le IS NULL AND expire_le > ? ORDER BY expire_le").all(household_id, this.now());
     }
     deleteAuthLink(token) {
-        this.raw.prepare("DELETE FROM auth_links WHERE token = ?").run(token);
+        this.raw.prepare("DELETE FROM auth_links WHERE token = ?").run(cleJeton(token));
     }
     createSession(user_id, ttlDays = 90) {
         const token = newToken();
-        this.raw.prepare("INSERT INTO sessions (token, user_id, cree_le, expire_le) VALUES (?, ?, ?, ?)").run(token, user_id, this.now(), new Date(Date.now() + ttlDays * 864e5).toISOString());
+        this.raw.prepare("INSERT INTO sessions (token, user_id, cree_le, expire_le) VALUES (?, ?, ?, ?)").run(cleJeton(token), user_id, this.now(), new Date(Date.now() + ttlDays * 864e5).toISOString());
         return token;
     }
     userBySession(token) {
-        const s = this.raw.prepare("SELECT user_id FROM sessions WHERE token = ? AND expire_le > ?").get(token, this.now());
+        const s = this.raw.prepare("SELECT user_id FROM sessions WHERE token = ? AND expire_le > ?").get(cleJeton(token), this.now());
         return s ? this.getUser(s.user_id) : undefined;
     }
     deleteSession(token) {
-        this.raw.prepare("DELETE FROM sessions WHERE token = ?").run(token);
+        this.raw.prepare("DELETE FROM sessions WHERE token = ?").run(cleJeton(token));
+    }
+    /** One-off migration: sessions and links stored in clear by earlier versions are replaced by their hash (still valid). */
+    hacherJetonsExistants() {
+        for (const t of ["sessions", "auth_links"]) {
+            const existe = this.raw.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(t);
+            if (!existe)
+                continue;
+            const clairs = this.raw.prepare(`SELECT token FROM ${t} WHERE token NOT LIKE 'h:%'`).all();
+            const maj = this.raw.prepare(`UPDATE ${t} SET token = ? WHERE token = ?`);
+            for (const { token } of clairs)
+                maj.run(cleJeton(token), token);
+        }
     }
     joinHousehold(household_id, user_id, role) {
         this.raw.prepare("INSERT OR IGNORE INTO household_users (household_id, user_id, role, rejoint_le) VALUES (?, ?, ?, ?)").run(household_id, user_id, role, this.now());

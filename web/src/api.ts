@@ -130,6 +130,11 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   return r.json();
 }
 
+/** Empties what the phone kept for offline use (logout, account deleted): nothing stays on a shared device. */
+export async function viderCacheLocal() {
+  try { if ("caches" in window) await caches.delete("lucien-api"); } catch { /* not available */ }
+}
+
 const json = (body: unknown, method = "POST"): RequestInit => ({ method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 
 const serverApi: Api = {
@@ -182,11 +187,11 @@ const serverApi: Api = {
   deleteActivite: async (id) => { await call(`/activites/${id}`, { method: "DELETE" }); },
   moi: () => call("/auth/moi"),
   demanderLien: (email) => call("/auth/demander", json({ email })),
-  deconnexion: async () => { await call("/auth/deconnexion", { method: "POST" }); },
+  deconnexion: async () => { await call("/auth/deconnexion", { method: "POST" }); await viderCacheLocal(); },
   comptes: () => call("/foyer/comptes"),
   inviter: (email, prenom) => call("/invitations", json({ email, prenom })),
   annulerInvitation: async (id) => { await call(`/invitations/${encodeURIComponent(id)}`, { method: "DELETE" }); },
-  supprimerCompte: (confirmation, immediat = false) => call("/compte/supprimer", json({ confirmation, immediat })),
+  supprimerCompte: async (confirmation, immediat = false) => { const r = await call<{ ok: boolean; portee: "foyer" | "compte"; le: string | null }>("/compte/supprimer", json({ confirmation, immediat })); if (!r.le) await viderCacheLocal(); return r; },
   annulerSuppression: async () => { await call("/compte/annuler-suppression", json({})); },
   resilier: () => call("/abonnement/resilier", json({})),
   reprendre: async () => { await call("/abonnement/reprendre", json({})); },

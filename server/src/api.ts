@@ -101,8 +101,27 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     return c.json({ ok: true, envoye: r.envoye, lien: r.lien });
   });
 
+  /**
+   * The link in the email opens a page with a button: mail scanners (Outlook, antivirus) open links in advance with a GET,
+   * which must not use up the single-use link. The login itself is the POST of that button, from Lucien's own page only.
+   */
   api.get("/auth/lien", (c) => {
-    const token = c.req.query("token") ?? "";
+    const token = (c.req.query("token") ?? "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 100);
+    c.header("cache-control", "no-store"); c.header("referrer-policy", "no-referrer"); c.header("x-robots-tag", "noindex");
+    return c.html(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ouvrir Lucien</title>
+<style>body{margin:0;min-height:100dvh;display:grid;place-items:center;background:#fbf3f6;font-family:system-ui,-apple-system,sans-serif;color:#3b2a3a}main{max-width:340px;padding:24px;text-align:center}h1{font-family:Georgia,serif;font-style:italic;font-weight:600;font-size:30px;margin:0 0 8px}p{color:#6b5a69;line-height:1.5}button{margin-top:14px;width:100%;min-height:48px;border:0;border-radius:14px;background:#d9634a;color:#fff;font:700 16px system-ui,sans-serif;cursor:pointer}</style></head>
+<body><main><h1>Lucien</h1><p>Touchez le bouton pour ouvrir Lucien sur cet appareil.</p>
+<form method="post" action="lien"><input type="hidden" name="token" value="${token}"><button type="submit">Ouvrir Lucien</button></form></main></body></html>`);
+  });
+
+  api.post("/auth/lien", async (c) => {
+    // only from Lucien's own page: another site cannot log someone into an account (login CSRF)
+    const site = c.req.header("sec-fetch-site");
+    const origine = c.req.header("origin");
+    const hote = new URL(c.req.url).host;
+    if ((site && site !== "same-origin") || (origine && origine !== "null" && new URL(origine).host !== hote && origine !== (process.env.LUCIEN_PUBLIC_URL ?? "").replace(/\/$/, ""))) return c.redirect("/#/connexion?erreur=invalide");
+    const form = await c.req.parseBody().catch(() => ({} as Record<string, unknown>));
+    const token = String(form.token ?? "");
     const r = consommerLien(db, token, TRIAL_DAYS);
     if (!r.ok) return c.redirect(`/#/connexion?erreur=${r.raison}`);
     c.header("set-cookie", cookieHeader(r.session, secure()));
@@ -577,6 +596,8 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
       if (f instanceof File) {
         nomFichier = f.name;
         mime = f.type || "application/octet-stream";
+        // papers only: PDF, photos and text; anything else (programs, web pages, archives) is refused at the door
+        if (!/^(application\/pdf|image\/(jpeg|png|webp|gif|heic|heif)|text\/(plain|csv))$/.test(mime)) return c.json({ error: "type_fichier", message: "Lucien accepte les PDF, les photos (JPEG, PNG, HEIC, WebP) et les fichiers texte." }, 415);
         const buf = Buffer.from(await f.arrayBuffer());
         if (buf.length > 15 * 1024 * 1024) return c.json({ error: "fichier_trop_gros" }, 413);
         base64 = buf.toString("base64");

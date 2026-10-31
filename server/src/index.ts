@@ -1,6 +1,5 @@
 import "./env-compat.js";
 import { Hono } from "hono";
-import { cors } from "hono/cors";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { existsSync, mkdirSync, renameSync } from "node:fs";
@@ -8,6 +7,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Db } from "./db.js";
 import { createApi } from "./api.js";
+import { securiser } from "./securite.js";
 import { demarrerSynchroBanques } from "./banques.js";
 import { demarrerRappels } from "./rappels.js";
 import { handleMcpRequest } from "./mcp.js";
@@ -37,7 +37,7 @@ if (process.env.LUCIEN_SEED === "1" && !db.firstHousehold()) {
 }
 
 const app = new Hono();
-app.use("/api/*", cors());
+securiser(app);
 app.route("/api", createApi(db, { uploadDir: join(DATA_DIR, "uploads") }));
 
 // MCP endpoint (streamable HTTP). Claude Desktop / claude.ai: https://<host>/mcp

@@ -42,3 +42,26 @@ test("connexion : 3 demandes par adresse et 10 par réseau toutes les 15 minutes
   assert.equal((await demander(api, "p10@x.fr", "5.6.7.8")).status, 200, "another network still works");
   oublierDemandes();
 });
+
+test("connexion : ouvrir le lien (antivirus de messagerie) ne le consomme pas ; seul le bouton de Lucien connecte", async () => {
+  const { Db } = await import("./db.js");
+  const db = new Db(":memory:");
+  const api = createApi(db, { uploadDir: "/tmp/lucien-test-uploads" });
+  const r = await demanderLien(db, "lien@example.org");
+  const token = new URL(r.lien!).searchParams.get("token")!;
+  // the scanner, then the person: GET twice, nothing consumed
+  for (let i = 0; i < 2; i++) { const g = await api.request(`/auth/lien?token=${token}`); assert.equal(g.status, 200); assert.match(await g.text(), /Ouvrir Lucien/); }
+  assert.equal(db.getAuthLink(token)?.utilise_le, null);
+  // a POST from another site is refused (login CSRF)
+  const autre = await api.request("/auth/lien", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded", "sec-fetch-site": "cross-site" }, body: `token=${token}` });
+  assert.ok(!autre.headers.get("set-cookie")?.includes("lucien_session=h") && !/lucien_session=[A-Za-z0-9]/.test(autre.headers.get("set-cookie") ?? ""));
+  assert.equal(db.getAuthLink(token)?.utilise_le, null, "still unused");
+  // the button on Lucien's page logs in
+  const ok = await api.request("/auth/lien", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded", "sec-fetch-site": "same-origin" }, body: `token=${token}` });
+  assert.equal(ok.status, 302); assert.match(ok.headers.get("set-cookie") ?? "", /lucien_session=[A-Za-z0-9_-]{20,}/);
+  // stored hashed: the database never holds the token itself
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS n FROM auth_links WHERE token = ?").get(token)!.n, 0);
+  const cookie = /lucien_session=([^;]+)/.exec(ok.headers.get("set-cookie")!)![1];
+  assert.equal(db.raw.prepare("SELECT COUNT(*) AS n FROM sessions WHERE token = ?").get(cookie)!.n, 0);
+  assert.ok(db.userBySession(cookie), "but the session works");
+});

@@ -6,12 +6,16 @@ import { createHandlerBoundToURL } from "workbox-precaching";
 
 declare let self: ServiceWorkerGlobalScope & { __WB_MANIFEST: Parameters<typeof precacheAndRoute>[0] };
 
-// Offline shell (precached build) ; API and MCP are never cached.
+// Offline shell (precached build) ; MCP is never cached, the API only partly (below).
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
 // Le site vitrine (/site) et les pages publiques servies par le serveur ne doivent jamais être remplacés par l'appli.
 registerRoute(new NavigationRoute(createHandlerBoundToURL("index.html"), { denylist: [/^\/api/, /^\/mcp/, /^\/site(\/|$)/, /^\/health/] }));
-registerRoute(({ url }) => url.pathname.startsWith("/api/"), new NetworkFirst({ cacheName: "lucien-api", networkTimeoutSeconds: 4 }), "GET");
+// Offline, only what helps at a counter without network: the household, the list of papers (without their content),
+// deadlines, family, week, folders. Never files, bank, budget, spaces, exports, accountant or elder-watch data.
+// The page empties this cache at logout and when the account is deleted (api.ts).
+const HORS_LIGNE = /^\/api\/(household|documents|documents\/[^/]+|deadlines|famille|semaine|charges|dossiers|rappels)$/;
+registerRoute(({ url }) => HORS_LIGNE.test(url.pathname), new NetworkFirst({ cacheName: "lucien-api", networkTimeoutSeconds: 4 }), "GET");
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
