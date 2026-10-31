@@ -1,5 +1,6 @@
 import type { Db, DocumentRow } from "./db.js";
-import { extractDocument } from "./extract.js";
+import { estMedical, extractDocument, heuristicExtract } from "./extract.js";
+import { budgetIa } from "./iaBudget.js";
 import { deadlinesFor } from "./deadlines.js";
 
 /**
@@ -59,8 +60,10 @@ export async function processInboundEmail(db: Db, mail: InboundEmail, opts: { pl
 
   const docs: DocumentRow[] = [];
   for (const input of inputs) {
-    const ex = await extractDocument(input);
+    const budget = budgetIa(db, h.id);
+    const ex = budget.ok() ? await extractDocument(input) : { ...heuristicExtract(input), modele: null };
     if (ex.modele) db.recordIaLecture(h.id, false, ex.modele.cout_lecture_centimes);
+    if (estMedical(ex)) continue; // medical papers are never kept
     const doc = db.insertDocument({
       household_id: h.id, member_id: null, title: ex.title, category: ex.category, organisme: ex.organisme, numero_contrat: ex.numero_contrat,
       montant: ex.montant, periodicite: ex.periodicite, date_document: ex.date_document, date_debut: ex.date_debut, date_fin: ex.date_fin,

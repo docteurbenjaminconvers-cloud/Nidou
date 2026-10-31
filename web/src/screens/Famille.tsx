@@ -11,7 +11,7 @@ const ROLE_LABEL: Record<Role, string> = { adulte: "Adulte", enfant: "Enfant", p
 const NIVEAU_LABEL: Record<string, string> = { petite_enfance: "petite enfance", maternelle: "maternelle", primaire: "primaire", college: "collège", lycee: "lycée", terminale: "terminale", superieur: "études supérieures", adulte: "", inconnu: "" };
 const CAT_LABEL: Record<Conseil["categorie"], string> = { aide: "Aide", impots: "Impôts", budget: "Budget", organisation: "Organisation", legal: "Cadre légal" };
 const TYPES_ACTIVITE = ["sport", "musique", "art", "soutien", "garde", "sante", "autre"];
-const TYPE_LABEL: Record<string, string> = { sport: "Sport", musique: "Musique", art: "Art", soutien: "Soutien scolaire", garde: "Garde", sante: "Santé", autre: "Autre", cantine: "Cantine" };
+const TYPE_LABEL: Record<string, string> = { sport: "Sport", musique: "Musique", art: "Art", soutien: "Soutien scolaire", garde: "Garde", sante: "Rendez-vous", autre: "Autre", cantine: "Cantine" };
 
 type Membre = FamilleReport["membres"][number];
 type Go = (s: string, id?: string) => void;

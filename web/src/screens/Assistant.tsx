@@ -62,7 +62,7 @@ export function Assistant({ api, household, go, onBack, onChanged, toast }: { ap
             <li>« Qu'est-ce que je dois faire ce mois-ci ? »</li>
             <li>« Où est-ce que je peux économiser ? »</li>
             <li>« Résilie mon assurance auto » : le courrier est prêt, vous n'avez plus qu'à l'envoyer</li>
-            <li>Il lit vos papiers dans Lucien, jamais vos dossiers santé et banque, et ne fait rien sans vous</li>
+            <li>Il lit vos papiers dans Lucien, jamais vos dossiers bancaires, et ne fait rien sans vous</li>
           </ul>
           <div className="tier-price" style={{ marginTop: 10 }}><b>{fmt(etat?.prix.mensuel ?? 2.9)}</b><span> / mois</span></div>
           <p className="note">ou {fmt(etat?.prix.annuel ?? 29)} par an · jusqu'à 300 questions par mois · en plus de votre formule, sans engagement</p>

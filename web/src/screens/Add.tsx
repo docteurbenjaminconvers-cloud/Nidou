@@ -45,7 +45,7 @@ export function Add({ api, onBack, onAdded, toast, household, docs = [], go }: {
         {file ? (
           <><b>{file.name}</b><p>{(file.size / 1024).toFixed(0)} Ko · <button className="link" onClick={() => setFile(null)}>retirer</button></p></>
         ) : (
-          <><b>Photo, PDF ou capture d'écran</b><p>Un courrier, une facture, un contrat, une carte d'identité…</p></>
+          <><b>Photo, PDF ou capture d'écran</b><p>Un courrier, une facture, un contrat, une carte d'identité… Pas de document médical : Lucien ne les garde pas.</p></>
         )}
         <div className="actions" style={{ marginTop: 14, marginBottom: 0 }}>
           <button className="btn" onClick={() => cam.current?.click()}>Prendre en photo</button>

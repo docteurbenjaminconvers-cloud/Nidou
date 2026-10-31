@@ -192,7 +192,7 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
             <button className="link" style={{ marginTop: 8 }} onClick={async () => { const t = await api.regenererMcp(); toast("Nouveau jeton : " + t.slice(0, 6) + "…"); onPlan(household.plan); }}>Régénérer l'adresse (révoque l'ancienne)</button>
           </>
         ) : <p className="note">L'adresse personnelle du connecteur apparaît ici avec la formule complète.</p>}
-        <div className="settings-row"><div><div className="t">Santé et banque exclues</div><div className="s">Ces dossiers ne sont jamais lus par le connecteur</div></div><button className="toggle" role="switch" aria-checked="true" onClick={() => toast("Réglé côté serveur (LUCIEN_MCP_EXCLUDE)")} /></div>
+        <div className="settings-row"><div><div className="t">Banque exclue</div><div className="s">Vos opérations bancaires ne sont jamais lues par le connecteur</div></div><button className="toggle" role="switch" aria-checked="true" onClick={() => toast("Réglé côté serveur (LUCIEN_MCP_EXCLUDE)")} /></div>
         <div className="settings-row"><div><div className="t">Lecture seule</div><div className="s">Aucune action sans confirmation dans Lucien</div></div><button className="toggle" role="switch" aria-checked="true" onClick={() => toast("L'écriture arrivera plus tard, toujours avec confirmation")} /></div>
       </section>
 

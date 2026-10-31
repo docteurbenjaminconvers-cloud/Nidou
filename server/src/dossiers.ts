@@ -87,8 +87,8 @@ export const KITS: Kit[] = [
     source: "https://www.service-public.gouv.fr/particuliers/recherche?keyword=inscription%20%C3%A9cole",
     pieces: [
       LIVRET_FAMILLE, DOMICILE_3_MOIS,
-      { cle: "vaccins", libelle: "Carnet de santé, pages des vaccinations", match: (d) => d.category === "sante" && /vaccin|carnet de santé|carnet de sante/.test(t(d)),
-        obtenir: "Photographiez les pages « vaccinations » du carnet de santé de l'enfant." },
+      { cle: "vaccins", libelle: "Carnet de santé, pages des vaccinations", optionnelle: true, match: () => false,
+        obtenir: "Document médical : Lucien ne le garde pas. Présentez le carnet de santé directement à l'école ou joignez une photocopie des pages « vaccinations »." },
       { cle: "assurance_scolaire", libelle: "Attestation d'assurance scolaire", match: cat("assurance", /scolaire|responsabilité civile|responsabilite civile|habitation/), moins_de_mois: 12,
         obtenir: "Souvent incluse dans l'assurance habitation (responsabilité civile) : demandez l'attestation à votre assureur." },
       { cle: "quotient", libelle: "Attestation de quotient familial CAF (tarif de la cantine)", optionnelle: true, match: re(/quotient familial|attestation de paiement caf|attestation caf/), moins_de_mois: 6,

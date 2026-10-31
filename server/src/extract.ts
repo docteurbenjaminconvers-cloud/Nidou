@@ -60,9 +60,15 @@ Extrais les champs demandés avec rigueur :
 - Si une information n'est pas présente, renvoie null. N'invente rien.
 - Le titre doit permettre de retrouver le document en un coup d'œil : objet + organisme.
 - La catégorie « garantie » couvre les achats avec garantie constructeur ou extension.
+- La catégorie « sante » est réservée aux documents MÉDICAUX : ordonnance, compte rendu, résultat d'analyse ou d'examen, décompte de soins, certificat médical, carnet de santé ou de vaccination. Lucien ne les conserve pas.
+- Un contrat, une carte ou une attestation de mutuelle ou de complémentaire santé, qui ne décrit aucun soin, est de catégorie « assurance ».
 Réponds uniquement via l'outil fourni.`;
 
 export interface ExtractResult extends Extraction { modele: ModelInfo | null }
+
+/** Medical papers are not kept: Lucien is not a certified health-data host (HDS). Decided on 31/10/2026. */
+export const estMedical = (ex: { category: string }) => ex.category === "sante";
+export const MESSAGE_MEDICAL = "Ce papier ressemble à un document médical (ordonnance, résultat, compte rendu, décompte de soins…). Lucien ne garde pas les documents médicaux : il n'a pas été enregistré. Les contrats et attestations de mutuelle sont acceptés.";
 
 /**
  * Extracts structured fields from a document. Fast model first; when it is not confident, the precise model

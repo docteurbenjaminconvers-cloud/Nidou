@@ -3,6 +3,7 @@ import { z } from "zod";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { createHash, randomBytes } from "node:crypto";
 import { exporterFoyer } from "./export.js";
+import { estMedical, MESSAGE_MEDICAL } from "./extract.js";
 import { budgetIa, coutAppel } from "./iaBudget.js";
 import { annulerSuppression, arreterALEcheance, demanderSuppression, ensureSuppressionSchema, etatFin, quitterFoyer, reprendreAbonnement } from "./suppression.js";
 import { basename, extname, join } from "node:path";
@@ -628,6 +629,10 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
         : !capOk
           ? "Les lectures par l'IA du plan gratuit sont en pause jusqu'au mois prochain : vérifiez les champs lus localement. La formule complète n'a pas cette limite."
           : "Quota mensuel de lectures IA du plan gratuit atteint : vérifiez les champs lus localement. La formule complète lit chaque document avec l'IA.";
+    }
+    if (estMedical(ex)) {
+      if (fichier) await unlink(join(opts.uploadDir, basename(fichier))).catch(() => {});
+      return c.json({ error: "document_medical", message: MESSAGE_MEDICAL }, 422);
     }
     const doc = db.insertDocument({
       household_id: h.id,

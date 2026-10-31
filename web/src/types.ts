@@ -121,7 +121,8 @@ export const CATEGORY_LABEL: Record<Category, string> = {
   education: "École", vehicule: "Véhicule", autre: "Autre",
 };
 
-export const CATEGORIES = Object.keys(CATEGORY_LABEL) as Category[];
+/** Categories offered to the user: no « sante », Lucien does not keep medical papers. */
+export const CATEGORIES = (Object.keys(CATEGORY_LABEL) as Category[]).filter((c) => c !== "sante");
 
 export interface BudgetAction {
   cle: string;

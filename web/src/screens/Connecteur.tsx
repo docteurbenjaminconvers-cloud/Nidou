@@ -61,7 +61,7 @@ export function Connecteur({ household, onBack, go, toast }: { household: Househ
       <section className="section">
         <div className="section-head"><h2>Bon à savoir</h2></div>
         <div className="settings-row"><div><div className="t">Ça ne coûte rien de plus</div><div className="s">Le connecteur est inclus dans votre formule. Les questions sont comptées sur votre abonnement Claude ou ChatGPT, pas sur Lucien.</div></div></div>
-        <div className="settings-row"><div><div className="t">Santé et banque restent fermées</div><div className="s">Ces dossiers ne sont jamais transmis à l'assistant.</div></div></div>
+        <div className="settings-row"><div><div className="t">La banque reste fermée</div><div className="s">Vos opérations bancaires ne sont jamais transmises à l'assistant, et Lucien ne garde aucun document médical</div></div></div>
         <div className="settings-row"><div><div className="t">Vous ne trouvez pas le menu ?</div><div className="s">Les applications changent parfois le nom de leurs menus. Cherchez « connecteur » ou « MCP » dans leurs réglages ou leur aide.</div></div></div>
         <div className="settings-row"><div><div className="t">Pas de compte IA ?</div><div className="s">L'assistant intégré à Lucien répond directement ici, sans autre compte.</div></div><button className="link" onClick={() => go("assistant")}>Découvrir</button></div>
       </section>
