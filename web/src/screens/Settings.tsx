@@ -9,7 +9,7 @@ function PointDimanche({ api, household, onChanged, toast, go }: { api: Api; hou
   const [on, setOn] = useState(household.hebdo !== false);
   const basculer = async () => {
     const v = !on; setOn(v);
-    try { await api.setHebdo(v); onChanged(); toast(v ? "Le point du dimanche est activé" : "Plus de point du dimanche"); } catch { setOn(!v); toast("Réglage non enregistré, réessayez"); }
+    try { await api.setHebdo(v); onChanged(); toast(v ? "Le point du dimanche est activé" : "Plus de point du dimanche"); } catch (e) { setOn(!v); toast((e as Error).message && !/^Erreur /.test((e as Error).message) ? (e as Error).message : "Réglage non enregistré, réessayez"); }
   };
   return (
     <section className="section">

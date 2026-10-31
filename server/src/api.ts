@@ -282,8 +282,12 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
   api.patch("/household", async (c) => {
     const h = household(c);
     const body = z.object({ plan: z.enum(["gratuit", "famille"]).optional(), terminer_essai: z.boolean().optional(), nom: z.string().min(1).max(60).optional(), hebdo: z.boolean().optional() }).parse(await c.req.json());
+    // The paid plan only comes from a payment (Stripe webhook, or the simulated checkout when Stripe is off).
+    if (body.plan === "famille") return c.json({ error: "paiement_requis", message: "Le plan Famille s'active par l'abonnement, dans Réglages." }, 403);
+    // Choices that apply to everyone in the household are the owner's.
+    if ((body.plan || body.terminer_essai || body.hebdo !== undefined) && !isOwner(c)) return c.json({ error: "reserve_proprietaire", message: "Seul le titulaire du foyer peut changer ce réglage." }, 403);
     if (body.hebdo !== undefined) db.setHebdo(h.id, body.hebdo);
-    if (body.plan) db.setPlan(h.id, body.plan);
+    if (body.plan === "gratuit") db.setPlan(h.id, "gratuit");
     if (body.nom) db.renameHousehold(h.id, body.nom);
     if (body.terminer_essai) db.setTrialEnd(h.id, new Date(0).toISOString());
     return c.json({ ok: true });
