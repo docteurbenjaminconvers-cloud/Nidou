@@ -122,7 +122,7 @@ export function EspacesCarte({ household, go }: { household: Household; go: (s: 
   const ok = droits({ plan: household.plan, essai_actif: !!household.essai?.actif, modules: (household.modules ?? []) as MId[] });
   const tuiles = [
     { e: "budget" as const, nom: "Budget expert", sous: "Résultat, bilan, ratios", ouvert: ok.has("budget_expert") },
-    { e: "pro" as const, nom: "Vie pro", sous: "Bulletins, 2035", ouvert: ok.has("vie_pro_salarie") || ok.has("vie_pro_independant") },
+    { e: "pro" as const, nom: "Vie pro", sous: "Bulletins, 2035", ouvert: ok.has("vie_pro_salarie") },
     { e: "locatif" as const, nom: "Locatif", sous: "Loyers, IRL, impôts", ouvert: ok.has("locatif") },
   ];
   return (

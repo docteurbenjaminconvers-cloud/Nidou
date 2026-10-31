@@ -41,3 +41,13 @@ test("offre : droits — essai complet, gratuit sans module, Indépendant ouvre 
   const d = droits({ plan: "famille", essai_actif: false, modules: ["vie_pro_independant"] });
   assert.ok(d.has("vie_pro_salarie") && !d.has("locatif"));
 });
+
+test("offre : Micro-entrepreneur à 9,90 €, contenu dans Indépendant, contient Salarié", () => {
+  const d = devis({ formule: "solo", periode: "mensuel", modules: ["vie_pro_micro", "vie_pro_salarie"] });
+  assert.deepEqual(d.modules, ["vie_pro_micro"]); assert.equal(d.mensuel, 16.8);
+  assert.deepEqual(devis({ formule: "solo", periode: "mensuel", modules: ["vie_pro_micro", "vie_pro_independant"] }).modules, ["vie_pro_independant"]);
+  const dr = droits({ plan: "famille", essai_actif: false, modules: ["vie_pro_micro"] });
+  assert.ok(dr.has("vie_pro_salarie") && dr.has("vie_pro_micro") && !dr.has("vie_pro_independant"));
+  assert.ok(droits({ plan: "famille", essai_actif: false, modules: ["vie_pro_independant"] }).has("vie_pro_micro"));
+  assert.equal(devis({ formule: "solo", periode: "mensuel", modules: ["vie_pro_micro"], pack: "integral" }).mensuel, 29.9, "inside the Intégral");
+});

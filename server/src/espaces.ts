@@ -92,7 +92,7 @@ export function monterEspaces(api: Hono<any>, db: Db, ctx: Ctx) {
     }
   });
 
-  const verifier = (c: any, e: Espace) => (actifs(c).has(ESPACES[e] as ModuleId) || (e === "pro" && actifs(c).has("vie_pro_independant")));
+  const verifier = (c: any, e: Espace) => actifs(c).has(ESPACES[e] as ModuleId); // Salarié is contained in Micro and Indépendant
   const refus = (c: any, e: Espace) => c.json({ error: "module", module: ESPACES[e], message: `Cet espace fait partie du module ${MODULES[ESPACES[e] as ModuleId].nom}.` }, 402);
   const transactions = (hid: string) => db.listTransactions(hid).map((t) => ({ date: t.date, libelle: t.libelle, montant: t.montant, categorie: t.categorie, compte: t.compte }));
 
@@ -114,6 +114,16 @@ export function monterEspaces(api: Hono<any>, db: Db, ctx: Ctx) {
     const rapport = e === "budget" ? rapportBudget(txs, d as DonneesBudget)
       : e === "pro" ? rapportPro(d as DonneesPro, txs, db.listDocuments(h.id).map((x) => ({ id: x.id, title: x.title, category: x.category })))
       : rapportLocatif(d as DonneesLocatif, txs);
+    if (e === "pro") {
+      // A 2035 needs the Indépendant module; a micro-business needs Micro-entrepreneur (or Indépendant).
+      const a = actifs(c);
+      const dp = d as DonneesPro;
+      (rapport as ReturnType<typeof rapportPro>).personnes.forEach((p, i) => {
+        const reg = dp.personnes[i]?.independant?.regime;
+        const besoin: ModuleId | null = !reg ? null : reg === "micro_entrepreneur" ? "vie_pro_micro" : "vie_pro_independant";
+        if (besoin && !a.has(besoin)) { p.independant = null; (p as { module_requis?: ModuleId }).module_requis = besoin; }
+      });
+    }
     return c.json({ donnees: d, rapport, comptes: [...new Set(txs.map((t) => t.compte).filter(Boolean))] });
   });
 
@@ -158,7 +168,7 @@ export function monterEspaces(api: Hono<any>, db: Db, ctx: Ctx) {
     const h = db.getHousehold(p.household_id);
     if (!h) return null;
     const ok = droits({ plan: db.effectivePlan(h), essai_actif: db.effectivePlan(h) === "famille" && h.plan !== "famille", modules: db.getModules(h.id) as ModuleId[] });
-    if (!ok.has("vie_pro_independant")) return null;
+    if (!ok.has("vie_pro_micro")) return null; // Micro-entrepreneur or Indépendant
     const d = db.getModuleData<DonneesPro>(h.id, "pro");
     const pers = d?.personnes.find((x) => x.member_id === p.member_id && x.independant);
     if (!pers?.independant) return null;

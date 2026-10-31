@@ -95,6 +95,14 @@ export function EspacePro({ api, go, onBack, toast }: { api: Api; go: (s: string
         </section>
       )}
 
+      {rp.module_requis && (
+        <div className="lock" style={{ marginTop: 14 }}>
+          <b>{rp.module_requis === "vie_pro_independant" ? "L'activité au régime réel (2035) fait partie du module Indépendant" : "La micro-entreprise fait partie du module Micro-entrepreneur"}</b>
+          <p>{rp.module_requis === "vie_pro_independant" ? "Livre des recettes et des dépenses, rubriques de la 2035, micro ou réel, accès comptable : 19,90 € par mois, ou dans les packs Indépendant et Intégral." : "Chiffre d'affaires, cotisations et déclarations URSSAF, seuils de TVA : 9,90 € par mois."}</p>
+          <button className="btn" onClick={() => go("offre", rp.module_requis)}>Voir l'offre</button>
+        </div>
+      )}
+
       {ind && (
         <section className="section">
           <div className="section-head"><h2>Indépendant·e</h2><span className="badge">{ind.regime === "bnc_2035" ? "BNC · déclaration 2035" : ind.regime === "micro_entrepreneur" ? "micro-entreprise" : "micro-BNC"}</span></div>

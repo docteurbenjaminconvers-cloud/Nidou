@@ -64,3 +64,19 @@ test("comptable : lien en lecture seule sur l'activité d'indépendant, sans ses
   assert.equal((await api.request("/comptable/nimporte")).status, 404);
   process.env.LUCIEN_AUTH = "0";
 });
+
+test("vie pro : avec le seul module Micro, la micro-entreprise s'ouvre, la 2035 reste fermée", async () => {
+  process.env.LUCIEN_AUTH = "0";
+  const db = new Db(":memory:");
+  const h = seedDemo(db, { espaces: true });
+  const api = createApi(db, { uploadDir: "/tmp/lucien-test-uploads" });
+  const { appliquerAbonnement } = await import("./abonnement.js");
+  db.setTrialEnd(h.id, new Date(0).toISOString());
+  appliquerAbonnement(db, db.getHousehold(h.id)!, { statut: "simule", formule: "duo", periode: "mensuel" });
+  db.setModules(h.id, ["vie_pro_micro"]);
+  const r = await (await api.request("/espaces/pro")).json();
+  assert.ok(r.rapport.personnes[0].independant.micro_entreprise, "Moi's micro-business is open");
+  assert.equal(r.rapport.personnes[1].independant, null);
+  assert.equal(r.rapport.personnes[1].module_requis, "vie_pro_independant");
+  assert.ok(r.rapport.personnes[1].salarie, "payslips stay open (Salarié is inside Micro)");
+});

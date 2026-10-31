@@ -173,7 +173,7 @@ export interface RapportIndependant {
   micro_entreprise: RapportMicro | null;
   echeances: { date: string; titre: string; detail: string }[];
 }
-export interface RapportPro { personnes: { member_id: string | null; prenom: string; salarie: RapportSalarie | null; independant: RapportIndependant | null }[]; papiers: { id: string; title: string; type: "contrat" | "avenant" | "bulletin" | "attestation" }[] }
+export interface RapportPro { personnes: { member_id: string | null; prenom: string; salarie: RapportSalarie | null; independant: RapportIndependant | null; module_requis?: "vie_pro_micro" | "vie_pro_independant" }[]; papiers: { id: string; title: string; type: "contrat" | "avenant" | "bulletin" | "attestation" }[] }
 
 const moisListe = (de: string, a: string) => { const out: string[] = []; let [y, m] = de.split("-").map(Number); const [ya, ma] = a.split("-").map(Number); while (y < ya || (y === ya && m <= ma)) { out.push(`${y}-${String(m).padStart(2, "0")}`); m++; if (m > 12) { m = 1; y++; } } return out; };
 const moisPrec = (m: string) => { const [y, mo] = m.split("-").map(Number); return mo === 1 ? `${y - 1}-12` : `${y}-${String(mo - 1).padStart(2, "0")}`; };

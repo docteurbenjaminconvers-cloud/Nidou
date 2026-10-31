@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Api, ModuleId, OffreEtat } from "../api";
-import { devis, MODULES, PACKS, SOCLE, SOCLE_INCLUT, type Formule, type Periode } from "../../../server/src/offre";
+import { couvre, devis, MODULES, PACKS, SOCLE, SOCLE_INCLUT, type Formule, type Periode } from "../../../server/src/offre";
 import type { Household } from "../types";
 import { Back } from "../ui";
 import { eur, Ico, ICONES } from "./espacesCommun";
 
-const ORDRE: ModuleId[] = ["budget_expert", "vie_pro_salarie", "vie_pro_independant", "locatif", "assistant", "veille"];
+const ORDRE: ModuleId[] = ["budget_expert", "vie_pro_salarie", "vie_pro_micro", "vie_pro_independant", "locatif", "assistant", "veille"];
+const VIE_PRO: ModuleId[] = ["vie_pro_salarie", "vie_pro_micro", "vie_pro_independant"];
 const ICONE_MODULE: Record<ModuleId, string> = {
-  budget_expert: ICONES.budget, vie_pro_salarie: ICONES.pro, vie_pro_independant: ICONES.pro, locatif: ICONES.locatif,
+  budget_expert: ICONES.budget, vie_pro_salarie: ICONES.pro, vie_pro_micro: ICONES.pro, vie_pro_independant: ICONES.pro, locatif: ICONES.locatif,
   assistant: "M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z", veille: "M12 21s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 11c0 5.6-7 10-7 10z",
 };
 
@@ -27,8 +28,9 @@ export function Offre({ api, household, focus, onBack, onChange, toast }: { api:
   const choix = { formule, periode, modules: mods, pack, biens, proches };
   const d = useMemo(() => devis(choix), [formule, periode, mods, pack, biens, proches]); // eslint-disable-line react-hooks/exhaustive-deps
   const packDef = PACKS.find((p) => p.id === pack);
-  const dansPack = (m: ModuleId) => !!packDef && (packDef.modules.includes(m) || (m === "vie_pro_salarie" && packDef.modules.includes("vie_pro_independant")));
-  const basculer = (m: ModuleId) => setMods((x) => (x.includes(m) ? x.filter((y) => y !== m) : m === "vie_pro_independant" ? [...x.filter((y) => y !== "vie_pro_salarie"), m] : m === "vie_pro_salarie" ? [...x.filter((y) => y !== "vie_pro_independant"), m] : [...x, m]));
+  const dansPack = (m: ModuleId) => !!packDef && packDef.modules.some((x) => couvre(x, m));
+  // the three Vie pro modules are levels of one another: choosing one replaces the others
+  const basculer = (m: ModuleId) => setMods((x) => (x.includes(m) ? x.filter((y) => y !== m) : VIE_PRO.includes(m) ? [...x.filter((y) => !VIE_PRO.includes(y)), m] : [...x, m]));
   const par = periode === "annuel" ? "/ an" : "/ mois";
   const prixP = (mensuel: number) => (periode === "annuel" ? mensuel * 10 : mensuel);
 

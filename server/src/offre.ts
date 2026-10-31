@@ -11,7 +11,7 @@
 
 export type Periode = "mensuel" | "annuel";
 export type Formule = "solo" | "duo" | "tribu";
-export type ModuleId = "budget_expert" | "vie_pro_salarie" | "vie_pro_independant" | "locatif" | "assistant" | "veille";
+export type ModuleId = "budget_expert" | "vie_pro_salarie" | "vie_pro_micro" | "vie_pro_independant" | "locatif" | "assistant" | "veille";
 
 export const SOCLE: Record<Formule, { nom: string; comptes: number; mensuel: number; pour: string }> = {
   solo: { nom: "Solo", comptes: 1, mensuel: 6.9, pour: "pour vous seul·e" },
@@ -50,10 +50,16 @@ export const MODULES: Record<ModuleId, ModuleDef> = {
     pour: "Les salariés, du premier CDI à la retraite.",
     inclut: ["Contrat de travail, avenants, attestations", "Bulletins classés et contrôlés chaque mois", "Cumul du net imposable, avant la déclaration", "Bulletins manquants signalés", "Papiers à garder jusqu'à la retraite"],
   },
+  vie_pro_micro: {
+    id: "vie_pro_micro", nom: "Vie pro · Micro-entrepreneur", mensuel: 9.9, teinte: "lilac", route: "module/pro",
+    accroche: "Chiffre d'affaires, cotisations et déclarations URSSAF, sans y penser.",
+    pour: "Auto-entrepreneurs, en activité principale ou en complément d'un salaire.",
+    inclut: ["Chiffre d'affaires tenu depuis le compte pro", "Cotisations à payer à chaque déclaration, taux de l'année", "Échéances URSSAF mensuelles ou trimestrielles", "Plafonds du régime et seuils de TVA surveillés", "Accès en lecture pour votre comptable ; Salarié inclus"],
+  },
   vie_pro_independant: {
     id: "vie_pro_independant", nom: "Vie pro · Indépendant", mensuel: 19.9, teinte: "lilac", route: "module/pro",
     accroche: "Recettes, dépenses et 2035 préparées depuis votre compte pro.",
-    pour: "Professions libérales, EI, micro-entrepreneurs (et salariés en même temps).",
+    pour: "Professions libérales et EI au régime réel (2035) ; inclut Micro-entrepreneur et Salarié.",
     inclut: ["Livre des recettes et des dépenses tenu depuis la banque", "Dépenses classées dans les rubriques de la 2035", "Bénéfice estimé, micro ou réel : le plus favorable", "Échéances : 2035, 2042-C-PRO, CFE, URSSAF", "Tout le module Salarié inclus"],
   },
   locatif: {
@@ -97,10 +103,14 @@ export function prixModule(id: ModuleId, o: { biens?: number; proches?: number }
   return m.mensuel;
 }
 
-/** Vie pro Indépendant includes Salarié: never bill both. */
+/** Modules that contain others: Indépendant ⊃ Micro-entrepreneur ⊃ Salarié. */
+export const INCLUT: Partial<Record<ModuleId, ModuleId[]>> = { vie_pro_independant: ["vie_pro_micro", "vie_pro_salarie"], vie_pro_micro: ["vie_pro_salarie"] };
+export const couvre = (a: ModuleId, b: ModuleId) => a === b || !!INCLUT[a]?.includes(b);
+
+/** Never bill a module already contained in another one chosen. */
 export function normaliser(modules: ModuleId[]): ModuleId[] {
   const s = new Set(modules.filter((m) => m in MODULES));
-  if (s.has("vie_pro_independant")) s.delete("vie_pro_salarie");
+  for (const m of [...s]) for (const x of INCLUT[m] ?? []) s.delete(x);
   return [...s];
 }
 
@@ -133,7 +143,7 @@ export function devis(c: Choix): Devis {
     mensuel = total;
   }
   for (const m of mods) {
-    if (dansPack.has(m) || (m === "vie_pro_salarie" && dansPack.has("vie_pro_independant"))) continue;
+    if ([...dansPack].some((p) => couvre(p, m))) continue;
     const p = prixModule(m, opts);
     alaCarte += p; mensuel += p;
     const d = m === "locatif" && (c.biens ?? 0) > LOCATIF_BIENS_INCLUS ? `${c.biens} biens` : m === "veille" && (c.proches ?? 1) > 1 ? `${c.proches} proches` : undefined;
@@ -146,8 +156,8 @@ export function devis(c: Choix): Devis {
   let conseil: Devis["conseil"] = null;
   if (!pack) {
     for (const p of PACKS) {
-      const couvre = mods.every((m) => p.modules.includes(m) || (m === "vie_pro_salarie" && p.modules.includes("vie_pro_independant")) || m === "veille");
-      if (!couvre) continue;
+      const ok = mods.every((m) => p.modules.some((x) => couvre(x, m)) || m === "veille");
+      if (!ok) continue;
       const d = devis({ ...c, pack: p.id, modules: mods.filter((m) => m === "veille") });
       if (d.mensuel < mensuel - 0.01 && (!conseil || d.mensuel < conseil.mensuel)) conseil = { pack: p.id, mensuel: d.mensuel, gain: r2(mensuel - d.mensuel) };
     }
@@ -160,7 +170,7 @@ export function droits(h: { plan: string; essai_actif: boolean; modules: ModuleI
   if (h.essai_actif) return new Set(Object.keys(MODULES) as ModuleId[]);
   if (h.plan !== "famille") return new Set();
   const s = new Set(normaliser(h.modules));
-  if (s.has("vie_pro_independant")) s.add("vie_pro_salarie");
+  for (const m of [...s]) for (const x of INCLUT[m] ?? []) s.add(x);
   return s;
 }
 

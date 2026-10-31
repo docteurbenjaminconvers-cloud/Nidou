@@ -8,7 +8,7 @@
  *   STRIPE_PRICE_PACK_<PACK>_<FORMULE>_<PERIODE> pack line, socle excluded
  * The socle keeps its own prices (STRIPE_PRICE_<FORMULE>_<PERIODE>, abonnement.ts).
  */
-import { devis, LOCATIF_BIENS_INCLUS, MODULES, normaliser, PACKS, SOCLE, type Formule, type ModuleId, type Periode } from "./offre.js";
+import { devis, INCLUT, LOCATIF_BIENS_INCLUS, MODULES, normaliser, PACKS, SOCLE, type Formule, type ModuleId, type Periode } from "./offre.js";
 
 export interface LigneStripe { cle: string; env: string; quantite: number; libelle: string; mensuel: number }
 const P = (p: Periode) => p.toUpperCase();
@@ -23,7 +23,7 @@ export interface ChoixModules { formule: Formule; periode: Periode; modules: Mod
 export function lignesModules(c: ChoixModules): LigneStripe[] {
   const pack = PACKS.find((p) => p.id === c.pack) ?? null;
   const dansPack = new Set<ModuleId>(pack?.modules ?? []);
-  if (dansPack.has("vie_pro_independant")) dansPack.add("vie_pro_salarie");
+  for (const m of [...dansPack]) for (const x of INCLUT[m] ?? []) dansPack.add(x);
   const out: LigneStripe[] = [];
   if (pack) {
     const d = devis({ formule: c.formule, periode: "mensuel", modules: [], pack: pack.id, biens: Math.min(c.biens ?? 0, LOCATIF_BIENS_INCLUS) });
