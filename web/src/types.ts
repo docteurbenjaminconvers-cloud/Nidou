@@ -77,7 +77,7 @@ export interface Household {
   boite_email?: string | null;
   mcp_token?: string | null;
   capacite_comptes?: number;
-  abonnement?: { stripe: boolean; statut: string | null; formule?: "solo" | "duo" | "tribu" | null; periode: "mensuel" | "annuel" | null; fin: string | null; prix: { mensuel: number; annuel: number }; gerable: boolean };
+  abonnement?: { stripe: boolean; paiement?: boolean; statut: string | null; formule?: "solo" | "duo" | "tribu" | null; periode: "mensuel" | "annuel" | null; fin: string | null; prix: { mensuel: number; annuel: number }; gerable: boolean };
   utilisateur?: { id: string; email: string; prenom: string | null } | null;
   comptes?: number;
   boite_recus?: { message_id: string; expediteur: string | null; objet: string | null; documents: number; quand: string }[];

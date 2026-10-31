@@ -104,6 +104,7 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
             <button className="pill" aria-pressed={periode === "annuel"} onClick={() => setPeriode("annuel")}>Annuel · 2 mois offerts</button>
             <button className="pill" aria-pressed={periode === "mensuel"} onClick={() => setPeriode("mensuel")}>Mensuel</button>
           </div>
+          {household.abonnement?.paiement === false && <p className="note" style={{ background: "var(--yolk-soft)", padding: "10px 12px", borderRadius: 12 }}>Le paiement en ligne arrive bientôt. D'ici là, votre essai et vos papiers restent tels quels.</p>}
           <div className="tiers">
             {TIERS.map((t) => {
               const actuel = formuleActuelle === t.id;

@@ -11,6 +11,12 @@ import type { Db, HouseholdRow } from "./db.js";
  * Without a secret key the module runs in "simulé" mode: checkout activates the formule immediately (prototype and demo).
  */
 export const stripeOn = () => Boolean(process.env.STRIPE_SECRET_KEY);
+/** Simulated payments (no money taken) only on a test instance that asks for them explicitly; never in production. */
+export const simulationPaiement = () => !stripeOn() && process.env.LUCIEN_PAIEMENT_SIMULE === "1";
+export const paiementDisponible = () => stripeOn() || simulationPaiement();
+export class PaiementIndisponible extends Error {
+  constructor() { super("Le paiement en ligne arrive bientôt. D'ici là, rien ne change pour vous."); }
+}
 const stripe = () => new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2025-08-27.basil" as never });
 const publicUrl = () => (process.env.LUCIEN_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, "");
 export type Periode = "mensuel" | "annuel";
@@ -43,7 +49,10 @@ export function capaciteComptes(db: Db, h: HouseholdRow): number {
 }
 
 export async function creerCheckout(db: Db, h: HouseholdRow, formule: Formule, periode: Periode, email: string | null): Promise<{ url: string; simule: boolean }> {
-  if (!stripeOn()) return { url: `${publicUrl()}/api/abonnement/simule?formule=${formule}&periode=${periode}&h=${h.id}`, simule: true };
+  if (!stripeOn()) {
+    if (!simulationPaiement()) throw new PaiementIndisponible();
+    return { url: `${publicUrl()}/api/abonnement/simule?formule=${formule}&periode=${periode}`, simule: true };
+  }
   const price = process.env[priceEnv(formule, periode)];
   if (!price) throw new Error(`${priceEnv(formule, periode)} manquant`);
   const s = await stripe().checkout.sessions.create({
@@ -66,6 +75,7 @@ export async function creerCheckout(db: Db, h: HouseholdRow, formule: Formule, p
 export async function ajouterVeillePayante(db: Db, h: HouseholdRow, periode: Periode): Promise<{ simule: boolean; total: number }> {
   const actuel = (db.raw.prepare("SELECT veilles_supp FROM households WHERE id = ?").get(h.id) as { veilles_supp: number } | undefined)?.veilles_supp ?? 0;
   if (!stripeOn()) {
+    if (!simulationPaiement()) throw new PaiementIndisponible();
     db.raw.prepare("UPDATE households SET veilles_supp = ? WHERE id = ?").run(actuel + 1, h.id);
     return { simule: true, total: actuel + 1 };
   }
@@ -86,7 +96,10 @@ export async function ajouterVeillePayante(db: Db, h: HouseholdRow, periode: Per
  */
 export async function basculerAssistant(db: Db, h: HouseholdRow, actif: boolean): Promise<{ simule: boolean; actif: boolean }> {
   const set = (v: boolean) => db.raw.prepare("UPDATE households SET assistant_option = ? WHERE id = ?").run(v ? 1 : 0, h.id);
-  if (!stripeOn()) { set(actif); return { simule: true, actif }; }
+  if (!stripeOn()) {
+    if (actif && !simulationPaiement()) throw new PaiementIndisponible(); // switching off never needs a payment
+    set(actif); return { simule: true, actif };
+  }
   if (!h.stripe_subscription_id) throw new Error("Choisissez d'abord une formule Solo, Duo ou Tribu.");
   const price = process.env[`STRIPE_PRICE_ASSISTANT_${(h.abonnement_periode ?? "mensuel").toUpperCase()}`];
   if (!price) throw new Error("Prix Stripe de l'assistant manquant (STRIPE_PRICE_ASSISTANT_MENSUEL / _ANNUEL).");
@@ -180,6 +193,7 @@ export function appliquerEvenement(db: Db, event: EvenementMinimal): string {
 export function resumeAbonnement(h: HouseholdRow) {
   return {
     stripe: stripeOn(),
+    paiement: paiementDisponible(),
     statut: h.abonnement_statut,
     formule: (h.formule as Formule | null) ?? (h.plan === "famille" ? "duo" : null),
     periode: h.abonnement_periode as Periode | null,

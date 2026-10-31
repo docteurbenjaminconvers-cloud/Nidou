@@ -24,6 +24,7 @@ En développement : `npm run dev` lance le serveur (port 3000) et Vite (port 517
 - Connexion **sans mot de passe** : `POST /api/auth/demander {email}` envoie un lien (valable 30 min, usage unique) ; `GET /api/auth/lien?token=…` ouvre une session (cookie `lucien_session`, 90 jours, HttpOnly). Première connexion = création du compte et du nid, avec l'essai de 15 jours.
 - **Invitation** du conjoint ou d'un proche : `POST /api/invitations {email, prenom}` envoie un lien de 7 jours qui rattache le compte au même foyer (rôle `membre` ; l'inviteur est `proprietaire`). `GET /api/foyer/comptes`, `DELETE /api/foyer/comptes/:user_id` (propriétaire), `DELETE /api/invitations/:token`. Gratuit : 2 comptes ; Famille : 6.
 - Emails via Brevo (`BREVO_API_KEY`, `LUCIEN_EMAIL_FROM`) ; sans clé, le lien est affiché dans la console et renvoyé dans la réponse (`lien`) pour le développement.
+- Sans `STRIPE_SECRET_KEY`, les abonnements sont indisponibles (« bientôt disponible »). `LUCIEN_PAIEMENT_SIMULE=1` active un paiement simulé, sans encaissement, réservé au titulaire du foyer : uniquement sur une instance de test, jamais en production.
 - `LUCIEN_AUTH=0` conserve le prototype mono-foyer sans connexion (tests, démo locale). Avec `LUCIEN_SEED=1`, le compte `demo@monlucien.fr` possède la famille de démonstration.
 - Le connecteur MCP s'authentifie avec le **jeton du foyer** (`households.mcp_token`, affiché et régénérable dans les réglages) ; refusé hors plan Famille (`402`).
 

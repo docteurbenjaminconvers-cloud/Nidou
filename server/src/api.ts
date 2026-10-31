@@ -10,7 +10,7 @@ import { chargesReport, lignesFamille } from "./charges.js";
 import { generateLetter, templateLetter } from "./letters.js";
 import { rappelsEssai, rappelsEcheances } from "./rappels.js";
 import * as V from "./veille.js";
-import { ajouterVeillePayante, basculerAssistant } from "./abonnement.js";
+import { ajouterVeillePayante, basculerAssistant, PaiementIndisponible, simulationPaiement } from "./abonnement.js";
 import { AssistantErreur, ensureAssistantSchema, etatAssistant, repondre } from "./assistant.js";
 import { bridge, eb, fournisseur, notifierAlertes, synchroniserFoyer, synchroniserVeille } from "./banques.js";
 import { banquesFR, BANQUES_DEMO, ebConnectHousehold, ebFinishHousehold, ensureEbSchema, linkExtra, newState } from "./enablebanking.js";
@@ -108,7 +108,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
    * without a session every route answers 401 `non_connecte`. LUCIEN_AUTH=0 keeps the single-household prototype.
    */
   api.use("*", async (c, next) => {
-    if (c.req.path.includes("/auth/") || c.req.path.endsWith("/inbox") || c.req.path.endsWith("/bank/webhook") || c.req.path.endsWith("/bank/callback") || c.req.path.endsWith("/bank/eb/callback") || c.req.path.endsWith("/stripe/webhook") || c.req.path.endsWith("/abonnement/simule") || c.req.path.endsWith("/waitlist") || c.req.path.includes("/veille/p/") || /\/agenda\/[^/]+\.ics$/.test(c.req.path) || c.req.path.endsWith("/veille/callback")) return next();
+    if (c.req.path.includes("/auth/") || c.req.path.endsWith("/inbox") || c.req.path.endsWith("/bank/webhook") || c.req.path.endsWith("/bank/callback") || c.req.path.endsWith("/bank/eb/callback") || c.req.path.endsWith("/stripe/webhook") || c.req.path.endsWith("/waitlist") || c.req.path.includes("/veille/p/") || /\/agenda\/[^/]+\.ics$/.test(c.req.path) || c.req.path.endsWith("/veille/callback")) return next();
     let row;
     let user = null as { id: string; email: string; prenom: string | null } | null;
     if (AUTH_ON()) {
@@ -201,8 +201,8 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     if (comptes > FORMULES[body.formule].comptes) {
       return c.json({ error: "formule_trop_petite", message: `${comptes} personnes se connectent à ce foyer : la formule ${FORMULES[body.formule].nom} en accepte ${FORMULES[body.formule].comptes}. Choisissez une formule plus grande ou retirez un compte.` }, 400);
     }
-    const r = await creerCheckout(db, db.getHousehold(h.id)!, body.formule, body.periode, currentUser(c)?.email ?? null);
-    return c.json(r);
+    try { return c.json(await creerCheckout(db, db.getHousehold(h.id)!, body.formule, body.periode, currentUser(c)?.email ?? null)); }
+    catch (e) { if (e instanceof PaiementIndisponible) return c.json({ error: "paiement_indisponible", message: e.message }, 503); throw e; }
   });
 
   api.post("/abonnement/portail", async (c) => {
@@ -212,8 +212,9 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
 
   /** Simulated checkout (no Stripe key): activates the plan right away. Never exposed when Stripe is configured. */
   api.get("/abonnement/simule", (c) => {
-    if (process.env.STRIPE_SECRET_KEY) return c.json({ error: "stripe_actif" }, 400);
-    const h = db.getHousehold(c.req.query("h") ?? "");
+    if (!simulationPaiement()) return c.json({ error: "indisponible" }, 404);
+    if (!isOwner(c)) return c.json({ error: "proprietaire", message: "Seul le propriétaire du foyer gère l'abonnement." }, 403);
+    const h = db.getHousehold(household(c).id); // the session's household, never one named in the URL
     const periode = c.req.query("periode") === "annuel" ? "annuel" : "mensuel";
     const formule = (["solo", "duo", "tribu"].includes(c.req.query("formule") ?? "") ? c.req.query("formule") : "duo") as Formule;
     if (!h) return c.json({ error: "introuvable" }, 404);

@@ -62,3 +62,29 @@ test("foyer : le plan payant ne s'obtient que par un paiement, les réglages com
   assert.equal((await patch(a.session, { hebdo: false })).status, 200);
   assert.equal(db.getHousehold(a.household.id)!.hebdo, 0);
 });
+
+test("abonnement : sans Stripe, pas de paiement simulé en production ; en test, seulement pour le titulaire", async () => {
+  delete process.env.STRIPE_SECRET_KEY; delete process.env.LUCIEN_PAIEMENT_SIMULE;
+  process.env.LUCIEN_AUTH = "1";
+  const db = new Db(":memory:");
+  const api = createApi(db, { uploadDir: "/tmp/lucien-test-uploads" });
+  const login = async (email: string, household_id?: string) => {
+    const r = await demanderLien(db, email, { household_id, prenom: email.split("@")[0] });
+    const c = consommerLien(db, new URL(r.lien!).searchParams.get("token")!, 15);
+    assert.ok(c.ok); return c.ok ? c : null!;
+  };
+  const a = await login("a@x.fr");
+  const ck = (s: string) => ({ cookie: `lucien_session=${s}`, "content-type": "application/json" });
+  await api.request("/invitations", { method: "POST", headers: ck(a.session), body: JSON.stringify({ email: "b@x.fr", prenom: null }) });
+  const b = await login("b@x.fr", a.household.id);
+  const co = await api.request("/abonnement/checkout", { method: "POST", headers: ck(a.session), body: JSON.stringify({ formule: "duo", periode: "mensuel" }) });
+  assert.equal(co.status, 503);
+  assert.equal((await api.request(`/abonnement/simule?formule=tribu&h=${a.household.id}`, { headers: ck(b.session) })).status, 404, "no simulation in production");
+  assert.equal((await api.request(`/abonnement/simule?formule=tribu&h=${a.household.id}`)).status, 401, "never without a session");
+  assert.notEqual(db.getHousehold(a.household.id)!.abonnement_statut, "simule");
+  process.env.LUCIEN_PAIEMENT_SIMULE = "1";
+  assert.equal((await api.request("/abonnement/simule?formule=duo", { headers: ck(b.session) })).status, 403, "a member cannot");
+  assert.equal((await api.request("/abonnement/simule?formule=duo", { headers: ck(a.session) })).status, 302);
+  assert.equal(db.getHousehold(a.household.id)!.abonnement_statut, "simule");
+  delete process.env.LUCIEN_PAIEMENT_SIMULE;
+});
