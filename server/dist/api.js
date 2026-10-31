@@ -17,8 +17,9 @@ import { appliquerAbonnement, capaciteComptes, creerCheckout, FORMULES, portail,
 import { pointDuFoyer } from "./hebdo.js";
 import { bordereau, etatDossiers, etatKit, KITS } from "./dossiers.js";
 import { zip } from "./zip.js";
+import { agendaIcs } from "./ics.js";
 import { AUTH_ON, consommerLien, cookieHeader, demanderLien, emailValide, sessionToken } from "./auth.js";
-import { familleReport, echeancesFamille, coutsParMembre } from "./famille.js";
+import { agendaSemaine, familleReport, echeancesFamille, coutsParMembre } from "./famille.js";
 import { boiteAddress, fromBrevo, processInboundEmail } from "./inbox.js";
 import { parseStatement, merchantOf, categorise, ruleCategory, fingerprint, TX_CATEGORIES, TX_LABEL } from "./transactions.js";
 import { budgetReport } from "./budget.js";
@@ -77,7 +78,7 @@ export function createApi(db, opts) {
      * without a session every route answers 401 `non_connecte`. LUCIEN_AUTH=0 keeps the single-household prototype.
      */
     api.use("*", async (c, next) => {
-        if (c.req.path.includes("/auth/") || c.req.path.endsWith("/inbox") || c.req.path.endsWith("/bank/webhook") || c.req.path.endsWith("/bank/callback") || c.req.path.endsWith("/bank/eb/callback") || c.req.path.endsWith("/stripe/webhook") || c.req.path.endsWith("/abonnement/simule") || c.req.path.endsWith("/waitlist") || c.req.path.includes("/veille/p/") || c.req.path.endsWith("/veille/callback"))
+        if (c.req.path.includes("/auth/") || c.req.path.endsWith("/inbox") || c.req.path.endsWith("/bank/webhook") || c.req.path.endsWith("/bank/callback") || c.req.path.endsWith("/bank/eb/callback") || c.req.path.endsWith("/stripe/webhook") || c.req.path.endsWith("/abonnement/simule") || c.req.path.endsWith("/waitlist") || c.req.path.includes("/veille/p/") || /\/agenda\/[^/]+\.ics$/.test(c.req.path) || c.req.path.endsWith("/veille/callback"))
             return next();
         let row;
         let user = null;
@@ -331,6 +332,33 @@ export function createApi(db, opts) {
             return c.json({ error: "introuvable" }, 404);
         return c.json({ ...publicDoc(d), texte: d.texte, echeances: db.listDeadlines(d.household_id, { includeDone: true }).filter((x) => x.document_id === d.id) });
     });
+    /**
+     * Calendar subscription (Google, Apple, Outlook): deadlines and the children's weekly activities, refreshed by the calendar app.
+     * The link carries a secret (no session in a calendar app); it can be changed, which cuts the old one.
+     */
+    const icsPour = (h) => {
+        const faits = db.familleFaits(h.id);
+        const members = db.listMembers(h.id), activites = db.listActivites(h.id);
+        const depuis = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
+        const fam = echeancesFamille(h, members, activites).filter((e) => !faits.has(e.cle) && e.date >= depuis).map((e) => ({ id: `f-${e.cle}`, titre: e.titre, date: e.date, rappel_jours: e.rappel_jours, note: e.note }));
+        const docs = db.listDeadlines(h.id, { from: depuis }).map((d) => ({ id: d.id, titre: d.titre, date: d.date, rappel_jours: d.rappel_jours, note: d.note }));
+        return agendaIcs({ foyer: h.nom, echeances: [...docs, ...fam], creneaux: agendaSemaine(members, activites), lien: `${(process.env.LUCIEN_PUBLIC_URL ?? "").replace(/\/$/, "")}/#/deadlines` });
+    };
+    api.get("/agenda/:fichier", (c) => {
+        const f = c.req.param("fichier");
+        if (!f.endsWith(".ics"))
+            return c.json({ error: "introuvable" }, 404);
+        const h = db.householdByIcsToken(f.slice(0, -4));
+        if (!h)
+            return c.text("Lien d'agenda inconnu ou remplacé : abonnez-vous à nouveau depuis Lucien.", 404);
+        return c.body(icsPour(h), 200, { "content-type": "text/calendar; charset=utf-8", "content-disposition": 'inline; filename="lucien.ics"', "cache-control": "private, max-age=900" });
+    });
+    const lienAgenda = (c, tok) => {
+        const base = (process.env.LUCIEN_PUBLIC_URL ?? new URL(c.req.url).origin).replace(/\/$/, "");
+        return `${base}/api/agenda/${tok}.ics`;
+    };
+    api.get("/agenda-lien", (c) => c.json({ url: lienAgenda(c, db.icsToken(household(c).id)) }));
+    api.post("/agenda-lien", (c) => c.json({ url: lienAgenda(c, db.icsToken(household(c).id, true)) }));
     /** The original file of a paper (photo or PDF), for the household only. */
     api.get("/documents/:id/fichier", async (c) => {
         const d = db.getDocument(c.req.param("id"));

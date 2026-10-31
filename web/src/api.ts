@@ -55,6 +55,8 @@ export interface Api {
   assistantOption(actif: boolean): Promise<AssistantEtat>;
   renommer(nom: string): Promise<void>;
   setHebdo(actif: boolean): Promise<void>;
+  agendaLien(): Promise<{ url: string }>;
+  agendaLienNouveau(): Promise<{ url: string }>;
   checkout(formule: "solo" | "duo" | "tribu", periode: "mensuel" | "annuel"): Promise<{ url: string; simule: boolean }>;
   pushCle(): Promise<{ actif: boolean; cle: string | null; appareils: number }>;
   pushAbonner(s: { endpoint: string; keys: { p256dh: string; auth: string }; appareil: string | null }): Promise<void>;
@@ -151,6 +153,8 @@ const serverApi: Api = {
   assistantOption: async (actif) => (await call<{ etat: AssistantEtat }>("/abonnement/assistant", json({ actif }))).etat,
   renommer: async (nom) => { await call("/household", json({ nom }, "PATCH")); },
   setHebdo: async (hebdo) => { await call("/household", json({ hebdo }, "PATCH")); },
+  agendaLien: () => call("/agenda-lien"),
+  agendaLienNouveau: () => call("/agenda-lien", { method: "POST" }),
   checkout: (formule, periode) => call("/abonnement/checkout", json({ formule, periode })),
   pushCle: () => call("/push/cle"),
   pushAbonner: async (s) => { await call("/push/abonner", json(s)); },
@@ -291,6 +295,8 @@ function makeDemoApi(): Api {
     assistantOption: async (actif) => { state.assistantOption = actif; return assistantEtatDemo(state); },
     renommer: async (nom) => { state.household.nom = nom; },
     setHebdo: async (hebdo) => { state.household.hebdo = hebdo; },
+    agendaLien: async () => ({ url: "" }),
+    agendaLienNouveau: async () => ({ url: "" }),
     checkout: async (formule, periode) => { state.household.plan = "famille"; state.household.plan_souscrit = "famille"; state.household.capacite_comptes = { solo: 1, duo: 2, tribu: 6 }[formule]; state.household.abonnement = { stripe: false, statut: "simule", formule, periode, fin: new Date(Date.now() + (periode === "annuel" ? 365 : 30) * 864e5).toISOString().slice(0, 10), prix: { mensuel: 9.9, annuel: 99 }, gerable: false }; return { url: "", simule: true }; },
     portail: async () => ({ url: "" }),
     pushCle: async () => ({ actif: false, cle: null, appareils: 0 }),

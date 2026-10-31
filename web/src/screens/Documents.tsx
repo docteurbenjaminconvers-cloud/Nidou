@@ -3,6 +3,7 @@ import { useState } from "react";
 import { CATEGORIES, CATEGORY_LABEL, type Category, type Doc } from "../types";
 import { CatIcon, fmtDate, fmtEuro, PERIOD_LABEL } from "../ui";
 import { DossiersCarte } from "./Dossiers";
+import { MenageCarte } from "./Menage";
 
 export function Documents({ docs, go, unread }: { docs: Doc[]; go: (s: string, id?: string) => void; unread: number }) {
   const [q, setQ] = useState("");
@@ -14,6 +15,7 @@ export function Documents({ docs, go, unread }: { docs: Doc[]; go: (s: string, i
     <div className="screen">
       <div className="top"><div><h1>Papiers</h1><p className="sub">{docs.length} document{docs.length > 1 ? "s" : ""} dans le foyer</p></div><Bell unread={unread} onClick={() => go("notifs")} /></div>
       <DossiersCarte docs={docs} go={go} />
+      <MenageCarte docs={docs} go={go} />
       <input className="search" placeholder="Chercher un contrat, un organisme, un numéro…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Rechercher" />
       <div className="pills" role="group" aria-label="Catégories">
         <button className="pill" aria-pressed={cat === ""} onClick={() => setCat("")}>Tous</button>

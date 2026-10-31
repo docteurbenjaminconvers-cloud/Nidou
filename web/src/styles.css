@@ -470,3 +470,25 @@ b, strong { font-weight: 800; }
 .piece-obtenir { margin-top: 8px; font-size: 13.5px; color: var(--mist); line-height: 1.45; }
 .piece-obtenir .link { margin-top: 6px; }
 .dossier .actions a.btn { text-decoration: none; }
+
+/* ----- Agenda du téléphone ----- */
+.agenda-tel-carte { display: grid; grid-template-columns: 44px 1fr; gap: 12px; align-items: center; width: 100%; text-align: left; border: 0; border-radius: 22px; padding: 12px 14px; background: var(--moss); color: var(--ink); }
+.agenda-tel-carte b { display: block; font-family: var(--display); font-style: italic; font-weight: 600; font-size: 17px; }
+.agenda-tel-carte span span { display: block; font-size: 13px; color: var(--mint-ink); line-height: 1.35; margin-top: 2px; }
+.agenda-tel-ico { width: 44px; height: 44px; border-radius: 50%; background: var(--white); display: grid; place-items: center; color: var(--mint-ink); }
+.agenda-tel-ico svg { width: 22px; height: 22px; }
+.agenda-tel .lock a.btn { text-decoration: none; }
+
+/* ----- Durée de conservation, grand ménage ----- */
+.garder { display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: start; background: var(--lilac-soft); border-radius: 18px; padding: 12px 14px; margin: -8px 0 22px; }
+.garder.jeter { background: var(--yolk-soft); }
+.garder-ico { width: 40px; height: 40px; border-radius: 50%; background: var(--white); display: grid; place-items: center; color: var(--lilac-ink); }
+.garder.jeter .garder-ico { color: #8a6210; }
+.garder-ico svg { width: 22px; height: 22px; }
+.garder b { display: block; font-size: 14.5px; line-height: 1.35; }
+.garder span:not(.garder-ico) { display: block; font-size: 13px; color: var(--mist); margin-top: 3px; line-height: 1.4; }
+.menage-carte { display: grid; grid-template-columns: 44px 1fr; gap: 12px; align-items: center; width: 100%; text-align: left; border: 0; border-radius: 22px; padding: 12px 14px; margin-bottom: 14px; background: var(--yolk-soft); color: var(--ink); }
+.menage-carte b { display: block; font-size: 15px; }
+.menage-carte span span { display: block; font-size: 13px; color: #7a5a0e; margin-top: 2px; }
+.menage-ico { width: 44px; height: 44px; border-radius: 50%; background: var(--white); display: grid; place-items: center; color: #8a6210; }
+.menage-ico svg { width: 22px; height: 22px; }

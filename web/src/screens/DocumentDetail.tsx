@@ -1,3 +1,4 @@
+import { conservation, SOURCE_CONSERVATION } from "../../../server/src/conservation";
 import { useEffect, useState } from "react";
 import type { Api } from "../api";
 import { CATEGORIES, CATEGORY_LABEL, type Category, type Deadline, type Doc } from "../types";
@@ -104,6 +105,16 @@ export function DocumentDetail({ api, id, onBack, onChanged, toast }: { api: Api
         <F k="date_fin" label="Fin / échéance" type="date" />
         <F k="preavis_jours" label="Préavis (jours)" type="number" />
       </div>
+
+      {(() => {
+        const c = conservation(doc);
+        return c ? (
+          <div className={`garder ${c.peut_jeter ? "jeter" : ""}`}>
+            <span className="garder-ico" aria-hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d={c.peut_jeter ? "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" : "M12 8v4l3 2M12 21a9 9 0 110-18 9 9 0 010 18z"} /></svg></span>
+            <div><b>Combien de temps le garder ? {c.garder}</b><span>{c.detail} <a href={SOURCE_CONSERVATION} target="_blank" rel="noreferrer">Source</a></span></div>
+          </div>
+        ) : null;
+      })()}
 
       {edit ? (
         <div className="actions">

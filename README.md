@@ -76,6 +76,18 @@ Un point hebdomadaire dans la voix du majordome : échéances de la semaine (et 
 - Désactivable : Réglages, « Le point du dimanche » (`PATCH /api/household {hebdo}`, colonne `households.hebdo`). `GET /api/semaine` renvoie le point calculé par le serveur.
 - Connecteur : outil `semaine` (« qu'est-ce qui nous attend cette semaine ? »), sans le volet budget quand la banque est exclue.
 
+## Dossiers prêts
+
+`server/src/dossiers.ts` (fonction pure, partagée avec l'appli) : pour six démarches (location, CAF, école et cantine, prêt immobilier, passeport ou carte d'identité, sinistre), chaque pièce demandée est « prête », « trop ancienne », « expirée » ou « à ajouter », avec où l'obtenir. Listes indicatives d'après service-public.fr (source citée). `GET /api/dossiers`, `GET /api/dossiers/:cle/zip` (bordereau + originaux, `server/src/zip.ts` sans dépendance), `GET /api/documents/:id/fichier` (original d'un papier, réservé au foyer). Outil `dossier` dans le connecteur.
+
+## Combien de temps garder un papier
+
+`server/src/conservation.ts` : durée de conservation par type de papier (service-public.fr, F19134), affichée sur chaque papier ; « Grand ménage » liste ce qui peut partir. Un contrat en cours, une garantie, un titre d'identité ne sont jamais proposés : seules les factures, relevés et avis datés le sont.
+
+## Agenda du téléphone
+
+`server/src/ics.ts` : fichier iCalendar (échéances en journée entière avec rappel, activités des enfants récurrentes à l'heure de Paris, la cantine exclue). Abonnement par lien secret `GET /api/agenda/<jeton>.ics` (sans session, pour Google, Apple, Outlook), `GET /api/agenda-lien` pour l'obtenir, `POST /api/agenda-lien` pour le changer (l'ancien cesse de marcher). En démo, l'appli fabrique le même fichier dans le navigateur.
+
 ## Connecteur MCP
 
 Point d'entrée : `http://localhost:3000/mcp` (transport HTTP « streamable », sans état).

@@ -138,6 +138,7 @@ export interface HouseholdRow {
   formule: string | null;             // solo | duo | tribu
   abonnement_fin: string | null;      // end of the current paid period (ISO date)
   hebdo: number | null;               // 0 = no Sunday « semaine de Lucien » (default: on)
+  ics_token: string | null;           // secret of the household's calendar subscription (.ics)
   cree_le: string;
 }
 
@@ -357,6 +358,7 @@ export class Db {
     if (!cols.includes("situation")) this.raw.exec("ALTER TABLE households ADD COLUMN situation TEXT");
     if (!cols.includes("mcp_token")) this.raw.exec("ALTER TABLE households ADD COLUMN mcp_token TEXT");
     if (!cols.includes("hebdo")) this.raw.exec("ALTER TABLE households ADD COLUMN hebdo INTEGER DEFAULT 1");
+    if (!cols.includes("ics_token")) this.raw.exec("ALTER TABLE households ADD COLUMN ics_token TEXT");
     for (const [col] of [["stripe_customer_id"], ["stripe_subscription_id"], ["abonnement_statut"], ["abonnement_periode"], ["abonnement_fin"], ["formule"]]) {
       if (!cols.includes(col)) this.raw.exec(`ALTER TABLE households ADD COLUMN ${col} TEXT`);
     }
@@ -382,7 +384,7 @@ export class Db {
   /** New households start a reverse trial: full Famille plan for `trialDays`, then back to free. */
   createHousehold(nom: string, trialDays = 15): HouseholdRow {
     const essai_fin = trialDays > 0 ? new Date(Date.now() + trialDays * 864e5).toISOString() : null;
-    const row: HouseholdRow = { id: randomUUID(), nom, plan: "gratuit", essai_fin, boite_code: newBoiteCode(), situation: null, mcp_token: newToken(), stripe_customer_id: null, stripe_subscription_id: null, abonnement_statut: null, abonnement_periode: null, abonnement_fin: null, formule: null, hebdo: 1, cree_le: this.now() };
+    const row: HouseholdRow = { id: randomUUID(), nom, plan: "gratuit", essai_fin, boite_code: newBoiteCode(), situation: null, mcp_token: newToken(), stripe_customer_id: null, stripe_subscription_id: null, abonnement_statut: null, abonnement_periode: null, abonnement_fin: null, formule: null, hebdo: 1, ics_token: null, cree_le: this.now() };
     this.raw
       .prepare("INSERT INTO households (id, nom, plan, essai_fin, boite_code, mcp_token, cree_le) VALUES (?, ?, ?, ?, ?, ?, ?)")
       .run(row.id, row.nom, row.plan, row.essai_fin, row.boite_code, row.mcp_token, row.cree_le);
@@ -541,6 +543,19 @@ export class Db {
 
   setPlan(id: string, plan: HouseholdRow["plan"]) {
     this.raw.prepare("UPDATE households SET plan = ? WHERE id = ?").run(plan, id);
+  }
+
+  /** Calendar subscription secret, created on first use; `nouveau` revokes the old link. */
+  icsToken(id: string, nouveau = false): string {
+    const h = this.getHousehold(id)!;
+    if (h.ics_token && !nouveau) return h.ics_token;
+    const tok = newToken();
+    this.raw.prepare("UPDATE households SET ics_token = ? WHERE id = ?").run(tok, id);
+    return tok;
+  }
+
+  householdByIcsToken(token: string): HouseholdRow | undefined {
+    return this.raw.prepare("SELECT * FROM households WHERE ics_token = ?").get(token) as HouseholdRow | undefined;
   }
 
   setHebdo(id: string, actif: boolean) {

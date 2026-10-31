@@ -105,6 +105,8 @@ export const MODE_EMPLOI = `Mode d'emploi de Lucien (barre du bas : Aujourd'hui,
 - Aujourd'hui (accueil) : prochaine échéance, papiers à vérifier, économies repérées, activités du jour, et la barre « Demander à Lucien ».
 - Votre semaine : carte « Votre semaine avec Lucien » sous la barre de l'accueil ; le même point arrive chaque dimanche soir (notification, et email avec le plan Famille), désactivable dans Réglages, « Le point du dimanche ».
 - Dossiers prêts (en haut de Papiers) : location, CAF, école et cantine, prêt immobilier, passeport ou carte d'identité, sinistre. Lucien dit quelles pièces sont prêtes, trop anciennes ou manquantes, où les obtenir, et prépare un .zip avec le bordereau et les fichiers.
+- Combien de temps garder un papier : indiqué sur chaque papier (durées de service-public.fr) ; « Grand ménage » en haut de Papiers liste ce qui peut partir.
+- Agenda du téléphone : en bas de l'écran Agenda, abonnement Google, Apple ou Outlook (échéances et activités des enfants).
 - Ajouter un papier : bouton + au centre. Photo, PDF ou texte collé : Lucien lit le papier, le range, remplit les champs (organisme, montant, dates, préavis) et crée les rappels. On vérifie les champs avant d'enregistrer. Autre façon : transférer l'email à l'adresse Lucien personnelle (Réglages, « Papiers par email ») ; une règle de transfert automatique dans Gmail ou Outlook fait tout arriver seul.
 - Papiers : tous les documents, recherche et filtres par catégorie. Dans un document : modifier les champs, voir ses échéances, préparer un courrier (résiliation, réclamation, remboursement), supprimer.
 - Agenda : toutes les échéances (résiliation, renouvellement, expiration, garantie, paiement) et les activités de la semaine ; « marquer comme fait ».
@@ -117,7 +119,7 @@ export const MODE_EMPLOI = `Mode d'emploi de Lucien (barre du bas : Aujourd'hui,
 - Données : hébergées en Europe, jamais revendues ; santé et banque ne sont jamais transmises aux assistants IA.`;
 const ECRANS = {
     home: "Accueil", add: "Ajouter un papier", docs: "Papiers", deadlines: "Agenda", budget: "Budget", famille: "Famille",
-    notifs: "Notifications", settings: "Réglages", connecteur: "Tuto du connecteur IA", semaine: "Votre semaine", dossiers: "Dossiers prêts",
+    notifs: "Notifications", settings: "Réglages", connecteur: "Tuto du connecteur IA", semaine: "Votre semaine", dossiers: "Dossiers prêts", menage: "Grand ménage",
 };
 const OUTIL_ECRAN = {
     name: "ouvrir_ecran",

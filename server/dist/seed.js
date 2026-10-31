@@ -27,6 +27,7 @@ export function demoDocuments() {
         { title: "Bulletin de salaire — il y a 2 mois", category: "autre", organisme: "Atelier Verdier", numero_contrat: null, montant: null, periodicite: null, date_document: iso(-59), date_debut: null, date_fin: null, preavis_jours: null, resume: "Bulletin de paie, CDI cadre." },
         { title: "Bulletin de salaire — il y a 3 mois", category: "autre", organisme: "Atelier Verdier", numero_contrat: null, montant: null, periodicite: null, date_document: iso(-89), date_debut: null, date_fin: null, preavis_jours: null, resume: "Bulletin de paie, CDI cadre." },
         { title: "Livret de famille", category: "identite", organisme: "Mairie de Montpellier", numero_contrat: null, montant: null, periodicite: null, date_document: iso(-6000), date_debut: null, date_fin: null, preavis_jours: null, resume: "Livret de famille : mariage, naissances de Léa et Jean." },
+        { title: "Facture Orange — mars 2024", category: "telecom", organisme: "Orange", numero_contrat: "ORG-55820019", montant: null, periodicite: null, date_document: "2024-03-15", date_debut: null, date_fin: null, preavis_jours: null, resume: "Facture mensuelle fibre et mobiles, mars 2024." },
         { title: "RIB — compte joint", category: "banque", organisme: "Crédit Agricole", numero_contrat: null, montant: null, periodicite: null, date_document: iso(-300), date_debut: null, date_fin: null, preavis_jours: null, resume: "Relevé d'identité bancaire du compte joint." },
     ];
 }
