@@ -4,6 +4,7 @@ import { DateChip, daysUntil, fmtDate, fmtEuro, Logo, relative } from "../ui";
 import { SemaineCarte, calculerSemaine } from "./Semaine";
 import { UrgenceCarte } from "./Urgence";
 import { Portrait } from "./Famille";
+import { EspacesCarte } from "./espacesCommun";
 import type { Api } from "../api";
 
 export function Today({ api, household, deadlines, docs, charges, budget, go, onDone, unread, famille }: {
@@ -43,6 +44,8 @@ export function Today({ api, household, deadlines, docs, charges, budget, go, on
       </button>
 
       <SemaineCarte point={calculerSemaine(household, deadlines, docs, budget, famille ?? null)} go={go} />
+
+      <EspacesCarte household={household} go={go} />
 
       {household.essai?.actif && (household.essai.jours_restants ?? 0) > 2 && (
         <div className="confidence ok" style={{ display: "flex", justifyContent: "space-between", width: "100%", marginBottom: 14 }}>

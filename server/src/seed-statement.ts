@@ -9,7 +9,7 @@ export function demoStatement(today = new Date().toISOString().slice(0, 10)): st
   const add = (m: number, day: number, label: string, amount: number) => { if (d(m, day) <= today) rows.push([d(m, day), label, amount]); };
 
   for (let m = 3; m >= 0; m--) {
-    add(m, 1, "VIR SALAIRE SOCIETE DUPONT", 2850);
+    add(m, 1, "VIR SALAIRE ATELIER VERDIER", 2850);
     add(m, 2, "VIR SALAIRE CLINIQUE SAINT ROCH", 2100);
     add(m, 5, "CAF ALLOCATIONS FAMILIALES", 141.5);
     add(m, 3, "PRLV SEPA CREDIT IMMO BNP 000456", -1180);

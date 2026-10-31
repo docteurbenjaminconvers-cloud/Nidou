@@ -267,6 +267,13 @@ CREATE TABLE IF NOT EXISTS transactions (
   empreinte TEXT NOT NULL UNIQUE,
   importe_le TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS module_data (
+  household_id TEXT NOT NULL REFERENCES households(id),
+  espace TEXT NOT NULL,
+  donnees TEXT NOT NULL,
+  maj_le TEXT NOT NULL,
+  PRIMARY KEY (household_id, espace)
+);
 CREATE TABLE IF NOT EXISTS budget_decisions (
   household_id TEXT NOT NULL REFERENCES households(id),
   cle TEXT NOT NULL,
@@ -360,7 +367,7 @@ export class Db {
     if (!cols.includes("mcp_token")) this.raw.exec("ALTER TABLE households ADD COLUMN mcp_token TEXT");
     if (!cols.includes("hebdo")) this.raw.exec("ALTER TABLE households ADD COLUMN hebdo INTEGER DEFAULT 1");
     if (!cols.includes("ics_token")) this.raw.exec("ALTER TABLE households ADD COLUMN ics_token TEXT");
-    for (const [col] of [["stripe_customer_id"], ["stripe_subscription_id"], ["abonnement_statut"], ["abonnement_periode"], ["abonnement_fin"], ["formule"]]) {
+    for (const [col] of [["stripe_customer_id"], ["stripe_subscription_id"], ["abonnement_statut"], ["abonnement_periode"], ["abonnement_fin"], ["formule"], ["modules"]]) {
       if (!cols.includes(col)) this.raw.exec(`ALTER TABLE households ADD COLUMN ${col} TEXT`);
     }
     for (const h of this.raw.prepare("SELECT id FROM households WHERE mcp_token IS NULL").all() as unknown as { id: string }[]) {
@@ -557,6 +564,28 @@ export class Db {
 
   householdByIcsToken(token: string): HouseholdRow | undefined {
     return this.raw.prepare("SELECT * FROM households WHERE ics_token = ?").get(token) as HouseholdRow | undefined;
+  }
+
+  /** Paid modules of the household (offre.ts), as a JSON array. */
+  getModules(id: string): string[] {
+    const r = this.raw.prepare("SELECT modules FROM households WHERE id = ?").get(id) as { modules: string | null } | undefined;
+    try { return r?.modules ? JSON.parse(r.modules) : []; } catch { return []; }
+  }
+  setModules(id: string, modules: string[]) {
+    this.raw.prepare("UPDATE households SET modules = ? WHERE id = ?").run(JSON.stringify(modules), id);
+  }
+  /** Household operations without professional accounts (declared in the budget space): the family budget is not the practice's. */
+  transactionsFoyer(household_id: string): TransactionRow[] {
+    const exclus = new Set(this.getModuleData<{ comptes_exclus?: string[] }>(household_id, "budget")?.comptes_exclus ?? []);
+    return this.listTransactions(household_id).filter((t) => !t.compte || !exclus.has(t.compte));
+  }
+  getModuleData<T>(household_id: string, espace: string): T | null {
+    const r = this.raw.prepare("SELECT donnees FROM module_data WHERE household_id = ? AND espace = ?").get(household_id, espace) as { donnees: string } | undefined;
+    return r ? (JSON.parse(r.donnees) as T) : null;
+  }
+  setModuleData(household_id: string, espace: string, donnees: unknown) {
+    this.raw.prepare("INSERT INTO module_data (household_id, espace, donnees, maj_le) VALUES (?, ?, ?, ?) ON CONFLICT(household_id, espace) DO UPDATE SET donnees = excluded.donnees, maj_le = excluded.maj_le")
+      .run(household_id, espace, JSON.stringify(donnees), new Date().toISOString());
   }
 
   setHebdo(id: string, actif: boolean) {

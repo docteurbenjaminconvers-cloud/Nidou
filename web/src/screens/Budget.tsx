@@ -14,6 +14,11 @@ export function Budget({ api, charges, budget, household, go, onUpgrade, onChang
     <div className="screen">
       <div className="top"><div><h1>Budget</h1><p className="sub">Vos dépenses réelles et vos charges fixes, avec les économies à portée de main</p></div><Bell unread={unread} onClick={() => go("notifs")} /></div>
 
+      <button className="budget-expert-lien" onClick={() => go("espace", "budget")}>
+        <span><b>Budget expert</b><small>Compte de résultat, prévisionnel, bilan patrimonial, ratios et grand livre</small></span>
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M9 18l6-6-6-6" /></svg>
+      </button>
+
       <Spending api={api} budget={budget} household={household} go={go} onChanged={onChanged} onUpgrade={onUpgrade} toast={toast} />
 
       <div className="section-head" style={{ marginTop: 8 }}><h2>Charges fixes d'après vos papiers</h2></div>

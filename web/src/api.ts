@@ -1,6 +1,12 @@
 import type { AssistantEtat, AssistantMessage, AssistantReponse } from "./types";
 import type { Activite, BankStatus, BudgetAction, BudgetReport, ChargesReport, Deadline, Doc, FamilleReport, Household, ImportResult, Member, Mesure, Temoin, Banque, BanquesReport, Veille, VeillesReport, VuePersonne } from "./types";
 import demoFamille from "./demo/famille.json";
+import { MODULES, PACKS, SOCLE, SOCLE_INCLUT, droits, normaliser, type Espace, type ModuleId } from "../../server/src/offre";
+import { DEMO_BUDGET, grandLivre, rapportBudget, type DonneesBudget, type RapportBudget, type TxB } from "../../server/src/budgetExpert";
+import { COMPTE_PRO_DEMO, demoComptePro, demoPro, rapportPro, type DonneesPro, type RapportPro } from "../../server/src/viePro";
+import { DEMO_LOCATIF, demoLoyers, rapportLocatif, type DonneesLocatif, type RapportLocatif } from "../../server/src/locatif";
+import { lireReleveDemo } from "../../server/src/categorie";
+import { demoStatement } from "../../server/src/seed-statement";
 import { etatDossiers } from "../../server/src/dossiers";
 import { grandMenage } from "../../server/src/conservation";
 import { scenarios } from "../../server/src/urgence";
@@ -63,6 +69,13 @@ export interface Api {
   assistantOption(actif: boolean): Promise<AssistantEtat>;
   renommer(nom: string): Promise<void>;
   setHebdo(actif: boolean): Promise<void>;
+  /** The offer (socle, modules, packs) and the household's modules. */
+  offre(): Promise<OffreEtat>;
+  choisirModules(modules: ModuleId[], pack: string | null): Promise<{ souscrits: ModuleId[]; actifs: ModuleId[] }>;
+  /** A paid space: its stored data, the report computed on the household's operations, and the bank accounts seen. */
+  espace<E extends Espace>(e: E): Promise<EspaceReponse<E>>;
+  sauverEspace<E extends Espace>(e: E, donnees: EspaceDonnees[E]): Promise<void>;
+  grandLivre(): Promise<string>;
   agendaLien(): Promise<{ url: string }>;
   agendaLienNouveau(): Promise<{ url: string }>;
   checkout(formule: "solo" | "duo" | "tribu", periode: "mensuel" | "annuel"): Promise<{ url: string; simule: boolean }>;
@@ -164,6 +177,11 @@ const serverApi: Api = {
   assistantOption: async (actif) => (await call<{ etat: AssistantEtat }>("/abonnement/assistant", json({ actif }))).etat,
   renommer: async (nom) => { await call("/household", json({ nom }, "PATCH")); },
   setHebdo: async (hebdo) => { await call("/household", json({ hebdo }, "PATCH")); },
+  offre: () => call("/offre"),
+  choisirModules: (modules, pack) => call("/offre/modules", json({ modules, pack })),
+  espace: (e) => call(`/espaces/${e}`),
+  sauverEspace: async (e, donnees) => { await call(`/espaces/${e}`, json(donnees, "PUT")); },
+  grandLivre: async () => { const r = await fetch("/api/espaces/budget/grand-livre.csv"); if (!r.ok) throw new ApiError(r.status, "erreur", "Export impossible"); return r.text(); },
   agendaLien: () => call("/agenda-lien"),
   agendaLienNouveau: () => call("/agenda-lien", { method: "POST" }),
   checkout: (formule, periode) => call("/abonnement/checkout", json({ formule, periode })),
@@ -310,6 +328,7 @@ function makeDemoApi(): Api {
     assistantOption: async (actif) => { state.assistantOption = actif; return assistantEtatDemo(state); },
     renommer: async (nom) => { state.household.nom = nom; },
     setHebdo: async (hebdo) => { state.household.hebdo = hebdo; },
+    ...makeEspacesDemo(state),
     agendaLien: async () => ({ url: "" }),
     agendaLienNouveau: async () => ({ url: "" }),
     checkout: async (formule, periode) => { state.household.plan = "famille"; state.household.plan_souscrit = "famille"; state.household.capacite_comptes = { solo: 1, duo: 2, tribu: 6 }[formule]; state.household.abonnement = { stripe: false, statut: "simule", formule, periode, fin: new Date(Date.now() + (periode === "annuel" ? 365 : 30) * 864e5).toISOString().slice(0, 10), prix: { mensuel: 9.9, annuel: 99 }, gerable: false }; return { url: "", simule: true }; },
@@ -530,5 +549,36 @@ function assistantDemo(q: string, docs: Doc[], deadlines: Deadline[], charges: C
   return {
     reponse: "Dans cette démo, je réponds aux questions sur les échéances, les économies, l'assurance auto, les papiers d'identité, le fonctionnement de l'appli, et je prépare des courriers de résiliation. Avec le serveur Lucien, l'assistant lit tous vos papiers.",
     liens: [], courrier: null,
+  };
+}
+
+// ---------- offre et espaces payants ----------
+
+export type EspaceDonnees = { budget: DonneesBudget; pro: DonneesPro; locatif: DonneesLocatif };
+export type EspaceRapport = { budget: RapportBudget; pro: RapportPro; locatif: RapportLocatif };
+export interface EspaceReponse<E extends Espace> { donnees: EspaceDonnees[E]; rapport: EspaceRapport[E]; comptes: string[] }
+export interface OffreEtat { socle: typeof SOCLE; socle_inclut: string[]; modules: typeof MODULES; packs: typeof PACKS; souscrits: ModuleId[]; actifs: ModuleId[]; paiement: boolean }
+export type { Espace, ModuleId };
+
+/** Demo: the same pure functions as the server, on the Martin family's fictional accounts. */
+function makeEspacesDemo(state: { household: Household; famille: FamilleReport; docs: Doc[] }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const txs: TxB[] = [...lireReleveDemo(demoStatement(today), "Compte joint"), ...demoComptePro(today), ...demoLoyers(today)];
+  const moi = state.famille.membres.find((m) => m.prenom === "Moi")?.id ?? null;
+  const camille = state.famille.membres.find((m) => m.prenom === "Camille")?.id ?? null;
+  const donnees: EspaceDonnees = { budget: { ...DEMO_BUDGET, comptes_exclus: [COMPTE_PRO_DEMO] }, pro: demoPro({ moi, camille }, today), locatif: structuredClone(DEMO_LOCATIF) };
+  let souscrits: ModuleId[] = [];
+  const actifs = () => [...droits({ plan: state.household.plan, essai_actif: !!state.household.essai?.actif, modules: souscrits })];
+  const rapport = <E extends Espace>(e: E): EspaceRapport[E] => (e === "budget" ? rapportBudget(txs, donnees.budget, today) : e === "pro" ? rapportPro(donnees.pro, txs, state.docs, today) : rapportLocatif(donnees.locatif, txs, today)) as EspaceRapport[E];
+  return {
+    offre: async (): Promise<OffreEtat> => ({ socle: SOCLE, socle_inclut: SOCLE_INCLUT, modules: MODULES, packs: PACKS, souscrits, actifs: actifs(), paiement: true }),
+    choisirModules: async (modules: ModuleId[], pack: string | null) => {
+      souscrits = normaliser([...(PACKS.find((p) => p.id === pack)?.modules ?? []), ...modules]);
+      state.household.plan = "famille";
+      return { souscrits, actifs: actifs() };
+    },
+    espace: async <E extends Espace>(e: E): Promise<EspaceReponse<E>> => ({ donnees: structuredClone(donnees[e]), rapport: rapport(e), comptes: [...new Set(txs.map((t) => t.compte).filter((c): c is string => !!c))] }),
+    sauverEspace: async <E extends Espace>(e: E, d: EspaceDonnees[E]) => { (donnees as Record<Espace, unknown>)[e] = structuredClone(d); },
+    grandLivre: async () => grandLivre(txs, donnees.budget),
   };
 }

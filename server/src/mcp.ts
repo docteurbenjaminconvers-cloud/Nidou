@@ -199,7 +199,7 @@ export function createMcpServer(db: Db, householdId: string) {
     },
     async () => {
       log("analyse_depenses", {});
-      const r = budgetReport(db.listTransactions(householdId), db.listDocuments(householdId), db.listDecisions(householdId));
+      const r = budgetReport(db.transactionsFoyer(householdId), db.listDocuments(householdId), db.listDecisions(householdId));
       const { recurrences, ...rest } = r;
       return text({ ...rest, recurrences: recurrences.map((x) => ({ marchand: x.marchand, categorie: x.categorie, mensuel: x.mensuel_equivalent, jour: x.jour_du_mois, contrat_connu: Boolean(x.contrat_id) })) });
     }

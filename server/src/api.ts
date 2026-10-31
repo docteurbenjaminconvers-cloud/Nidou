@@ -18,6 +18,7 @@ import { envoyerEmail } from "./mail.js";
 import { envoyerPush, pushOn } from "./push.js";
 import { appliquerAbonnement, capaciteComptes, creerCheckout, FORMULES, portail, resumeAbonnement, traiterWebhook, type Formule } from "./abonnement.js";
 import { pointDuFoyer } from "./hebdo.js";
+import { monterEspaces } from "./espaces.js";
 import { bordereau, etatDossiers, etatKit, KITS } from "./dossiers.js";
 import { zip } from "./zip.js";
 import { agendaIcs } from "./ics.js";
@@ -193,6 +194,9 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     return c.json({ ok: true });
   });
 
+  // ---------- offre et espaces payants (modules) ----------
+  monterEspaces(api, db, { household, isOwner });
+
   // ---------- abonnement (Stripe) ----------
   api.post("/abonnement/checkout", async (c) => {
     const h = household(c);
@@ -253,6 +257,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
       mcp_token: h.plan === "famille" ? db.getHousehold(h.id)!.mcp_token : null,
       utilisateur: currentUser(c),
       abonnement: resumeAbonnement(db.getHousehold(h.id)!),
+      modules: db.getModules(h.id),
       comptes: db.usersOfHousehold(h.id).length,
       capacite_comptes: capaciteComptes(db, db.getHousehold(h.id)!),
       assistant: etatAssistant(db, db.getHousehold(h.id)!),
@@ -642,7 +647,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
   // ---------- dépenses (relevés bancaires) ----------
   api.get("/budget", (c) => {
     const h = household(c);
-    const txs = db.listTransactions(h.id);
+    const txs = db.transactionsFoyer(h.id);
     const report = budgetReport(txs, db.listDocuments(h.id), db.listDecisions(h.id));
     if (h.plan === "gratuit") {
       // Free plan: the headline numbers and the two best actions.

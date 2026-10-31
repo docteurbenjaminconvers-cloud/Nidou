@@ -1,0 +1,241 @@
+/**
+ * Module « Vie pro » : pour chaque adulte du foyer, sa vie de salarié (contrat, avenants, bulletins contrôlés,
+ * cumul du net imposable) et/ou d'indépendant en BNC (livre des recettes et des dépenses tenu depuis le compte pro,
+ * dépenses classées dans les rubriques de la déclaration 2035, micro ou réel, échéances).
+ * Fonction pure, partagée appli/serveur. Repères fiscaux à vérifier chaque année (seuils, dates).
+ */
+import type { TxB } from "./budgetExpert.js";
+
+export interface Bulletin { mois: string; brut: number; net_paye: number; net_imposable: number }
+export interface Salarie { employeur: string; poste: string; type_contrat: "CDI" | "CDD" | "interim" | "apprentissage" | "autre"; date_entree: string; convention?: string | null; bulletins: Bulletin[] }
+export interface Independant { activite: string; regime: "bnc_2035" | "micro_bnc"; compte_pro: string; debut_activite?: string | null; rubriques?: Record<string, Rubrique> }
+export interface PersonnePro { member_id: string | null; prenom: string; salarie?: Salarie | null; independant?: Independant | null }
+export interface DonneesPro { personnes: PersonnePro[] }
+export const DONNEES_PRO_VIDES: DonneesPro = { personnes: [] };
+
+/** Rubriques de la déclaration 2035 (libellés du formulaire, ligne « 2035-A »). */
+export const RUBRIQUES = {
+  recettes: "Recettes encaissées",
+  achats: "Achats",
+  cet: "Contribution économique territoriale (CFE)",
+  autres_impots: "Autres impôts",
+  loyers: "Loyers et charges locatives",
+  location_materiel: "Location de matériel et de mobilier",
+  entretien: "Entretien et réparations",
+  petit_outillage: "Petit outillage",
+  energie: "Chauffage, eau, gaz, électricité",
+  honoraires: "Honoraires ne constituant pas des rétrocessions",
+  assurances: "Primes d'assurance",
+  vehicule: "Frais de véhicules",
+  deplacements: "Autres frais de déplacements",
+  sociales_obligatoires: "Charges sociales personnelles obligatoires",
+  sociales_facultatives: "Charges sociales personnelles facultatives (Madelin)",
+  reception: "Frais de réception, de représentation et de congrès",
+  fournitures: "Fournitures de bureau, documentation, correspondance et téléphone",
+  actes: "Frais d'actes et de contentieux",
+  cotisations_pro: "Cotisations syndicales et professionnelles",
+  divers_gestion: "Autres frais divers de gestion",
+  frais_financiers: "Frais financiers",
+  immobilisation: "À immobiliser et amortir (achat de plus de 500 € HT)",
+  prelevements: "Prélèvements personnels (non déductibles)",
+  a_classer: "À classer",
+} as const;
+export type Rubrique = keyof typeof RUBRIQUES;
+
+const REGLES: [RegExp, Rubrique][] = [
+  [/vir(ement)? (vers|pour)? ?(compte joint|perso|personnel|m\.? ?martin|mme)/i, "prelevements"],
+  [/urssaf|carpimko|carmf|cipav|carcdsf|cavp|carpv|cnbf|crpcen|cavamac|cavec/i, "sociales_obligatoires"],
+  [/madelin|prevoyance|retraite complementaire facultative/i, "sociales_facultatives"],
+  [/\bcfe\b|cotisation fonciere/i, "cet"],
+  [/scm|loyer|bail|cabinet/i, "loyers"],
+  [/macsf|hiscox|rcp|responsabilite civile|assurance/i, "assurances"],
+  [/edf|engie|total ?energies? (gaz|elec)|veolia|eau\b/i, "energie"],
+  [/total|esso|shell|bp\b|carburant|peage|vinci|aprr|garage|norauto|midas|parking/i, "vehicule"],
+  [/sncf|air france|easyjet|hotel|ibis|uber\b|taxi/i, "deplacements"],
+  [/ordre des|syndicat|urps|fnmk|csmf|cotisation (ordinale|professionnelle)/i, "cotisations_pro"],
+  [/comptable|expert.?comptable|\baga\b|\boga\b|association de gestion/i, "honoraires"],
+  [/frais|commission|tenue de compte|cotisation carte|agios|interets/i, "frais_financiers"],
+  [/orange|sfr|bouygues|free\b|sosh|la poste|bureau vallee|fournitures|papeterie|amazon|fnac/i, "fournitures"],
+  [/doctolib|logiciel|abonnement|microsoft|google workspace|ovh|stripe fee|sumup fee/i, "divers_gestion"],
+  [/restaurant|brasserie|traiteur|congres|seminaire/i, "reception"],
+  [/huissier|avocat|greffe|notaire/i, "actes"],
+];
+
+/** Class of a professional bank line, for the 2035. Manual choices (by label) win. */
+export function rubriqueDe(t: TxB, forcees: Record<string, Rubrique> = {}): Rubrique {
+  const k = cleLibelle(t.libelle);
+  if (forcees[k]) return forcees[k];
+  if (t.montant > 0) return /vir(ement)? (de|depuis) (compte joint|perso)/i.test(t.libelle) ? "a_classer" : "recettes";
+  for (const [re, r] of REGLES) if (re.test(t.libelle)) return r === "fournitures" && t.montant <= -600 ? "immobilisation" : r;
+  return t.montant <= -600 ? "immobilisation" : "a_classer";
+}
+export const cleLibelle = (l: string) => l.toUpperCase().replace(/\d{2}\/\d{2}|\d{4,}/g, "").replace(/\s+/g, " ").trim();
+
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
+/** Micro-BNC: ceiling by year of income, 34 % allowance (305 € minimum). Revenus 2023-2025: 77 700 €; 2026-2028: 83 600 €. */
+export const seuilMicroBnc = (annee: number) => (annee >= 2026 ? 83600 : 77700);
+export const ABATTEMENT_MICRO_BNC = 0.34;
+
+/** Online deadline of the 2035: second working day after 1 May, plus 15 days (rule announced each year; check it). */
+export function limite2035(anneeDepot: number): string {
+  const d = new Date(Date.UTC(anneeDepot, 4, 1));
+  let ouvres = 0;
+  while (ouvres < 2) { d.setUTCDate(d.getUTCDate() + 1); const j = d.getUTCDay(); if (j !== 0 && j !== 6 && !(d.getUTCMonth() === 4 && d.getUTCDate() === 8)) ouvres++; }
+  d.setUTCDate(d.getUTCDate() + 15);
+  return d.toISOString().slice(0, 10);
+}
+
+export interface RapportSalarie {
+  employeur: string; poste: string; type_contrat: string; anciennete_ans: number;
+  annee: number; cumul_net_imposable: number; cumul_net_paye: number; dernier: Bulletin | null;
+  manquants: string[]; anomalies: { mois: string; texte: string }[];
+  verses: { mois: string; montant: number; date: string }[]; // salary seen on the bank account
+}
+export interface RapportIndependant {
+  activite: string; regime: "bnc_2035" | "micro_bnc"; annee: number; compte_pro: string;
+  recettes: number; depenses: number; benefice: number; prelevements: number;
+  par_rubrique: { rubrique: Rubrique; libelle: string; montant: number; nb: number }[];
+  a_classer: { date: string; libelle: string; montant: number }[];
+  immobilisations: { date: string; libelle: string; montant: number }[];
+  livre: { date: string; libelle: string; montant: number; rubrique: Rubrique }[];
+  micro: { eligible: boolean; seuil: number; base_micro: number; base_reel: number; conseil: string };
+  echeances: { date: string; titre: string; detail: string }[];
+}
+export interface RapportPro { personnes: { member_id: string | null; prenom: string; salarie: RapportSalarie | null; independant: RapportIndependant | null }[]; papiers: { id: string; title: string; type: "contrat" | "avenant" | "bulletin" | "attestation" }[] }
+
+const moisListe = (de: string, a: string) => { const out: string[] = []; let [y, m] = de.split("-").map(Number); const [ya, ma] = a.split("-").map(Number); while (y < ya || (y === ya && m <= ma)) { out.push(`${y}-${String(m).padStart(2, "0")}`); m++; if (m > 12) { m = 1; y++; } } return out; };
+const moisPrec = (m: string) => { const [y, mo] = m.split("-").map(Number); return mo === 1 ? `${y - 1}-12` : `${y}-${String(mo - 1).padStart(2, "0")}`; };
+
+export function rapportSalarie(s: Salarie, txs: TxB[], today: string): RapportSalarie {
+  const annee = Number(today.slice(0, 4));
+  const bs = [...s.bulletins].sort((a, b) => a.mois.localeCompare(b.mois));
+  const del = bs.filter((b) => b.mois.startsWith(String(annee)));
+  const dernierMois = moisPrec(today.slice(0, 7));
+  const debut = s.date_entree.slice(0, 7) > `${annee}-01` ? s.date_entree.slice(0, 7) : `${annee}-01`;
+  const manquants = moisListe(debut, dernierMois).filter((m) => !bs.some((b) => b.mois === m));
+  const nets = del.map((b) => b.net_paye).sort((a, b) => a - b);
+  const mediane = nets.length ? nets[Math.floor(nets.length / 2)] : 0;
+  const anomalies: RapportSalarie["anomalies"] = [];
+  for (const b of del) {
+    if (b.net_imposable > b.brut) anomalies.push({ mois: b.mois, texte: "Net imposable supérieur au brut : un chiffre est mal lu ou mal saisi." });
+    else if (mediane && Math.abs(b.net_paye - mediane) / mediane > 0.15) anomalies.push({ mois: b.mois, texte: `Net payé ${b.net_paye > mediane ? "plus élevé" : "plus bas"} que d'habitude (${Math.round(b.net_paye)} € pour ${Math.round(mediane)} €) : prime, absence, régularisation ? Un coup d'œil suffit.` });
+  }
+  const mot = s.employeur.split(/\s+/).filter((w) => w.length > 3).map((w) => w.toUpperCase());
+  const verses = txs.filter((t) => t.montant > 0 && /salaire|paie/i.test(t.libelle) && mot.some((w) => t.libelle.toUpperCase().includes(w)))
+    .map((t) => ({ mois: t.date.slice(0, 7), montant: t.montant, date: t.date }));
+  const ent = new Date(s.date_entree + "T00:00:00Z"), auj = new Date(today + "T00:00:00Z");
+  return {
+    employeur: s.employeur, poste: s.poste, type_contrat: s.type_contrat,
+    anciennete_ans: Math.max(0, Math.floor((auj.getTime() - ent.getTime()) / (365.25 * 864e5))),
+    annee, cumul_net_imposable: r2(del.reduce((x, b) => x + b.net_imposable, 0)), cumul_net_paye: r2(del.reduce((x, b) => x + b.net_paye, 0)),
+    dernier: bs.at(-1) ?? null, manquants, anomalies, verses,
+  };
+}
+
+export function rapportIndependant(i: Independant, txs: TxB[], today: string): RapportIndependant {
+  const annee = Number(today.slice(0, 4));
+  const ops = txs.filter((t) => t.compte === i.compte_pro && t.date.startsWith(String(annee)));
+  const livre = ops.map((t) => ({ date: t.date, libelle: t.libelle, montant: t.montant, rubrique: rubriqueDe(t, i.rubriques) })).sort((a, b) => a.date.localeCompare(b.date));
+  const tot = new Map<Rubrique, { montant: number; nb: number }>();
+  for (const l of livre) { const x = tot.get(l.rubrique) ?? { montant: 0, nb: 0 }; x.montant = r2(x.montant + Math.abs(l.montant)); x.nb++; tot.set(l.rubrique, x); }
+  const recettes = tot.get("recettes")?.montant ?? 0;
+  const horsDeductible: Rubrique[] = ["recettes", "prelevements", "a_classer", "immobilisation"];
+  const depenses = r2([...tot].filter(([r]) => !horsDeductible.includes(r)).reduce((s, [, v]) => s + v.montant, 0));
+  const benefice = r2(recettes - depenses);
+  const seuil = seuilMicroBnc(annee);
+  const base_micro = r2(Math.max(recettes * (1 - ABATTEMENT_MICRO_BNC), Math.min(recettes, 305)));
+  const eligible = recettes <= seuil;
+  const conseil = !eligible
+    ? `Recettes au-dessus de ${seuil.toLocaleString("fr-FR")} € : la déclaration contrôlée (2035) s'impose.`
+    : benefice < base_micro
+      ? `Au réel (2035), vous déclarez ${Math.round(base_micro - benefice).toLocaleString("fr-FR")} € de moins qu'en micro à ce stade de l'année : vos charges dépassent l'abattement de 34 %.`
+      : `En micro, l'abattement de 34 % dépasse vos charges réelles : le micro-BNC vous ferait déclarer ${Math.round(benefice - base_micro).toLocaleString("fr-FR")} € de moins à ce stade.`;
+  const lim = limite2035(annee + 1);
+  const echeances = [
+    { date: `${annee}-12-15`, titre: "CFE à payer", detail: "Cotisation foncière des entreprises, avis dans votre espace professionnel impots.gouv.fr." },
+    ...(i.regime === "bnc_2035" ? [{ date: lim, titre: `Déclaration 2035 des revenus ${annee}`, detail: "En ligne, avec ses annexes 2035-A et 2035-B. Date limite indicative : elle est fixée chaque année." }] : []),
+    { date: lim, titre: "Report sur la 2042-C-PRO", detail: i.regime === "bnc_2035" ? "Le bénéfice de la 2035 se reporte sur la déclaration complémentaire des revenus." : "Les recettes encaissées se déclarent sur la 2042-C-PRO, l'abattement de 34 % est appliqué par l'administration." },
+  ].filter((e) => e.date >= today).sort((a, b) => a.date.localeCompare(b.date));
+  return {
+    activite: i.activite, regime: i.regime, annee, compte_pro: i.compte_pro,
+    recettes, depenses, benefice, prelevements: tot.get("prelevements")?.montant ?? 0,
+    par_rubrique: [...tot].map(([r, v]) => ({ rubrique: r, libelle: RUBRIQUES[r], ...v })).sort((a, b) => b.montant - a.montant),
+    a_classer: livre.filter((l) => l.rubrique === "a_classer").map(({ date, libelle, montant }) => ({ date, libelle, montant })),
+    immobilisations: livre.filter((l) => l.rubrique === "immobilisation").map(({ date, libelle, montant }) => ({ date, libelle, montant })),
+    livre, micro: { eligible, seuil, base_micro, base_reel: benefice, conseil }, echeances,
+  };
+}
+
+export function rapportPro(d: DonneesPro, txs: TxB[], docs: { id: string; title: string; category?: string }[], today = new Date().toISOString().slice(0, 10)): RapportPro {
+  const papiers = docs.flatMap((x) => {
+    const t = x.title.toLowerCase();
+    const type = /bulletin|fiche de paie|paie\b/.test(t) ? "bulletin" : /avenant/.test(t) ? "avenant" : /contrat de travail|\bcdi\b|\bcdd\b|promesse d.embauche/.test(t) ? "contrat" : /attestation (employeur|pole emploi|france travail)|certificat de travail|solde de tout compte/.test(t) ? "attestation" : null;
+    return type ? [{ id: x.id, title: x.title, type: type as "contrat" | "avenant" | "bulletin" | "attestation" }] : [];
+  });
+  return {
+    personnes: d.personnes.map((p) => ({ member_id: p.member_id, prenom: p.prenom, salarie: p.salarie ? rapportSalarie(p.salarie, txs, today) : null, independant: p.independant ? rapportIndependant(p.independant, txs, today) : null })),
+    papiers,
+  };
+}
+
+/** Livre des recettes et des dépenses (CSV « ; »), pour le comptable ou l'association de gestion agréée. */
+export function livreCsv(r: RapportIndependant): string {
+  const csv = (s: string) => (/[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
+  const l = ["Date;Libellé;Rubrique 2035;Recette;Dépense"];
+  for (const x of r.livre) { const v = Math.abs(x.montant).toFixed(2).replace(".", ","); l.push([x.date.split("-").reverse().join("/"), csv(x.libelle), csv(RUBRIQUES[x.rubrique]), x.montant > 0 ? v : "", x.montant < 0 ? v : ""].join(";")); }
+  return l.join("\r\n") + "\r\n";
+}
+
+// ---------- démo : Camille, kinésithérapeute salariée à mi-temps et libérale ----------
+
+export const COMPTE_PRO_DEMO = "Pro Camille";
+
+/** Fictional professional account of Camille, from January to `today`. */
+export function demoComptePro(today: string): TxB[] {
+  const out: TxB[] = [];
+  const annee = Number(today.slice(0, 4));
+  const add = (m: number, j: number, libelle: string, montant: number) => {
+    const date = `${annee}-${String(m).padStart(2, "0")}-${String(j).padStart(2, "0")}`;
+    if (date <= today) out.push({ date, libelle, montant, categorie: montant > 0 ? "revenus" : "autre", compte: COMPTE_PRO_DEMO });
+  };
+  for (let m = 1; m <= 12; m++) {
+    const saison = m === 8 ? 0.45 : m === 12 ? 0.8 : 1;
+    add(m, 6, "VIR CPAM HERAULT TIERS PAYANT", Math.round(1680 * saison + m * 7));
+    add(m, 14, "REMISE CB SUMUP PATIENTS", Math.round(1240 * saison + m * 11));
+    add(m, 22, "VIR CPAM HERAULT TIERS PAYANT", Math.round(1520 * saison));
+    add(m, 26, "VIR MUTUELLES TIERS PAYANT", Math.round(380 * saison));
+    add(m, 5, "PRLV URSSAF LANGUEDOC ROUSSILLON", -640);
+    add(m, 5, "PRLV CARPIMKO COTISATIONS", -415);
+    add(m, 1, "PRLV SCM CABINET KINE ECUSSON", -880);
+    add(m, 10, "PRLV MACSF RCP PRO", -31.5);
+    add(m, 12, "PRLV ORANGE PRO", -39.99);
+    add(m, 15, "CB DOCTOLIB ABONNEMENT", -139);
+    add(m, 18, "CB TOTALENERGIES RELAIS", -58.4);
+    add(m, 28, "FRAIS TENUE DE COMPTE PRO", -12);
+    add(m, 28, "VIR VERS COMPTE JOINT", -2800);
+    if (m % 3 === 0) add(m, 20, "CB BUREAU VALLEE MONTPELLIER", -46.8);
+  }
+  add(2, 9, "PRLV ORDRE DES MASSEURS KINESITHERAPEUTES", -330);
+  add(3, 17, "CB ALLTRICKS MATERIEL TABLE DE MASSAGE", -1290);
+  add(4, 3, "PRLV AGA LANGUEDOC ADHESION", -240);
+  add(6, 11, "CB FORMATION CONTINUE FIFPL", -180);
+  add(9, 24, "CB RESTAURANT LE CLOS", -64);
+  add(12, 14, "PRLV IMPOTS CFE", -412);
+  return out;
+}
+
+export function demoPro(memberIds: { moi: string | null; camille: string | null }, today: string): DonneesPro {
+  const annee = Number(today.slice(0, 4));
+  const mois = (m: number) => `${annee}-${String(m).padStart(2, "0")}`;
+  const dernier = Number(today.slice(5, 7)) - 1;
+  const bul = (net: number, brut: number, imp: number, sauf: number[] = [], prime: Record<number, number> = {}) =>
+    Array.from({ length: Math.max(0, dernier) }, (_, i) => i + 1).filter((m) => !sauf.includes(m)).map((m) => ({ mois: mois(m), brut: brut + (prime[m] ?? 0) * 1.3, net_paye: net + (prime[m] ?? 0), net_imposable: imp + (prime[m] ?? 0) * 1.03 }));
+  return {
+    personnes: [
+      { member_id: memberIds.moi, prenom: "Moi", salarie: { employeur: "Atelier Verdier", poste: "Responsable des achats, cadre", type_contrat: "CDI", date_entree: "2017-03-01", convention: "Syntec", bulletins: bul(2850, 3700, 2960, [7], { 6: 900 }) } },
+      { member_id: memberIds.camille, prenom: "Camille", salarie: { employeur: "Clinique Saint Roch", poste: "Masseur-kinésithérapeute, mi-temps", type_contrat: "CDI", date_entree: "2021-09-01", convention: "FHP", bulletins: bul(2100, 2690, 2180) },
+        independant: { activite: "Masseur-kinésithérapeute libérale", regime: "bnc_2035", compte_pro: COMPTE_PRO_DEMO, debut_activite: "2022-01-03" } },
+    ],
+  };
+}

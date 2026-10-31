@@ -28,7 +28,7 @@ for (const ext of ["", "-wal", "-shm"]) {
 }
 const db = new Db(join(DATA_DIR, "lucien.sqlite"));
 if (process.env.LUCIEN_SEED === "1" && !db.firstHousehold()) {
-  const h = seedDemo(db);
+  const h = seedDemo(db, { espaces: true });
   // Demo account: demo@monlucien.fr owns the demo household (log in with that address; the link is printed in the console without BREVO_API_KEY).
   db.joinHousehold(h.id, db.createUser("demo@monlucien.fr", "Moi").id, "proprietaire");
   const parsed = parseStatement(demoStatement(), "Compte joint (démo)");
