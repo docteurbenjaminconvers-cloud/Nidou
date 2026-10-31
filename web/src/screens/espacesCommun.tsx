@@ -140,3 +140,21 @@ export function EspacesCarte({ household, go }: { household: Household; go: (s: 
     </section>
   );
 }
+
+/** « Remplir tout seul » : choose a photo or a PDF of a payslip or a lease; Lucien reads it and fills the space. */
+export function LireDocument({ api, espace, libelle, opts, toast, onFait, primaire }: { api: Api; espace: "pro" | "locatif"; libelle: string; opts?: { member_id?: string | null; bien_id?: string | null }; toast: (m: string) => void; onFait: () => void; primaire?: boolean }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <label className={`btn ${primaire ? "" : "ghost"} lire-doc`} aria-busy={busy}>
+      {busy ? <><span className="spinner" /> Lucien lit…</> : <><Ico d="M4 7h3l2-3h6l2 3h3v13H4zM12 17a4 4 0 100-8 4 4 0 000 8z" size={18} /> {libelle}</>}
+      <input type="file" accept="image/*,application/pdf" hidden disabled={busy} onChange={async (e) => {
+        const f = e.target.files?.[0]; e.target.value = "";
+        if (!f) return;
+        setBusy(true);
+        try { const r = await api.lireEspace(espace, f, opts); toast(r.ia ? r.resume : `${r.resume} (lu sans IA : vérifiez les montants)`); onFait(); }
+        catch (x) { toast((x as Error).message); }
+        finally { setBusy(false); }
+      }} />
+    </label>
+  );
+}

@@ -2,13 +2,13 @@ import { useState } from "react";
 import type { Api } from "../api";
 import { livreCsv, MICRO, RUBRIQUES, cleLibelle, type PersonnePro, type RapportMicro, type Rubrique, type TypeMicro } from "../../../server/src/viePro";
 import { PartageComptablePanneau } from "./Comptable";
-import { Alertes, Champ, Chiffres, dateFr, EnTete, eur, moisCourt, telecharger, useEspace, Verrou } from "./espacesCommun";
+import { Alertes, Champ, Chiffres, dateFr, EnTete, eur, moisCourt, telecharger, useEspace, Verrou, LireDocument } from "./espacesCommun";
 
 const RUBRIQUES_CHOIX = (Object.keys(RUBRIQUES) as Rubrique[]).filter((r) => r !== "a_classer");
 
 /** Vie pro : salariés (contrat, bulletins, net imposable) et indépendants (livre, 2035, échéances). */
 export function EspacePro({ api, go, onBack, toast }: { api: Api; go: (s: string, id?: string) => void; onBack: () => void; toast: (m: string) => void }) {
-  const { data, ferme, err, sauver } = useEspace(api, "pro");
+  const { data, ferme, err, sauver, charger } = useEspace(api, "pro");
   const [i, setI] = useState(0);
   const [bul, setBul] = useState<{ mois: string; brut: string; net_paye: string; net_imposable: string } | null>(null);
   const [nouveau, setNouveau] = useState<"salarie" | "independant" | null>(null);
@@ -90,7 +90,7 @@ export function EspacePro({ api, go, onBack, toast }: { api: Api; go: (s: string
               <Champ label="Net imposable (€)"><input className="in" inputMode="decimal" value={bul.net_imposable} onChange={(e) => setBul({ ...bul, net_imposable: e.target.value })} /></Champ>
               <div style={{ display: "flex", gap: 10, marginTop: 10 }}><button className="btn" onClick={ajouterBulletin}>Ajouter</button><button className="btn ghost" onClick={() => setBul(null)}>Annuler</button></div>
             </div>
-          ) : <div className="row" style={{ display: "flex", gap: 10, marginTop: 12 }}><button className="btn ghost" onClick={() => setBul({ mois: sal.manquants[0] ?? ceMois, brut: "", net_paye: "", net_imposable: "" })}>Saisir un bulletin</button><button className="btn ghost" onClick={() => go("add")}>Photographier un bulletin</button></div>}
+          ) : <div className="row" style={{ display: "flex", gap: 10, marginTop: 12 }}><button className="btn ghost" onClick={() => setBul({ mois: sal.manquants[0] ?? ceMois, brut: "", net_paye: "", net_imposable: "" })}>Saisir un bulletin</button><LireDocument api={api} espace="pro" libelle="Photographier un bulletin" opts={{ member_id: p.member_id }} toast={toast} onFait={charger} /></div>}
           <p className="note">Bulletins, contrat et avenants se gardent jusqu'à la liquidation de la retraite : ils prouvent vos droits.</p>
         </section>
       )}
@@ -157,6 +157,7 @@ export function EspacePro({ api, go, onBack, toast }: { api: Api; go: (s: string
         <section className="section">
           {!nouveau ? (
             <div className="pills">
+              {!p.salarie && <LireDocument api={api} espace="pro" libelle="Lire un bulletin de salaire" opts={{ member_id: p.member_id }} toast={toast} onFait={charger} primaire />}
               {!p.salarie && <button className="pill" onClick={() => setNouveau("salarie")}>+ {p.prenom === "Moi" ? "Je suis salarié·e" : `${p.prenom} est salarié·e`}</button>}
               {!p.independant && <button className="pill" onClick={() => { setNouveau("independant"); setForm({ ...form, compte_pro: data.comptes[0] ?? "" }); }}>+ {p.prenom === "Moi" ? "J'ai une activité d'indépendant" : `${p.prenom} a une activité d'indépendant`}</button>}
             </div>

@@ -64,7 +64,7 @@ export function securiser(app: Hono) {
   // papers, photos and statements: 15 MB; any other request: 1 MB (refused before reading the body)
   app.use("/api/*", async (c, next) => {
     const p = new URL(c.req.url).pathname;
-    const lourd = (c.req.method === "POST" || c.req.method === "PUT") && /^\/api\/(documents|transactions\/import|members\/[^/]+\/photo|inbox|veilles)$/.test(p);
+    const lourd = (c.req.method === "POST" || c.req.method === "PUT") && /^\/api\/(documents|transactions\/import|members\/[^/]+\/photo|inbox|veilles|espaces\/(?:pro|locatif)\/lire)$/.test(p);
     return bodyLimit({ maxSize: lourd ? 15 * 1024 * 1024 + 64 * 1024 : 1024 * 1024, onError: trop })(c, next);
   });
 }

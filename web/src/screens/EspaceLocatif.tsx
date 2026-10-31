@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Api } from "../api";
 import { quittance, relance, SOURCE_IRL, type Bail, type Bien, type Encaissement } from "../../../server/src/locatif";
-import { Alertes, Champ, Chiffres, dateFr, EnTete, eur, Feuille, moisCourt, nouvelId, pct, useEspace, Verrou } from "./espacesCommun";
+import { Alertes, Champ, Chiffres, dateFr, EnTete, eur, Feuille, moisCourt, nouvelId, pct, useEspace, Verrou, LireDocument } from "./espacesCommun";
 
 const STATUT: Record<Encaissement["statut"], string> = { paye: "payé", partiel: "partiel", impaye: "impayé", a_venir: "à venir" };
 const BIEN_VIDE = { tourisme: "", structure_id: "", sci_nom: "", sci_regime: "ir", sci_parts: "100", nom: "", adresse: "", type: "appartement", meuble: false, prix_achat: "", taxe_fonciere: "", assurance_pno: "", charges_non_recuperables: "", credit_mensualite: "", interets_annuels: "", dpe: "D", dpe_date: "" };
@@ -9,7 +9,7 @@ const BAIL_VIDE = { locataire: "", loyer_hc: "", charges: "", debut: "", irl_tri
 
 /** Patrimoine locatif : biens, loyers rapprochés de la banque, quittances, relances, IRL, DPE, fiscalité. */
 export function EspaceLocatif({ api, go, onBack, toast }: { api: Api; go: (s: string, id?: string) => void; onBack: () => void; toast: (m: string) => void }) {
-  const { data, ferme, err, sauver } = useEspace(api, "locatif");
+  const { data, ferme, err, sauver, charger } = useEspace(api, "locatif");
   const [doc, setDoc] = useState<{ titre: string; texte: string; fichier: string } | null>(null);
   const [ajoutBien, setAjoutBien] = useState(false);
   const [bienF, setBienF] = useState(BIEN_VIDE);
@@ -151,7 +151,12 @@ export function EspaceLocatif({ api, go, onBack, toast }: { api: Api; go: (s: st
             <div style={{ display: "flex", gap: 10, marginTop: 10 }}><button className="btn" onClick={enregistrerBien}>Ajouter le bien</button><button className="btn ghost" onClick={() => setAjoutBien(false)}>Annuler</button></div>
           </div>
         </section>
-      ) : <button className="btn ghost block" style={{ marginTop: 16 }} onClick={() => setAjoutBien(true)}>Ajouter un bien</button>}
+      ) : (
+        <div className="lire-ligne">
+          <LireDocument api={api} espace="locatif" libelle="Lire un bail" toast={toast} onFait={charger} primaire />
+          <button className="btn ghost" onClick={() => setAjoutBien(true)}>Saisir un bien</button>
+        </div>
+      )}
 
       {(r.fiscal.nu || r.fiscal.meuble || r.fiscal.tourisme.length > 0 || r.fiscal.sci.length > 0) && (
         <section className="section">

@@ -869,3 +869,7 @@ b, strong { font-weight: 800; }
 .suppr-prevue .t { color: var(--ember); }
 .consentement { display: flex; gap: 10px; align-items: flex-start; margin: 12px 0; padding: 12px 14px; border-radius: 14px; background: var(--paper, #fbf3f6); font-size: 13.5px; line-height: 1.45; }
 .consentement input { margin-top: 3px; width: 18px; height: 18px; flex: none; }
+.lire-doc { cursor: pointer; gap: 8px; }
+.lire-doc[aria-busy="true"] { opacity: .8; pointer-events: none; }
+.lire-ligne { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+.lire-ligne > * { flex: 1 1 160px; }

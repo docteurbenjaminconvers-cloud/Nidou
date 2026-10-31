@@ -11,9 +11,13 @@ import { DONNEES_BUDGET_VIDES, grandLivre, rapportBudget, type DonneesBudget } f
 import { livreCsv, rapportIndependant, rapportPro, type DonneesPro } from "./viePro.js";
 import { randomBytes } from "node:crypto";
 import { rapportLocatif, type DonneesLocatif } from "./locatif.js";
+import { appliquerBail, appliquerBulletin, lire } from "./lecture.js";
+import { budgetIa, coutAppel } from "./iaBudget.js";
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { changerModules, paiementDisponible, PaiementIndisponible, ConsentementRequis } from "./abonnement.js";
 
-type Ctx = { household: (c: any) => { id: string; nom: string; plan: string; essai_jours_restants: number | null; plan_souscrit: string; essai_fin: string | null }; isOwner: (c: any) => boolean; email: (c: any) => string | null };
+type Ctx = { household: (c: any) => { id: string; nom: string; plan: string; essai_jours_restants: number | null; plan_souscrit: string; essai_fin: string | null }; isOwner: (c: any) => boolean; email: (c: any) => string | null; uploadDir?: string };
 
 const MODULE_IDS = Object.keys(MODULES) as [ModuleId, ...ModuleId[]];
 const num = z.number().finite();
@@ -136,6 +140,56 @@ export function monterEspaces(api: Hono<any>, db: Db, ctx: Ctx) {
     const d = schemas[e].parse(await c.req.json());
     db.setModuleData(ctx.household(c).id, e, d);
     return c.json({ ok: true });
+  });
+
+  /**
+   * « Remplir tout seul » : a payslip (Vie pro) or a lease (Patrimoine locatif) is read and added to the space;
+   * the original is kept in Papiers. Form fields: file, and member_id (payslip) or bien_id (lease, optional).
+   */
+  api.post("/espaces/:espace/lire", async (c) => {
+    const e = c.req.param("espace") as Espace;
+    if (e !== "pro" && e !== "locatif") return c.json({ error: "introuvable" }, 404);
+    if (!verifier(c, e)) return refus(c, e);
+    const h = ctx.household(c);
+    const form = await c.req.formData();
+    const f = form.get("file");
+    if (!(f instanceof File)) return c.json({ error: "fichier", message: "Ajoutez une photo ou un PDF." }, 400);
+    const mime = f.type || "application/octet-stream";
+    if (!/^(application\/pdf|image\/(jpeg|png|webp|heic|heif)|text\/plain)$/.test(mime)) return c.json({ error: "type_fichier", message: "Une photo ou un PDF, s'il vous plaît." }, 415);
+    const buf = Buffer.from(await f.arrayBuffer());
+    const entree = mime.startsWith("text/") ? { texte: buf.toString("utf8") } : { base64: buf.toString("base64"), mime };
+    const budget = budgetIa(db, h.id);
+    const quoi = e === "pro" ? "bulletin" : "bail";
+    const { lu, ia } = await lire(quoi, entree, budget.ok(coutAppel("precis")));
+    if (ia) budget.compter(coutAppel("precis"), true);
+    try {
+      let resume: string, titre: string;
+      if (e === "pro") {
+        const mid = String(form.get("member_id") ?? "") || null;
+        const m = mid ? db.getMember(mid) : undefined;
+        if (mid && (!m || m.household_id !== h.id)) return c.json({ error: "introuvable" }, 404);
+        const r = appliquerBulletin(donnees(h.id, "pro", h.nom) as DonneesPro, { member_id: mid, prenom: m?.prenom ?? "Moi" }, lu as never);
+        db.setModuleData(h.id, "pro", r.donnees); resume = r.resume;
+        const l = lu as { mois: string | null; employeur: string | null };
+        titre = `Bulletin de salaire ${l.mois ? new Date(`${l.mois}-15`).toLocaleDateString("fr-FR", { month: "long", year: "numeric" }) : ""}${l.employeur ? ` — ${l.employeur}` : ""}`.trim();
+      } else {
+        const r = appliquerBail(donnees(h.id, "locatif", h.nom) as DonneesLocatif, lu as never, String(form.get("bien_id") ?? "") || null);
+        db.setModuleData(h.id, "locatif", r.donnees); resume = r.resume;
+        const l = lu as { locataire: string | null; adresse: string | null };
+        titre = `Bail${l.locataire ? ` de ${l.locataire}` : ""}${l.adresse ? ` — ${l.adresse.split(",")[0]}` : ""}`;
+      }
+      // the original goes to Papiers (a payslip is kept until retirement)
+      if (ctx.uploadDir) {
+        await mkdir(ctx.uploadDir, { recursive: true });
+        const fichier = `${Date.now()}-${f.name.replace(/[^\w.\-]+/g, "_")}`;
+        await writeFile(join(ctx.uploadDir, fichier), buf);
+        db.insertDocument({ household_id: h.id, member_id: null, title: titre.slice(0, 120), category: e === "pro" ? "autre" : "logement", organisme: null, numero_contrat: null,
+          montant: null, periodicite: null, date_document: null, date_debut: null, date_fin: null, preavis_jours: null, resume, texte: entree.texte ?? null, fichier, mime, confiance: (lu as { confiance: number }).confiance });
+      }
+      return c.json({ ok: true, resume, ia, lu });
+    } catch (err) {
+      return c.json({ error: "lecture_incomplete", message: (err as Error).message, ia, lu }, 422);
+    }
   });
 
   api.get("/espaces/budget/grand-livre.csv", (c) => {

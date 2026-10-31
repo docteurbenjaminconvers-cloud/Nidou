@@ -83,6 +83,8 @@ export interface Api {
   /** A paid space: its stored data, the report computed on the household's operations, and the bank accounts seen. */
   espace<E extends Espace>(e: E): Promise<EspaceReponse<E>>;
   sauverEspace<E extends Espace>(e: E, donnees: EspaceDonnees[E]): Promise<void>;
+  /** « Remplir tout seul » : a payslip (pro) or a lease (locatif) read and added to the space. */
+  lireEspace(e: "pro" | "locatif", fichier: File, opts?: { member_id?: string | null; bien_id?: string | null }): Promise<{ resume: string; ia: boolean }>;
   grandLivre(): Promise<string>;
   partagesPro(): Promise<PartageComptable[]>;
   creerPartagePro(member_id: string | null, nom: string | null): Promise<PartageComptable>;
@@ -214,6 +216,12 @@ const serverApi: Api = {
   choisirModules: (modules, pack, opts) => call("/offre/modules", json({ modules, pack, ...opts })),
   espace: (e) => call(`/espaces/${e}`),
   sauverEspace: async (e, donnees) => { await call(`/espaces/${e}`, json(donnees, "PUT")); },
+  lireEspace: (e, fichier, opts = {}) => {
+    const f = new FormData(); f.append("file", fichier);
+    if (opts.member_id) f.append("member_id", opts.member_id);
+    if (opts.bien_id) f.append("bien_id", opts.bien_id);
+    return call(`/espaces/${e}/lire`, { method: "POST", body: f });
+  },
   partagesPro: () => call("/espaces/pro/partages"),
   creerPartagePro: (member_id, nom) => call("/espaces/pro/partages", json({ member_id, nom })),
   revoquerPartagePro: async (token) => { await call(`/espaces/pro/partages/${token}`, { method: "DELETE" }); },
@@ -614,6 +622,7 @@ export interface PartageComptable { token: string; member_id: string | null; nom
 export interface VueComptable { prenom: string; nom_comptable: string | null; expire_le: string; independant: import("../../server/src/viePro").RapportIndependant }
 
 /** Demo: the same pure functions as the server, on the Martin family's fictional accounts. */
+const nouvelId = () => Math.random().toString(36).slice(2, 10);
 function makeEspacesDemo(state: { household: Household; famille: FamilleReport; docs: Doc[] }) {
   const today = new Date().toISOString().slice(0, 10);
   const txs: TxB[] = [...lireReleveDemo(demoStatement(today), "Compte joint"), ...demoComptePro(today), ...demoLoyers(today)];
@@ -634,6 +643,22 @@ function makeEspacesDemo(state: { household: Household; famille: FamilleReport; 
     },
     espace: async <E extends Espace>(e: E): Promise<EspaceReponse<E>> => ({ donnees: structuredClone(donnees[e]), rapport: rapport(e), comptes: [...new Set(txs.map((t) => t.compte).filter((c): c is string => !!c))] }),
     sauverEspace: async <E extends Espace>(e: E, d: EspaceDonnees[E]) => { (donnees as Record<Espace, unknown>)[e] = structuredClone(d); },
+    lireEspace: async (e: "pro" | "locatif", _f: File, opts: { member_id?: string | null; bien_id?: string | null } = {}) => {
+      await new Promise((r) => setTimeout(r, 900)); // the time of a reading
+      if (e === "pro") {
+        const p = donnees.pro.personnes.find((x) => x.member_id === opts.member_id && x.salarie) ?? donnees.pro.personnes.find((x) => x.salarie);
+        if (!p?.salarie) return { resume: "En démonstration, ajoutez d'abord un emploi salarié.", ia: false };
+        const faits = new Set(p.salarie.bulletins.map((b) => b.mois));
+        const der = [...p.salarie.bulletins].sort((a, b) => a.mois.localeCompare(b.mois)).at(-1)!;
+        let m = der.mois; for (let i = 0; i < 12; i++) { const d = new Date(`${m}-15`); d.setMonth(d.getMonth() - 1); const c = d.toISOString().slice(0, 7); if (!faits.has(c)) { m = c; break; } m = c; }
+        p.salarie.bulletins = [...p.salarie.bulletins, { ...der, mois: m }].sort((a, b) => a.mois.localeCompare(b.mois));
+        return { resume: `Bulletin de ${new Date(`${m}-15`).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })} lu et ajouté : net payé ${der.net_paye.toLocaleString("fr-FR")} € (démo)`, ia: true };
+      }
+      const id = nouvelId();
+      donnees.locatif.biens.push({ id, nom: "Studio rue Foch", adresse: "12 rue Foch, 34000 Montpellier", type: "studio", meuble: true, surface: 24, prix_achat: 0, dpe: "D", taxe_fonciere: 0, assurance_pno: 0, charges_non_recuperables: 0 });
+      donnees.locatif.baux.push({ id: nouvelId(), bien_id: id, locataire: "Léo Garnier", loyer_hc: 620, charges: 40, debut: (() => { const d = new Date(); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() + 1); return d.toISOString().slice(0, 10); })(), irl_trimestre: 4, depot_garantie: 1240, jour_paiement: 5 });
+      return { resume: "Bail de Léo Garnier lu et ajouté : 620 € hors charges (démo)", ia: true };
+    },
     grandLivre: async () => grandLivre(txs, donnees.budget),
     partagesPro: async () => partages,
     creerPartagePro: async (member_id: string | null, nom: string | null) => { const p = { token: Array.from(crypto.getRandomValues(new Uint8Array(24)), (b) => b.toString(16).padStart(2, "0")).join(""), member_id, nom, cree_le: new Date().toISOString(), expire_le: new Date(Date.now() + 365 * 864e5).toISOString() }; partages.unshift(p); return p; },

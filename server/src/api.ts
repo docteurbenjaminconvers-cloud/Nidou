@@ -286,7 +286,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
   });
 
   // ---------- offre et espaces payants (modules) ----------
-  monterEspaces(api, db, { household, isOwner, email: (c) => currentUser(c)?.email ?? null });
+  monterEspaces(api, db, { household, isOwner, email: (c) => currentUser(c)?.email ?? null, uploadDir: opts.uploadDir });
   monterPartenaires(api, db, { household });
 
   // ---------- abonnement (Stripe) ----------
