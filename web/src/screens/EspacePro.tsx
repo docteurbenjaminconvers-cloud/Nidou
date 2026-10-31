@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Api } from "../api";
 import { livreCsv, RUBRIQUES, cleLibelle, type PersonnePro, type Rubrique } from "../../../server/src/viePro";
+import { PartageComptablePanneau } from "./Comptable";
 import { Alertes, Champ, Chiffres, dateFr, EnTete, eur, moisCourt, telecharger, useEspace, Verrou } from "./espacesCommun";
 
 const RUBRIQUES_CHOIX = (Object.keys(RUBRIQUES) as Rubrique[]).filter((r) => r !== "a_classer");
@@ -137,6 +138,7 @@ export function EspacePro({ api, go, onBack, toast }: { api: Api; go: (s: string
               {ind.livre.slice().reverse().slice(0, 60).map((l, k) => <div key={k} className={l.montant > 0 ? "rec" : ""}><span>{dateFr(l.date)}</span><span>{l.libelle}<small>{RUBRIQUES[l.rubrique]}</small></span><b>{l.montant > 0 ? "+" : ""}{eur(l.montant, true)}</b></div>)}
             </div>
           )}
+          <PartageComptablePanneau api={api} memberId={p.member_id} prenom={p.prenom} toast={toast} />
           <p className="note">Lucien prépare et classe ; la déclaration reste la vôtre (ou celle de votre comptable). Seuils et dates à vérifier chaque année sur impots.gouv.fr.</p>
         </section>
       )}

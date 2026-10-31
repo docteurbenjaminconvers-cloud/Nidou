@@ -41,3 +41,26 @@ test("offre : souscrire un module est un paiement — impossible sans paiement e
   const d = await (await api.request("/offre/devis", json({ formule: "duo", periode: "annuel", modules: [], pack: "integral" }))).json();
   assert.equal(d.total, 319);
 });
+
+test("comptable : lien en lecture seule sur l'activité d'indépendant, sans session, révocable", async () => {
+  process.env.LUCIEN_AUTH = "0";
+  const db = new Db(":memory:");
+  const h = seedDemo(db, { espaces: true });
+  const api = createApi(db, { uploadDir: "/tmp/lucien-test-uploads" });
+  const moi = db.listMembers(h.id).find((m) => m.prenom === "Moi")!;
+  const camille = db.listMembers(h.id).find((m) => m.prenom === "Camille")!;
+  assert.equal((await api.request("/espaces/pro/partages", json({ member_id: moi.id }))).status, 400, "a salaried person has nothing to share");
+  const p = await (await api.request("/espaces/pro/partages", json({ member_id: camille.id, nom: "Cabinet Durand" }))).json();
+  assert.equal(p.token.length, 48);
+  process.env.LUCIEN_AUTH = "1"; // the accountant has no session
+  const v = await (await api.request(`/comptable/${p.token}`)).json();
+  assert.equal(v.prenom, "Camille"); assert.ok(v.independant.recettes > 0);
+  assert.ok(!JSON.stringify(v).includes("Atelier Verdier"), "never the payslips of the family");
+  assert.match(await (await api.request(`/comptable/${p.token}/livre.csv`)).text(), /^Date;Libellé;Rubrique 2035/);
+  process.env.LUCIEN_AUTH = "0";
+  await api.request(`/espaces/pro/partages/${p.token}`, { method: "DELETE" });
+  process.env.LUCIEN_AUTH = "1";
+  assert.equal((await api.request(`/comptable/${p.token}`)).status, 404);
+  assert.equal((await api.request("/comptable/nimporte")).status, 404);
+  process.env.LUCIEN_AUTH = "0";
+});

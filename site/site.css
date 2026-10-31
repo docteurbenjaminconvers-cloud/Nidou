@@ -417,3 +417,9 @@ html.intro-on { overflow: hidden; }
 .ms-prix em, .ps-prix em { font-style: normal; font-weight: 600; color: var(--ink); opacity: .7; font-size: 13px; }
 .ps-prix strong { font-family: var(--display); font-size: 24px; }
 .ps.star { background: var(--yolk-soft); border: 2px solid var(--nest); }
+
+/* Comptables */
+.comptables .wrap { max-width: 820px; }
+.cpt-liste { list-style: none; padding: 0; margin: 22px 0 26px; display: grid; gap: 10px; }
+.cpt-liste li { position: relative; padding-left: 30px; font-size: 17px; }
+.cpt-liste li::before { content: ""; position: absolute; left: 4px; top: 7px; width: 14px; height: 8px; border-left: 3px solid var(--nest); border-bottom: 3px solid var(--nest); transform: rotate(-45deg); }

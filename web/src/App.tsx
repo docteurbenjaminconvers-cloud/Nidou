@@ -1,3 +1,4 @@
+import { PageComptable } from "./screens/Comptable";
 import { Offre } from "./screens/Offre";
 import { EspaceBudget } from "./screens/EspaceBudget";
 import { EspacePro } from "./screens/EspacePro";
@@ -90,6 +91,7 @@ export default function App() {
 
   // The protected person's own page: no account, no household loaded, just her link.
   if (api && route.s === "consentement" && route.id) return <ConsentPage api={api} jeton={route.id.split("?")[0]} />;
+  if (api && route.s === "comptable" && route.id) return <PageComptable api={api} token={route.id} />;
   if (api && login !== false) return <Login api={api} erreur={login} />;
   if (api && pause) return (
     <div className="app"><div className="screen" style={{ minHeight: "85dvh", display: "flex", flexDirection: "column", justifyContent: "center", gap: 14 }}>

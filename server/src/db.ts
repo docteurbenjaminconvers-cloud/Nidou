@@ -267,6 +267,15 @@ CREATE TABLE IF NOT EXISTS transactions (
   empreinte TEXT NOT NULL UNIQUE,
   importe_le TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS partages_comptable (
+  token TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL REFERENCES households(id),
+  member_id TEXT,
+  nom TEXT,
+  cree_le TEXT NOT NULL,
+  expire_le TEXT NOT NULL,
+  revoque INTEGER NOT NULL DEFAULT 0
+);
 CREATE TABLE IF NOT EXISTS module_data (
   household_id TEXT NOT NULL REFERENCES households(id),
   espace TEXT NOT NULL,
@@ -578,6 +587,22 @@ export class Db {
   transactionsFoyer(household_id: string): TransactionRow[] {
     const exclus = new Set(this.getModuleData<{ comptes_exclus?: string[] }>(household_id, "budget")?.comptes_exclus ?? []);
     return this.listTransactions(household_id).filter((t) => !t.compte || !exclus.has(t.compte));
+  }
+  /** Read-only links a self-employed member gives to an accountant or approved management association. */
+  creerPartage(household_id: string, member_id: string | null, nom: string | null, token: string, jours = 365) {
+    const cree = new Date();
+    const expire = new Date(cree.getTime() + jours * 864e5);
+    this.raw.prepare("INSERT INTO partages_comptable (token, household_id, member_id, nom, cree_le, expire_le) VALUES (?, ?, ?, ?, ?, ?)").run(token, household_id, member_id, nom, cree.toISOString(), expire.toISOString());
+    return this.getPartage(token)!;
+  }
+  getPartage(token: string) {
+    return this.raw.prepare("SELECT * FROM partages_comptable WHERE token = ?").get(token) as { token: string; household_id: string; member_id: string | null; nom: string | null; cree_le: string; expire_le: string; revoque: number } | undefined;
+  }
+  listPartages(household_id: string) {
+    return this.raw.prepare("SELECT * FROM partages_comptable WHERE household_id = ? AND revoque = 0 AND expire_le > ? ORDER BY cree_le DESC").all(household_id, new Date().toISOString()) as { token: string; member_id: string | null; nom: string | null; cree_le: string; expire_le: string }[];
+  }
+  revoquerPartage(household_id: string, token: string) {
+    this.raw.prepare("UPDATE partages_comptable SET revoque = 1 WHERE token = ? AND household_id = ?").run(token, household_id);
   }
   getModuleData<T>(household_id: string, espace: string): T | null {
     const r = this.raw.prepare("SELECT donnees FROM module_data WHERE household_id = ? AND espace = ?").get(household_id, espace) as { donnees: string } | undefined;

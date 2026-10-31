@@ -8,7 +8,8 @@ import { z } from "zod";
 import type { Db } from "./db.js";
 import { devis, droits, ESPACES, MODULES, PACKS, SOCLE, SOCLE_INCLUT, type Espace, type ModuleId } from "./offre.js";
 import { DONNEES_BUDGET_VIDES, grandLivre, rapportBudget, type DonneesBudget } from "./budgetExpert.js";
-import { rapportPro, type DonneesPro } from "./viePro.js";
+import { livreCsv, rapportIndependant, rapportPro, type DonneesPro } from "./viePro.js";
+import { randomBytes } from "node:crypto";
 import { rapportLocatif, type DonneesLocatif } from "./locatif.js";
 import { changerModules, paiementDisponible, PaiementIndisponible } from "./abonnement.js";
 
@@ -127,5 +128,47 @@ export function monterEspaces(api: Hono<any>, db: Db, ctx: Ctx) {
     const h = ctx.household(c);
     const d = donnees(h.id, "budget", h.nom) as DonneesBudget;
     return new Response(grandLivre(transactions(h.id), d), { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="grand-livre-lucien.csv"`, "x-content-type-options": "nosniff" } });
+  });
+
+  // ---------- accès comptable (lecture seule, révocable, un an) ----------
+  api.get("/espaces/pro/partages", (c) => {
+    if (!verifier(c, "pro")) return refus(c, "pro");
+    return c.json(db.listPartages(ctx.household(c).id));
+  });
+  api.post("/espaces/pro/partages", async (c) => {
+    if (!verifier(c, "pro")) return refus(c, "pro");
+    const b = z.object({ member_id: z.string().max(60).nullable(), nom: z.string().max(120).nullable().optional() }).parse(await c.req.json());
+    const h = ctx.household(c);
+    const d = donnees(h.id, "pro", h.nom) as DonneesPro;
+    if (!d.personnes.some((p) => p.member_id === b.member_id && p.independant)) return c.json({ error: "saisie_invalide", message: "Seule une activité d'indépendant se partage avec un comptable." }, 400);
+    return c.json(db.creerPartage(h.id, b.member_id, b.nom?.trim() || null, randomBytes(24).toString("hex")), 201);
+  });
+  api.delete("/espaces/pro/partages/:token", (c) => {
+    db.revoquerPartage(ctx.household(c).id, c.req.param("token"));
+    return c.json({ ok: true });
+  });
+
+  /** The accountant's view: no session, only the secret link; the independent activity only (never payslips or the family). */
+  const vueComptable = (token: string) => {
+    const p = db.getPartage(token);
+    if (!p || p.revoque || p.expire_le < new Date().toISOString()) return null;
+    const h = db.getHousehold(p.household_id);
+    if (!h) return null;
+    const ok = droits({ plan: db.effectivePlan(h), essai_actif: db.effectivePlan(h) === "famille" && h.plan !== "famille", modules: db.getModules(h.id) as ModuleId[] });
+    if (!ok.has("vie_pro_independant")) return null;
+    const d = db.getModuleData<DonneesPro>(h.id, "pro");
+    const pers = d?.personnes.find((x) => x.member_id === p.member_id && x.independant);
+    if (!pers?.independant) return null;
+    const txs = transactions(h.id);
+    return { prenom: pers.prenom, nom_comptable: p.nom, expire_le: p.expire_le, independant: rapportIndependant(pers.independant, txs, new Date().toISOString().slice(0, 10)) };
+  };
+  api.get("/comptable/:token", (c) => {
+    const v = vueComptable(c.req.param("token"));
+    return v ? c.json(v) : c.json({ error: "introuvable", message: "Ce lien n'est plus valable : demandez-en un nouveau à votre client." }, 404);
+  });
+  api.get("/comptable/:token/livre.csv", (c) => {
+    const v = vueComptable(c.req.param("token"));
+    if (!v) return c.json({ error: "introuvable" }, 404);
+    return new Response(livreCsv(v.independant), { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="livre-${v.independant.annee}.csv"`, "x-content-type-options": "nosniff" } });
   });
 }

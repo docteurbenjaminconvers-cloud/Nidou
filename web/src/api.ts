@@ -3,7 +3,7 @@ import type { Activite, BankStatus, BudgetAction, BudgetReport, ChargesReport, D
 import demoFamille from "./demo/famille.json";
 import { MODULES, PACKS, SOCLE, SOCLE_INCLUT, droits, normaliser, type Espace, type ModuleId } from "../../server/src/offre";
 import { DEMO_BUDGET, grandLivre, rapportBudget, type DonneesBudget, type RapportBudget, type TxB } from "../../server/src/budgetExpert";
-import { COMPTE_PRO_DEMO, demoComptePro, demoPro, rapportPro, type DonneesPro, type RapportPro } from "../../server/src/viePro";
+import { COMPTE_PRO_DEMO, demoComptePro, demoPro, rapportIndependant, rapportPro, type DonneesPro, type RapportPro } from "../../server/src/viePro";
 import { DEMO_LOCATIF, demoLoyers, rapportLocatif, type DonneesLocatif, type RapportLocatif } from "../../server/src/locatif";
 import { lireReleveDemo } from "../../server/src/categorie";
 import { demoStatement } from "../../server/src/seed-statement";
@@ -76,6 +76,11 @@ export interface Api {
   espace<E extends Espace>(e: E): Promise<EspaceReponse<E>>;
   sauverEspace<E extends Espace>(e: E, donnees: EspaceDonnees[E]): Promise<void>;
   grandLivre(): Promise<string>;
+  partagesPro(): Promise<PartageComptable[]>;
+  creerPartagePro(member_id: string | null, nom: string | null): Promise<PartageComptable>;
+  revoquerPartagePro(token: string): Promise<void>;
+  /** Public page of the accountant (secret link, no session). */
+  vueComptable(token: string): Promise<VueComptable>;
   agendaLien(): Promise<{ url: string }>;
   agendaLienNouveau(): Promise<{ url: string }>;
   checkout(formule: "solo" | "duo" | "tribu", periode: "mensuel" | "annuel"): Promise<{ url: string; simule: boolean }>;
@@ -181,6 +186,10 @@ const serverApi: Api = {
   choisirModules: (modules, pack, opts) => call("/offre/modules", json({ modules, pack, ...opts })),
   espace: (e) => call(`/espaces/${e}`),
   sauverEspace: async (e, donnees) => { await call(`/espaces/${e}`, json(donnees, "PUT")); },
+  partagesPro: () => call("/espaces/pro/partages"),
+  creerPartagePro: (member_id, nom) => call("/espaces/pro/partages", json({ member_id, nom })),
+  revoquerPartagePro: async (token) => { await call(`/espaces/pro/partages/${token}`, { method: "DELETE" }); },
+  vueComptable: (token) => call(`/comptable/${token}`),
   grandLivre: async () => { const r = await fetch("/api/espaces/budget/grand-livre.csv"); if (!r.ok) throw new ApiError(r.status, "erreur", "Export impossible"); return r.text(); },
   agendaLien: () => call("/agenda-lien"),
   agendaLienNouveau: () => call("/agenda-lien", { method: "POST" }),
@@ -559,6 +568,8 @@ export type EspaceRapport = { budget: RapportBudget; pro: RapportPro; locatif: R
 export interface EspaceReponse<E extends Espace> { donnees: EspaceDonnees[E]; rapport: EspaceRapport[E]; comptes: string[] }
 export interface OffreEtat { socle: typeof SOCLE; socle_inclut: string[]; modules: typeof MODULES; packs: typeof PACKS; souscrits: ModuleId[]; actifs: ModuleId[]; paiement: boolean }
 export type { Espace, ModuleId };
+export interface PartageComptable { token: string; member_id: string | null; nom: string | null; cree_le: string; expire_le: string }
+export interface VueComptable { prenom: string; nom_comptable: string | null; expire_le: string; independant: import("../../server/src/viePro").RapportIndependant }
 
 /** Demo: the same pure functions as the server, on the Martin family's fictional accounts. */
 function makeEspacesDemo(state: { household: Household; famille: FamilleReport; docs: Doc[] }) {
@@ -568,6 +579,7 @@ function makeEspacesDemo(state: { household: Household; famille: FamilleReport; 
   const camille = state.famille.membres.find((m) => m.prenom === "Camille")?.id ?? null;
   const donnees: EspaceDonnees = { budget: { ...DEMO_BUDGET, comptes_exclus: [COMPTE_PRO_DEMO] }, pro: demoPro({ moi, camille }, today), locatif: structuredClone(DEMO_LOCATIF) };
   let souscrits: ModuleId[] = [];
+  let partages: PartageComptable[] = [];
   const actifs = () => [...droits({ plan: state.household.plan, essai_actif: !!state.household.essai?.actif, modules: souscrits })];
   const rapport = <E extends Espace>(e: E): EspaceRapport[E] => (e === "budget" ? rapportBudget(txs, donnees.budget, today) : e === "pro" ? rapportPro(donnees.pro, txs, state.docs, today) : rapportLocatif(donnees.locatif, txs, today)) as EspaceRapport[E];
   return {
@@ -580,5 +592,14 @@ function makeEspacesDemo(state: { household: Household; famille: FamilleReport; 
     espace: async <E extends Espace>(e: E): Promise<EspaceReponse<E>> => ({ donnees: structuredClone(donnees[e]), rapport: rapport(e), comptes: [...new Set(txs.map((t) => t.compte).filter((c): c is string => !!c))] }),
     sauverEspace: async <E extends Espace>(e: E, d: EspaceDonnees[E]) => { (donnees as Record<Espace, unknown>)[e] = structuredClone(d); },
     grandLivre: async () => grandLivre(txs, donnees.budget),
+    partagesPro: async () => partages,
+    creerPartagePro: async (member_id: string | null, nom: string | null) => { const p = { token: Array.from(crypto.getRandomValues(new Uint8Array(24)), (b) => b.toString(16).padStart(2, "0")).join(""), member_id, nom, cree_le: new Date().toISOString(), expire_le: new Date(Date.now() + 365 * 864e5).toISOString() }; partages.unshift(p); return p; },
+    revoquerPartagePro: async (token: string) => { partages = partages.filter((x) => x.token !== token); },
+    vueComptable: async (token: string) => {
+      const p = partages.find((x) => x.token === token);
+      const pers = donnees.pro.personnes.find((x) => x.independant && (!p || x.member_id === p.member_id));
+      if (!pers?.independant) throw new ApiError(404, "introuvable", "Ce lien n'est plus valable : demandez-en un nouveau à votre client.");
+      return { prenom: pers.prenom, nom_comptable: p?.nom ?? "Cabinet Durand (démo)", expire_le: p?.expire_le ?? new Date(Date.now() + 365 * 864e5).toISOString(), independant: rapportIndependant(pers.independant, txs, today) };
+    },
   };
 }

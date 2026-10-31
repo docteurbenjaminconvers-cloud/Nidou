@@ -842,3 +842,11 @@ b, strong { font-weight: 800; }
 .feuille-actions .btn { flex: 1; }
 
 .rubriques li b, .op b, .cr-ligne b, .bilan-ligne b { white-space: nowrap; }
+.partage-comptable { margin-top: 16px; padding: 14px; border-radius: 16px; background: var(--moss-soft); }
+.partage-comptable > b { display: block; font-size: 15px; }
+.partage-comptable > p { margin: 4px 0 6px; font-size: 13.5px; color: var(--mist); }
+.pc-ligne { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 6px 0; border-top: 1px solid rgba(0,0,0,.06); font-size: 14px; }
+.pc-ligne small { display: block; color: var(--mist); font-size: 12px; }
+.link.danger { color: var(--ember); }
+.comptable-page { max-width: 760px; margin: 0 auto; }
+.comptable-page .livre { max-height: none; }
