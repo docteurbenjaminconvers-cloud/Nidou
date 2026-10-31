@@ -5,7 +5,7 @@
  *   Socle      Solo 6,90 · Duo 9,90 · Tribu 13,90 €/mois  (papiers, échéances, famille, budget simple, point du dimanche…)
  *   Modules    Budget expert 3,90 · Vie pro Salarié 1,90 · Vie pro Indépendant 19,90 · Patrimoine locatif 4,90 (2 biens, +1,50/bien)
  *              Demander à Lucien 2,90 · Veille d'un proche 3,90 par proche
- *   Packs      Sérénité, Indépendant, Patrimoine, Intégral : remise sur les modules, prix arrondis en ,90
+ *   Packs      Sérénité, Indépendant, Patrimoine : remise sur les modules, prix arrondis en ,90 ; Intégral à prix fixe 29,90 · 32,90 · 36,90
  *   Annuel     10 × le mensuel (2 mois offerts)
  */
 
@@ -76,12 +76,12 @@ export const MODULES: Record<ModuleId, ModuleDef> = {
   },
 };
 
-export interface PackDef { id: string; nom: string; accroche: string; modules: ModuleId[]; remise: number; vedette?: boolean }
+export interface PackDef { id: string; nom: string; accroche: string; modules: ModuleId[]; remise: number; vedette?: boolean; prix?: Record<Formule, number> }
 export const PACKS: PackDef[] = [
   { id: "serenite", nom: "Sérénité", accroche: "Le foyer piloté comme une petite entreprise.", modules: ["budget_expert", "assistant"], remise: 0.25 },
   { id: "independant", nom: "Indépendant", accroche: "Vie perso et vie pro, enfin au même endroit.", modules: ["budget_expert", "vie_pro_independant", "assistant"], remise: 0.25 },
   { id: "patrimoine", nom: "Patrimoine", accroche: "Pour ceux qui louent un ou plusieurs biens.", modules: ["budget_expert", "locatif", "assistant"], remise: 0.3 },
-  { id: "integral", nom: "Intégral", accroche: "Tout Lucien, pour tout gérer.", modules: ["budget_expert", "vie_pro_independant", "locatif", "assistant"], remise: 0.3, vedette: true },
+  { id: "integral", nom: "Intégral", accroche: "Tout Lucien, pour tout gérer.", modules: ["budget_expert", "vie_pro_independant", "locatif", "assistant"], remise: 0.3, vedette: true, prix: { solo: 29.9, duo: 32.9, tribu: 36.9 } },
 ];
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -128,7 +128,7 @@ export function devis(c: Choix): Devis {
   if (pack) {
     const brut = pack.modules.reduce((s, m) => s + prixModule(m, opts), 0);
     alaCarte += brut;
-    const total = en90(socle + brut * (1 - pack.remise));
+    const total = pack.prix?.[c.formule] ?? en90(socle + brut * (1 - pack.remise)); // a fixed price wins (Intégral: « le prix d'un abonnement internet »)
     lignes.push({ libelle: `Pack ${pack.nom}`, mensuel: r2(total - socle), detail: pack.modules.map((m) => MODULES[m].nom).join(" + ") });
     mensuel = total;
   }

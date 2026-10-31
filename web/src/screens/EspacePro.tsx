@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Api } from "../api";
-import { livreCsv, RUBRIQUES, cleLibelle, type PersonnePro, type Rubrique } from "../../../server/src/viePro";
+import { livreCsv, MICRO, RUBRIQUES, cleLibelle, type PersonnePro, type RapportMicro, type Rubrique, type TypeMicro } from "../../../server/src/viePro";
 import { PartageComptablePanneau } from "./Comptable";
 import { Alertes, Champ, Chiffres, dateFr, EnTete, eur, moisCourt, telecharger, useEspace, Verrou } from "./espacesCommun";
 
@@ -12,7 +12,7 @@ export function EspacePro({ api, go, onBack, toast }: { api: Api; go: (s: string
   const [i, setI] = useState(0);
   const [bul, setBul] = useState<{ mois: string; brut: string; net_paye: string; net_imposable: string } | null>(null);
   const [nouveau, setNouveau] = useState<"salarie" | "independant" | null>(null);
-  const [form, setForm] = useState({ employeur: "", poste: "", type_contrat: "CDI", date_entree: "", activite: "", regime: "bnc_2035", compte_pro: "" });
+  const [form, setForm] = useState({ employeur: "", poste: "", type_contrat: "CDI", date_entree: "", activite: "", regime: "bnc_2035", compte_pro: "", type: "bnc_ssi", periodicite: "trimestrielle", vl: false });
   const [voirLivre, setVoirLivre] = useState(false);
   if (ferme) return <Verrou module={ferme} go={go} onBack={onBack} />;
   if (!data) return <div className="screen"><EnTete titre="Vie pro" sous="Chargement…" espace="pro" onBack={onBack} />{err && <p className="note">{err}</p>}</div>;
@@ -36,7 +36,7 @@ export function EspacePro({ api, go, onBack, toast }: { api: Api; go: (s: string
       await majPersonne({ ...p, salarie: { employeur: form.employeur.trim(), poste: form.poste.trim(), type_contrat: form.type_contrat as "CDI", date_entree: form.date_entree, bulletins: [] } });
     } else if (nouveau === "independant") {
       if (!form.activite.trim() || !form.compte_pro) return toast("Activité et compte professionnel, s'il vous plaît");
-      await majPersonne({ ...p, independant: { activite: form.activite.trim(), regime: form.regime as "bnc_2035", compte_pro: form.compte_pro } });
+      await majPersonne({ ...p, independant: { activite: form.activite.trim(), regime: form.regime as "bnc_2035", compte_pro: form.compte_pro, micro: form.regime === "micro_entrepreneur" ? { type: form.type as TypeMicro, periodicite: form.periodicite as "trimestrielle", versement_liberatoire: form.vl } : null } });
     }
     setNouveau(null);
   };
@@ -53,7 +53,7 @@ export function EspacePro({ api, go, onBack, toast }: { api: Api; go: (s: string
   const alertes = [
     ...(sal?.manquants.map((m) => ({ niveau: "attention", titre: `Bulletin de ${moisCourt(m)} manquant`, detail: "Demandez-le à votre employeur ou ajoutez-le : il se garde jusqu'à la retraite." })) ?? []),
     ...(sal?.anomalies.map((a) => ({ niveau: "info", titre: `Bulletin de ${moisCourt(a.mois)} à regarder`, detail: a.texte })) ?? []),
-    ...(ind?.a_classer.length ? [{ niveau: "attention", titre: `${ind.a_classer.length} dépense${ind.a_classer.length > 1 ? "s" : ""} pro à classer`, detail: "Choisissez la rubrique de la 2035 : Lucien s'en souviendra pour les suivantes." }] : []),
+    ...(ind?.a_classer.length && !ind.micro_entreprise ? [{ niveau: "attention", titre: `${ind.a_classer.length} dépense${ind.a_classer.length > 1 ? "s" : ""} pro à classer`, detail: "Choisissez la rubrique de la 2035 : Lucien s'en souviendra pour les suivantes." }] : []),
   ];
 
   return (
@@ -97,8 +97,9 @@ export function EspacePro({ api, go, onBack, toast }: { api: Api; go: (s: string
 
       {ind && (
         <section className="section">
-          <div className="section-head"><h2>Indépendant·e</h2><span className="badge">{ind.regime === "bnc_2035" ? "BNC · déclaration 2035" : "micro-BNC"}</span></div>
+          <div className="section-head"><h2>Indépendant·e</h2><span className="badge">{ind.regime === "bnc_2035" ? "BNC · déclaration 2035" : ind.regime === "micro_entrepreneur" ? "micro-entreprise" : "micro-BNC"}</span></div>
           <div className="carte-pro"><b>{ind.activite}</b><span>Compte {ind.compte_pro}</span><small>Année {ind.annee}, au {dateFr(new Date().toISOString().slice(0, 10))}</small></div>
+          {ind.micro_entreprise ? <BlocMicro me={ind.micro_entreprise} /> : <>
           <Chiffres items={[
             { label: "recettes encaissées", valeur: eur(ind.recettes), ton: "ok" },
             { label: "dépenses déductibles", valeur: eur(ind.depenses) },
@@ -114,8 +115,9 @@ export function EspacePro({ api, go, onBack, toast }: { api: Api; go: (s: string
             ))}
           </ul>
           {ind.immobilisations.length > 0 && <p className="note">Achat de plus de 500 € HT ({ind.immobilisations.map((x) => x.libelle.replace(/^CB /, "")).join(", ")}) : il s'amortit sur sa durée d'usage, il ne se déduit pas en une fois. Votre comptable ou votre association de gestion agréée calcule la dotation.</p>}
+          </>}
 
-          {ind.a_classer.length > 0 && (
+          {ind.a_classer.length > 0 && !ind.micro_entreprise && (
             <>
               <h3 className="sous-titre">À classer</h3>
               {ind.a_classer.map((t) => (
@@ -162,7 +164,12 @@ export function EspacePro({ api, go, onBack, toast }: { api: Api; go: (s: string
               ) : (
                 <>
                   <Champ label="Activité"><input className="in" value={form.activite} onChange={(e) => setForm({ ...form, activite: e.target.value })} placeholder="Infirmière libérale, graphiste, consultant…" /></Champ>
-                  <Champ label="Régime"><select className="in" value={form.regime} onChange={(e) => setForm({ ...form, regime: e.target.value })}><option value="bnc_2035">BNC, déclaration contrôlée (2035)</option><option value="micro_bnc">Micro-BNC</option></select></Champ>
+                  <Champ label="Régime"><select className="in" value={form.regime} onChange={(e) => setForm({ ...form, regime: e.target.value })}><option value="bnc_2035">BNC, déclaration contrôlée (2035)</option><option value="micro_bnc">Micro-BNC</option><option value="micro_entrepreneur">Micro-entrepreneur (auto-entrepreneur)</option></select></Champ>
+                  {form.regime === "micro_entrepreneur" && <>
+                    <Champ label="Activité URSSAF"><select className="in" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>{Object.entries(MICRO).map(([k, v]) => <option key={k} value={k}>{v.libelle}</option>)}</select></Champ>
+                    <Champ label="Déclaration"><select className="in" value={form.periodicite} onChange={(e) => setForm({ ...form, periodicite: e.target.value })}><option value="trimestrielle">Trimestrielle</option><option value="mensuelle">Mensuelle</option></select></Champ>
+                    <Champ label="Versement libératoire de l'impôt"><input type="checkbox" checked={form.vl} onChange={(e) => setForm({ ...form, vl: e.target.checked })} /></Champ>
+                  </>}
                   <Champ label="Compte professionnel"><select className="in" value={form.compte_pro} onChange={(e) => setForm({ ...form, compte_pro: e.target.value })}>{data.comptes.length ? data.comptes.map((c) => <option key={c}>{c}</option>) : <option value="">Connectez d'abord la banque</option>}</select></Champ>
                 </>
               )}
@@ -179,5 +186,24 @@ export function EspacePro({ api, go, onBack, toast }: { api: Api; go: (s: string
         </section>
       )}
     </div>
+  );
+}
+
+/** Micro-entrepreneur: turnover per declaration period, contributions due, ceilings and VAT exemption. */
+function BlocMicro({ me }: { me: RapportMicro }) {
+  return (
+    <>
+      <Chiffres items={[
+        { label: `chiffre d'affaires ${new Date().getFullYear()}`, valeur: eur(me.ca_annee), ton: "ok" },
+        { label: "cotisations et contributions", valeur: eur(me.total_annee), detail: `${(me.taux.cotisations * 100).toLocaleString("fr-FR")} %${me.taux.vl ? ` + ${(me.taux.vl * 100).toLocaleString("fr-FR")} % d'impôt` : ""} + ${(me.taux.cfp * 100).toLocaleString("fr-FR")} % formation` },
+        { label: "du plafond du régime", valeur: `${me.part_plafond} %`, ton: me.part_plafond > 90 ? "alerte" : "neutre", detail: `${eur(me.plafond)} par an` },
+        { label: "du seuil de TVA", valeur: `${me.tva.part} %`, ton: me.tva.part > 80 ? "alerte" : "neutre", detail: `franchise jusqu'à ${eur(me.tva.seuil)}` },
+      ]} />
+      {me.tva.alerte && <div className="conseil-fiscal alerte"><b>TVA</b><p>{me.tva.alerte}</p></div>}
+      {me.prochaine && <div className="fiche-prochain" style={{ marginTop: 10 }}><span>Prochaine déclaration URSSAF</span><b>{me.prochaine.libelle} : {eur(me.prochaine.ca)} de chiffre d'affaires</b><small>À déclarer et payer avant le {dateFr(me.prochaine.echeance)}, environ {eur(me.prochaine.total)}.</small></div>}
+      <h3 className="sous-titre">Déclarations {me.periodicite === "mensuelle" ? "mensuelles" : "trimestrielles"}</h3>
+      <ul className="rubriques">{me.periodes.map((x) => <li key={x.periode}><span>{x.libelle}<small>{x.statut === "passee" ? "échéance passée" : x.statut === "en_cours" ? "en cours" : `avant le ${dateFr(x.echeance)}`}</small></span><b>{eur(x.ca)} · {eur(x.total)}</b></li>)}</ul>
+      <p className="note">{me.libelle}. Taux 2026 : {(me.taux.cotisations * 100).toLocaleString("fr-FR")} % de cotisations sociales{me.versement_liberatoire ? `, ${(me.taux.vl * 100).toLocaleString("fr-FR")} % de versement libératoire` : ""}, {(me.taux.cfp * 100).toLocaleString("fr-FR")} % de contribution à la formation. Lucien prépare, vous déclarez sur autoentrepreneur.urssaf.fr. Taux et seuils à vérifier chaque janvier.</p>
+    </>
   );
 }

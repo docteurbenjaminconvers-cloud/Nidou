@@ -1,5 +1,5 @@
 import { DEMO_BUDGET } from "./budgetExpert.js";
-import { COMPTE_PRO_DEMO, demoComptePro, demoPro } from "./viePro.js";
+import { COMPTE_MICRO_DEMO, COMPTE_PRO_DEMO, demoComptePro, demoPro } from "./viePro.js";
 import { DEMO_LOCATIF, demoLoyers } from "./locatif.js";
 import type { Db, DocCategory, Periodicity } from "./db.js";
 import { deadlinesFor } from "./deadlines.js";
@@ -72,7 +72,7 @@ export function seedDemo(db: Db, opts: { espaces?: boolean } = {}) {
   if (!opts.espaces) return h;
   // Paid spaces of the demo: budget expert, Camille's practice and payslips, two rented flats.
   const today = new Date().toISOString().slice(0, 10);
-  db.setModuleData(h.id, "budget", { ...DEMO_BUDGET, comptes_exclus: [COMPTE_PRO_DEMO] });
+  db.setModuleData(h.id, "budget", { ...DEMO_BUDGET, comptes_exclus: [COMPTE_PRO_DEMO, COMPTE_MICRO_DEMO] });
   db.setModuleData(h.id, "pro", demoPro({ moi: moi.id, camille: camille.id }, today));
   db.setModuleData(h.id, "locatif", DEMO_LOCATIF);
   const extra = [...demoComptePro(today), ...demoLoyers(today)];

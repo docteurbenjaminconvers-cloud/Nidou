@@ -3,7 +3,7 @@ import type { Activite, BankStatus, BudgetAction, BudgetReport, ChargesReport, D
 import demoFamille from "./demo/famille.json";
 import { MODULES, PACKS, SOCLE, SOCLE_INCLUT, droits, normaliser, type Espace, type ModuleId } from "../../server/src/offre";
 import { DEMO_BUDGET, grandLivre, rapportBudget, type DonneesBudget, type RapportBudget, type TxB } from "../../server/src/budgetExpert";
-import { COMPTE_PRO_DEMO, demoComptePro, demoPro, rapportIndependant, rapportPro, type DonneesPro, type RapportPro } from "../../server/src/viePro";
+import { COMPTE_MICRO_DEMO, COMPTE_PRO_DEMO, demoComptePro, demoPro, rapportIndependant, rapportPro, type DonneesPro, type RapportPro } from "../../server/src/viePro";
 import { DEMO_LOCATIF, demoLoyers, rapportLocatif, type DonneesLocatif, type RapportLocatif } from "../../server/src/locatif";
 import { lireReleveDemo } from "../../server/src/categorie";
 import { demoStatement } from "../../server/src/seed-statement";
@@ -577,7 +577,7 @@ function makeEspacesDemo(state: { household: Household; famille: FamilleReport; 
   const txs: TxB[] = [...lireReleveDemo(demoStatement(today), "Compte joint"), ...demoComptePro(today), ...demoLoyers(today)];
   const moi = state.famille.membres.find((m) => m.prenom === "Moi")?.id ?? null;
   const camille = state.famille.membres.find((m) => m.prenom === "Camille")?.id ?? null;
-  const donnees: EspaceDonnees = { budget: { ...DEMO_BUDGET, comptes_exclus: [COMPTE_PRO_DEMO] }, pro: demoPro({ moi, camille }, today), locatif: structuredClone(DEMO_LOCATIF) };
+  const donnees: EspaceDonnees = { budget: { ...DEMO_BUDGET, comptes_exclus: [COMPTE_PRO_DEMO, COMPTE_MICRO_DEMO] }, pro: demoPro({ moi, camille }, today), locatif: structuredClone(DEMO_LOCATIF) };
   let souscrits: ModuleId[] = [];
   let partages: PartageComptable[] = [];
   const actifs = () => [...droits({ plan: state.household.plan, essai_actif: !!state.household.essai?.actif, modules: souscrits })];

@@ -12,7 +12,7 @@ test("espaces : ouverts pendant l'essai, fermés (402) après, données validée
   const h = seedDemo(db, { espaces: true });
   const api = createApi(db, { uploadDir: "/tmp/lucien-test-uploads" });
   const loc = await (await api.request("/espaces/locatif")).json();
-  assert.equal(loc.rapport.biens.length, 2, "trial: everything is open");
+  assert.equal(loc.rapport.biens.length, 4, "trial: everything is open");
   const pro = await (await api.request("/espaces/pro")).json();
   assert.ok(pro.rapport.personnes[1].independant.recettes > 0);
   const bud = await (await api.request("/espaces/budget")).json();
@@ -39,7 +39,7 @@ test("offre : souscrire un module est un paiement — impossible sans paiement e
   assert.deepEqual(ok.souscrits.sort(), ["assistant", "budget_expert", "locatif"]);
   delete process.env.LUCIEN_PAIEMENT_SIMULE;
   const d = await (await api.request("/offre/devis", json({ formule: "duo", periode: "annuel", modules: [], pack: "integral" }))).json();
-  assert.equal(d.total, 319);
+  assert.equal(d.total, 329);
 });
 
 test("comptable : lien en lecture seule sur l'activité d'indépendant, sans session, révocable", async () => {
@@ -49,7 +49,7 @@ test("comptable : lien en lecture seule sur l'activité d'indépendant, sans ses
   const api = createApi(db, { uploadDir: "/tmp/lucien-test-uploads" });
   const moi = db.listMembers(h.id).find((m) => m.prenom === "Moi")!;
   const camille = db.listMembers(h.id).find((m) => m.prenom === "Camille")!;
-  assert.equal((await api.request("/espaces/pro/partages", json({ member_id: moi.id }))).status, 400, "a salaried person has nothing to share");
+  assert.equal((await api.request("/espaces/pro/partages", json({ member_id: "inconnu" }))).status, 400, "only an independent activity can be shared"); void moi;
   const p = await (await api.request("/espaces/pro/partages", json({ member_id: camille.id, nom: "Cabinet Durand" }))).json();
   assert.equal(p.token.length, 48);
   process.env.LUCIEN_AUTH = "1"; // the accountant has no session

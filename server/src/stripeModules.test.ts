@@ -12,7 +12,7 @@ test("stripe modules : lignes d'un choix (pack + modules hors pack + biens en pl
   const l = lignesModules({ formule: "duo", periode: "annuel", modules: ["veille", "vie_pro_salarie"], pack: "integral", biens: 4, proches: 2 });
   assert.deepEqual(l.map((x) => [x.cle, x.quantite]), [["pack:integral", 1], ["veille", 2], ["locatif_bien", 2]], "Salarié is inside Indépendant, never billed twice");
   assert.equal(l[0].env, envPack("integral", "duo", "annuel"));
-  assert.equal(l[0].mensuel, 31.9 - 9.9, "pack line = pack total minus the socle");
+  assert.equal(l[0].mensuel, 32.9 - 9.9, "pack line = pack total minus the socle");
   assert.deepEqual(prixManquants(l, ENV), []);
   assert.equal(prixManquants(l, {}).length, 3, "never a checkout with a missing price");
   const seul = lignesModules({ formule: "solo", periode: "mensuel", modules: ["locatif", "budget_expert"], pack: null, biens: 1 });

@@ -42,3 +42,18 @@ test("locatif : quittance et relance", () => {
   assert.match(q, /QUITTANCE DE LOYER/); assert.match(q, /Hugo Fabre/); assert.match(q, /850 €/);
   assert.match(relance(DEMO_LOCATIF, t2.bail!, t2.bien, t2.encaissements.at(-1)!), /octobre 2026/);
 });
+
+test("locatif : SCI à l'IS (amortissement, impôt) et meublé de tourisme non classé (15 000 €, 30 %)", () => {
+  const sci = r.fiscal.sci[0];
+  assert.equal(sci.regime, "is");
+  assert.equal(sci.recettes, 890 * 12);
+  assert.equal(sci.amortissement, Math.round((214000 * 0.85) / 30 * 100) / 100);
+  assert.equal(sci.impot_is, sci.resultat > 0 ? Math.round(sci.resultat * 0.15 * 100) / 100 : 0);
+  assert.equal(r.fiscal.nu!.recettes, 6240, "the SCI flat is not declared by the household directly");
+  const t = r.fiscal.tourisme[0];
+  assert.equal(t.classe, false); assert.equal(t.seuil, 15000); assert.equal(t.abattement, 0.3);
+  const palavas = r.biens.find((b) => b.bien.id === "b4")!;
+  assert.ok(palavas.recettes_annuelles > 0 && palavas.tourisme_12m.length > 0);
+  assert.ok(!r.alertes.some((a) => a.titre.includes("Palavas sans locataire")), "a tourist rental has no lease");
+  assert.ok(r.echeances.some((e) => e.titre.includes("liasse 2065")) || r.fiscal.sci[0].echeance < "2026-10-20");
+});

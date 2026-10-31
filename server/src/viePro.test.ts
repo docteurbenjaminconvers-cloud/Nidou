@@ -40,3 +40,20 @@ test("vie pro : repères fiscaux", () => {
   assert.equal(seuilMicroBnc(2026), 83600);
   assert.equal(limite2035(2026), "2026-05-20", "1 May 2026 is a Friday: 2nd working day is Tue 5 May, + 15 days");
 });
+
+test("vie pro micro-entrepreneur : chiffre d'affaires par trimestre, cotisations 2026, échéances URSSAF, seuils", async () => {
+  const { MICRO, echeanceUrssaf } = await import("./viePro.js");
+  const moi = r.personnes[0].independant!;
+  const me = moi.micro_entreprise!;
+  assert.equal(me.periodicite, "trimestrielle");
+  assert.equal(me.taux.cotisations, 0.256, "BNC SSI 2026");
+  const q1 = me.periodes[0];
+  assert.equal(q1.ca, 3 * (240 + 180 + 240) + 155 + 160 + 165);
+  assert.equal(q1.cotisations, Math.round(q1.ca * 0.256 * 100) / 100);
+  assert.equal(q1.echeance, "2026-04-30");
+  assert.equal(echeanceUrssaf("2026-Q4"), "2027-01-31");
+  assert.equal(echeanceUrssaf("2026-09"), "2026-10-31");
+  assert.equal(MICRO.vente.plafond, 203100); assert.equal(MICRO.services_bic.tva, 37500);
+  assert.ok(me.part_plafond < 50 && me.tva.alerte === null);
+  assert.ok(!moi.livre.some((l) => l.libelle.includes("CPAM")), "only the micro account");
+});

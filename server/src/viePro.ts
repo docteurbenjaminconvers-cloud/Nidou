@@ -8,7 +8,67 @@ import type { TxB } from "./budgetExpert.js";
 
 export interface Bulletin { mois: string; brut: number; net_paye: number; net_imposable: number }
 export interface Salarie { employeur: string; poste: string; type_contrat: "CDI" | "CDD" | "interim" | "apprentissage" | "autre"; date_entree: string; convention?: string | null; bulletins: Bulletin[] }
-export interface Independant { activite: string; regime: "bnc_2035" | "micro_bnc"; compte_pro: string; debut_activite?: string | null; rubriques?: Record<string, Rubrique> }
+export type TypeMicro = "vente" | "services_bic" | "bnc_ssi" | "bnc_cipav";
+export interface Independant {
+  activite: string; regime: "bnc_2035" | "micro_bnc" | "micro_entrepreneur"; compte_pro: string; debut_activite?: string | null; rubriques?: Record<string, Rubrique>;
+  micro?: { type: TypeMicro; periodicite: "mensuelle" | "trimestrielle"; versement_liberatoire: boolean } | null;
+}
+
+/**
+ * Micro-entrepreneur (régime micro-social), 2026: contributions on turnover, optional income-tax prepayment (versement
+ * libératoire), training contribution (CFP), ceilings, VAT exemption thresholds. Sources: service-public F37353,
+ * A18813, F23257, F21746, F23459; impots.gouv « régimes réservés aux petites entreprises 2026 ». Re-check every January.
+ */
+export const MICRO: Record<TypeMicro, { libelle: string; cotisations: number; vl: number; cfp: number; plafond: number; tva: number; tva_tolerance: number }> = {
+  vente: { libelle: "Vente de marchandises", cotisations: 0.123, vl: 0.01, cfp: 0.001, plafond: 203100, tva: 85000, tva_tolerance: 93500 },
+  services_bic: { libelle: "Prestations de services commerciales ou artisanales (BIC)", cotisations: 0.212, vl: 0.017, cfp: 0.001, plafond: 83600, tva: 37500, tva_tolerance: 41250 },
+  bnc_ssi: { libelle: "Activité libérale (BNC, sécurité sociale des indépendants)", cotisations: 0.256, vl: 0.022, cfp: 0.002, plafond: 83600, tva: 37500, tva_tolerance: 41250 },
+  bnc_cipav: { libelle: "Activité libérale réglementée (BNC, Cipav)", cotisations: 0.232, vl: 0.022, cfp: 0.002, plafond: 83600, tva: 37500, tva_tolerance: 41250 },
+};
+
+/** Due date of the URSSAF declaration covering `periode` (YYYY-MM for monthly, YYYY-Qn for quarterly): last day of the following month, quarters on 30 Apr, 31 Jul, 31 Oct, 31 Jan. */
+export function echeanceUrssaf(periode: string): string {
+  const q = periode.match(/^(\d{4})-Q([1-4])$/);
+  const [y, m] = q ? [Number(q[1]), Number(q[2]) * 3] : periode.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m + 1, 0)); // last day of the month after the period
+  return d.toISOString().slice(0, 10);
+}
+
+export interface PeriodeMicro { periode: string; libelle: string; ca: number; cotisations: number; vl: number; cfp: number; total: number; echeance: string; statut: "passee" | "a_declarer" | "en_cours" }
+export interface RapportMicro {
+  type: TypeMicro; libelle: string; periodicite: "mensuelle" | "trimestrielle"; versement_liberatoire: boolean;
+  taux: { cotisations: number; vl: number; cfp: number }; ca_annee: number; plafond: number; part_plafond: number;
+  tva: { seuil: number; tolerance: number; part: number; alerte: string | null };
+  periodes: PeriodeMicro[]; prochaine: PeriodeMicro | null; total_annee: number;
+}
+
+const MOIS_C = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+
+export function rapportMicro(m: NonNullable<Independant["micro"]>, recettes: { date: string; montant: number }[], today: string): RapportMicro {
+  const t = MICRO[m.type];
+  const annee = Number(today.slice(0, 4));
+  const cles = m.periodicite === "mensuelle"
+    ? Array.from({ length: 12 }, (_, k) => ({ p: `${annee}-${String(k + 1).padStart(2, "0")}`, mois: [k + 1], lib: `${MOIS_C[k]} ${annee}` }))
+    : [1, 2, 3, 4].map((q) => ({ p: `${annee}-Q${q}`, mois: [q * 3 - 2, q * 3 - 1, q * 3], lib: `${q}${q === 1 ? "er" : "e"} trimestre ${annee}` }));
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  const periodes: PeriodeMicro[] = cles.map(({ p, mois, lib }) => {
+    const ca = r2(recettes.filter((x) => mois.includes(Number(x.date.slice(5, 7))) && x.date.startsWith(String(annee))).reduce((s, x) => s + x.montant, 0));
+    const cot = r2(ca * t.cotisations), vl = m.versement_liberatoire ? r2(ca * t.vl) : 0, cfp = r2(ca * t.cfp);
+    const fin = `${annee}-${String(mois[mois.length - 1]).padStart(2, "0")}-31`;
+    const echeance = echeanceUrssaf(p);
+    const statut: PeriodeMicro["statut"] = today <= fin.slice(0, 7) + "-28" && today.slice(0, 7) <= fin.slice(0, 7) ? "en_cours" : today > echeance ? "passee" : "a_declarer";
+    return { periode: p, libelle: lib, ca, cotisations: cot, vl, cfp, total: r2(cot + vl + cfp), echeance, statut };
+  }).filter((x) => x.periode <= (m.periodicite === "mensuelle" ? today.slice(0, 7) : `${annee}-Q${Math.ceil(Number(today.slice(5, 7)) / 3)}`));
+  const ca_annee = r2(periodes.reduce((s, x) => s + x.ca, 0));
+  const partTva = ca_annee / t.tva;
+  return {
+    type: m.type, libelle: t.libelle, periodicite: m.periodicite, versement_liberatoire: m.versement_liberatoire,
+    taux: { cotisations: t.cotisations, vl: m.versement_liberatoire ? t.vl : 0, cfp: t.cfp },
+    ca_annee, plafond: t.plafond, part_plafond: Math.round((ca_annee / t.plafond) * 100),
+    tva: { seuil: t.tva, tolerance: t.tva_tolerance, part: Math.round(partTva * 100), alerte: ca_annee > t.tva_tolerance ? "Seuil majoré de la franchise de TVA dépassé : la TVA est due dès le jour du dépassement." : ca_annee > t.tva ? "Seuil de la franchise de TVA dépassé : la TVA s'appliquera l'an prochain (ou dès le dépassement du seuil majoré)." : partTva > 0.8 ? "Plus de 80 % du seuil de franchise de TVA : surveillez les prochains encaissements." : null },
+    periodes, prochaine: periodes.find((x) => x.statut === "a_declarer") ?? null, total_annee: r2(periodes.reduce((s, x) => s + x.total, 0)),
+  };
+}
 export interface PersonnePro { member_id: string | null; prenom: string; salarie?: Salarie | null; independant?: Independant | null }
 export interface DonneesPro { personnes: PersonnePro[] }
 export const DONNEES_PRO_VIDES: DonneesPro = { personnes: [] };
@@ -103,13 +163,14 @@ export interface RapportSalarie {
   verses: { mois: string; montant: number; date: string }[]; // salary seen on the bank account
 }
 export interface RapportIndependant {
-  activite: string; regime: "bnc_2035" | "micro_bnc"; annee: number; compte_pro: string;
+  activite: string; regime: Independant["regime"]; annee: number; compte_pro: string;
   recettes: number; depenses: number; benefice: number; prelevements: number;
   par_rubrique: { rubrique: Rubrique; libelle: string; montant: number; nb: number }[];
   a_classer: { date: string; libelle: string; montant: number }[];
   immobilisations: { date: string; libelle: string; montant: number }[];
   livre: { date: string; libelle: string; montant: number; rubrique: Rubrique }[];
   micro: { eligible: boolean; seuil: number; base_micro: number; base_reel: number; conseil: string };
+  micro_entreprise: RapportMicro | null;
   echeances: { date: string; titre: string; detail: string }[];
 }
 export interface RapportPro { personnes: { member_id: string | null; prenom: string; salarie: RapportSalarie | null; independant: RapportIndependant | null }[]; papiers: { id: string; title: string; type: "contrat" | "avenant" | "bulletin" | "attestation" }[] }
@@ -164,13 +225,18 @@ export function rapportIndependant(i: Independant, txs: TxB[], today: string): R
   const urssaf = tot.get("urssaf")?.montant ?? 0;
   const noteUrssaf = urssaf > 0 ? ` Les prélèvements URSSAF (${Math.round(urssaf).toLocaleString("fr-FR")} €) mêlent cotisations, CSG et CRDS : sur la 2035, la CSG déductible a sa propre ligne et la part non déductible (CSG non déductible, CRDS) ne se déduit pas. Reprenez le détail de votre attestation annuelle URSSAF : le bénéfice réel sera un peu plus élevé que cette estimation.` : "";
   const lim = limite2035(annee + 1);
-  const echeances = [
+  const me = i.regime === "micro_entrepreneur" && i.micro ? rapportMicro(i.micro, livre.filter((l) => l.rubrique === "recettes"), today) : null;
+  const echeances = me ? [
+    ...me.periodes.filter((p) => p.statut !== "passee").map((p) => ({ date: p.echeance, titre: `Déclaration URSSAF : ${p.libelle}`, detail: `Chiffre d'affaires ${Math.round(p.ca).toLocaleString("fr-FR")} €, à payer environ ${Math.round(p.total).toLocaleString("fr-FR")} € (cotisations${me.versement_liberatoire ? ", impôt libératoire" : ""} et formation professionnelle).` })),
+    { date: `${annee}-12-15`, titre: "CFE à payer", detail: "Exonérée l'année de création. Avis dans votre espace professionnel impots.gouv.fr." },
+    { date: lim, titre: "Chiffre d'affaires sur la 2042-C-PRO", detail: me.versement_liberatoire ? "À déclarer même avec le versement libératoire (il sert au revenu fiscal de référence)." : "L'abattement forfaitaire est appliqué par l'administration." },
+  ].filter((e) => e.date >= today).sort((a, b) => a.date.localeCompare(b.date)) : [
     { date: `${annee}-12-15`, titre: "CFE à payer", detail: "Cotisation foncière des entreprises, avis dans votre espace professionnel impots.gouv.fr." },
     ...(i.regime === "bnc_2035" ? [{ date: lim, titre: `Déclaration 2035 des revenus ${annee}`, detail: "En ligne, avec ses annexes 2035-A et 2035-B. Date limite indicative : elle est fixée chaque année." }] : []),
     { date: lim, titre: "Report sur la 2042-C-PRO", detail: i.regime === "bnc_2035" ? "Le bénéfice de la 2035 se reporte sur la déclaration complémentaire des revenus." : "Les recettes encaissées se déclarent sur la 2042-C-PRO, l'abattement de 34 % est appliqué par l'administration." },
   ].filter((e) => e.date >= today).sort((a, b) => a.date.localeCompare(b.date));
   return {
-    activite: i.activite, regime: i.regime, annee, compte_pro: i.compte_pro,
+    activite: i.activite, regime: i.regime, annee, compte_pro: i.compte_pro, micro_entreprise: me,
     recettes, depenses, benefice, prelevements: tot.get("prelevements")?.montant ?? 0,
     par_rubrique: [...tot].map(([r, v]) => ({ rubrique: r, libelle: RUBRIQUES[r], ...v })).sort((a, b) => b.montant - a.montant),
     a_classer: livre.filter((l) => l.rubrique === "a_classer").map(({ date, libelle, montant }) => ({ date, libelle, montant })),
@@ -202,6 +268,7 @@ export function livreCsv(r: RapportIndependant): string {
 // ---------- démo : Camille, kinésithérapeute salariée à mi-temps et libérale ----------
 
 export const COMPTE_PRO_DEMO = "Pro Camille";
+export const COMPTE_MICRO_DEMO = "Micro Moi";
 
 /** Fictional professional account of Camille, from January to `today`. */
 export function demoComptePro(today: string): TxB[] {
@@ -234,6 +301,13 @@ export function demoComptePro(today: string): TxB[] {
   add(6, 11, "CB FORMATION CONTINUE FIFPL", -180);
   add(9, 24, "CB RESTAURANT LE CLOS", -64);
   add(12, 14, "PRLV IMPOTS CFE", -412);
+  // « Moi » : cours de yoga en micro-entreprise, sur un petit compte dédié
+  for (let m = 1; m <= 12; m++) {
+    const d = (j: number) => `${annee}-${String(m).padStart(2, "0")}-${String(j).padStart(2, "0")}`;
+    const vac = m === 8 ? 0 : 1;
+    for (const [j, mt] of [[7, 240], [14, 180], [21, 240], [27, 150 + m * 5]] as const) if (vac && d(j) <= today) out.push({ date: d(j), libelle: j === 14 ? "REMISE SUMUP COURS YOGA" : "VIR ADHERENTS COURS YOGA", montant: mt, categorie: "revenus", compte: COMPTE_MICRO_DEMO });
+    if (d(10) <= today && vac) out.push({ date: d(10), libelle: "PRLV LOCATION SALLE ASSOCIATION", montant: -90, categorie: "autre", compte: COMPTE_MICRO_DEMO });
+  }
   return out;
 }
 
@@ -245,7 +319,8 @@ export function demoPro(memberIds: { moi: string | null; camille: string | null 
     Array.from({ length: Math.max(0, dernier) }, (_, i) => i + 1).filter((m) => !sauf.includes(m)).map((m) => ({ mois: mois(m), brut: brut + (prime[m] ?? 0) * 1.3, net_paye: net + (prime[m] ?? 0), net_imposable: imp + (prime[m] ?? 0) * 1.03 }));
   return {
     personnes: [
-      { member_id: memberIds.moi, prenom: "Moi", salarie: { employeur: "Atelier Verdier", poste: "Responsable des achats, cadre", type_contrat: "CDI", date_entree: "2017-03-01", convention: "Syntec", bulletins: bul(2850, 3700, 2960, [7], { 6: 900 }) } },
+      { member_id: memberIds.moi, prenom: "Moi", salarie: { employeur: "Atelier Verdier", poste: "Responsable des achats, cadre", type_contrat: "CDI", date_entree: "2017-03-01", convention: "Syntec", bulletins: bul(2850, 3700, 2960, [7], { 6: 900 }) },
+        independant: { activite: "Professeure de yoga, micro-entreprise", regime: "micro_entrepreneur", compte_pro: COMPTE_MICRO_DEMO, debut_activite: "2024-09-02", micro: { type: "bnc_ssi", periodicite: "trimestrielle", versement_liberatoire: false } } },
       { member_id: memberIds.camille, prenom: "Camille", salarie: { employeur: "Clinique Saint Roch", poste: "Masseur-kinésithérapeute, mi-temps", type_contrat: "CDI", date_entree: "2021-09-01", convention: "FHP", bulletins: bul(2100, 2690, 2180) },
         independant: { activite: "Masseur-kinésithérapeute libérale", regime: "bnc_2035", compte_pro: COMPTE_PRO_DEMO, debut_activite: "2022-01-03" } },
     ],

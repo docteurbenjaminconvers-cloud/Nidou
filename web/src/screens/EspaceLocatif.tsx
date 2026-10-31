@@ -4,7 +4,7 @@ import { quittance, relance, SOURCE_IRL, type Bail, type Bien, type Encaissement
 import { Alertes, Champ, Chiffres, dateFr, EnTete, eur, Feuille, moisCourt, nouvelId, pct, useEspace, Verrou } from "./espacesCommun";
 
 const STATUT: Record<Encaissement["statut"], string> = { paye: "payé", partiel: "partiel", impaye: "impayé", a_venir: "à venir" };
-const BIEN_VIDE = { nom: "", adresse: "", type: "appartement", meuble: false, prix_achat: "", taxe_fonciere: "", assurance_pno: "", charges_non_recuperables: "", credit_mensualite: "", interets_annuels: "", dpe: "D", dpe_date: "" };
+const BIEN_VIDE = { tourisme: "", structure_id: "", sci_nom: "", sci_regime: "ir", sci_parts: "100", nom: "", adresse: "", type: "appartement", meuble: false, prix_achat: "", taxe_fonciere: "", assurance_pno: "", charges_non_recuperables: "", credit_mensualite: "", interets_annuels: "", dpe: "D", dpe_date: "" };
 const BAIL_VIDE = { locataire: "", loyer_hc: "", charges: "", debut: "", irl_trimestre: "1", depot_garantie: "", jour_paiement: "5" };
 
 /** Patrimoine locatif : biens, loyers rapprochés de la banque, quittances, relances, IRL, DPE, fiscalité. */
@@ -22,8 +22,16 @@ export function EspaceLocatif({ api, go, onBack, toast }: { api: Api; go: (s: st
 
   const enregistrerBien = async () => {
     if (!bienF.nom.trim() || !bienF.adresse.trim()) return toast("Nom et adresse du bien, s'il vous plaît");
-    const b: Bien = { id: nouvelId(), nom: bienF.nom.trim(), adresse: bienF.adresse.trim(), type: bienF.type as Bien["type"], meuble: bienF.meuble, prix_achat: n(bienF.prix_achat), taxe_fonciere: n(bienF.taxe_fonciere), assurance_pno: n(bienF.assurance_pno), charges_non_recuperables: n(bienF.charges_non_recuperables), credit_mensualite: n(bienF.credit_mensualite), interets_annuels: n(bienF.interets_annuels), dpe: (bienF.dpe || null) as Bien["dpe"], dpe_date: bienF.dpe_date || null };
-    await sauver({ ...d, biens: [...d.biens, b] }); setAjoutBien(false); setBienF(BIEN_VIDE); setBailPour(b.id); toast("Bien ajouté : ajoutez son bail");
+    let structures = d.structures ?? [];
+    let structure_id: string | null = bienF.structure_id || null;
+    if (structure_id === "+") {
+      if (!bienF.sci_nom.trim()) return toast("Nom de la SCI, s'il vous plaît");
+      const st = { id: nouvelId(), nom: bienF.sci_nom.trim(), regime: bienF.sci_regime as "ir" | "is", parts_foyer: Math.min(100, Math.max(0, n(bienF.sci_parts) || 100)) };
+      structures = [...structures, st]; structure_id = st.id;
+    }
+    const b: Bien = { structure_id, tourisme: bienF.meuble && bienF.tourisme ? (bienF.tourisme as "classe") : null, id: nouvelId(), nom: bienF.nom.trim(), adresse: bienF.adresse.trim(), type: bienF.type as Bien["type"], meuble: bienF.meuble, prix_achat: n(bienF.prix_achat), taxe_fonciere: n(bienF.taxe_fonciere), assurance_pno: n(bienF.assurance_pno), charges_non_recuperables: n(bienF.charges_non_recuperables), credit_mensualite: n(bienF.credit_mensualite), interets_annuels: n(bienF.interets_annuels), dpe: (bienF.dpe || null) as Bien["dpe"], dpe_date: bienF.dpe_date || null };
+    await sauver({ ...d, structures, biens: [...d.biens, b] }); setAjoutBien(false); setBienF(BIEN_VIDE);
+    if (b.tourisme) toast("Bien ajouté : ses recettes de plateformes apparaîtront depuis la banque"); else { setBailPour(b.id); toast("Bien ajouté : ajoutez son bail"); }
   };
   const enregistrerBail = async () => {
     if (!bailPour || !bailF.locataire.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(bailF.debut) || n(bailF.loyer_hc) <= 0) return toast("Locataire, loyer et date de début, s'il vous plaît");
@@ -59,8 +67,20 @@ export function EspaceLocatif({ api, go, onBack, toast }: { api: Api; go: (s: st
               <div><h2>{b.bien.nom}</h2><p>{b.bien.adresse}</p></div>
               <span className={`dpe dpe-${b.bien.dpe ?? "x"}`} title="Classe énergie (DPE)">{b.bien.dpe ?? "?"}</span>
             </div>
-            <div className="bien-tags"><span>{b.bien.meuble ? "Meublé" : "Location nue"}</span>{b.bien.surface ? <span>{b.bien.surface} m²</span> : null}{b.bail && <span>{b.bail.locataire}</span>}{b.bail && <span>{eur(b.loyer_cc)} charges comprises</span>}</div>
-            {b.bail ? (
+            <div className="bien-tags"><span>{b.bien.tourisme ? `Meublé de tourisme ${b.bien.tourisme === "classe" ? "classé" : "non classé"}` : b.bien.meuble ? "Meublé" : "Location nue"}</span>{b.bien.structure_id && <span className="sci">{d.structures?.find((x) => x.id === b.bien.structure_id)?.nom ?? "SCI"}</span>}{b.bien.surface ? <span>{b.bien.surface} m²</span> : null}{b.bail && <span>{b.bail.locataire}</span>}{b.bail && <span>{eur(b.loyer_cc)} charges comprises</span>}</div>
+            {b.bien.tourisme ? (
+              <>
+                <div className="saison" aria-label="Recettes des plateformes, 12 derniers mois">
+                  {b.tourisme_12m.map((x) => <div key={x.mois}><i style={{ height: `${Math.max(6, (x.montant / Math.max(...b.tourisme_12m.map((y) => y.montant))) * 100)}%` }} /><small>{moisCourt(x.mois)}</small></div>)}
+                </div>
+                <div className="bien-chiffres">
+                  <div><b>{eur(b.recettes_annuelles)}</b><span>recettes sur 12 mois</span></div>
+                  <div><b>{pct(b.rentabilite_brute)}</b><span>rentabilité brute</span></div>
+                  <div><b>{eur(b.cash_flow_mensuel)}</b><span>cash-flow / mois</span></div>
+                </div>
+                <p className="note">Versements Airbnb, Booking, Abritel… repérés sur votre compte. Pensez à la taxe de séjour et, selon votre commune, à l'enregistrement du meublé.</p>
+              </>
+            ) : b.bail ? (
               <>
                 <div className="loyers" aria-label="Loyers des derniers mois">
                   {b.encaissements.map((e) => <div key={e.mois} className={`loyer ${e.statut}`} title={e.libelle ?? undefined}><span>{moisCourt(e.mois)}</span><i /><small>{e.statut === "paye" ? dateFr(e.date).slice(0, 5) : STATUT[e.statut]}</small></div>)}
@@ -113,6 +133,13 @@ export function EspaceLocatif({ api, go, onBack, toast }: { api: Api; go: (s: st
             <Champ label="Adresse"><input className="in" value={bienF.adresse} onChange={(e) => setBienF({ ...bienF, adresse: e.target.value })} /></Champ>
             <Champ label="Type"><select className="in" value={bienF.type} onChange={(e) => setBienF({ ...bienF, type: e.target.value })}>{["appartement", "studio", "maison", "local", "parking"].map((x) => <option key={x}>{x}</option>)}</select></Champ>
             <Champ label="Loué meublé"><input type="checkbox" checked={bienF.meuble} onChange={(e) => setBienF({ ...bienF, meuble: e.target.checked })} /></Champ>
+            {bienF.meuble && <Champ label="Location"><select className="in" value={bienF.tourisme} onChange={(e) => setBienF({ ...bienF, tourisme: e.target.value })}><option value="">Longue durée (bail)</option><option value="non_classe">Meublé de tourisme non classé</option><option value="classe">Meublé de tourisme classé</option></select></Champ>}
+            <Champ label="Détenu par"><select className="in" value={bienF.structure_id} onChange={(e) => setBienF({ ...bienF, structure_id: e.target.value })}><option value="">Le foyer, en direct</option>{(d.structures ?? []).map((x) => <option key={x.id} value={x.id}>{x.nom} ({x.regime.toUpperCase()})</option>)}<option value="+">Une nouvelle SCI…</option></select></Champ>
+            {bienF.structure_id === "+" && <>
+              <Champ label="Nom de la SCI"><input className="in" value={bienF.sci_nom} onChange={(e) => setBienF({ ...bienF, sci_nom: e.target.value })} /></Champ>
+              <Champ label="Imposition de la SCI"><select className="in" value={bienF.sci_regime} onChange={(e) => setBienF({ ...bienF, sci_regime: e.target.value })}><option value="ir">Impôt sur le revenu</option><option value="is">Impôt sur les sociétés</option></select></Champ>
+              <Champ label="Parts du foyer (%)"><input className="in" inputMode="decimal" value={bienF.sci_parts} onChange={(e) => setBienF({ ...bienF, sci_parts: e.target.value })} /></Champ>
+            </>}
             <Champ label="Prix d'achat (€)"><input className="in" inputMode="decimal" value={bienF.prix_achat} onChange={(e) => setBienF({ ...bienF, prix_achat: e.target.value })} /></Champ>
             <Champ label="Taxe foncière / an (€)"><input className="in" inputMode="decimal" value={bienF.taxe_fonciere} onChange={(e) => setBienF({ ...bienF, taxe_fonciere: e.target.value })} /></Champ>
             <Champ label="Assurance PNO / an (€)"><input className="in" inputMode="decimal" value={bienF.assurance_pno} onChange={(e) => setBienF({ ...bienF, assurance_pno: e.target.value })} /></Champ>
@@ -126,10 +153,12 @@ export function EspaceLocatif({ api, go, onBack, toast }: { api: Api; go: (s: st
         </section>
       ) : <button className="btn ghost block" style={{ marginTop: 16 }} onClick={() => setAjoutBien(true)}>Ajouter un bien</button>}
 
-      {(r.fiscal.nu || r.fiscal.meuble) && (
+      {(r.fiscal.nu || r.fiscal.meuble || r.fiscal.tourisme.length > 0 || r.fiscal.sci.length > 0) && (
         <section className="section">
           <div className="section-head"><h2>Déclaration des loyers</h2></div>
           {r.fiscal.nu && <div className="conseil-fiscal"><b>Location nue · {eur(r.fiscal.nu.recettes)} de loyers par an</b><p>{r.fiscal.nu.conseil}</p><small>Micro-foncier : {eur(r.fiscal.nu.micro.base)} imposés (plafond 15 000 €). Réel : {eur(r.fiscal.nu.reel.resultat)} après {eur(r.fiscal.nu.charges_deductibles)} de charges. {r.fiscal.nu.cases}</small></div>}
+          {r.fiscal.tourisme.map((t) => <div className="conseil-fiscal" key={String(t.classe)}><b>Meublé de tourisme {t.classe ? "classé" : "non classé"} · {eur(t.recettes)} sur 12 mois</b><p>{t.conseil}</p><small>Micro-BIC : {eur(t.micro.base)} imposés. Déclaration 2042-C-PRO, rubrique des locations meublées non professionnelles (meublés de tourisme).</small></div>)}
+          {r.fiscal.sci.map((x) => <div className="conseil-fiscal sci" key={x.id}><b>{x.nom} · {x.regime === "is" ? "impôt sur les sociétés" : "impôt sur le revenu"}</b><p>{x.conseil}</p><small>Loyers {eur(x.recettes)} · charges {eur(x.charges)} · intérêts {eur(x.interets)}{x.regime === "is" ? ` · amortissement ${eur(x.amortissement)}` : ""} → résultat {eur(x.resultat)}{x.impot_is !== null ? ` · impôt estimé ${eur(x.impot_is)}` : ""}{x.quote_part !== null ? ` · quote-part du foyer ${eur(x.quote_part)}` : ""}.</small></div>)}
           {r.fiscal.meuble && <div className="conseil-fiscal"><b>Location meublée · {eur(r.fiscal.meuble.recettes)} de recettes par an</b><p>{r.fiscal.meuble.conseil}</p><small>Micro-BIC : {eur(r.fiscal.meuble.micro.base)} imposés (plafond {eur(r.fiscal.meuble.seuil)}). {r.fiscal.meuble.cases}</small></div>}
           <p className="note">Estimations sur les loyers des baux en cours, à vérifier chaque année sur impots.gouv.fr. Prélèvements sociaux en plus : 17,2 % sur les loyers nus, 18,6 % sur la location meublée depuis la loi de financement de la sécurité sociale pour 2026. Meublé de tourisme non classé : plafond et abattement différents (15 000 €, 30 %).</p>
         </section>
