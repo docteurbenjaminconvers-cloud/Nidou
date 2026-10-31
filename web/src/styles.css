@@ -863,3 +863,7 @@ b, strong { font-weight: 800; }
 .partenaire-bloc .link { justify-self: start; }
 .suppr-liste { margin: 8px 0 14px; padding-left: 18px; display: grid; gap: 6px; font-size: 14px; line-height: 1.45; }
 .feuille:has(.suppr-liste) { overflow-y: auto; }
+.suppr-option { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; margin: 0 0 12px; }
+.resil-note { display: grid; gap: 6px; margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: var(--paper, #fbf3f6); font-size: 14px; }
+.resil-note .link { justify-self: start; }
+.suppr-prevue .t { color: var(--ember); }

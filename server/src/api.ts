@@ -3,7 +3,7 @@ import { z } from "zod";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { createHash, randomBytes } from "node:crypto";
 import { exporterFoyer } from "./export.js";
-import { quitterFoyer, supprimerFoyer } from "./suppression.js";
+import { annulerSuppression, arreterALEcheance, demanderSuppression, ensureSuppressionSchema, etatFin, quitterFoyer, reprendreAbonnement } from "./suppression.js";
 import { basename, extname, join } from "node:path";
 import type { Db, DocumentRow, HouseholdRow } from "./db.js";
 import { extractDocument, heuristicExtract } from "./extract.js";
@@ -83,6 +83,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
   V.ensureVeilleSchema(db);
   ensureAssistantSchema(db);
   ensureEbSchema(db);
+  ensureSuppressionSchema(db);
 
   const secure = () => (process.env.LUCIEN_PUBLIC_URL ?? "").startsWith("https://");
 
@@ -160,11 +161,11 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
   const isOwner = (c: any) => { const u = currentUser(c); return !u || db.householdsOfUser(u.id).find((h) => h.id === household(c).id)?.role === "proprietaire"; };
 
   /**
-   * « Supprimer le compte » : the owner erases the whole household (subscription cancelled and refunded pro rata,
-   * bank access revoked, every row and file removed); a member only deletes his own account and leaves.
+   * « Supprimer le compte » : a member deletes only his own account; the owner's household is erased at the end of
+   * the period already paid (no refund, nothing renews), or at once if he asks (`immediat`) or nothing paid is running.
    */
   api.post("/compte/supprimer", async (c) => {
-    const body = z.object({ confirmation: z.string() }).parse(await c.req.json());
+    const body = z.object({ confirmation: z.string(), immediat: z.boolean().default(false) }).parse(await c.req.json());
     if (body.confirmation.trim().toUpperCase() !== "SUPPRIMER") return c.json({ error: "confirmation", message: "Tapez SUPPRIMER pour confirmer." }, 400);
     // without accounts (shared demo), nobody may erase the household everyone is looking at
     if (!AUTH_ON()) return c.json({ error: "demo", message: "La suppression n'existe pas en démonstration." }, 403);
@@ -173,16 +174,38 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     if (u && !isOwner(c)) {
       quitterFoyer(db, h.id, u.id);
       c.header("set-cookie", cookieHeader(null, secure()));
-      return c.json({ ok: true, portee: "compte" });
+      return c.json({ ok: true, portee: "compte", le: null });
     }
     try {
-      const r = await supprimerFoyer(db, h.id, opts.uploadDir, { prenom: u?.prenom ?? null, email: u?.email ?? null });
-      c.header("set-cookie", cookieHeader(null, secure()));
+      const r = await demanderSuppression(db, h.id, opts.uploadDir, { prenom: u?.prenom ?? null, email: u?.email ?? null }, { immediat: body.immediat });
+      if (!r.le) c.header("set-cookie", cookieHeader(null, secure()));
       return c.json({ ok: true, portee: "foyer", ...r });
     } catch (e) {
       console.error("[suppression] échec :", e);
-      return c.json({ error: "suppression_impossible", message: "La résiliation de l'abonnement n'a pas abouti : rien n'a été effacé. Réessayez dans quelques minutes, ou écrivez à bonjour@monlucien.fr." }, 502);
+      return c.json({ error: "suppression_impossible", message: "L'arrêt de l'abonnement n'a pas abouti : rien n'a été effacé. Réessayez dans quelques minutes, ou écrivez à bonjour@monlucien.fr." }, 502);
     }
+  });
+
+  api.post("/compte/annuler-suppression", async (c) => {
+    if (!isOwner(c)) return c.json({ error: "proprietaire", message: "Seul le titulaire du foyer peut annuler la suppression." }, 403);
+    await annulerSuppression(db, household(c).id);
+    return c.json({ ok: true });
+  });
+
+  /** « Résilier l'abonnement » : no renewal, it runs to the end of the period already paid (no refund). */
+  api.post("/abonnement/resilier", async (c) => {
+    if (!isOwner(c)) return c.json({ error: "proprietaire", message: "Seul le propriétaire du foyer gère l'abonnement." }, 403);
+    try {
+      const fin = await arreterALEcheance(db, household(c).id);
+      if (!fin) return c.json({ error: "aucun_abonnement", message: "Aucun abonnement payant en cours." }, 400);
+      return c.json({ ok: true, fin });
+    } catch (e) { console.error("[résiliation]", e); return c.json({ error: "stripe", message: "La résiliation n'a pas abouti. Réessayez dans quelques minutes." }, 502); }
+  });
+  api.post("/abonnement/reprendre", async (c) => {
+    if (!isOwner(c)) return c.json({ error: "proprietaire", message: "Seul le propriétaire du foyer gère l'abonnement." }, 403);
+    if (etatFin(db, household(c).id).suppression_le) return c.json({ error: "suppression_prevue", message: "Annulez d'abord la suppression du foyer." }, 400);
+    try { await reprendreAbonnement(db, household(c).id); return c.json({ ok: true }); }
+    catch (e) { console.error("[reprise]", e); return c.json({ error: "stripe", message: "La reprise n'a pas abouti. Réessayez dans quelques minutes." }, 502); }
   });
 
 
@@ -296,7 +319,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
       mcp_token: h.plan === "famille" ? db.getHousehold(h.id)!.mcp_token : null,
       utilisateur: currentUser(c),
       titulaire: isOwner(c),
-      abonnement: resumeAbonnement(db.getHousehold(h.id)!),
+      abonnement: { ...resumeAbonnement(db.getHousehold(h.id)!), ...etatFin(db, h.id) },
       modules: db.getModules(h.id),
       comptes: db.usersOfHousehold(h.id).length,
       capacite_comptes: capaciteComptes(db, db.getHousehold(h.id)!),

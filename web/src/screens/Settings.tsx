@@ -130,7 +130,8 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
           {(household.abonnement?.statut === "active" || household.abonnement?.statut === "simule" || household.abonnement?.statut === "past_due") && (
             <div style={{ marginTop: 12 }}>
               <p className="note">Formule {TIERS.find((t) => t.id === formuleActuelle)?.nom ?? ""}, paiement {household.abonnement.periode === "annuel" ? "annuel" : "mensuel"}{household.abonnement.fin ? `, prochaine échéance le ${new Date(household.abonnement.fin).toLocaleDateString("fr-FR")}` : ""}{household.abonnement.statut === "past_due" ? " · paiement en attente, mettez à jour votre carte" : ""}{household.abonnement.statut === "simule" ? " · simulé (Stripe non configuré)" : ""}.</p>
-              {household.abonnement.gerable && <button className="link" style={{ marginTop: 6 }} onClick={async () => { const r = await api.portail(); location.href = r.url; }}>Gérer mon abonnement (carte, factures, résiliation)</button>}
+              {household.abonnement.gerable && <button className="link" style={{ marginTop: 6 }} onClick={async () => { const r = await api.portail(); location.href = r.url; }}>Gérer mon abonnement (carte, factures)</button>}
+              <Resiliation api={api} household={household} toast={toast} />
             </div>
           )}
         </div>
@@ -199,10 +200,12 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
         <div className="section-head"><h2>Vos données</h2></div>
         <div className="settings-row"><div><div className="t">Hébergement</div><div className="s">Europe · connexion chiffrée · jamais revendu</div></div></div>
         <div className="settings-row"><div><div className="t">Exporter tout</div><div className="s">Vos papiers d'origine et toutes vos données, dans un fichier .zip</div></div><button className="link" onClick={async () => { toast("Préparation de l'export…"); try { await api.exporter(); } catch (e) { toast((e as Error).message); } }}>Exporter</button></div>
-        <div className="settings-row"><div><div className="t">Supprimer le compte</div><div className="s">{household.titulaire === false ? "Vous quittez le foyer, votre compte est effacé" : "Tout le foyer est effacé, l'abonnement est résilié et remboursé au prorata"}</div></div><button className="link" style={{ color: "var(--ember)" }} onClick={() => setSuppression(true)}>Supprimer</button></div>
+        {household.abonnement?.suppression_le && household.titulaire !== false ? (
+          <div className="settings-row suppr-prevue"><div><div className="t">Suppression prévue le {dateFr(household.abonnement.suppression_le)}</div><div className="s">Tout reste accessible d'ici là. Pensez à exporter vos données.</div></div><button className="link" onClick={async () => { try { await api.annulerSuppression(); toast("Suppression annulée, l'abonnement continue"); setTimeout(() => location.reload(), 900); } catch (e) { toast((e as Error).message); } }}>Annuler</button></div>
+        ) : <div className="settings-row"><div><div className="t">Supprimer le compte</div><div className="s">{household.titulaire === false ? "Vous quittez le foyer, votre compte est effacé" : "Le foyer est effacé à la fin de la période déjà payée"}</div></div><button className="link" style={{ color: "var(--ember)" }} onClick={() => setSuppression(true)}>Supprimer</button></div>}
         {household.utilisateur && <div className="settings-row"><div><div className="t">Connecté·e</div><div className="s">{household.utilisateur.email}</div></div><button className="link" onClick={async () => { await api.deconnexion(); location.reload(); }}>Se déconnecter</button></div>}
       </section>
-      {suppression && <SuppressionCompte api={api} titulaire={household.titulaire !== false} foyer={household.nom} onClose={() => setSuppression(false)} toast={toast} />}
+      {suppression && <SuppressionCompte api={api} titulaire={household.titulaire !== false} foyer={household.nom} paye={paiementEnCours(household)} fin={household.abonnement?.fin ?? null} onClose={() => setSuppression(false)} toast={toast} />}
     </div>
   );
 }
@@ -240,16 +243,37 @@ function CodePartenaire({ api, toast }: { api: Api; toast: (m: string) => void }
   );
 }
 
+const dateFr = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+/** A paid subscription is running (trial and the free plan are not). */
+const paiementEnCours = (h: Household) => ["active", "trialing", "past_due", "simule"].includes(h.abonnement?.statut ?? "");
+
+/** « Résilier l'abonnement » : no renewal, active until the end of the period already paid; can be taken back. */
+function Resiliation({ api, household, toast }: { api: Api; household: Household; toast: (m: string) => void }) {
+  const a = household.abonnement;
+  const [confirmer, setConfirmer] = useState(false);
+  if (!a || !paiementEnCours(household) || household.titulaire === false || a.suppression_le) return null;
+  if (a.abonnement_resilie) return (
+    <div className="resil-note"><span>Abonnement résilié : il reste actif jusqu'au {a.fin ? dateFr(a.fin) : "terme de la période"}, puis s'arrête sans autre prélèvement.</span>
+      <button className="link" onClick={async () => { try { await api.reprendre(); toast("Abonnement repris"); setTimeout(() => location.reload(), 900); } catch (e) { toast((e as Error).message); } }}>Reprendre l'abonnement</button></div>
+  );
+  return confirmer ? (
+    <div className="resil-note"><span>L'abonnement ne sera pas renouvelé. Il reste actif jusqu'au {a.fin ? dateFr(a.fin) : "terme de la période déjà payée"}, sans remboursement ; vos papiers restent ensuite consultables.</span>
+      <div style={{ display: "flex", gap: 14 }}><button className="link" style={{ color: "var(--ember)" }} onClick={async () => { try { const r = await api.resilier(); toast(`Résilié : actif jusqu'au ${dateFr(r.fin)}`); setTimeout(() => location.reload(), 900); } catch (e) { toast((e as Error).message); } }}>Confirmer la résiliation</button><button className="link" onClick={() => setConfirmer(false)}>Garder</button></div></div>
+  ) : <button className="link" style={{ marginTop: 6, display: "block" }} onClick={() => setConfirmer(true)}>Résilier l'abonnement</button>;
+}
+
 /** Confirmation sheet for « Supprimer le compte »: what goes, the export first, then SUPPRIMER typed by hand. */
-function SuppressionCompte({ api, titulaire, foyer, onClose, toast }: { api: Api; titulaire: boolean; foyer: string; onClose: () => void; toast: (m: string) => void }) {
+function SuppressionCompte({ api, titulaire, foyer, paye, fin, onClose, toast }: { api: Api; titulaire: boolean; foyer: string; paye: boolean; fin: string | null; onClose: () => void; toast: (m: string) => void }) {
   const [mot, setMot] = useState("");
+  const [immediat, setImmediat] = useState(false);
   const [busy, setBusy] = useState(false);
+  const aEcheance = titulaire && paye && !immediat;
   const valider = async () => {
     setBusy(true);
     try {
-      const r = await api.supprimerCompte(mot);
-      const rembourse = r.rembourse_centimes ? ` ${(r.rembourse_centimes / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2 })} € vous seront remboursés sous quelques jours.` : "";
-      toast(r.portee === "foyer" ? `Foyer supprimé.${rembourse}` : "Votre compte est supprimé.");
+      const r = await api.supprimerCompte(mot, immediat);
+      if (r.le) { toast(`Le foyer sera supprimé le ${dateFr(r.le)}`); setTimeout(() => location.reload(), 1500); return; }
+      toast(r.portee === "foyer" ? "Foyer supprimé." : "Votre compte est supprimé.");
       setTimeout(() => { location.hash = ""; location.reload(); }, 1800);
     } catch (e) { toast((e as Error).message); setBusy(false); }
   };
@@ -259,9 +283,10 @@ function SuppressionCompte({ api, titulaire, foyer, onClose, toast }: { api: Api
         <div className="feuille-tete"><b>{titulaire ? `Supprimer le foyer « ${foyer} »` : "Quitter le foyer et supprimer mon compte"}</b><button className="link" onClick={onClose}>Annuler</button></div>
         {titulaire ? (
           <ul className="suppr-liste">
-            <li>Tous les papiers, fichiers, photos, échéances, opérations bancaires et modules sont effacés, pour toutes les personnes du foyer.</li>
-            <li>L'accès à votre banque est coupé.</li>
-            <li>L'abonnement est résilié tout de suite, et la part non utilisée de votre dernier paiement vous est remboursée.</li>
+            {paye
+              ? <li>L'abonnement n'est pas renouvelé et rien n'est remboursé. {immediat ? "Le reste de la période déjà payée est perdu." : `Le foyer reste accessible jusqu'au ${fin ? dateFr(fin) : "terme de la période déjà payée"}, puis il est effacé ; vous pouvez changer d'avis d'ici là.`}</li>
+              : <li>Aucun abonnement payant n'est en cours : le foyer est effacé tout de suite.</li>}
+            <li>Seront effacés : papiers, fichiers, photos, échéances, opérations bancaires et modules, pour toutes les personnes du foyer. L'accès à votre banque est coupé.</li>
             <li>Les autres personnes connectées au foyer sont prévenues par email. Vos factures restent disponibles chez notre prestataire de paiement, comme la loi l'impose.</li>
           </ul>
         ) : (
@@ -270,9 +295,10 @@ function SuppressionCompte({ api, titulaire, foyer, onClose, toast }: { api: Api
             <li>Le foyer, ses papiers et son abonnement restent en place pour les autres.</li>
           </ul>
         )}
+        {titulaire && paye && <label className="suppr-option"><input type="checkbox" checked={immediat} onChange={(e) => setImmediat(e.target.checked)} /> Tout effacer dès maintenant (le reste de la période payée est perdu)</label>}
         <button className="btn ghost block" onClick={async () => { try { await api.exporter(); } catch (e) { toast((e as Error).message); } }}>Exporter mes données d'abord</button>
         <label className="champ" style={{ marginTop: 14 }}><span>Pour confirmer, tapez SUPPRIMER</span><input value={mot} onChange={(e) => setMot(e.target.value)} autoCapitalize="characters" autoComplete="off" aria-label="Tapez SUPPRIMER pour confirmer" /></label>
-        <button className="btn block danger" style={{ marginTop: 12 }} disabled={busy || mot.trim().toUpperCase() !== "SUPPRIMER"} onClick={valider}>{busy ? <span className="spinner" /> : titulaire ? "Supprimer définitivement" : "Supprimer mon compte"}</button>
+        <button className="btn block danger" style={{ marginTop: 12 }} disabled={busy || mot.trim().toUpperCase() !== "SUPPRIMER"} onClick={valider}>{busy ? <span className="spinner" /> : !titulaire ? "Supprimer mon compte" : aEcheance ? `Supprimer le ${fin ? dateFr(fin) : "à l'échéance"}` : "Supprimer définitivement"}</button>
       </div>
     </div>
   );

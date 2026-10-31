@@ -1,3 +1,4 @@
+import { ensureSuppressionSchema, executerSuppressionsPrevues } from "./suppression.js";
 import { entretienVeilles } from "./veille.js";
 import type { Db, HouseholdRow } from "./db.js";
 import { budgetReport } from "./budget.js";
@@ -78,6 +79,25 @@ export function rappelsAlertes(db: Db, h: HouseholdRow): Rappel[] {
   return [];
 }
 
+/**
+ * Annual subscriptions renew tacitly: the law (Code de la consommation, art. L215-1) requires telling the customer,
+ * between three months and one month before the end, that he may refuse the renewal. Sent once per period,
+ * 45 to 30 days before the date; nothing when the renewal is already stopped.
+ */
+export function rappelsRenouvellement(db: Db, h: HouseholdRow, now = new Date()): Rappel[] {
+  ensureSuppressionSchema(db);
+  const r = db.raw.prepare("SELECT abonnement_periode, abonnement_statut, abonnement_fin, abonnement_resilie, suppression_le FROM households WHERE id = ?").get(h.id) as
+    { abonnement_periode: string | null; abonnement_statut: string | null; abonnement_fin: string | null; abonnement_resilie?: number; suppression_le?: string | null } | undefined;
+  if (!r || r.abonnement_periode !== "annuel" || !r.abonnement_fin || r.abonnement_resilie || r.suppression_le) return [];
+  if (!["active", "trialing", "past_due"].includes(r.abonnement_statut ?? "")) return [];
+  const jours = Math.round((Date.parse(r.abonnement_fin) - Date.parse(now.toISOString().slice(0, 10))) / 86400_000);
+  if (jours > 45 || jours < 30) return [];
+  const date = r.abonnement_fin.split("-").reverse().join("/");
+  return [{ cle: `renouvellement:${r.abonnement_fin}`, titre: `Votre abonnement annuel Lucien se renouvelle le ${date}`,
+    corps: `Votre abonnement annuel se renouvellera automatiquement le ${date}, pour un an, au tarif de votre formule. Si vous ne souhaitez pas le renouveler, vous pouvez le résilier d'ici là en un geste, dans Réglages, Votre formule, « Résilier l'abonnement » : il restera actif jusqu'au ${date}, sans autre prélèvement.`,
+    route: "#/settings" }];
+}
+
 /** Default transport: push to every device of the household; email too for Famille households (free = push only). */
 export async function transportParDefaut(db: Db, h: HouseholdRow, r: Rappel) {
   const n = await envoyerPush(db, h.id, { titre: r.titre, corps: r.corps, url: `/${r.route}`, tag: r.cle.split(":")[0] });
@@ -95,7 +115,7 @@ export async function transportParDefaut(db: Db, h: HouseholdRow, r: Rappel) {
 export async function passeQuotidienne(db: Db, envoyer: (h: HouseholdRow, r: Rappel) => Promise<void> = (h, r) => transportParDefaut(db, h, r)) {
   let n = 0;
   for (const h of db.listHouseholds()) {
-    for (const r of [...rappelsEssai(db, h), ...rappelsEcheances(db, h), ...rappelsAlertes(db, h)]) {
+    for (const r of [...rappelsEssai(db, h), ...rappelsEcheances(db, h), ...rappelsAlertes(db, h), ...rappelsRenouvellement(db, h)]) {
       if (db.marquerRappel(h.id, r.cle)) { await envoyer(h, r); n++; }
     }
   }
@@ -122,10 +142,11 @@ export async function passeHebdo(db: Db, envoyer: (h: HouseholdRow, r: Rappel) =
   return n;
 }
 
-export function demarrerRappels(db: Db) {
+export function demarrerRappels(db: Db, opts: { uploadDir?: string } = {}) {
   const tick = () => {
     try { entretienVeilles(db); } catch (e) { console.error("[veille]", e); }
-    return passeQuotidienne(db).then(() => passeHebdo(db)).catch((e) => console.error("[rappel]", e));
+    const suppressions = opts.uploadDir ? executerSuppressionsPrevues(db, opts.uploadDir).catch((e) => console.error("[suppression prévue]", e)) : Promise.resolve();
+    return suppressions.then(() => passeQuotidienne(db)).then(() => passeHebdo(db)).catch((e) => console.error("[rappel]", e));
   };
   setTimeout(tick, 5_000);
   const t = setInterval(tick, 3 * 3600_000); // every 3 h (the Sunday point goes out between 17:00 and 20:00); idempotent thanks to rappels_envoyes

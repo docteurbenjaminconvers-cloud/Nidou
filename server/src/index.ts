@@ -65,7 +65,7 @@ if (existsSync(WEB_DIST)) {
   app.get("*", serveStatic({ path: join(WEB_DIST, "index.html").replace(process.cwd() + "/", "") }));
 }
 
-demarrerRappels(db);
+demarrerRappels(db, { uploadDir: join(DATA_DIR, "uploads") });
 demarrerSynchroBanques(db);
 
 serve({ fetch: app.fetch, port: PORT }, () => {

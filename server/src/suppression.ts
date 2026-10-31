@@ -1,9 +1,12 @@
 /**
- * « Supprimer le compte » (RGPD, droit à l'effacement), as approved on 31/10/2026:
- * - the owner deletes the whole household; a plain member only deletes his own account and leaves the household;
- * - the Stripe subscription is cancelled at once and the unused part of the last payment is refunded pro rata;
- *   invoices stay at Stripe (kept 10 years by law);
- * - the bank access is revoked at Enable Banking or Bridge; every row and file of the household is erased;
+ * Ending a subscription and deleting an account, as decided on 31/10/2026 (« comme pour les assurances ») :
+ * - no refund: a subscription stops at the end of the period already paid (the current month, or the current year);
+ * - « Résilier l'abonnement » stops the renewal; the account and the papers stay readable afterwards;
+ * - « Supprimer le compte » by the owner stops the renewal too, and the household is erased on that date
+ *   (everything stays available until then, and the deletion can be cancelled); he may also ask to erase at once,
+ *   losing the rest of the paid period; without a running paid subscription the erasure is immediate;
+ * - a plain member only deletes his own account and leaves the household;
+ * - the bank access is revoked at Enable Banking or Bridge; invoices stay at Stripe (kept 10 years by law);
  * - the other people connected to the household are told by email.
  */
 import Stripe from "stripe";
@@ -14,43 +17,63 @@ import { BridgeClient, bridgeConfig } from "./bridge.js";
 import { EbClient, ebConfig } from "./enablebanking.js";
 import { envoyerEmail } from "./mail.js";
 
-/** Refund, in cents, of the unused part of a period: amount paid × days left / days in the period (never negative). */
-export function remboursementProrata(payeCentimes: number, debutSec: number, finSec: number, maintenantSec = Math.floor(Date.now() / 1000)): number {
-  if (payeCentimes <= 0 || finSec <= debutSec || maintenantSec >= finSec) return 0;
-  const reste = (finSec - Math.max(maintenantSec, debutSec)) / (finSec - debutSec);
-  return Math.floor(payeCentimes * reste);
+export function ensureSuppressionSchema(db: Db) {
+  const cols = (db.raw.prepare("PRAGMA table_info(households)").all() as unknown as { name: string }[]).map((c) => c.name);
+  if (!cols.includes("suppression_le")) db.raw.exec("ALTER TABLE households ADD COLUMN suppression_le TEXT");
+  if (!cols.includes("suppression_par")) db.raw.exec("ALTER TABLE households ADD COLUMN suppression_par TEXT");
+  if (!cols.includes("abonnement_resilie")) db.raw.exec("ALTER TABLE households ADD COLUMN abonnement_resilie INTEGER NOT NULL DEFAULT 0");
 }
 
-export interface ResultatResiliation { resilie: boolean; rembourse_centimes: number }
+export interface EtatFin { abonnement_resilie: boolean; suppression_le: string | null }
+export const etatFin = (db: Db, householdId: string): EtatFin => {
+  const r = db.raw.prepare("SELECT abonnement_resilie, suppression_le FROM households WHERE id = ?").get(householdId) as { abonnement_resilie: number; suppression_le: string | null } | undefined;
+  return { abonnement_resilie: !!r?.abonnement_resilie, suppression_le: r?.suppression_le ?? null };
+};
+
+const stripeDe = (client?: Stripe) => client ?? (process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2025-08-27.basil" as never }) : null);
+const jour = (sec: number) => new Date(sec * 1000).toISOString().slice(0, 10);
+const finDePeriode = (sub: Stripe.Subscription): number => {
+  const item = sub.items?.data?.[0] as unknown as { current_period_end?: number } | undefined;
+  return item?.current_period_end ?? (sub as unknown as { current_period_end?: number }).current_period_end ?? 0;
+};
+const dateFr = (iso: string) => iso.split("-").reverse().join("/");
 
 /**
- * Cancels the household's subscription now and refunds the unused part of the last paid invoice.
- * Safe to run twice: an already cancelled subscription is not cancelled again, and the refund carries an
- * idempotency key, so a retry never refunds twice.
+ * Stops the renewal: the subscription runs to the end of the period already paid, then ends. No refund.
+ * Returns that date (YYYY-MM-DD), or null when no paid subscription is running.
  */
-export async function resilierEtRembourser(h: { stripe_subscription_id?: string | null }, maintenantSec = Math.floor(Date.now() / 1000), client?: Stripe): Promise<ResultatResiliation> {
-  if (!h.stripe_subscription_id || (!client && !process.env.STRIPE_SECRET_KEY)) return { resilie: false, rembourse_centimes: 0 };
-  const stripe = client ?? new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2025-08-27.basil" as never });
-  const sub = await stripe.subscriptions.retrieve(h.stripe_subscription_id);
-  const item = sub.items.data[0] as unknown as { current_period_start?: number; current_period_end?: number } | undefined;
-  const debut = item?.current_period_start ?? (sub as unknown as { current_period_start?: number }).current_period_start ?? 0;
-  const fin = item?.current_period_end ?? (sub as unknown as { current_period_end?: number }).current_period_end ?? 0;
-  if (sub.status !== "canceled") await stripe.subscriptions.cancel(sub.id, { prorate: false, invoice_now: false });
+export async function arreterALEcheance(db: Db, householdId: string, client?: Stripe): Promise<string | null> {
+  const h = db.getHousehold(householdId);
+  const stripe = stripeDe(client);
+  let fin: string | null = null;
+  if (h?.stripe_subscription_id && stripe) {
+    const sub = await stripe.subscriptions.retrieve(h.stripe_subscription_id);
+    if (sub.status === "canceled") return null;
+    const maj = sub.cancel_at_period_end ? sub : await stripe.subscriptions.update(sub.id, { cancel_at_period_end: true });
+    fin = jour(finDePeriode(maj));
+  } else if (h?.abonnement_statut === "simule") fin = h.abonnement_fin; // test instance without Stripe
+  if (fin || h?.abonnement_statut === "simule") db.raw.prepare("UPDATE households SET abonnement_resilie = 1, abonnement_fin = COALESCE(?, abonnement_fin) WHERE id = ?").run(fin, householdId);
+  return fin;
+}
 
-  const invoiceId = typeof sub.latest_invoice === "string" ? sub.latest_invoice : sub.latest_invoice?.id;
-  if (!invoiceId) return { resilie: true, rembourse_centimes: 0 };
-  const facture = await stripe.invoices.retrieve(invoiceId, { expand: ["payments"] });
-  const montant = remboursementProrata(facture.amount_paid ?? 0, debut, fin, maintenantSec);
-  if (montant <= 0) return { resilie: true, rembourse_centimes: 0 };
-  const paiements = ((facture as unknown as { payments?: { data?: { payment?: { payment_intent?: string | { id: string } | null } }[] } }).payments?.data ?? []);
-  const pi = paiements.map((p) => p.payment?.payment_intent).find(Boolean);
-  const piId = typeof pi === "string" ? pi : pi?.id;
-  if (!piId) throw new Error(`Aucun paiement trouvé sur la facture ${invoiceId} pour le remboursement`);
-  await stripe.refunds.create(
-    { payment_intent: piId, amount: montant, reason: "requested_by_customer", metadata: { motif: "suppression du compte Lucien", abonnement: sub.id } },
-    { idempotencyKey: `lucien-suppression-${sub.id}` },
-  );
-  return { resilie: true, rembourse_centimes: montant };
+/** Changes his mind before the end date: the subscription renews again as usual. */
+export async function reprendreAbonnement(db: Db, householdId: string, client?: Stripe) {
+  const h = db.getHousehold(householdId);
+  const stripe = stripeDe(client);
+  if (h?.stripe_subscription_id && stripe) {
+    const sub = await stripe.subscriptions.retrieve(h.stripe_subscription_id);
+    if (sub.status !== "canceled" && sub.cancel_at_period_end) await stripe.subscriptions.update(sub.id, { cancel_at_period_end: false });
+  }
+  db.raw.prepare("UPDATE households SET abonnement_resilie = 0 WHERE id = ?").run(householdId);
+}
+
+/** Immediate end, only when the owner asks to erase at once: no more payment, no refund. */
+async function arreterMaintenant(db: Db, householdId: string, client?: Stripe) {
+  const h = db.getHousehold(householdId);
+  const stripe = stripeDe(client);
+  if (!h?.stripe_subscription_id || !stripe) return;
+  const sub = await stripe.subscriptions.retrieve(h.stripe_subscription_id);
+  if (sub.status !== "canceled") await stripe.subscriptions.cancel(sub.id, { prorate: false, invoice_now: false });
 }
 
 /** Revokes the bank access at the aggregator; failures are logged, never block the deletion. */
@@ -76,16 +99,23 @@ function effacerUtilisateurOrphelin(db: Db, userId: string) {
   return true;
 }
 
-/** The owner's choice: the whole household, its rows, its files, its bank access and its subscription. */
-export async function supprimerFoyer(db: Db, householdId: string, uploadDir: string, par: { prenom: string | null; email: string | null }, stripeClient?: Stripe): Promise<ResultatResiliation & { prevenus: number }> {
+const prevenir = async (db: Db, householdId: string, sauf: string | null, sujet: string, corps: (prenom: string | null) => string) => {
+  let n = 0;
+  for (const u of db.usersOfHousehold(householdId).filter((x) => x.email !== sauf)) if (await envoyerEmail({ to: u.email, subject: sujet, text: corps(u.prenom) }).catch(() => false)) n++;
+  return n;
+};
+
+/** Erases the whole household now: rows, files, bank access; the subscription is stopped without refund. */
+export async function supprimerFoyer(db: Db, householdId: string, uploadDir: string, par: { prenom: string | null; email: string | null }, client?: Stripe): Promise<{ prevenus: number }> {
   const h = db.getHousehold(householdId);
-  if (!h) return { resilie: false, rembourse_centimes: 0, prevenus: 0 };
-  // 1. money first: if Stripe fails, nothing is erased and the person can try again
-  const res = await resilierEtRembourser(h, undefined, stripeClient);
+  if (!h) return { prevenus: 0 };
+  // 1. payment first: if Stripe fails, nothing is erased and the person can try again
+  await arreterMaintenant(db, householdId, client);
   // 2. bank access
   await couperBanque(db, householdId);
   // 3. who to tell, and which files to remove, before the rows go
-  const autres = db.usersOfHousehold(householdId).filter((u) => u.email !== par.email);
+  const nom = h.nom;
+  const destinataires = db.usersOfHousehold(householdId).filter((u) => u.email !== par.email).map((u) => ({ email: u.email, prenom: u.prenom }));
   const membres = db.usersOfHousehold(householdId).map((u) => u.id);
   const fichiers = [
     ...(db.raw.prepare("SELECT fichier AS f FROM documents WHERE household_id = ? AND fichier IS NOT NULL").all(householdId) as { f: string }[]),
@@ -105,12 +135,51 @@ export async function supprimerFoyer(db: Db, householdId: string, uploadDir: str
   for (const f of fichiers) await unlink(join(uploadDir, basename(f))).catch(() => {});
   // 6. the others are told
   let prevenus = 0;
-  for (const u of autres) {
-    const ok = await envoyerEmail({ to: u.email, subject: `Le foyer « ${h.nom} » a été supprimé de Lucien`, text:
-      `Bonjour${u.prenom ? ` ${u.prenom}` : ""},\n\n${par.prenom ?? "Le titulaire"} a supprimé le foyer « ${h.nom} » de Lucien. Ses papiers, échéances et données ont été effacés, et votre accès à ce foyer est fermé.\n\nSi vous pensez qu'il s'agit d'une erreur, parlez-en avec ${par.prenom ?? "le titulaire"}. Pour toute question : bonjour@monlucien.fr.` }).catch(() => false);
+  for (const u of destinataires) {
+    const ok = await envoyerEmail({ to: u.email, subject: `Le foyer « ${nom} » a été supprimé de Lucien`, text:
+      `Bonjour${u.prenom ? ` ${u.prenom}` : ""},\n\n${par.prenom ?? "Le titulaire"} a supprimé le foyer « ${nom} » de Lucien. Ses papiers, échéances et données ont été effacés, et votre accès à ce foyer est fermé.\n\nPour toute question : bonjour@monlucien.fr.` }).catch(() => false);
     if (ok) prevenus++;
   }
-  return { ...res, prevenus };
+  return { prevenus };
+}
+
+/**
+ * The owner's « Supprimer le compte »: by default the household is erased at the end of the period already paid
+ * (nothing renews, everything stays available until then); `immediat` erases now and the rest of the period is lost.
+ * Without a running paid subscription (trial, already ended) the erasure is immediate.
+ */
+export async function demanderSuppression(db: Db, householdId: string, uploadDir: string, par: { prenom: string | null; email: string | null }, opts: { immediat?: boolean; client?: Stripe; aujourdhui?: string } = {}): Promise<{ le: string | null; prevenus: number }> {
+  const aujourdhui = opts.aujourdhui ?? new Date().toISOString().slice(0, 10);
+  if (!opts.immediat) {
+    const fin = await arreterALEcheance(db, householdId, opts.client);
+    if (fin && fin > aujourdhui) {
+      const h = db.getHousehold(householdId)!;
+      db.raw.prepare("UPDATE households SET suppression_le = ?, suppression_par = ? WHERE id = ?").run(fin, par.prenom ?? par.email ?? "le titulaire", householdId);
+      const prevenus = await prevenir(db, householdId, par.email, `Le foyer « ${h.nom} » sera supprimé le ${dateFr(fin)}`, (p) =>
+        `Bonjour${p ? ` ${p}` : ""},\n\n${par.prenom ?? "Le titulaire"} a demandé la suppression du foyer « ${h.nom} » sur Lucien. L'abonnement ne sera pas renouvelé et tout sera effacé le ${dateFr(fin)}, à la fin de la période déjà payée.\n\nD'ici là, tout reste accessible : pensez à exporter ce dont vous avez besoin (Réglages, Exporter tout).`);
+      return { le: fin, prevenus };
+    }
+  }
+  const r = await supprimerFoyer(db, householdId, uploadDir, par, opts.client);
+  return { le: null, prevenus: r.prevenus };
+}
+
+/** Cancels a planned deletion: nothing is erased and the subscription renews again. */
+export async function annulerSuppression(db: Db, householdId: string, client?: Stripe) {
+  await reprendreAbonnement(db, householdId, client);
+  db.raw.prepare("UPDATE households SET suppression_le = NULL, suppression_par = NULL WHERE id = ?").run(householdId);
+}
+
+/** Daily job: erases the households whose planned deletion date has come. */
+export async function executerSuppressionsPrevues(db: Db, uploadDir: string, aujourdhui = new Date().toISOString().slice(0, 10), client?: Stripe) {
+  ensureSuppressionSchema(db);
+  const dus = db.raw.prepare("SELECT id, suppression_par FROM households WHERE suppression_le IS NOT NULL AND suppression_le <= ?").all(aujourdhui) as { id: string; suppression_par: string | null }[];
+  let n = 0;
+  for (const h of dus) {
+    try { await supprimerFoyer(db, h.id, uploadDir, { prenom: h.suppression_par, email: null }, client); n++; }
+    catch (e) { console.error("[suppression prévue] échec, nouvel essai au prochain passage :", (e as Error).message); }
+  }
+  return n;
 }
 
 /** A member who is not the owner: leaves the household and deletes his own account; the household stays. */

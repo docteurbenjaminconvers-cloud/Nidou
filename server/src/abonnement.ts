@@ -1,3 +1,4 @@
+import { ensureSuppressionSchema } from "./suppression.js";
 import Stripe from "stripe";
 import type { Db, HouseholdRow } from "./db.js";
 import { ecartItems, lignesModules, modulesDepuisItems, prixManquants, tousLesPrix, type ChoixModules } from "./stripeModules.js";
@@ -209,6 +210,8 @@ export function appliquerEvenement(db: Db, event: EvenementMinimal): string {
     if (!h) return "subscription: foyer inconnu";
     const statut = event.type === "customer.subscription.deleted" ? "canceled" : o.status ?? "active";
     appliquerAbonnement(db, h, { customer: o.customer ?? null, subscription: o.id, statut, formule: formuleDe(), periode: periodeDe(), fin: finDe() });
+    // cancelled in the Stripe portal or by Lucien: no renewal at the end of the period
+    if (typeof o.cancel_at_period_end === "boolean") { ensureSuppressionSchema(db); db.raw.prepare("UPDATE households SET abonnement_resilie = ? WHERE id = ?").run(o.cancel_at_period_end ? 1 : 0, h.id); }
     const prixAssistant = [process.env.STRIPE_PRICE_ASSISTANT_MENSUEL, process.env.STRIPE_PRICE_ASSISTANT_ANNUEL].filter(Boolean);
     if (prixAssistant.length) {
       const on = statut !== "canceled" && (o.items?.data ?? []).some((i) => prixAssistant.includes(i.price.id));

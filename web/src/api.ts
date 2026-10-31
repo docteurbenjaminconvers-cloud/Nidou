@@ -66,7 +66,11 @@ export interface Api {
   /** « Exporter tout » : downloads the household's whole data (a .zip from the server; JSON in the demo). */
   exporter(): Promise<void>;
   /** « Supprimer le compte » : the owner erases the household, a member only his own account. */
-  supprimerCompte(confirmation: string): Promise<{ ok: boolean; portee: "foyer" | "compte"; rembourse_centimes?: number }>;
+  supprimerCompte(confirmation: string, immediat?: boolean): Promise<{ ok: boolean; portee: "foyer" | "compte"; le: string | null }>;
+  annulerSuppression(): Promise<void>;
+  /** « Résilier l'abonnement » : stops the renewal; active until the end of the period already paid. */
+  resilier(): Promise<{ fin: string }>;
+  reprendre(): Promise<void>;
   retirerCompte(userId: string): Promise<void>;
   regenererMcp(): Promise<string>;
   assistant(messages: AssistantMessage[]): Promise<AssistantReponse>;
@@ -182,7 +186,10 @@ const serverApi: Api = {
   comptes: () => call("/foyer/comptes"),
   inviter: (email, prenom) => call("/invitations", json({ email, prenom })),
   annulerInvitation: async (id) => { await call(`/invitations/${encodeURIComponent(id)}`, { method: "DELETE" }); },
-  supprimerCompte: (confirmation) => call("/compte/supprimer", json({ confirmation })),
+  supprimerCompte: (confirmation, immediat = false) => call("/compte/supprimer", json({ confirmation, immediat })),
+  annulerSuppression: async () => { await call("/compte/annuler-suppression", json({})); },
+  resilier: () => call("/abonnement/resilier", json({})),
+  reprendre: async () => { await call("/abonnement/reprendre", json({})); },
   exporter: async () => {
     const r = await fetch("/api/export.zip");
     if (!r.ok) throw new ApiError(r.status, "export", "L'export n'a pas pu être préparé. Réessayez dans un instant.");
@@ -340,6 +347,9 @@ function makeDemoApi(): Api {
       const cap = state.household.capacite_comptes ?? 6;
       if (state.comptes.length + state.invitations.length >= cap) throw new ApiError(402, "limite_comptes", cap === 1 ? "Le plan gratuit est réservé à une personne. Avec Duo, votre conjoint·e se connecte aussi ; avec Tribu, jusqu'à 6 personnes." : `Votre formule accepte ${cap} personnes connectées. Passez à Tribu pour en inviter plus.`); state.invitations.push({ id: crypto.randomUUID(), email, prenom, expire_le: new Date(Date.now() + 7 * 864e5).toISOString() }); return { ok: true, envoye: true, lien: null }; },
     annulerInvitation: async (id) => { state.invitations = state.invitations.filter((i) => i.id !== id); },
+    annulerSuppression: async () => {},
+    resilier: async () => { throw new ApiError(400, "demo", "En démonstration, il n'y a pas d'abonnement à résilier."); },
+    reprendre: async () => {},
     supprimerCompte: async () => { throw new ApiError(403, "demo", "La suppression n'existe pas en démonstration : vos données de démo restent sur ce téléphone seulement."); },
     exporter: async () => {
       const url = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], { type: "application/json" }));
