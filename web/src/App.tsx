@@ -72,7 +72,7 @@ export default function App() {
   useEffect(() => { getApi().then((a) => { setApi(a); reload(a); }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const q = new URLSearchParams(location.hash.split("?")[1] ?? "");
-    if (q.get("paiement") === "ok") { toast("Bienvenue dans le plan Famille"); location.hash = "#/settings"; }
+    if (q.get("paiement") === "ok") { toast("Bienvenue dans la formule complète"); location.hash = "#/settings"; }
     if (q.get("paiement") === "annule") { toast("Paiement annulé, rien n'a été débité"); location.hash = "#/settings"; }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {

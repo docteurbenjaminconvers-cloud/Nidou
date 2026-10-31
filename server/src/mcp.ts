@@ -239,7 +239,7 @@ export async function handleMcpRequest(db: Db, req: Request, pathToken?: string)
   let h = db.householdByMcpToken(bearer);
   if (!h && process.env.LUCIEN_MCP_TOKEN && bearer === process.env.LUCIEN_MCP_TOKEN) h = db.firstHousehold();
   if (!h) return unauthorized();
-  if (db.effectivePlan(h) !== "famille") return new Response(JSON.stringify({ error: "plan", message: "Le connecteur IA fait partie du plan Famille." }), { status: 402, headers: { "content-type": "application/json" } });
+  if (db.effectivePlan(h) !== "famille") return new Response(JSON.stringify({ error: "plan", message: "Le connecteur IA fait partie de la formule complète." }), { status: 402, headers: { "content-type": "application/json" } });
   const server = createMcpServer(db, h.id);
   // Stateless + plain JSON responses: one transport per request, closed once the response is written.
   const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });

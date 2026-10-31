@@ -46,19 +46,19 @@ export function Today({ api, household, deadlines, docs, charges, budget, go, on
 
       {household.essai?.actif && (household.essai.jours_restants ?? 0) > 2 && (
         <div className="confidence ok" style={{ display: "flex", justifyContent: "space-between", width: "100%", marginBottom: 14 }}>
-          <span>Plan Famille complet offert : encore {household.essai.jours_restants} jour{(household.essai.jours_restants ?? 0) > 1 ? "s" : ""}</span>
+          <span>Formule complète offerte : encore {household.essai.jours_restants} jour{(household.essai.jours_restants ?? 0) > 1 ? "s" : ""}</span>
           <button className="link" onClick={() => go("settings")}>Garder</button>
         </div>
       )}
       {household.essai?.actif && (household.essai.jours_restants ?? 0) <= 2 && (
         <div className="confidence" style={{ display: "flex", justifyContent: "space-between", width: "100%", marginBottom: 14, gap: 10 }}>
-          <span>{(household.essai.jours_restants ?? 0) <= 1 ? "Dernier jour" : `Plus que ${household.essai.jours_restants} jours`} de plan Famille offert{savings > 0 ? ` : ${fmtEuro(savings)} par an d'économies repérées` : ""}. Ensuite, lecture IA et dépenses en pause.</span>
+          <span>{(household.essai.jours_restants ?? 0) <= 1 ? "Dernier jour" : `Plus que ${household.essai.jours_restants} jours`} de formule complète offerte{savings > 0 ? ` : ${fmtEuro(savings)} par an d'économies repérées` : ""}. Ensuite, lecture IA et dépenses en pause.</span>
           <button className="btn" style={{ minHeight: 36, padding: "6px 12px", flex: "0 0 auto" }} onClick={() => go("settings")}>Garder</button>
         </div>
       )}
       {household.essai && !household.essai.actif && household.plan === "gratuit" && (budget?.economies_possibles ?? 0) > 0 && (
         <div className="confidence" style={{ display: "flex", justifyContent: "space-between", width: "100%", marginBottom: 14 }}>
-          <span>Votre essai est terminé : {fmtEuro(budget!.economies_possibles)} par an d'économies attendent dans le plan Famille.</span>
+          <span>Votre essai est terminé : {fmtEuro(budget!.economies_possibles)} par an d'économies attendent dans la formule complète.</span>
           <button className="link" onClick={() => go("settings")}>Voir</button>
         </div>
       )}

@@ -26,7 +26,7 @@ export function Add({ api, onBack, onAdded, toast, household, docs = [], go }: {
       toast(d.echeances.length ? `${d.echeances.length} échéance${d.echeances.length > 1 ? "s" : ""} créée${d.echeances.length > 1 ? "s" : ""}` : "Document ajouté");
       onAdded(d.id);
     } catch (e) {
-      setErr(e instanceof ApiError && e.code === "limite_plan" ? e.message + " Passez au plan Famille pour continuer." : "L'extraction a échoué. Réessayez, ou collez le texte du document.");
+      setErr(e instanceof ApiError && e.code === "limite_plan" ? e.message + " Passez à la formule complète pour continuer." : "L'extraction a échoué. Réessayez, ou collez le texte du document.");
     } finally { setBusy(false); }
   };
 
@@ -67,12 +67,12 @@ export function Add({ api, onBack, onAdded, toast, household, docs = [], go }: {
       {restantes !== null && (
         <p className="note" style={{ marginTop: 8 }}>
           {(household?.limites?.iaLecturesParMois ?? 0) === 0
-            ? "Plan gratuit : le document est lu localement, sans IA. Vous complétez les champs manquants. Le plan Famille lit chaque photo, PDF ou email avec l'IA et range tout seul."
+            ? "Plan gratuit : le document est lu localement, sans IA. Vous complétez les champs manquants. La formule complète lit chaque photo, PDF ou email avec l'IA et range tout seul."
             : household?.ia_gratuit_en_pause
-              ? "Les lectures IA du plan gratuit sont en pause jusqu'au mois prochain : la lecture se fait sans IA, vous complétez les champs. Le plan Famille n'a pas cette limite."
+              ? "Les lectures IA du plan gratuit sont en pause jusqu'au mois prochain : la lecture se fait sans IA, vous complétez les champs. La formule complète n'a pas cette limite."
               : restantes > 0
                 ? `Plan gratuit : ${restantes} lecture${restantes > 1 ? "s" : ""} par l'IA ce mois-ci. Ensuite, la lecture se fait sans IA et vous complétez les champs.`
-                : "Plan gratuit : quota mensuel de lectures IA atteint. La lecture se fait sans IA ; complétez les champs manquants. Le plan Famille lit chaque document avec l'IA."}
+                : "Plan gratuit : quota mensuel de lectures IA atteint. La lecture se fait sans IA ; complétez les champs manquants. La formule complète lit chaque document avec l'IA."}
         </p>
       )}
 

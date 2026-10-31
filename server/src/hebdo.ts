@@ -1,5 +1,5 @@
 /**
- * Le point du dimanche soir : « La semaine de Lucien », envoyé une fois par semaine (notification, et email pour le plan Famille).
+ * Le point du dimanche soir : « La semaine de Lucien », envoyé une fois par semaine (notification, et email pour la formule complète).
  * Le contenu vient de semaine.ts, la même fonction que l'écran « Votre semaine » de l'appli.
  */
 import type { Db, HouseholdRow } from "./db.js";

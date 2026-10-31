@@ -41,9 +41,9 @@ export function Spending({ api, budget, household, go, onChanged, onUpgrade, toa
   const importOk = household.plan !== "gratuit";
   const importLock = (
     <div className="lock" style={{ marginTop: 0, marginBottom: 14 }}>
-      <b>L'analyse des dépenses fait partie du plan Famille</b>
+      <b>L'analyse des dépenses fait partie de la formule complète</b>
       <p>Connexion bancaire ou import de relevés : Lucien repère les abonnements fantômes, les hausses, les doublons et les frais évitables, et chiffre chaque économie.</p>
-      <button className="btn" onClick={onUpgrade}>Découvrir le plan Famille</button>
+      <button className="btn" onClick={onUpgrade}>Découvrir la formule complète</button>
     </div>
   );
 
@@ -122,8 +122,8 @@ export function Spending({ api, budget, household, go, onChanged, onUpgrade, toa
         {budget.apercu && hidden > 0 && (
           <div className="lock">
             <b>{hidden} autre{hidden > 1 ? "s" : ""} économie{hidden > 1 ? "s" : ""} repérée{hidden > 1 ? "s" : ""}</b>
-            <p>Le plan Famille affiche toute la liste, triée par euros gagnés et par effort.</p>
-            <button className="btn" onClick={onUpgrade}>Découvrir le plan Famille</button>
+            <p>La formule complète affiche toute la liste, triée par euros gagnés et par effort.</p>
+            <button className="btn" onClick={onUpgrade}>Découvrir la formule complète</button>
           </div>
         )}
       </section>

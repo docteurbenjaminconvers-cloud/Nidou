@@ -53,8 +53,8 @@ export function Budget({ api, charges, budget, household, go, onUpgrade, onChang
         {charges.apercu && hidden > 0 && (
           <div className="lock">
             <b>{hidden} autre{hidden > 1 ? "s" : ""} alerte{hidden > 1 ? "s" : ""} d'économie</b>
-            <p>Le plan Famille affiche toutes les alertes : doublons, hausses de tarif, fins d'engagement, contrats jamais renégociés.</p>
-            <button className="btn" onClick={onUpgrade}>Découvrir le plan Famille</button>
+            <p>La formule complète affiche toutes les alertes : doublons, hausses de tarif, fins d'engagement, contrats jamais renégociés.</p>
+            <button className="btn" onClick={onUpgrade}>Découvrir la formule complète</button>
           </div>
         )}
       </section>
@@ -73,7 +73,7 @@ export function Budget({ api, charges, budget, household, go, onUpgrade, onChang
           ))}
         </ul>
       </section>
-      {household.plan === "gratuit" && <p className="note">Plan gratuit : aperçu. La connexion bancaire (rapprochement automatique avec vos prélèvements) arrivera avec le plan Famille.</p>}
+      {household.plan === "gratuit" && <p className="note">Plan gratuit : aperçu. La connexion bancaire (rapprochement automatique avec vos prélèvements) arrivera avec la formule complète.</p>}
     </div>
   );
 }

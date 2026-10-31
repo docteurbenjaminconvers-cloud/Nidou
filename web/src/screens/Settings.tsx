@@ -4,7 +4,7 @@ import { ApiError } from "../api";
 import type { Household } from "../types";
 import { Back } from "../ui";
 
-/** « Le point du dimanche » : la semaine de Lucien, chaque dimanche soir (notification, et email avec le plan Famille). */
+/** « Le point du dimanche » : la semaine de Lucien, chaque dimanche soir (notification, et email avec la formule complète). */
 function PointDimanche({ api, household, onChanged, toast, go }: { api: Api; household: Household; onChanged: () => void; toast: (m: string) => void; go: (s: string, id?: string) => void }) {
   const [on, setOn] = useState(household.hebdo !== false);
   const basculer = async () => {
@@ -146,7 +146,7 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
       <PointDimanche api={api} household={household} onChanged={() => onPlan(household.plan)} toast={toast} go={go} />
 
       <section className="section">
-        <div className="section-head"><h2>Papiers par email</h2>{household.boite_email ? <span className="badge">active</span> : <span className="badge yolk">plan Famille</span>}</div>
+        <div className="section-head"><h2>Papiers par email</h2>{household.boite_email ? <span className="badge">active</span> : <span className="badge yolk">formule complète</span>}</div>
         <p style={{ marginBottom: 10 }}>Transférez un email à votre adresse Lucien : la facture, le contrat ou l'avis d'échéance se range tout seul et crée ses rappels. Lucien ne lit jamais votre boîte mail, seulement ce que vous lui envoyez.</p>
         {household.boite_email ? (
           <>
@@ -159,7 +159,7 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
               </ul>
             )}
           </>
-        ) : <p className="note">Pendant l'essai et avec le plan Famille, vous recevez une adresse personnelle du type foyer-xxxxxx@in.monlucien.fr.</p>}
+        ) : <p className="note">Pendant l'essai et avec la formule complète, vous recevez une adresse personnelle du type foyer-xxxxxx@in.monlucien.fr.</p>}
       </section>
 
       <section className="section">
@@ -177,7 +177,7 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
       </section>
 
       <section className="section">
-        <div className="section-head"><h2>Connecteur IA</h2>{household.plan === "famille" ? <span className="badge">actif</span> : <span className="badge yolk">plan Famille</span>}</div>
+        <div className="section-head"><h2>Connecteur IA</h2>{household.plan === "famille" ? <span className="badge">actif</span> : <span className="badge yolk">formule complète</span>}</div>
         <p style={{ marginBottom: 10 }}>Demandez à Claude ou ChatGPT « quand expire mon assurance auto ? » : l'assistant interroge vos papiers, en lecture seule, et chaque accès est journalisé.</p>
         <button className="btn ghost block" style={{ marginBottom: 10 }} onClick={() => go("connecteur")}>Brancher Lucien sur Claude ou ChatGPT : le tuto</button>
         {household.mcp_token ? (
@@ -187,7 +187,7 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
             <p className="note" style={{ marginTop: 8 }}>Pour un outil qui accepte un en-tête d'autorisation (Claude Desktop, Cursor) : adresse {mcpUrl} et « Bearer » suivi du jeton.</p>
             <button className="link" style={{ marginTop: 8 }} onClick={async () => { const t = await api.regenererMcp(); toast("Nouveau jeton : " + t.slice(0, 6) + "…"); onPlan(household.plan); }}>Régénérer l'adresse (révoque l'ancienne)</button>
           </>
-        ) : <p className="note">L'adresse personnelle du connecteur apparaît ici avec le plan Famille.</p>}
+        ) : <p className="note">L'adresse personnelle du connecteur apparaît ici avec la formule complète.</p>}
         <div className="settings-row"><div><div className="t">Santé et banque exclues</div><div className="s">Ces dossiers ne sont jamais lus par le connecteur</div></div><button className="toggle" role="switch" aria-checked="true" onClick={() => toast("Réglé côté serveur (LUCIEN_MCP_EXCLUDE)")} /></div>
         <div className="settings-row"><div><div className="t">Lecture seule</div><div className="s">Aucune action sans confirmation dans Lucien</div></div><button className="toggle" role="switch" aria-checked="true" onClick={() => toast("L'écriture arrivera plus tard, toujours avec confirmation")} /></div>
       </section>

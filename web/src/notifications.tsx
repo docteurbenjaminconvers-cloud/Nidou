@@ -37,7 +37,7 @@ export function buildNotifications(deadlines: Deadline[], docs: Doc[], budget: B
     if (essai.actif && j <= 2) {
       out.push({
         id: `e:fin:${essai.fin.slice(0, 10)}`, kind: "essai",
-        titre: j <= 1 ? "Dernier jour de votre plan Famille offert" : `Votre plan Famille offert se termine dans ${j} jours`,
+        titre: j <= 1 ? "Dernier jour de votre formule complète offerte" : `Votre formule complète offerte se termine dans ${j} jours`,
         detail: `Après, votre compte passe en gratuit et met en pause ${perdu}. Vos papiers et vos rappels restent.`,
         quand: today, route: { s: "settings" }, urgent: true,
       });
@@ -46,7 +46,7 @@ export function buildNotifications(deadlines: Deadline[], docs: Doc[], budget: B
       out.push({
         id: `e:termine:${essai.fin.slice(0, 10)}`, kind: "essai",
         titre: eco > 0 ? `${fmtEuro(eco)} par an d'économies vous attendent` : "Votre essai est terminé",
-        detail: `Votre compte est passé en gratuit : en pause, ${perdu}. Le plan Famille reprend là où vous en étiez, 9,90 € par mois ou 99 € par an.`,
+        detail: `Votre compte est passé en gratuit : en pause, ${perdu}. La formule complète reprend là où vous en étiez, 9,90 € par mois ou 99 € par an.`,
         quand: essai.fin.slice(0, 10), route: { s: "settings" }, urgent: false,
       });
     }

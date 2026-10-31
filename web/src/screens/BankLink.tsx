@@ -80,7 +80,7 @@ export function BankLink({ api, household, onChanged, onUpgrade, toast, compact 
       <b>Connecter ma banque</b>
       <p>Vos opérations arrivent automatiquement, chaque jour, via un agrégateur agréé par la Banque de France (DSP2). Lucien ne voit jamais vos identifiants bancaires.</p>
       {household.plan === "gratuit" ? (
-        <button className="btn" onClick={onUpgrade}>Inclus dans le plan Famille</button>
+        <button className="btn" onClick={onUpgrade}>Inclus dans la formule complète</button>
       ) : (
         <>
           {status.fournisseur === "bridge" && <>

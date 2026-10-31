@@ -284,7 +284,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     const h = household(c);
     const body = z.object({ plan: z.enum(["gratuit", "famille"]).optional(), terminer_essai: z.boolean().optional(), nom: z.string().min(1).max(60).optional(), hebdo: z.boolean().optional() }).parse(await c.req.json());
     // The paid plan only comes from a payment (Stripe webhook, or the simulated checkout when Stripe is off).
-    if (body.plan === "famille") return c.json({ error: "paiement_requis", message: "Le plan Famille s'active par l'abonnement, dans Réglages." }, 403);
+    if (body.plan === "famille") return c.json({ error: "paiement_requis", message: "La formule complète s'active par l'abonnement, dans Réglages." }, 403);
     // Choices that apply to everyone in the household are the owner's.
     if ((body.plan || body.terminer_essai || body.hebdo !== undefined) && !isOwner(c)) return c.json({ error: "reserve_proprietaire", message: "Seul le titulaire du foyer peut changer ce réglage." }, 403);
     if (body.hebdo !== undefined) db.setHebdo(h.id, body.hebdo);
@@ -522,10 +522,10 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     if (ex.modele) db.recordIaLecture(h.id, gratuit, ex.modele.cout_lecture_centimes);
     if (!iaAutorisee) {
       ex.resume = FREE_LIMITS.iaLecturesParMois === 0
-        ? "Plan gratuit : document lu localement, sans IA. Vérifiez et complétez les champs. Le plan Famille lit chaque document avec l'IA."
+        ? "Plan gratuit : document lu localement, sans IA. Vérifiez et complétez les champs. La formule complète lit chaque document avec l'IA."
         : !capOk
-          ? "Les lectures par l'IA du plan gratuit sont en pause jusqu'au mois prochain : vérifiez les champs lus localement. Le plan Famille n'a pas cette limite."
-          : "Quota mensuel de lectures IA du plan gratuit atteint : vérifiez les champs lus localement. Le plan Famille lit chaque document avec l'IA.";
+          ? "Les lectures par l'IA du plan gratuit sont en pause jusqu'au mois prochain : vérifiez les champs lus localement. La formule complète n'a pas cette limite."
+          : "Quota mensuel de lectures IA du plan gratuit atteint : vérifiez les champs lus localement. La formule complète lit chaque document avec l'IA.";
     }
     const doc = db.insertDocument({
       household_id: h.id,
@@ -666,7 +666,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
   api.post("/transactions/import", async (c) => {
     const h = household(c);
     if (h.plan === "gratuit" && !FREE_LIMITS.importReleves) {
-      return c.json({ error: "limite_plan", message: "L'import de relevés et l'analyse des dépenses font partie du plan Famille. Vos opérations déjà importées restent consultables." }, 402);
+      return c.json({ error: "limite_plan", message: "L'import de relevés et l'analyse des dépenses font partie de la formule complète. Vos opérations déjà importées restent consultables." }, 402);
     }
     let text = "", compte: string | null = null;
     const ct = c.req.header("content-type") ?? "";
@@ -722,7 +722,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
   /** Starts the Connect flow: returns the URL where the family picks its bank. */
   api.post("/bank/connect", async (c) => {
     const h = household(c);
-    if (h.plan === "gratuit") return c.json({ error: "limite_plan", message: "La connexion bancaire automatique fait partie du plan Famille." }, 402);
+    if (h.plan === "gratuit") return c.json({ error: "limite_plan", message: "La connexion bancaire automatique fait partie de la formule complète." }, 402);
     const f = fournisseur();
     if (f === "simule") return c.json(await simulatedConnect(db, h.id));
     if (f === "enablebanking") {

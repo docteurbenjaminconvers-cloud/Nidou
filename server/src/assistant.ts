@@ -125,7 +125,7 @@ const prix = (n: number) => `${n.toFixed(2).replace(".", ",").replace(",00", "")
 /** What the app does and where things are, so the assistant can guide the family in the app itself. Kept in step with the screens. */
 export const MODE_EMPLOI = `Mode d'emploi de Lucien (barre du bas : Aujourd'hui, Agenda, bouton +, Papiers, Budget ; en haut de l'accueil : cloche des notifications et roue des réglages).
 - Aujourd'hui (accueil) : prochaine échéance, papiers à vérifier, économies repérées, activités du jour, et la barre « Demander à Lucien ».
-- Votre semaine : carte « Votre semaine avec Lucien » sous la barre de l'accueil ; le même point arrive chaque dimanche soir (notification, et email avec le plan Famille), désactivable dans Réglages, « Le point du dimanche ».
+- Votre semaine : carte « Votre semaine avec Lucien » sous la barre de l'accueil ; le même point arrive chaque dimanche soir (notification, et email avec la formule complète), désactivable dans Réglages, « Le point du dimanche ».
 - Dossiers prêts (en haut de Papiers) : location, CAF, école et cantine, prêt immobilier, passeport ou carte d'identité, sinistre. Lucien dit quelles pièces sont prêtes, trop anciennes ou manquantes, où les obtenir, et prépare un .zip avec le bordereau et les fichiers.
 - Combien de temps garder un papier : indiqué sur chaque papier (durées de service-public.fr) ; « Grand ménage » en haut de Papiers liste ce qui peut partir.
 - Agenda du téléphone : en bas de l'écran Agenda, abonnement Google, Apple ou Outlook (échéances et activités des enfants).

@@ -34,7 +34,7 @@ export function Login({ api, erreur }: { api: Api; erreur?: string | null }) {
             <input id="email" className="in" type="email" inputMode="email" autoComplete="email" placeholder="vous@exemple.fr" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} />
             {err && <p className="note" style={{ color: "var(--ember)", marginTop: 8 }}>{err}</p>}
             <div style={{ marginTop: 14 }}><button className="btn block" disabled={busy || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)} onClick={submit}>{busy ? <span className="spinner" /> : "Recevoir mon lien"}</button></div>
-            <p className="note" style={{ marginTop: 14 }}>Première visite ? Le même lien crée votre espace, avec 15 jours de plan Famille complet, sans carte bancaire. Invité·e par un proche ? Utilisez le lien reçu dans l'email d'invitation.</p>
+            <p className="note" style={{ marginTop: 14 }}>Première visite ? Le même lien crée votre espace, avec 15 jours de formule complète complet, sans carte bancaire. Invité·e par un proche ? Utilisez le lien reçu dans l'email d'invitation.</p>
           </>
         )}
       </div>
