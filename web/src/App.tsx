@@ -1,3 +1,4 @@
+import { FamilleCtx } from "./menuFamille";
 import { useCallback, useEffect, useState } from "react";
 import { getApi, type Api } from "./api";
 import type { BudgetReport, ChargesReport, Deadline, Doc, Household } from "./types";
@@ -106,6 +107,7 @@ export default function App() {
   const tab = route.s === "dossiers" || route.s === "dossier" || route.s === "menage" ? "docs" : route.s === "doc" || route.s === "add" ? "" : route.s === "membre" || route.s === "activite" || route.s === "veille" || route.s === "veille-nouvelle" ? "famille" : route.s;
 
   return (
+    <FamilleCtx.Provider value={{ api, famille, household, go }}>
     <div className="app">
       {route.s === "deadlines" && <Deadlines deadlines={deadlines} go={go} onDone={onDone} unread={notifs.unread} semaine={famille?.semaine} extra={<AgendaTelephone api={api} deadlines={deadlines} famille={famille} household={household} toast={toast} />} />}
       {route.s === "famille" && <Famille api={api} household={household} go={go} unread={notifs.unread} onChanged={reload} toast={toast} sel={route.id} docs={docs} deadlines={deadlines} />}
@@ -143,6 +145,7 @@ export default function App() {
       {reveal && budget && <Reveal budget={budget} onClose={() => setReveal(false)} go={go} toast={toast} />}
       {toastMsg && <div className="toast" role="status">{toastMsg}</div>}
     </div>
+    </FamilleCtx.Provider>
   );
 }
 

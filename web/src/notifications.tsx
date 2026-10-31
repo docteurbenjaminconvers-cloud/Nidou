@@ -1,3 +1,4 @@
+import { MenuFamille } from "./menuFamille";
 import { useEffect, useState } from "react";
 import type { BudgetReport, ChargesReport, Deadline, Doc, Household } from "./types";
 import type { Api } from "./api";
@@ -99,12 +100,14 @@ export function useNotifications(deadlines: Deadline[], docs: Doc[], budget: Bud
 
 export function Bell({ unread, onClick }: { unread: number; onClick: () => void }) {
   return (
+    <span className="top-actions"><MenuFamille />
     <button className="bell" onClick={onClick} aria-label={unread ? `${unread} notifications non lues` : "Notifications"}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         <path d="M6 16V11a6 6 0 0112 0v5l2 2H4l2-2zM10 20a2 2 0 004 0" />
       </svg>
       {unread > 0 && <span className="bell-badge">{unread > 9 ? "9+" : unread}</span>}
     </button>
+    </span>
   );
 }
 
