@@ -63,7 +63,7 @@ export function Offre({ api, household, focus, onBack, onChange, toast }: { api:
       </section>
 
       <section className="section">
-        <div className="section-head"><h2>Les packs</h2><span className="badge">jusqu'à −40 % sur les modules</span></div>
+        <div className="section-head"><h2>Les packs</h2><span className="badge">jusqu’à −30 % sur les modules</span></div>
         <div className="packs">
           {PACKS.map((p) => {
             const dp = devis({ ...choix, pack: p.id, modules: [] });
@@ -111,7 +111,7 @@ export function Offre({ api, household, focus, onBack, onChange, toast }: { api:
         </div>
       </section>
 
-      <p className="note">Prix TTC, sans engagement en mensuel. Le socle est obligatoire pour ajouter des modules ; la formule gratuite reste disponible (papiers et échéances, sans lecture IA illimitée).</p>
+      <p className="note">Prix TTC, sans engagement en mensuel. Le socle est obligatoire pour ajouter des modules. Sans abonnement après l'essai, vos papiers restent consultables et exportables.</p>
 
       <div className="devis">
         {d.lignes.length > 1 && <div className="devis-lignes">

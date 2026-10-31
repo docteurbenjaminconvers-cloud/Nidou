@@ -78,7 +78,7 @@ export function Budget({ api, charges, budget, household, go, onUpgrade, onChang
           ))}
         </ul>
       </section>
-      {household.plan === "gratuit" && <p className="note">Plan gratuit : aperçu. La connexion bancaire (rapprochement automatique avec vos prélèvements) arrivera avec la formule complète.</p>}
+      {household.plan === "gratuit" && <p className="note">Essai terminé : aperçu. La connexion bancaire (rapprochement automatique avec vos prélèvements) arrivera avec la formule complète.</p>}
     </div>
   );
 }

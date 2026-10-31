@@ -39,5 +39,5 @@ test("offre : souscrire un module est un paiement — impossible sans paiement e
   assert.deepEqual(ok.souscrits.sort(), ["assistant", "budget_expert", "locatif"]);
   delete process.env.LUCIEN_PAIEMENT_SIMULE;
   const d = await (await api.request("/offre/devis", json({ formule: "duo", periode: "annuel", modules: [], pack: "integral" }))).json();
-  assert.equal(d.total, 219);
+  assert.equal(d.total, 319);
 });

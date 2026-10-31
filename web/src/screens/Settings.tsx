@@ -54,7 +54,7 @@ function FamillePartagee({ api, household, toast }: { api: Api; household: House
           <button className="btn" disabled={busy || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)} onClick={invite}>{busy ? <span className="spinner" /> : "Envoyer l'invitation"}</button>
         </div>
         {lien && <p className="note" style={{ marginTop: 8 }}>Mode développement, lien à transmettre : <a className="link" href={lien}>{lien}</a></p>}
-        <p className="note" style={{ marginTop: 8 }}>{household.plan === "gratuit" ? "Le plan gratuit est réservé à une personne. Duo : 2 personnes, Tribu : jusqu'à 6." : (household.capacite_comptes ?? 6) < 6 ? `Votre formule accepte ${household.capacite_comptes} personne${(household.capacite_comptes ?? 1) > 1 ? "s" : ""} connectée${(household.capacite_comptes ?? 1) > 1 ? "s" : ""} ; Tribu va jusqu'à 6.` : "Jusqu'à 6 personnes connectées."}</p>
+        <p className="note" style={{ marginTop: 8 }}>{household.plan === "gratuit" ? "Sans abonnement, un seul compte reste connecté. Duo : 2 personnes, Tribu : jusqu’à 6." : (household.capacite_comptes ?? 6) < 6 ? `Votre formule accepte ${household.capacite_comptes} personne${(household.capacite_comptes ?? 1) > 1 ? "s" : ""} connectée${(household.capacite_comptes ?? 1) > 1 ? "s" : ""} ; Tribu va jusqu'à 6.` : "Jusqu'à 6 personnes connectées."}</p>
       </div>
     </section>
   );
@@ -89,12 +89,12 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
 
       <section className="section">
         <div className="section-head"><h2>Votre formule</h2>{household.essai?.actif && <span className="badge">essai : {household.essai.jours_restants} j</span>}</div>
-        {household.essai?.actif && <p className="note" style={{ marginBottom: 10 }}>Vous profitez de tout Lucien, jusqu'à 6 personnes, pendant 15 jours, sans carte bancaire. Ensuite, le foyer passe en Gratuit (1 personne) en gardant tous vos papiers et vos échéances.</p>}
+        {household.essai?.actif && <p className="note" style={{ marginBottom: 10 }}>Vous profitez de tout Lucien, jusqu'à 6 personnes, pendant 15 jours, sans carte bancaire. Ensuite, choisissez une formule : sans abonnement, vos papiers et vos échéances restent consultables et exportables, mais Lucien ne range plus rien de nouveau.</p>}
 
         <div className={`plan-card ${household.plan === "gratuit" ? "on" : ""}`}>
-          <h3>Gratuit · 1 personne</h3>
-          <ul><li>50 documents, fiches famille illimitées</li><li>Papiers lus localement (sans IA), champs à compléter</li><li>Rappels d'échéances (notifications sur le téléphone)</li><li>3 courriers par mois (modèles)</li><li>Sans import de relevés ni connexion bancaire</li></ul>
-          {household.plan !== "gratuit" && api.mode === "demo" && <button className="link" style={{ marginTop: 10 }} onClick={() => { api.setPlan("gratuit"); onPlan("gratuit"); toast("Plan gratuit activé"); }}>Revenir au gratuit (démo)</button>}
+          <h3>Sans abonnement, après l'essai</h3>
+          <ul><li>Vos papiers et vos échéances restent consultables et exportables</li><li>Les rappels d'échéances continuent (notifications sur le téléphone)</li><li>Pas de nouveau papier, ni lecture par l'IA, ni banque, ni modules</li><li>Un seul compte reste connecté</li></ul>
+          {household.plan !== "gratuit" && api.mode === "demo" && <button className="link" style={{ marginTop: 10 }} onClick={() => { api.setPlan("gratuit"); onPlan("gratuit"); toast("Fin d'essai simulée"); }}>Simuler la fin de l'essai (démo)</button>}
         </div>
 
         <div style={{ marginTop: 18 }}>

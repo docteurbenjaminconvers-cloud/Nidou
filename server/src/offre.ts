@@ -3,7 +3,7 @@
  * Fonction pure, partagée par le serveur (droits, devis) et l'appli (écran Offre, démo).
  *
  *   Socle      Solo 6,90 · Duo 9,90 · Tribu 13,90 €/mois  (papiers, échéances, famille, budget simple, point du dimanche…)
- *   Modules    Budget expert 3,90 · Vie pro Salarié 1,90 · Vie pro Indépendant 7,90 · Patrimoine locatif 4,90 (2 biens, +1,50/bien)
+ *   Modules    Budget expert 3,90 · Vie pro Salarié 1,90 · Vie pro Indépendant 19,90 · Patrimoine locatif 4,90 (2 biens, +1,50/bien)
  *              Demander à Lucien 2,90 · Veille d'un proche 3,90 par proche
  *   Packs      Sérénité, Indépendant, Patrimoine, Intégral : remise sur les modules, prix arrondis en ,90
  *   Annuel     10 × le mensuel (2 mois offerts)
@@ -51,7 +51,7 @@ export const MODULES: Record<ModuleId, ModuleDef> = {
     inclut: ["Contrat de travail, avenants, attestations", "Bulletins classés et contrôlés chaque mois", "Cumul du net imposable, avant la déclaration", "Bulletins manquants signalés", "Papiers à garder jusqu'à la retraite"],
   },
   vie_pro_independant: {
-    id: "vie_pro_independant", nom: "Vie pro · Indépendant", mensuel: 7.9, teinte: "lilac", route: "module/pro",
+    id: "vie_pro_independant", nom: "Vie pro · Indépendant", mensuel: 19.9, teinte: "lilac", route: "module/pro",
     accroche: "Recettes, dépenses et 2035 préparées depuis votre compte pro.",
     pour: "Professions libérales, EI, micro-entrepreneurs (et salariés en même temps).",
     inclut: ["Livre des recettes et des dépenses tenu depuis la banque", "Dépenses classées dans les rubriques de la 2035", "Bénéfice estimé, micro ou réel : le plus favorable", "Échéances : 2035, 2042-C-PRO, CFE, URSSAF", "Tout le module Salarié inclus"],
@@ -79,9 +79,9 @@ export const MODULES: Record<ModuleId, ModuleDef> = {
 export interface PackDef { id: string; nom: string; accroche: string; modules: ModuleId[]; remise: number; vedette?: boolean }
 export const PACKS: PackDef[] = [
   { id: "serenite", nom: "Sérénité", accroche: "Le foyer piloté comme une petite entreprise.", modules: ["budget_expert", "assistant"], remise: 0.25 },
-  { id: "independant", nom: "Indépendant", accroche: "Vie perso et vie pro, enfin au même endroit.", modules: ["budget_expert", "vie_pro_independant", "assistant"], remise: 0.3 },
+  { id: "independant", nom: "Indépendant", accroche: "Vie perso et vie pro, enfin au même endroit.", modules: ["budget_expert", "vie_pro_independant", "assistant"], remise: 0.25 },
   { id: "patrimoine", nom: "Patrimoine", accroche: "Pour ceux qui louent un ou plusieurs biens.", modules: ["budget_expert", "locatif", "assistant"], remise: 0.3 },
-  { id: "integral", nom: "Intégral", accroche: "Tout Lucien, pour tout gérer.", modules: ["budget_expert", "vie_pro_independant", "locatif", "assistant"], remise: 0.4, vedette: true },
+  { id: "integral", nom: "Intégral", accroche: "Tout Lucien, pour tout gérer.", modules: ["budget_expert", "vie_pro_independant", "locatif", "assistant"], remise: 0.3, vedette: true },
 ];
 
 const r2 = (n: number) => Math.round(n * 100) / 100;

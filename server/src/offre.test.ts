@@ -14,7 +14,7 @@ test("offre : socle seul, modules à la carte, annuel = 10 mois", () => {
 test("offre : Indépendant inclut Salarié, jamais facturés deux fois", () => {
   const d = devis({ formule: "solo", periode: "mensuel", modules: ["vie_pro_salarie", "vie_pro_independant"] });
   assert.deepEqual(d.modules, ["vie_pro_independant"]);
-  assert.equal(d.mensuel, 14.8);
+  assert.equal(d.mensuel, 26.8);
 });
 
 test("offre : un pack coûte moins cher que ses modules, et Lucien le conseille", () => {
@@ -26,6 +26,11 @@ test("offre : un pack coûte moins cher que ses modules, et Lucien le conseille"
   const sansPack = devis({ formule: "solo", periode: "mensuel", modules: ["budget_expert", "vie_pro_independant", "assistant"] });
   assert.equal(sansPack.conseil?.pack, "independant");
   assert.ok(sansPack.conseil!.gain > 0);
+  // the bigger the bundle, the higher the price, for every formula
+  for (const f of ["solo", "duo", "tribu"] as const) {
+    const p = (id: string) => devis({ formule: f, periode: "mensuel", modules: [], pack: id }).mensuel;
+    assert.ok(p("serenite") < p("patrimoine") && p("patrimoine") < p("independant") && p("independant") < p("integral"), f);
+  }
   const integral = devis({ formule: "solo", periode: "annuel", modules: [], pack: "integral" });
   assert.equal(integral.economie, Math.round((integral.alaCarte - integral.mensuel) * 1000) / 100);
 });

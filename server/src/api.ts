@@ -40,7 +40,7 @@ import { simulatedConnect, simulatedSync, verifyBridgeSignature } from "./bridge
  * still under the global monthly budget LUCIEN_IA_PLAFOND_GRATUIT_EUR shared by all free households.
  */
 export const FREE_LIMITS = {
-  documents: 50,
+  documents: 0,   // no free plan any more: after the 15-day trial, papers stay readable and exportable, new ones need a subscription
   comptes: 1,      // people who log in; member cards without a login (children, elderly parent) are unlimited on every plan
   lettersPerMonth: 3,
   iaLecturesParMois: Number(process.env.LUCIEN_IA_LECTURES_GRATUIT ?? 0),
@@ -491,7 +491,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
   api.post("/documents", async (c) => {
     const h = household(c);
     if (h.plan === "gratuit" && db.countDocuments(h.id) >= FREE_LIMITS.documents) {
-      return c.json({ error: "limite_plan", message: `Le plan gratuit est limité à ${FREE_LIMITS.documents} documents.` }, 402);
+      return c.json({ error: "limite_plan", message: "Votre essai est terminé : choisissez une formule pour ajouter des papiers. Les vôtres restent consultables et exportables." }, 402);
     }
 
     let texte: string | undefined, base64: string | undefined, mime: string | undefined, nomFichier: string | undefined;

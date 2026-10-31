@@ -67,7 +67,7 @@ export function Add({ api, onBack, onAdded, toast, household, docs = [], go }: {
       {restantes !== null && (
         <p className="note" style={{ marginTop: 8 }}>
           {(household?.limites?.iaLecturesParMois ?? 0) === 0
-            ? "Plan gratuit : le document est lu localement, sans IA. Vous complétez les champs manquants. La formule complète lit chaque photo, PDF ou email avec l'IA et range tout seul."
+            ? "Votre essai est terminé : choisissez une formule dans Réglages pour ajouter des papiers. Ceux que vous avez restent consultables et exportables."
             : household?.ia_gratuit_en_pause
               ? "Les lectures IA du plan gratuit sont en pause jusqu'au mois prochain : la lecture se fait sans IA, vous complétez les champs. La formule complète n'a pas cette limite."
               : restantes > 0
