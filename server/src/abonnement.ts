@@ -2,6 +2,7 @@ import Stripe from "stripe";
 import type { Db, HouseholdRow } from "./db.js";
 import { ecartItems, lignesModules, modulesDepuisItems, prixManquants, tousLesPrix, type ChoixModules } from "./stripeModules.js";
 import { normaliser, PACKS, type ModuleId } from "./offre.js";
+import { joursOfferts } from "./partenaires.js";
 
 /**
  * Paid plans billed with Stripe Checkout + Billing Portal + webhooks. Three formules, priced by the number of people
@@ -68,7 +69,8 @@ export async function creerCheckout(db: Db, h: HouseholdRow, formule: Formule, p
     customer_email: h.stripe_customer_id ? undefined : email ?? undefined,
     client_reference_id: h.id,
     metadata: { household_id: h.id, formule, periode, ...(choix ? { modules: choix } : {}) },
-    subscription_data: { metadata: { household_id: h.id, formule, periode, ...(choix ? { modules: choix } : {}) } },
+    // Partner cabinets: the first subscription of their clients starts with one month free.
+    subscription_data: { metadata: { household_id: h.id, formule, periode, ...(choix ? { modules: choix } : {}) }, ...(joursOfferts(db, h) ? { trial_period_days: joursOfferts(db, h) } : {}) },
     allow_promotion_codes: true,
     locale: "fr",
     success_url: `${publicUrl()}/#/settings?paiement=ok`,

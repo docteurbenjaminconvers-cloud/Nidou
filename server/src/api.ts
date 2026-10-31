@@ -19,6 +19,7 @@ import { envoyerPush, pushOn } from "./push.js";
 import { appliquerAbonnement, capaciteComptes, creerCheckout, FORMULES, portail, resumeAbonnement, traiterWebhook, type Formule } from "./abonnement.js";
 import { pointDuFoyer } from "./hebdo.js";
 import { monterEspaces } from "./espaces.js";
+import { monterPartenaires } from "./partenaires.js";
 import { bordereau, etatDossiers, etatKit, KITS } from "./dossiers.js";
 import { zip } from "./zip.js";
 import { agendaIcs } from "./ics.js";
@@ -109,7 +110,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
    * without a session every route answers 401 `non_connecte`. LUCIEN_AUTH=0 keeps the single-household prototype.
    */
   api.use("*", async (c, next) => {
-    if (c.req.path.includes("/auth/") || c.req.path.endsWith("/inbox") || c.req.path.endsWith("/bank/webhook") || c.req.path.endsWith("/bank/callback") || c.req.path.endsWith("/bank/eb/callback") || c.req.path.endsWith("/stripe/webhook") || c.req.path.endsWith("/waitlist") || c.req.path.includes("/veille/p/") || c.req.path.includes("/comptable/") || /\/agenda\/[^/]+\.ics$/.test(c.req.path) || c.req.path.endsWith("/veille/callback")) return next();
+    if (c.req.path.includes("/auth/") || c.req.path.endsWith("/inbox") || c.req.path.endsWith("/bank/webhook") || c.req.path.endsWith("/bank/callback") || c.req.path.endsWith("/bank/eb/callback") || c.req.path.endsWith("/stripe/webhook") || c.req.path.endsWith("/waitlist") || (c.req.path.endsWith("/partenaires") && c.req.method === "POST") || c.req.path.includes("/admin/partenaires") || c.req.path.includes("/veille/p/") || c.req.path.includes("/comptable/") || /\/agenda\/[^/]+\.ics$/.test(c.req.path) || c.req.path.endsWith("/veille/callback")) return next();
     let row;
     let user = null as { id: string; email: string; prenom: string | null } | null;
     if (AUTH_ON()) {
@@ -196,6 +197,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
 
   // ---------- offre et espaces payants (modules) ----------
   monterEspaces(api, db, { household, isOwner, email: (c) => currentUser(c)?.email ?? null });
+  monterPartenaires(api, db, { household });
 
   // ---------- abonnement (Stripe) ----------
   api.post("/abonnement/checkout", async (c) => {

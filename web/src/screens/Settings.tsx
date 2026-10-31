@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Api } from "../api";
+import type { Api, Partenaire } from "../api";
 import { ApiError } from "../api";
 import type { Household } from "../types";
 import { Back } from "../ui";
@@ -105,6 +105,7 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
             <button className="pill" aria-pressed={periode === "mensuel"} onClick={() => setPeriode("mensuel")}>Mensuel</button>
           </div>
           {household.abonnement?.paiement === false && <p className="note" style={{ background: "var(--yolk-soft)", padding: "10px 12px", borderRadius: 12 }}>Le paiement en ligne arrive bientôt. D'ici là, votre essai et vos papiers restent tels quels.</p>}
+          <CodePartenaire api={api} toast={toast} />
           <button className="offre-lien" onClick={() => go("offre")}><b>Modules et packs</b><span>Budget expert, Vie pro, Patrimoine locatif : composez votre Lucien.</span></button>
           <div className="tiers">
             {TIERS.map((t) => {
@@ -200,6 +201,39 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
         <div className="settings-row"><div><div className="t">Supprimer le compte</div><div className="s">Tout est effacé, sans délai</div></div><button className="link" style={{ color: "var(--ember)" }} onClick={() => toast("Dans le prototype, supprimez le fichier de données")}>Supprimer</button></div>
         {household.utilisateur && <div className="settings-row"><div><div className="t">Connecté·e</div><div className="s">{household.utilisateur.email}</div></div><button className="link" onClick={async () => { await api.deconnexion(); location.reload(); }}>Se déconnecter</button></div>}
       </section>
+    </div>
+  );
+}
+
+/** The accountant's partner code: first month free on the first subscription. */
+export const CLE_PARTENAIRE = "lucien.partenaire";
+function CodePartenaire({ api, toast }: { api: Api; toast: (m: string) => void }) {
+  const [p, setP] = useState<Partenaire | null>(null);
+  const [saisie, setSaisie] = useState("");
+  useEffect(() => { api.partenaire().then(setP).catch(() => setP({ code: null, cabinet: null, offert: null })); }, [api]);
+  const valider = async (code: string | null) => {
+    try { const r = await api.setPartenaire(code); setP(r); setSaisie(""); toast(r.code ? "Code partenaire enregistré" : "Code retiré"); }
+    catch (e) { toast((e as Error).message); }
+  };
+  if (!p) return null;
+  return (
+    <div className="partenaire-bloc">
+      {p.cabinet ? (
+        <>
+          <b>Code partenaire · {p.cabinet.nom}{p.cabinet.ville ? `, ${p.cabinet.ville}` : ""}</b>
+          <span>{p.offert} : il s'appliquera au moment de vous abonner.</span>
+          <button className="link" onClick={() => valider(null)}>Retirer le code</button>
+        </>
+      ) : (
+        <>
+          <b>Votre comptable vous a donné un code ?</b>
+          <span>Avec le code d'un cabinet partenaire, le premier mois de votre abonnement est offert.</span>
+          <form onSubmit={(e) => { e.preventDefault(); if (saisie.trim()) valider(saisie.trim()); }}>
+            <input value={saisie} onChange={(e) => setSaisie(e.target.value.toUpperCase())} placeholder="ex. CABI-7K2P" aria-label="Code partenaire" maxLength={20} autoCapitalize="characters" />
+            <button className="btn" type="submit" disabled={!saisie.trim()}>Valider</button>
+          </form>
+        </>
+      )}
     </div>
   );
 }

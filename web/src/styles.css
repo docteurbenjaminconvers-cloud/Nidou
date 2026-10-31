@@ -856,3 +856,8 @@ b, strong { font-weight: 800; }
 .saison i { width: 70%; border-radius: 4px 4px 0 0; background: var(--yolk); }
 .saison small { font-size: 10px; color: var(--mist); }
 .conseil-fiscal.sci { background: var(--moss-soft); }
+.partenaire-bloc { display: grid; gap: 6px; margin: 14px 0; padding: 14px 16px; border-radius: 16px; background: var(--yolk-soft, #fff6d9); }
+.partenaire-bloc span { font-size: 14px; color: var(--ink-2, #5b5060); }
+.partenaire-bloc form { display: flex; gap: 8px; margin-top: 4px; }
+.partenaire-bloc input { flex: 1; min-width: 0; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line, #eadfe6); font: inherit; letter-spacing: .06em; }
+.partenaire-bloc .link { justify-self: start; }

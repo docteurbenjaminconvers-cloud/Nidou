@@ -431,7 +431,29 @@
       <li data-i18n="c5">Matériel à immobiliser et dépenses non classées signalés</li>
       <li data-i18n="c6">Ni bulletins de salaire, ni vie de famille : seulement l'activité</li>
     </ul>
-    <a class="btn ghost big rv" href="#inscription" data-i18n="c7">Devenir cabinet partenaire</a>
+    <p class="cpt-offre rv" data-i18n="c8">Vos clients : le premier mois offert avec votre code partenaire.</p>
+    <form class="form cpt-form rv" id="partenaire" novalidate>
+      <input id="p-nom" required autocomplete="organization" placeholder="Nom du cabinet" data-i18n-ph="c9">
+      <input id="p-email" type="email" required autocomplete="email" placeholder="Email professionnel" data-i18n-ph="c10">
+      <input id="p-ville" autocomplete="address-level2" placeholder="Ville" data-i18n-ph="c11">
+      <button class="btn big" type="submit" data-i18n="c7">Devenir cabinet partenaire</button>
+      <p class="wide small" id="p-msg" hidden></p>
+    </form>
+    <script>
+    (function () {
+      var f = document.getElementById("partenaire"), m = document.getElementById("p-msg");
+      f.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        var nom = document.getElementById("p-nom").value.trim(), email = document.getElementById("p-email").value.trim(), ville = document.getElementById("p-ville").value.trim();
+        if (nom.length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { m.textContent = lucienT("bad"); m.hidden = false; return; }
+        try {
+          var r = await fetch("/api/partenaires", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ nom: nom, email: email, ville: ville || undefined }) });
+          m.textContent = lucienT(r.ok ? "c12" : "c13"); if (r.ok) f.reset();
+        } catch (x) { m.textContent = lucienT("c13"); }
+        m.hidden = false;
+      });
+    })();
+    </script>
   </div>
 </section>
 

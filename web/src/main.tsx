@@ -13,6 +13,12 @@ try {
   }
 } catch {}
 
+// A link shared by a partner accountant: ...?partenaire=CODE (before or after the #), kept until the household is logged in.
+try {
+  const code = new URLSearchParams(location.search).get("partenaire") ?? new URLSearchParams(location.hash.split("?")[1] ?? "").get("partenaire");
+  if (code && /^[A-Za-z0-9-]{4,20}$/.test(code)) localStorage.setItem("lucien.partenaire", code.toUpperCase());
+} catch {}
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <App />

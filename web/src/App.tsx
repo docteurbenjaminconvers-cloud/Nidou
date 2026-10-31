@@ -67,6 +67,11 @@ export default function App() {
       setReveal(true);
     }
     setLogin(false);
+    // a partner code captured from the link the accountant shared (?partenaire=CODE), applied once logged in
+    try {
+      const code = localStorage.getItem("lucien.partenaire");
+      if (code && !h.abonnement?.statut) { localStorage.removeItem("lucien.partenaire"); a.setPartenaire(code).then(() => toast("Code de votre comptable enregistré : premier mois offert")).catch(() => {}); }
+    } catch { /* storage refused */ }
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) { setLogin(new URLSearchParams(location.hash.split("?")[1] ?? "").get("erreur")); return; }
       if (e instanceof ApiError && e.code === "compte_en_pause") { setPause(e.message); return; }

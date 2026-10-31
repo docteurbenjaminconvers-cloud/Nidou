@@ -423,3 +423,8 @@ html.intro-on { overflow: hidden; }
 .cpt-liste { list-style: none; padding: 0; margin: 22px 0 26px; display: grid; gap: 10px; }
 .cpt-liste li { position: relative; padding-left: 30px; font-size: 17px; }
 .cpt-liste li::before { content: ""; position: absolute; left: 4px; top: 7px; width: 14px; height: 8px; border-left: 3px solid var(--nest); border-bottom: 3px solid var(--nest); transform: rotate(-45deg); }
+.cpt-offre { font-weight: 800; color: var(--nest); font-size: 18px; margin: 0 0 4px; }
+.cpt-form { grid-template-columns: 1fr 1fr; max-width: 720px; }
+.cpt-form input { border-color: var(--line, #f0e3ec); }
+.cpt-form .btn { grid-column: 1 / -1; }
+@media (max-width: 560px) { .cpt-form { grid-template-columns: 1fr; } }
