@@ -195,7 +195,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
   });
 
   // ---------- offre et espaces payants (modules) ----------
-  monterEspaces(api, db, { household, isOwner });
+  monterEspaces(api, db, { household, isOwner, email: (c) => currentUser(c)?.email ?? null });
 
   // ---------- abonnement (Stripe) ----------
   api.post("/abonnement/checkout", async (c) => {

@@ -1,5 +1,7 @@
 import Stripe from "stripe";
 import type { Db, HouseholdRow } from "./db.js";
+import { ecartItems, lignesModules, modulesDepuisItems, prixManquants, tousLesPrix, type ChoixModules } from "./stripeModules.js";
+import { normaliser, PACKS, type ModuleId } from "./offre.js";
 
 /**
  * Paid plans billed with Stripe Checkout + Billing Portal + webhooks. Three formules, priced by the number of people
@@ -48,27 +50,61 @@ export function capaciteComptes(db: Db, h: HouseholdRow): number {
   return FORMULES[(h.formule as Formule) ?? "duo"]?.comptes ?? FORMULES.duo.comptes;
 }
 
-export async function creerCheckout(db: Db, h: HouseholdRow, formule: Formule, periode: Periode, email: string | null): Promise<{ url: string; simule: boolean }> {
+export async function creerCheckout(db: Db, h: HouseholdRow, formule: Formule, periode: Periode, email: string | null, modules?: ChoixModules): Promise<{ url: string; simule: boolean }> {
   if (!stripeOn()) {
     if (!simulationPaiement()) throw new PaiementIndisponible();
     return { url: `${publicUrl()}/api/abonnement/simule?formule=${formule}&periode=${periode}`, simule: true };
   }
   const price = process.env[priceEnv(formule, periode)];
   if (!price) throw new Error(`${priceEnv(formule, periode)} manquant`);
+  const lignes = modules ? lignesModules({ ...modules, formule, periode }) : [];
+  const manquants = prixManquants(lignes);
+  if (manquants.length) throw new Error(`Prix Stripe manquants : ${manquants.join(", ")}`);
+  const choix = modules ? JSON.stringify({ modules: modules.modules, pack: modules.pack, biens: modules.biens ?? 0, proches: modules.proches ?? 0 }) : "";
   const s = await stripe().checkout.sessions.create({
     mode: "subscription",
-    line_items: [{ price, quantity: 1 }],
+    line_items: [{ price, quantity: 1 }, ...lignes.map((l) => ({ price: process.env[l.env]!, quantity: l.quantite }))],
     customer: h.stripe_customer_id ?? undefined,
     customer_email: h.stripe_customer_id ? undefined : email ?? undefined,
     client_reference_id: h.id,
-    metadata: { household_id: h.id, formule, periode },
-    subscription_data: { metadata: { household_id: h.id, formule, periode } },
+    metadata: { household_id: h.id, formule, periode, ...(choix ? { modules: choix } : {}) },
+    subscription_data: { metadata: { household_id: h.id, formule, periode, ...(choix ? { modules: choix } : {}) } },
     allow_promotion_codes: true,
     locale: "fr",
     success_url: `${publicUrl()}/#/settings?paiement=ok`,
     cancel_url: `${publicUrl()}/#/settings?paiement=annule`,
   });
   return { url: s.url!, simule: false };
+}
+
+/**
+ * Modules and packs of a household. Without Stripe: simulated on a test instance only. With Stripe: a household
+ * without a subscription goes through Checkout (socle + modules in one subscription); an existing subscription has
+ * its module lines added, changed or removed, prorated. The webhook then confirms the modules from the billed items.
+ */
+export async function changerModules(db: Db, h: HouseholdRow, c: ChoixModules, email: string | null): Promise<{ url?: string; simule: boolean; modules: ModuleId[] }> {
+  const lignes = lignesModules(c);
+  const voulus = normaliser([...(PACKS.find((p) => p.id === c.pack)?.modules ?? []), ...c.modules]);
+  if (!stripeOn()) {
+    if (!simulationPaiement()) throw new PaiementIndisponible();
+    db.setModules(h.id, voulus);
+    return { simule: true, modules: voulus };
+  }
+  if (!h.stripe_subscription_id || !["active", "trialing", "past_due"].includes(h.abonnement_statut ?? "")) {
+    const r = await creerCheckout(db, h, c.formule, c.periode, email, c);
+    return { url: r.url, simule: false, modules: voulus };
+  }
+  const manquants = prixManquants(lignes);
+  if (manquants.length) throw new Error(`Prix Stripe manquants : ${manquants.join(", ")}`);
+  const sub = await stripe().subscriptions.retrieve(h.stripe_subscription_id);
+  const periodeAbo = (h.abonnement_periode as Periode | null) ?? c.periode;
+  // module lines must follow the subscription's own period
+  const e = ecartItems(sub.items.data.map((i) => ({ id: i.id, price: { id: i.price.id }, quantity: i.quantity ?? 1 })), lignesModules({ ...c, periode: periodeAbo, formule: (h.formule as Formule) ?? c.formule }));
+  for (const id of e.supprimer) await stripe().subscriptionItems.del(id, { proration_behavior: "create_prorations" });
+  for (const m of e.modifier) await stripe().subscriptionItems.update(m.id, { quantity: m.quantite, proration_behavior: "create_prorations" });
+  for (const a of e.ajouter) await stripe().subscriptionItems.create({ subscription: sub.id, price: a.price, quantity: a.quantite, proration_behavior: "create_prorations" });
+  db.setModules(h.id, voulus); // confirmed by customer.subscription.updated
+  return { simule: false, modules: voulus };
 }
 
 /** Extra protected-person watch (« veille d'un proche », 3,90 €/mois ou 39 €/an), added to the existing subscription. */
@@ -163,6 +199,7 @@ export function appliquerEvenement(db: Db, event: EvenementMinimal): string {
     const h = (o.client_reference_id && db.getHousehold(o.client_reference_id)) || (o.metadata?.household_id && db.getHousehold(o.metadata.household_id));
     if (!h) return "checkout: foyer inconnu";
     appliquerAbonnement(db, h, { customer: o.customer ?? null, subscription: o.subscription ?? null, statut: "active", formule: formuleDe(), periode: periodeDe() });
+    try { const m = o.metadata?.modules ? JSON.parse(o.metadata.modules) : null; if (m) db.setModules(h.id, (Array.isArray(m) ? m : modulesDuChoix(m)) as ModuleId[]); } catch { /* malformed metadata: the subscription event will set them */ }
     return `checkout: ${h.nom} → famille`;
   }
   if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.created" || event.type === "customer.subscription.deleted") {
@@ -180,6 +217,9 @@ export function appliquerEvenement(db: Db, event: EvenementMinimal): string {
       const n = statut === "canceled" ? 0 : (o.items?.data ?? []).filter((i) => prixVeille.includes(i.price.id)).reduce((s2, i) => s2 + ((i as { quantity?: number }).quantity ?? 1), 0);
       db.raw.prepare("UPDATE households SET veilles_supp = ? WHERE id = ?").run(n, h.id);
     }
+    const lus = modulesDepuisItems((o.items?.data ?? []) as { price: { id: string }; quantity?: number }[]);
+    if (statut === "canceled") db.setModules(h.id, []);
+    else if (o.items?.data?.length && tousLesPrix().some((x) => process.env[x.env])) db.setModules(h.id, lus.modules); // only once module prices exist
     return `subscription ${statut}: ${h.nom} → ${db.getHousehold(h.id)!.plan}`;
   }
   if (event.type === "invoice.payment_failed") {
@@ -188,6 +228,10 @@ export function appliquerEvenement(db: Db, event: EvenementMinimal): string {
     return "invoice.payment_failed";
   }
   return `ignoré: ${event.type}`;
+}
+
+function modulesDuChoix(m: { modules?: ModuleId[]; pack?: string | null }): ModuleId[] {
+  return normaliser([...(PACKS.find((p) => p.id === m.pack)?.modules ?? []), ...(m.modules ?? [])]);
 }
 
 export function resumeAbonnement(h: HouseholdRow) {

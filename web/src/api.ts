@@ -71,7 +71,7 @@ export interface Api {
   setHebdo(actif: boolean): Promise<void>;
   /** The offer (socle, modules, packs) and the household's modules. */
   offre(): Promise<OffreEtat>;
-  choisirModules(modules: ModuleId[], pack: string | null): Promise<{ souscrits: ModuleId[]; actifs: ModuleId[] }>;
+  choisirModules(modules: ModuleId[], pack: string | null, opts?: { formule: "solo" | "duo" | "tribu"; periode: "mensuel" | "annuel"; biens?: number; proches?: number }): Promise<{ souscrits: ModuleId[]; actifs: ModuleId[]; url?: string }>;
   /** A paid space: its stored data, the report computed on the household's operations, and the bank accounts seen. */
   espace<E extends Espace>(e: E): Promise<EspaceReponse<E>>;
   sauverEspace<E extends Espace>(e: E, donnees: EspaceDonnees[E]): Promise<void>;
@@ -178,7 +178,7 @@ const serverApi: Api = {
   renommer: async (nom) => { await call("/household", json({ nom }, "PATCH")); },
   setHebdo: async (hebdo) => { await call("/household", json({ hebdo }, "PATCH")); },
   offre: () => call("/offre"),
-  choisirModules: (modules, pack) => call("/offre/modules", json({ modules, pack })),
+  choisirModules: (modules, pack, opts) => call("/offre/modules", json({ modules, pack, ...opts })),
   espace: (e) => call(`/espaces/${e}`),
   sauverEspace: async (e, donnees) => { await call(`/espaces/${e}`, json(donnees, "PUT")); },
   grandLivre: async () => { const r = await fetch("/api/espaces/budget/grand-livre.csv"); if (!r.ok) throw new ApiError(r.status, "erreur", "Export impossible"); return r.text(); },

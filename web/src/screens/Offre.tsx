@@ -34,7 +34,11 @@ export function Offre({ api, household, focus, onBack, onChange, toast }: { api:
 
   const activer = async () => {
     setEnvoi(true);
-    try { await api.choisirModules(d.modules.filter((m) => !dansPack(m)), pack); toast(api.mode === "demo" ? "Modules activés (démo)" : "Modules activés"); onChange(); }
+    try {
+      const r = await api.choisirModules(d.modules.filter((m) => !dansPack(m)), pack, { formule, periode, biens, proches });
+      if (r.url) { location.href = r.url; return; } // Stripe Checkout
+      toast(api.mode === "demo" ? "Modules activés (démo)" : "Modules activés"); onChange();
+    }
     catch (e) { toast((e as Error).message); }
     finally { setEnvoi(false); }
   };

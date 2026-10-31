@@ -6,13 +6,13 @@
 import type { Hono } from "hono";
 import { z } from "zod";
 import type { Db } from "./db.js";
-import { devis, droits, ESPACES, MODULES, normaliser, PACKS, SOCLE, SOCLE_INCLUT, type Espace, type ModuleId } from "./offre.js";
+import { devis, droits, ESPACES, MODULES, PACKS, SOCLE, SOCLE_INCLUT, type Espace, type ModuleId } from "./offre.js";
 import { DONNEES_BUDGET_VIDES, grandLivre, rapportBudget, type DonneesBudget } from "./budgetExpert.js";
 import { rapportPro, type DonneesPro } from "./viePro.js";
 import { rapportLocatif, type DonneesLocatif } from "./locatif.js";
-import { paiementDisponible, PaiementIndisponible, simulationPaiement } from "./abonnement.js";
+import { changerModules, paiementDisponible, PaiementIndisponible } from "./abonnement.js";
 
-type Ctx = { household: (c: any) => { id: string; nom: string; plan: string; essai_jours_restants: number | null; plan_souscrit: string; essai_fin: string | null }; isOwner: (c: any) => boolean };
+type Ctx = { household: (c: any) => { id: string; nom: string; plan: string; essai_jours_restants: number | null; plan_souscrit: string; essai_fin: string | null }; isOwner: (c: any) => boolean; email: (c: any) => string | null };
 
 const MODULE_IDS = Object.keys(MODULES) as [ModuleId, ...ModuleId[]];
 const num = z.number().finite();
@@ -67,15 +67,25 @@ export function monterEspaces(api: Hono<any>, db: Db, ctx: Ctx) {
     return c.json(devis(b));
   });
 
-  /** Choosing modules is a payment: simulated on a test instance only; with Stripe, not wired yet (see README). */
+  /** Choosing modules is a payment: Stripe (checkout or subscription update), or simulated on a test instance only. */
   api.post("/offre/modules", async (c) => {
     if (!ctx.isOwner(c)) return c.json({ error: "proprietaire", message: "Seul le propriétaire du foyer gère l'abonnement." }, 403);
-    const b = z.object({ modules: z.array(z.enum(MODULE_IDS)).max(10), pack: z.string().max(30).nullable().optional() }).parse(await c.req.json());
-    if (!paiementDisponible() || !simulationPaiement()) return c.json({ error: "paiement_indisponible", message: new PaiementIndisponible().message }, 503);
-    const pack = PACKS.find((p) => p.id === b.pack);
-    const mods = normaliser([...(pack?.modules ?? []), ...b.modules]);
-    db.setModules(ctx.household(c).id, mods);
-    return c.json({ souscrits: mods, actifs: [...actifs(c)] });
+    const b = z.object({
+      modules: z.array(z.enum(MODULE_IDS)).max(10), pack: z.string().max(30).nullable().optional(),
+      formule: z.enum(["solo", "duo", "tribu"]).optional(), periode: z.enum(["mensuel", "annuel"]).optional(),
+      biens: z.number().int().min(0).max(200).optional(), proches: z.number().int().min(0).max(10).optional(),
+    }).parse(await c.req.json());
+    const h = db.getHousehold(ctx.household(c).id)!;
+    const formule = b.formule ?? (h.formule as "solo" | "duo" | "tribu" | null) ?? "duo";
+    const periode = b.periode ?? (h.abonnement_periode as "mensuel" | "annuel" | null) ?? "mensuel";
+    if (b.pack && !PACKS.some((p) => p.id === b.pack)) return c.json({ error: "saisie_invalide" }, 400);
+    try {
+      const r = await changerModules(db, h, { formule, periode, modules: b.modules, pack: b.pack ?? null, biens: b.biens, proches: b.proches }, ctx.email(c));
+      return c.json({ ...r, souscrits: r.modules, actifs: [...actifs(c)] });
+    } catch (e) {
+      if (e instanceof PaiementIndisponible) return c.json({ error: "paiement_indisponible", message: e.message }, 503);
+      return c.json({ error: "paiement", message: (e as Error).message }, 400);
+    }
   });
 
   const verifier = (c: any, e: Espace) => (actifs(c).has(ESPACES[e] as ModuleId) || (e === "pro" && actifs(c).has("vie_pro_independant")));
