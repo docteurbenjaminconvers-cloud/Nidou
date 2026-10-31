@@ -21,7 +21,7 @@ services:
       LUCIEN_DATA: /data
     volumes:
       - lucien-data:/data
-    # une sauvegarde par jour ; les 14 dernières sont gardées dans /data/sauvegardes
+    # une sauvegarde par jour, chiffrée et envoyée hors du serveur (LUCIEN_SAUVEGARDE_CLE, LUCIEN_S3_* dans .env) ; 14 copies chiffrées gardées dans /data/sauvegardes
     command: ["sh", "-c", "while true; do node scripts/sauvegarde.mjs; sleep 86400; done"]
     depends_on: [lucien]
 

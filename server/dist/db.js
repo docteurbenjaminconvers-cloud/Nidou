@@ -1,5 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
-import { randomBytes, randomUUID } from "node:crypto";
+import { randomBytes, randomUUID, randomInt } from "node:crypto";
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS households (
   id TEXT PRIMARY KEY,
@@ -124,6 +124,22 @@ CREATE TABLE IF NOT EXISTS transactions (
   empreinte TEXT NOT NULL UNIQUE,
   importe_le TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS partages_comptable (
+  token TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL REFERENCES households(id),
+  member_id TEXT,
+  nom TEXT,
+  cree_le TEXT NOT NULL,
+  expire_le TEXT NOT NULL,
+  revoque INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS module_data (
+  household_id TEXT NOT NULL REFERENCES households(id),
+  espace TEXT NOT NULL,
+  donnees TEXT NOT NULL,
+  maj_le TEXT NOT NULL,
+  PRIMARY KEY (household_id, espace)
+);
 CREATE TABLE IF NOT EXISTS budget_decisions (
   household_id TEXT NOT NULL REFERENCES households(id),
   cle TEXT NOT NULL,
@@ -197,7 +213,7 @@ export function newBoiteCode() {
     const alphabet = "abcdefghjkmnpqrstuvwxyz23456789";
     let out = "";
     for (let i = 0; i < 6; i++)
-        out += alphabet[Math.floor(Math.random() * alphabet.length)];
+        out += alphabet[randomInt(alphabet.length)];
     return out;
 }
 export class Db {
@@ -205,6 +221,9 @@ export class Db {
     constructor(path = process.env.LUCIEN_DB ?? "lucien.sqlite") {
         this.raw = new DatabaseSync(path);
         this.raw.exec("PRAGMA foreign_keys = ON;");
+        // WAL: readers (the nightly backup included) never block writers; wait instead of failing when the file is busy
+        if (path !== ":memory:")
+            this.raw.exec("PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;");
         this.raw.exec(SCHEMA);
         // Light migrations for databases created by earlier prototypes.
         const cols = this.raw.prepare("PRAGMA table_info(households)").all().map((c) => c.name);
@@ -220,7 +239,7 @@ export class Db {
             this.raw.exec("ALTER TABLE households ADD COLUMN hebdo INTEGER DEFAULT 1");
         if (!cols.includes("ics_token"))
             this.raw.exec("ALTER TABLE households ADD COLUMN ics_token TEXT");
-        for (const [col] of [["stripe_customer_id"], ["stripe_subscription_id"], ["abonnement_statut"], ["abonnement_periode"], ["abonnement_fin"], ["formule"]]) {
+        for (const [col] of [["stripe_customer_id"], ["stripe_subscription_id"], ["abonnement_statut"], ["abonnement_periode"], ["abonnement_fin"], ["formule"], ["modules"]]) {
             if (!cols.includes(col))
                 this.raw.exec(`ALTER TABLE households ADD COLUMN ${col} TEXT`);
         }
@@ -228,7 +247,7 @@ export class Db {
             this.raw.prepare("UPDATE households SET mcp_token = ? WHERE id = ?").run(newToken(), h.id);
         }
         const mcols = this.raw.prepare("PRAGMA table_info(members)").all().map((c) => c.name);
-        for (const [col, type] of [["date_naissance", "TEXT"], ["etablissement", "TEXT"], ["classe", "TEXT"], ["cantine_jours", "TEXT"], ["cantine_cout_mois", "REAL"], ["notes", "TEXT"]]) {
+        for (const [col, type] of [["date_naissance", "TEXT"], ["etablissement", "TEXT"], ["classe", "TEXT"], ["cantine_jours", "TEXT"], ["cantine_cout_mois", "REAL"], ["notes", "TEXT"], ["photo", "TEXT"]]) {
             if (!mcols.includes(col))
                 this.raw.exec(`ALTER TABLE members ADD COLUMN ${col} ${type}`);
         }
@@ -389,6 +408,48 @@ export class Db {
     householdByIcsToken(token) {
         return this.raw.prepare("SELECT * FROM households WHERE ics_token = ?").get(token);
     }
+    /** Paid modules of the household (offre.ts), as a JSON array. */
+    getModules(id) {
+        const r = this.raw.prepare("SELECT modules FROM households WHERE id = ?").get(id);
+        try {
+            return r?.modules ? JSON.parse(r.modules) : [];
+        }
+        catch {
+            return [];
+        }
+    }
+    setModules(id, modules) {
+        this.raw.prepare("UPDATE households SET modules = ? WHERE id = ?").run(JSON.stringify(modules), id);
+    }
+    /** Household operations without professional accounts (declared in the budget space): the family budget is not the practice's. */
+    transactionsFoyer(household_id) {
+        const exclus = new Set(this.getModuleData(household_id, "budget")?.comptes_exclus ?? []);
+        return this.listTransactions(household_id).filter((t) => !t.compte || !exclus.has(t.compte));
+    }
+    /** Read-only links a self-employed member gives to an accountant or approved management association. */
+    creerPartage(household_id, member_id, nom, token, jours = 365) {
+        const cree = new Date();
+        const expire = new Date(cree.getTime() + jours * 864e5);
+        this.raw.prepare("INSERT INTO partages_comptable (token, household_id, member_id, nom, cree_le, expire_le) VALUES (?, ?, ?, ?, ?, ?)").run(token, household_id, member_id, nom, cree.toISOString(), expire.toISOString());
+        return this.getPartage(token);
+    }
+    getPartage(token) {
+        return this.raw.prepare("SELECT * FROM partages_comptable WHERE token = ?").get(token);
+    }
+    listPartages(household_id) {
+        return this.raw.prepare("SELECT * FROM partages_comptable WHERE household_id = ? AND revoque = 0 AND expire_le > ? ORDER BY cree_le DESC").all(household_id, new Date().toISOString());
+    }
+    revoquerPartage(household_id, token) {
+        this.raw.prepare("UPDATE partages_comptable SET revoque = 1 WHERE token = ? AND household_id = ?").run(token, household_id);
+    }
+    getModuleData(household_id, espace) {
+        const r = this.raw.prepare("SELECT donnees FROM module_data WHERE household_id = ? AND espace = ?").get(household_id, espace);
+        return r ? JSON.parse(r.donnees) : null;
+    }
+    setModuleData(household_id, espace, donnees) {
+        this.raw.prepare("INSERT INTO module_data (household_id, espace, donnees, maj_le) VALUES (?, ?, ?, ?) ON CONFLICT(household_id, espace) DO UPDATE SET donnees = excluded.donnees, maj_le = excluded.maj_le")
+            .run(household_id, espace, JSON.stringify(donnees), new Date().toISOString());
+    }
     setHebdo(id, actif) {
         this.raw.prepare("UPDATE households SET hebdo = ? WHERE id = ?").run(actif ? 1 : 0, id);
     }
@@ -415,6 +476,9 @@ export class Db {
     }
     getMember(id) {
         return this.raw.prepare("SELECT * FROM members WHERE id = ?").get(id);
+    }
+    setMemberPhoto(id, photo) {
+        this.raw.prepare("UPDATE members SET photo = ? WHERE id = ?").run(photo, id);
     }
     deleteMember(id) {
         this.raw.prepare("UPDATE documents SET member_id = NULL WHERE member_id = ?").run(id);
@@ -455,8 +519,12 @@ export class Db {
         this.raw.prepare("INSERT INTO push_subscriptions (id, household_id, user_id, endpoint, p256dh, auth, appareil, cree_le) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(endpoint) DO UPDATE SET household_id = excluded.household_id, user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth, appareil = excluded.appareil")
             .run(randomUUID(), s.household_id, s.user_id, s.endpoint, s.p256dh, s.auth, s.appareil, this.now());
     }
-    deletePushSubscription(endpoint) {
-        this.raw.prepare("DELETE FROM push_subscriptions WHERE endpoint = ?").run(endpoint);
+    /** Without a household: only for the push service's own "this device is gone" answers (404/410). */
+    deletePushSubscription(endpoint, household_id) {
+        if (household_id)
+            this.raw.prepare("DELETE FROM push_subscriptions WHERE endpoint = ? AND household_id = ?").run(endpoint, household_id);
+        else
+            this.raw.prepare("DELETE FROM push_subscriptions WHERE endpoint = ?").run(endpoint);
     }
     listPushSubscriptions(household_id) {
         return this.raw.prepare("SELECT * FROM push_subscriptions WHERE household_id = ?").all(household_id);
@@ -548,8 +616,9 @@ export class Db {
         sql += " ORDER BY date ASC";
         return this.raw.prepare(sql).all(...args);
     }
-    setDeadlineDone(id, fait) {
-        this.raw.prepare("UPDATE deadlines SET fait = ? WHERE id = ?").run(fait ? 1 : 0, id);
+    /** Only within the household: an id from another household changes nothing (returns false). */
+    setDeadlineDone(household_id, id, fait) {
+        return Number(this.raw.prepare("UPDATE deadlines SET fait = ? WHERE id = ? AND household_id = ?").run(fait ? 1 : 0, id, household_id).changes) > 0;
     }
     // ---------- transactions ----------
     insertTransactions(rows) {
@@ -575,8 +644,9 @@ export class Db {
         sql += " ORDER BY date DESC";
         return this.raw.prepare(sql).all(...args);
     }
-    updateTransactionCategory(id, categorie) {
-        this.raw.prepare("UPDATE transactions SET categorie = ? WHERE id = ?").run(categorie, id);
+    /** Only within the household: an id from another household changes nothing (returns false). */
+    updateTransactionCategory(household_id, id, categorie) {
+        return Number(this.raw.prepare("UPDATE transactions SET categorie = ? WHERE id = ? AND household_id = ?").run(categorie, id, household_id).changes) > 0;
     }
     setDecision(household_id, cle, decision) {
         this.raw
@@ -616,14 +686,40 @@ export class Db {
     }
     // ---------- IA usage: per-household monthly quota + global monthly spend cap ----------
     month() { return this.now().slice(0, 7); }
+    /** Estimated AI spend of the household this month, in cents (all AI calls, see iaBudget.ts). */
+    iaCentimesMois(household_id) {
+        this.ensureIaCentimes();
+        const r = this.raw.prepare("SELECT centimes FROM ia_usage WHERE household_id = ? AND mois = ?").get(household_id, this.month());
+        return r?.centimes ?? 0;
+    }
+    iaCentimesPret = false;
+    ensureIaCentimes() {
+        if (this.iaCentimesPret)
+            return;
+        const cols = this.raw.prepare("PRAGMA table_info(ia_usage)").all().map((c) => c.name);
+        if (!cols.includes("centimes"))
+            this.raw.exec("ALTER TABLE ia_usage ADD COLUMN centimes REAL NOT NULL DEFAULT 0");
+        this.iaCentimesPret = true;
+    }
+    /** Records an AI call that is not a paper reading (categorisation, letter, PDF statement) and its cost. */
+    recordIaCout(household_id, gratuit, centimes) {
+        this.ensureIaCentimes();
+        const m = this.month();
+        this.raw.prepare("INSERT INTO ia_usage (household_id, mois, lectures, centimes) VALUES (?, ?, 0, ?) ON CONFLICT(household_id, mois) DO UPDATE SET centimes = centimes + excluded.centimes").run(household_id, m, centimes);
+        this.raw
+            .prepare(`INSERT INTO ia_depense (mois, centimes_gratuit, centimes_payant) VALUES (?, ?, ?)
+                ON CONFLICT(mois) DO UPDATE SET centimes_gratuit = centimes_gratuit + excluded.centimes_gratuit, centimes_payant = centimes_payant + excluded.centimes_payant`)
+            .run(m, gratuit ? centimes : 0, gratuit ? 0 : centimes);
+    }
     iaLecturesMois(household_id) {
         const r = this.raw.prepare("SELECT lectures FROM ia_usage WHERE household_id = ? AND mois = ?").get(household_id, this.month());
         return r?.lectures ?? 0;
     }
     /** Records one AI reading and its estimated cost in cents, in the free or paid bucket. */
     recordIaLecture(household_id, gratuit, centimes) {
+        this.ensureIaCentimes();
         const m = this.month();
-        this.raw.prepare("INSERT INTO ia_usage (household_id, mois, lectures) VALUES (?, ?, 1) ON CONFLICT(household_id, mois) DO UPDATE SET lectures = lectures + 1").run(household_id, m);
+        this.raw.prepare("INSERT INTO ia_usage (household_id, mois, lectures, centimes) VALUES (?, ?, 1, ?) ON CONFLICT(household_id, mois) DO UPDATE SET lectures = lectures + 1, centimes = centimes + excluded.centimes").run(household_id, m, centimes);
         this.raw
             .prepare(`INSERT INTO ia_depense (mois, centimes_gratuit, centimes_payant) VALUES (?, ?, ?)
                 ON CONFLICT(mois) DO UPDATE SET centimes_gratuit = centimes_gratuit + excluded.centimes_gratuit, centimes_payant = centimes_payant + excluded.centimes_payant`)

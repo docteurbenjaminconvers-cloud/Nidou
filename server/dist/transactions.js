@@ -1,16 +1,8 @@
 import { createHash } from "node:crypto";
 import { structured, provider } from "./ia.js";
-/** Spending categories shown to the family. Separate from document categories. */
-export const TX_CATEGORIES = [
-    "alimentation", "restaurants", "transport", "carburant", "logement", "energie", "telecom", "assurance", "sante",
-    "abonnements", "shopping", "loisirs", "enfants", "impots", "frais_bancaires", "epargne", "virements", "revenus", "especes", "autre",
-];
-export const TX_LABEL = {
-    alimentation: "Courses", restaurants: "Restaurants", transport: "Transports", carburant: "Carburant", logement: "Logement",
-    energie: "Énergie", telecom: "Télécom", assurance: "Assurances", sante: "Santé", abonnements: "Abonnements", shopping: "Shopping",
-    loisirs: "Loisirs", enfants: "Enfants", impots: "Impôts", frais_bancaires: "Frais bancaires", epargne: "Épargne",
-    virements: "Virements", revenus: "Revenus", especes: "Retraits", autre: "Autre",
-};
+import { coutAppel } from "./iaBudget.js";
+export { TX_CATEGORIES, TX_LABEL } from "./categorie.js";
+import { TX_CATEGORIES } from "./categorie.js";
 // ---------- parsing ----------
 function toIso(raw) {
     const s = raw.trim();
@@ -122,27 +114,7 @@ export function merchantOf(libelle) {
     return (s.split(" ").slice(0, 3).join(" ") || libelle).toLowerCase();
 }
 // ---------- categorisation ----------
-const RULES = [
-    [/salaire|paie|remuneration|cpam|caf\b|pole emploi|france travail|urssaf remb/i, "revenus"],
-    [/retrait|dab\b|atm/i, "especes"],
-    [/livret|epargne|pel\b|assurance vie|bourse|pea\b/i, "epargne"],
-    [/frais|cotisation carte|commission|agios|interets debiteurs|tenue de compte/i, "frais_bancaires"],
-    [/impot|dgfip|tresor public|amende|taxe/i, "impots"],
-    [/loyer|syndic|copro|foncia|nexity|credit immo|pret immo/i, "logement"],
-    [/edf|engie|total ?energies|eni\b|ohm|ilek|veolia|suez|gaz|electric/i, "energie"],
-    [/orange|sfr|bouygues|free\b|sosh|red by|b&you|la poste mobile|prixtel/i, "telecom"],
-    [/maif|macif|axa|allianz|matmut|gmf|groupama|mma\b|maaf|assur|mutuelle|harmonie|malakoff|alan\b/i, "assurance"],
-    [/pharmacie|medecin|docteur|dr\b|clinique|hopital|labo|dentiste|opticien|kine/i, "sante"],
-    [/netflix|spotify|disney|canal|amazon prime|prime video|apple\.com\/bill|itunes|google play|youtube|deezer|basic.?fit|fitness|salle de sport|keepcool|neoness|ocs|paramount|crunchyroll|audible|dropbox|icloud|chatgpt|openai|anthropic|microsoft 365|adobe/i, "abonnements"],
-    [/carrefour|leclerc|lidl|aldi|auchan|intermarche|monoprix|casino|franprix|super u|u express|biocoop|picard|grand frais|naturalia|boulangerie|boucherie|marche/i, "alimentation"],
-    [/uber eats|deliveroo|just eat|mcdo|mcdonald|burger|kfc|pizza|restaurant|resto|brasserie|cafe|bistro|sushi|kebab|starbucks/i, "restaurants"],
-    [/total\b|esso|shell|bp\b|station|carburant|avia|leclerc station/i, "carburant"],
-    [/sncf|ratp|tam\b|tisseo|uber\b|bolt|blablacar|autoroute|vinci|aprr|sanef|parking|indigo|q-park|peage/i, "transport"],
-    [/ecole|cantine|creche|garderie|college|lycee|periscolaire|scolaire|jouet|king jouet|smyths/i, "enfants"],
-    [/amazon|fnac|darty|boulanger|zara|h&m|decathlon|ikea|leroy merlin|castorama|action\b|primark|kiabi|zalando|vinted|shein|apple store|cdiscount|temu|aliexpress/i, "shopping"],
-    [/cinema|ugc|pathe|theatre|concert|musee|piscine|golf|tennis|club|billetterie|fnac spectacles|steam|playstation|nintendo|xbox/i, "loisirs"],
-    [/virement|vir\b/i, "virements"],
-];
+import { RULES } from "./categorie.js";
 export function ruleCategory(libelle, montant) {
     for (const [re, cat] of RULES)
         if (re.test(libelle))
@@ -154,10 +126,10 @@ export function ruleCategory(libelle, montant) {
 /**
  * Categorises transactions: rules first, then Claude for the leftovers (in one batch), else "autre".
  */
-export async function categorise(items) {
+export async function categorise(items, budget) {
     const out = items.map((t) => ruleCategory(t.libelle, t.montant));
     const todo = out.map((c, i) => (c === null ? i : -1)).filter((i) => i >= 0);
-    if (todo.length && provider()) {
+    if (todo.length && provider() && (!budget || budget.ok())) {
         const uniq = [...new Set(todo.map((i) => items[i].libelle))].slice(0, 300);
         try {
             const r = await structured({
@@ -167,6 +139,7 @@ export async function categorise(items) {
                 tool: { name: "classer", description: "Attribue une catégorie à chaque libellé.", schema: { type: "object", required: ["items"], properties: { items: { type: "array", items: { type: "object", required: ["libelle", "categorie"], properties: { libelle: { type: "string" }, categorie: { type: "string", enum: [...TX_CATEGORIES] } } } } } } },
                 maxTokens: 4000,
             });
+            budget?.compter(coutAppel("rapide", 2));
             const map = new Map();
             for (const it of r.data.items ?? [])
                 if (TX_CATEGORIES.includes(it.categorie))

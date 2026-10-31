@@ -93,14 +93,34 @@ Tant que `VPS_HOST` est vide, le workflow ne fait rien. Pour relancer une mise e
 
 ## 7. Sauvegardes
 
-Une sauvegarde par jour dans le volume (`/data/sauvegardes`, 14 jours gardés), faite à chaud sans couper le service. À copier hors du serveur, par exemple vers un stockage objet OVH :
+Une sauvegarde par jour, faite à chaud sans couper le service : la base et les papiers déposés, **chiffrés** puis **envoyés hors du serveur**. 14 copies chiffrées restent aussi sur le serveur (`/data/sauvegardes`).
+
+**À régler dans `.env`** (sans ces réglages, la copie reste en clair sur le serveur et un avertissement s'affiche chaque jour) :
 
 ```bash
-docker compose exec lucien node scripts/sauvegarde.mjs          # sauvegarde immédiate
-docker compose cp lucien:/data/sauvegardes ./sauvegardes         # récupérer les copies
+LUCIEN_SAUVEGARDE_CLE="une longue phrase secrète, au moins 20 caractères"
+LUCIEN_S3_ENDPOINT=https://s3.gra.io.cloud.ovh.net   # OVH Gravelines ; Scaleway Paris : https://s3.fr-par.scw.cloud
+LUCIEN_S3_REGION=gra                                  # Scaleway : fr-par
+LUCIEN_S3_BUCKET=lucien-sauvegardes
+LUCIEN_S3_ACCESS_KEY=…
+LUCIEN_S3_SECRET_KEY=…
 ```
 
-Restaurer : arrêter (`docker compose stop lucien`), remplacer `/data/lucien.sqlite` et `/data/uploads` par ceux d'une sauvegarde, relancer.
+- **La phrase secrète se garde hors du serveur** (gestionnaire de mots de passe, et une copie papier dans un coffre). Sans elle, aucune sauvegarde n'est lisible, par personne. Si elle est perdue, les sauvegardes le sont aussi.
+- **Côté stockage** : créer un bucket privé et une clé d'accès qui ne peut qu'écrire et lire dans ce bucket. Ajouter une règle de cycle de vie qui efface les copies de plus de 30 jours (ce que promet la politique de confidentialité). Activer si possible le verrouillage des objets (« object lock ») : même un serveur piraté ne pourra pas effacer les copies.
+- Le script refuse d'envoyer quoi que ce soit hors du serveur sans chiffrement.
+
+```bash
+docker compose exec lucien node scripts/sauvegarde.mjs                 # sauvegarde immédiate
+```
+
+**Restaurer** (dans un dossier neuf, sans toucher aux données en service) :
+
+```bash
+docker compose exec lucien node scripts/restaurer.mjs s3:lucien/2026-11-01T03-00-00.lucienbk /data/restauration
+```
+
+Puis arrêter (`docker compose stop lucien`), remplacer `/data/lucien.sqlite` et `/data/uploads` par ceux de `/data/restauration`, relancer. **Faire un essai de restauration une fois par trimestre** : une sauvegarde jamais restaurée n'est pas une sauvegarde.
 
 ## 8. Avant d'accueillir de vraies familles
 

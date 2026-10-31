@@ -150,7 +150,7 @@ export function createMcpServer(db, householdId) {
             inputSchema: {},
         }, async () => {
             log("analyse_depenses", {});
-            const r = budgetReport(db.listTransactions(householdId), db.listDocuments(householdId), db.listDecisions(householdId));
+            const r = budgetReport(db.transactionsFoyer(householdId), db.listDocuments(householdId), db.listDecisions(householdId));
             const { recurrences, ...rest } = r;
             return text({ ...rest, recurrences: recurrences.map((x) => ({ marchand: x.marchand, categorie: x.categorie, mensuel: x.mensuel_equivalent, jour: x.jour_du_mois, contrat_connu: Boolean(x.contrat_id) })) });
         });
@@ -191,7 +191,7 @@ export async function handleMcpRequest(db, req, pathToken) {
     if (!h)
         return unauthorized();
     if (db.effectivePlan(h) !== "famille")
-        return new Response(JSON.stringify({ error: "plan", message: "Le connecteur IA fait partie du plan Famille." }), { status: 402, headers: { "content-type": "application/json" } });
+        return new Response(JSON.stringify({ error: "plan", message: "Le connecteur IA fait partie de la formule complète." }), { status: 402, headers: { "content-type": "application/json" } });
     const server = createMcpServer(db, h.id);
     // Stateless + plain JSON responses: one transport per request, closed once the response is written.
     const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });

@@ -69,7 +69,7 @@ export function pointSemaine(e, now = new Date()) {
     }
     const repasCantine = e.creneaux.filter((c) => c.type === "cantine").length;
     if (agenda.length)
-        sections.push({ cle: "agenda", titre: "L'agenda de la famille", items: agenda });
+        sections.push({ cle: "agenda", titre: "L'agenda de la semaine", items: agenda });
     // 3. Budget : ce qui est déjà récupéré, et le geste qui rapporte le plus.
     const budget = [];
     const geste = e.economies?.geste ?? null;

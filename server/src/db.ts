@@ -367,6 +367,8 @@ export class Db {
   constructor(path: string = process.env.LUCIEN_DB ?? "lucien.sqlite") {
     this.raw = new DatabaseSync(path);
     this.raw.exec("PRAGMA foreign_keys = ON;");
+    // WAL: readers (the nightly backup included) never block writers; wait instead of failing when the file is busy
+    if (path !== ":memory:") this.raw.exec("PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;");
     this.raw.exec(SCHEMA);
     // Light migrations for databases created by earlier prototypes.
     const cols = (this.raw.prepare("PRAGMA table_info(households)").all() as unknown as { name: string }[]).map((c) => c.name);

@@ -1,4 +1,8 @@
+import { ensureSuppressionSchema } from "./suppression.js";
 import Stripe from "stripe";
+import { ecartItems, lignesModules, modulesDepuisItems, prixManquants, tousLesPrix } from "./stripeModules.js";
+import { normaliser, PACKS } from "./offre.js";
+import { joursOfferts } from "./partenaires.js";
 /**
  * Paid plans billed with Stripe Checkout + Billing Portal + webhooks. Three formules, priced by the number of people
  * who log in on the household (member cards without a login, such as children or an elderly parent, are unlimited):
@@ -9,6 +13,12 @@ import Stripe from "stripe";
  * Without a secret key the module runs in "simulé" mode: checkout activates the formule immediately (prototype and demo).
  */
 export const stripeOn = () => Boolean(process.env.STRIPE_SECRET_KEY);
+/** Simulated payments (no money taken) only on a test instance that asks for them explicitly; never in production. */
+export const simulationPaiement = () => !stripeOn() && process.env.LUCIEN_PAIEMENT_SIMULE === "1";
+export const paiementDisponible = () => stripeOn() || simulationPaiement();
+export class PaiementIndisponible extends Error {
+    constructor() { super("Le paiement en ligne arrive bientôt. D'ici là, rien ne change pour vous."); }
+}
 const stripe = () => new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2025-08-27.basil" });
 const publicUrl = () => (process.env.LUCIEN_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, "");
 export const FORMULES = {
@@ -41,20 +51,29 @@ export function capaciteComptes(db, h) {
         return COMPTES_ESSAI; // trial
     return FORMULES[h.formule ?? "duo"]?.comptes ?? FORMULES.duo.comptes;
 }
-export async function creerCheckout(db, h, formule, periode, email) {
-    if (!stripeOn())
-        return { url: `${publicUrl()}/api/abonnement/simule?formule=${formule}&periode=${periode}&h=${h.id}`, simule: true };
+export async function creerCheckout(db, h, formule, periode, email, modules) {
+    if (!stripeOn()) {
+        if (!simulationPaiement())
+            throw new PaiementIndisponible();
+        return { url: `${publicUrl()}/api/abonnement/simule?formule=${formule}&periode=${periode}`, simule: true };
+    }
     const price = process.env[priceEnv(formule, periode)];
     if (!price)
         throw new Error(`${priceEnv(formule, periode)} manquant`);
+    const lignes = modules ? lignesModules({ ...modules, formule, periode }) : [];
+    const manquants = prixManquants(lignes);
+    if (manquants.length)
+        throw new Error(`Prix Stripe manquants : ${manquants.join(", ")}`);
+    const choix = modules ? JSON.stringify({ modules: modules.modules, pack: modules.pack, biens: modules.biens ?? 0, proches: modules.proches ?? 0 }) : "";
     const s = await stripe().checkout.sessions.create({
         mode: "subscription",
-        line_items: [{ price, quantity: 1 }],
+        line_items: [{ price, quantity: 1 }, ...lignes.map((l) => ({ price: process.env[l.env], quantity: l.quantite }))],
         customer: h.stripe_customer_id ?? undefined,
         customer_email: h.stripe_customer_id ? undefined : email ?? undefined,
         client_reference_id: h.id,
-        metadata: { household_id: h.id, formule, periode },
-        subscription_data: { metadata: { household_id: h.id, formule, periode } },
+        metadata: { household_id: h.id, formule, periode, ...(choix ? { modules: choix } : {}) },
+        // Partner cabinets: the first subscription of their clients starts with one month free.
+        subscription_data: { metadata: { household_id: h.id, formule, periode, ...(choix ? { modules: choix } : {}) }, ...(joursOfferts(db, h) ? { trial_period_days: joursOfferts(db, h) } : {}) },
         allow_promotion_codes: true,
         locale: "fr",
         success_url: `${publicUrl()}/#/settings?paiement=ok`,
@@ -62,10 +81,46 @@ export async function creerCheckout(db, h, formule, periode, email) {
     });
     return { url: s.url, simule: false };
 }
+/**
+ * Modules and packs of a household. Without Stripe: simulated on a test instance only. With Stripe: a household
+ * without a subscription goes through Checkout (socle + modules in one subscription); an existing subscription has
+ * its module lines added, changed or removed, prorated. The webhook then confirms the modules from the billed items.
+ */
+export async function changerModules(db, h, c, email) {
+    const lignes = lignesModules(c);
+    const voulus = normaliser([...(PACKS.find((p) => p.id === c.pack)?.modules ?? []), ...c.modules]);
+    if (!stripeOn()) {
+        if (!simulationPaiement())
+            throw new PaiementIndisponible();
+        db.setModules(h.id, voulus);
+        return { simule: true, modules: voulus };
+    }
+    if (!h.stripe_subscription_id || !["active", "trialing", "past_due"].includes(h.abonnement_statut ?? "")) {
+        const r = await creerCheckout(db, h, c.formule, c.periode, email, c);
+        return { url: r.url, simule: false, modules: voulus };
+    }
+    const manquants = prixManquants(lignes);
+    if (manquants.length)
+        throw new Error(`Prix Stripe manquants : ${manquants.join(", ")}`);
+    const sub = await stripe().subscriptions.retrieve(h.stripe_subscription_id);
+    const periodeAbo = h.abonnement_periode ?? c.periode;
+    // module lines must follow the subscription's own period
+    const e = ecartItems(sub.items.data.map((i) => ({ id: i.id, price: { id: i.price.id }, quantity: i.quantity ?? 1 })), lignesModules({ ...c, periode: periodeAbo, formule: h.formule ?? c.formule }));
+    for (const id of e.supprimer)
+        await stripe().subscriptionItems.del(id, { proration_behavior: "create_prorations" });
+    for (const m of e.modifier)
+        await stripe().subscriptionItems.update(m.id, { quantity: m.quantite, proration_behavior: "create_prorations" });
+    for (const a of e.ajouter)
+        await stripe().subscriptionItems.create({ subscription: sub.id, price: a.price, quantity: a.quantite, proration_behavior: "create_prorations" });
+    db.setModules(h.id, voulus); // confirmed by customer.subscription.updated
+    return { simule: false, modules: voulus };
+}
 /** Extra protected-person watch (« veille d'un proche », 3,90 €/mois ou 39 €/an), added to the existing subscription. */
 export async function ajouterVeillePayante(db, h, periode) {
     const actuel = db.raw.prepare("SELECT veilles_supp FROM households WHERE id = ?").get(h.id)?.veilles_supp ?? 0;
     if (!stripeOn()) {
+        if (!simulationPaiement())
+            throw new PaiementIndisponible();
         db.raw.prepare("UPDATE households SET veilles_supp = ? WHERE id = ?").run(actuel + 1, h.id);
         return { simule: true, total: actuel + 1 };
     }
@@ -90,6 +145,8 @@ export async function ajouterVeillePayante(db, h, periode) {
 export async function basculerAssistant(db, h, actif) {
     const set = (v) => db.raw.prepare("UPDATE households SET assistant_option = ? WHERE id = ?").run(v ? 1 : 0, h.id);
     if (!stripeOn()) {
+        if (actif && !simulationPaiement())
+            throw new PaiementIndisponible(); // switching off never needs a payment
         set(actif);
         return { simule: true, actif };
     }
@@ -157,6 +214,12 @@ export function appliquerEvenement(db, event) {
         if (!h)
             return "checkout: foyer inconnu";
         appliquerAbonnement(db, h, { customer: o.customer ?? null, subscription: o.subscription ?? null, statut: "active", formule: formuleDe(), periode: periodeDe() });
+        try {
+            const m = o.metadata?.modules ? JSON.parse(o.metadata.modules) : null;
+            if (m)
+                db.setModules(h.id, (Array.isArray(m) ? m : modulesDuChoix(m)));
+        }
+        catch { /* malformed metadata: the subscription event will set them */ }
         return `checkout: ${h.nom} → famille`;
     }
     if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.created" || event.type === "customer.subscription.deleted") {
@@ -165,6 +228,11 @@ export function appliquerEvenement(db, event) {
             return "subscription: foyer inconnu";
         const statut = event.type === "customer.subscription.deleted" ? "canceled" : o.status ?? "active";
         appliquerAbonnement(db, h, { customer: o.customer ?? null, subscription: o.id, statut, formule: formuleDe(), periode: periodeDe(), fin: finDe() });
+        // cancelled in the Stripe portal or by Lucien: no renewal at the end of the period
+        if (typeof o.cancel_at_period_end === "boolean") {
+            ensureSuppressionSchema(db);
+            db.raw.prepare("UPDATE households SET abonnement_resilie = ? WHERE id = ?").run(o.cancel_at_period_end ? 1 : 0, h.id);
+        }
         const prixAssistant = [process.env.STRIPE_PRICE_ASSISTANT_MENSUEL, process.env.STRIPE_PRICE_ASSISTANT_ANNUEL].filter(Boolean);
         if (prixAssistant.length) {
             const on = statut !== "canceled" && (o.items?.data ?? []).some((i) => prixAssistant.includes(i.price.id));
@@ -175,6 +243,11 @@ export function appliquerEvenement(db, event) {
             const n = statut === "canceled" ? 0 : (o.items?.data ?? []).filter((i) => prixVeille.includes(i.price.id)).reduce((s2, i) => s2 + (i.quantity ?? 1), 0);
             db.raw.prepare("UPDATE households SET veilles_supp = ? WHERE id = ?").run(n, h.id);
         }
+        const lus = modulesDepuisItems((o.items?.data ?? []));
+        if (statut === "canceled")
+            db.setModules(h.id, []);
+        else if (o.items?.data?.length && tousLesPrix().some((x) => process.env[x.env]))
+            db.setModules(h.id, lus.modules); // only once module prices exist
         return `subscription ${statut}: ${h.nom} → ${db.getHousehold(h.id).plan}`;
     }
     if (event.type === "invoice.payment_failed") {
@@ -185,9 +258,13 @@ export function appliquerEvenement(db, event) {
     }
     return `ignoré: ${event.type}`;
 }
+function modulesDuChoix(m) {
+    return normaliser([...(PACKS.find((p) => p.id === m.pack)?.modules ?? []), ...(m.modules ?? [])]);
+}
 export function resumeAbonnement(h) {
     return {
         stripe: stripeOn(),
+        paiement: paiementDisponible(),
         statut: h.abonnement_statut,
         formule: h.formule ?? (h.plan === "famille" ? "duo" : null),
         periode: h.abonnement_periode,

@@ -10,7 +10,7 @@ export function entreeSemaine(db, h, now = new Date()) {
     const plan = db.effectivePlan(h);
     let economies = null;
     if (plan === "famille") {
-        const b = budgetReport(db.listTransactions(h.id), docs, db.listDecisions(h.id));
+        const b = budgetReport(db.transactionsFoyer(h.id), docs, db.listDecisions(h.id));
         if (b.nb_transactions) {
             const a = b.actions.find((x) => x.decision !== "garde" && x.decision !== "resilie") ?? null;
             economies = { possibles: b.economies_possibles, decidees: b.economies_decidees, geste: a ? { titre: a.titre, effort: a.effort, gain: a.economie_annuelle } : null };

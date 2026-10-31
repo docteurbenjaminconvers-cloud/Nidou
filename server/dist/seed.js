@@ -1,3 +1,6 @@
+import { DEMO_BUDGET } from "./budgetExpert.js";
+import { COMPTE_MICRO_DEMO, COMPTE_PRO_DEMO, demoComptePro, demoPro } from "./viePro.js";
+import { DEMO_LOCATIF, demoLoyers } from "./locatif.js";
 import { deadlinesFor } from "./deadlines.js";
 function iso(offsetDays, base = new Date()) {
     const d = new Date(base);
@@ -31,11 +34,11 @@ export function demoDocuments() {
         { title: "RIB — compte joint", category: "banque", organisme: "Crédit Agricole", numero_contrat: null, montant: null, periodicite: null, date_document: iso(-300), date_debut: null, date_fin: null, preavis_jours: null, resume: "Relevé d'identité bancaire du compte joint." },
     ];
 }
-export function seedDemo(db) {
+export function seedDemo(db, opts = {}) {
     const h = db.createHousehold("Famille Martin (démo)", 2); // demo: 2 trial days left, shows the day-13 reminder
     db.setSituation(h.id, "couple");
     const moi = db.addMember(h.id, "Moi", "adulte", { date_naissance: "1984-05-14" });
-    db.addMember(h.id, "Camille", "adulte", { date_naissance: "1986-09-02" });
+    const camille = db.addMember(h.id, "Camille", "adulte", { date_naissance: "1986-09-02" });
     const lea = db.addMember(h.id, "Léa", "enfant", { date_naissance: "2009-03-21", etablissement: "Lycée Joffre, Montpellier", classe: "Terminale", cantine_jours: "lun,mar,jeu,ven", cantine_cout_mois: 68 });
     const jean = db.addMember(h.id, "Jean", "enfant", { date_naissance: "2016-11-08", etablissement: "École Jules-Ferry", classe: "CM1", cantine_jours: "lun,mar,jeu,ven", cantine_cout_mois: 58 });
     db.addMember(h.id, "Mamie Jeanne", "parent_a_charge", { date_naissance: "1947-02-10", notes: "Vit à Uzès, aide pour les papiers avec son accord." });
@@ -56,5 +59,14 @@ export function seedDemo(db) {
         });
         db.replaceDeadlinesForDocument(doc.id, h.id, deadlinesFor(doc));
     }
+    if (!opts.espaces)
+        return h;
+    // Paid spaces of the demo: budget expert, Camille's practice and payslips, two rented flats.
+    const today = new Date().toISOString().slice(0, 10);
+    db.setModuleData(h.id, "budget", { ...DEMO_BUDGET, comptes_exclus: [COMPTE_PRO_DEMO, COMPTE_MICRO_DEMO] });
+    db.setModuleData(h.id, "pro", demoPro({ moi: moi.id, camille: camille.id }, today));
+    db.setModuleData(h.id, "locatif", DEMO_LOCATIF);
+    const extra = [...demoComptePro(today), ...demoLoyers(today)];
+    db.insertTransactions(extra.map((t) => ({ household_id: h.id, compte: t.compte ?? null, date: t.date, libelle: t.libelle, marchand: t.libelle.toLowerCase().split(" ").slice(0, 3).join(" "), montant: t.montant, categorie: String(t.categorie), empreinte: `demo:${h.id}:${t.compte}:${t.date}:${t.libelle}:${t.montant}` })));
     return h;
 }

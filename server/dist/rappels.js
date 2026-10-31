@@ -1,3 +1,4 @@
+import { ensureSuppressionSchema, executerSuppressionsPrevues } from "./suppression.js";
 import { entretienVeilles } from "./veille.js";
 import { budgetReport } from "./budget.js";
 import { envoyerPush } from "./push.js";
@@ -20,11 +21,11 @@ export function rappelsEssai(db, h, now = new Date()) {
     const perdu = [eco > 0 ? `${euro(eco)} par an d'économies repérées` : null, "la lecture des papiers par l'IA", budget.nb_transactions ? "le suivi des dépenses" : null].filter(Boolean).join(", ");
     const out = [];
     if (joursRestants === 2)
-        out.push({ cle: "essai:j2", titre: "Votre plan Famille offert se termine dans 2 jours", corps: `Après, votre compte passe en gratuit et met en pause ${perdu}. Vos papiers et vos rappels restent.`, route: "#/settings" });
+        out.push({ cle: "essai:j2", titre: "Votre formule complète offerte se termine dans 2 jours", corps: `Après, votre compte passe en gratuit et met en pause ${perdu}. Vos papiers et vos rappels restent.`, route: "#/settings" });
     if (joursRestants === 1)
-        out.push({ cle: "essai:dernier", titre: "Dernier jour de votre plan Famille offert", corps: eco > 0 ? `${euro(eco)} par an d'économies sont prêtes à être décidées. Gardez le plan Famille pour 9,90 € par mois.` : "Gardez la lecture IA, la banque et les économies pour 9,90 € par mois ou 99 € par an.", route: "#/settings" });
+        out.push({ cle: "essai:dernier", titre: "Dernier jour de votre formule complète offerte", corps: eco > 0 ? `${euro(eco)} par an d'économies sont prêtes à être décidées. Gardez la formule complète pour 9,90 € par mois.` : "Gardez la lecture IA, la banque et les économies pour 9,90 € par mois ou 99 € par an.", route: "#/settings" });
     if (joursRestants <= 0 && joursRestants > -3)
-        out.push({ cle: "essai:termine", titre: eco > 0 ? `${euro(eco)} par an d'économies vous attendent` : "Votre essai est terminé, vos papiers restent", corps: `Compte passé en gratuit : en pause, ${perdu}. Le plan Famille reprend là où vous en étiez.`, route: "#/settings" });
+        out.push({ cle: "essai:termine", titre: eco > 0 ? `${euro(eco)} par an d'économies vous attendent` : "Votre essai est terminé, vos papiers restent", corps: `Compte passé en gratuit : en pause, ${perdu}. La formule complète reprend là où vous en étiez.`, route: "#/settings" });
     return out;
 }
 /**
@@ -72,6 +73,26 @@ export function rappelsAlertes(db, h) {
     }
     return [];
 }
+/**
+ * Annual subscriptions renew tacitly: the law (Code de la consommation, art. L215-1) requires telling the customer,
+ * between three months and one month before the end, that he may refuse the renewal. Sent once per period,
+ * 45 to 30 days before the date; nothing when the renewal is already stopped.
+ */
+export function rappelsRenouvellement(db, h, now = new Date()) {
+    ensureSuppressionSchema(db);
+    const r = db.raw.prepare("SELECT abonnement_periode, abonnement_statut, abonnement_fin, abonnement_resilie, suppression_le FROM households WHERE id = ?").get(h.id);
+    if (!r || r.abonnement_periode !== "annuel" || !r.abonnement_fin || r.abonnement_resilie || r.suppression_le)
+        return [];
+    if (!["active", "trialing", "past_due"].includes(r.abonnement_statut ?? ""))
+        return [];
+    const jours = Math.round((Date.parse(r.abonnement_fin) - Date.parse(now.toISOString().slice(0, 10))) / 86400_000);
+    if (jours > 45 || jours < 30)
+        return [];
+    const date = r.abonnement_fin.split("-").reverse().join("/");
+    return [{ cle: `renouvellement:${r.abonnement_fin}`, titre: `Votre abonnement annuel Lucien se renouvelle le ${date}`,
+            corps: `Votre abonnement annuel se renouvellera automatiquement le ${date}, pour un an, au tarif de votre formule. Si vous ne souhaitez pas le renouveler, vous pouvez le résilier d'ici là en un geste, dans Réglages, Votre formule, « Résilier l'abonnement » : il restera actif jusqu'au ${date}, sans autre prélèvement.`,
+            route: "#/settings" }];
+}
 /** Default transport: push to every device of the household; email too for Famille households (free = push only). */
 export async function transportParDefaut(db, h, r) {
     const n = await envoyerPush(db, h.id, { titre: r.titre, corps: r.corps, url: `/${r.route}`, tag: r.cle.split(":")[0] });
@@ -92,7 +113,7 @@ export async function transportParDefaut(db, h, r) {
 export async function passeQuotidienne(db, envoyer = (h, r) => transportParDefaut(db, h, r)) {
     let n = 0;
     for (const h of db.listHouseholds()) {
-        for (const r of [...rappelsEssai(db, h), ...rappelsEcheances(db, h), ...rappelsAlertes(db, h)]) {
+        for (const r of [...rappelsEssai(db, h), ...rappelsEcheances(db, h), ...rappelsAlertes(db, h), ...rappelsRenouvellement(db, h)]) {
             if (db.marquerRappel(h.id, r.cle)) {
                 await envoyer(h, r);
                 n++;
@@ -125,7 +146,7 @@ export async function passeHebdo(db, envoyer = (h, r) => transportParDefaut(db, 
     }
     return n;
 }
-export function demarrerRappels(db) {
+export function demarrerRappels(db, opts = {}) {
     const tick = () => {
         try {
             entretienVeilles(db);
@@ -133,7 +154,8 @@ export function demarrerRappels(db) {
         catch (e) {
             console.error("[veille]", e);
         }
-        return passeQuotidienne(db).then(() => passeHebdo(db)).catch((e) => console.error("[rappel]", e));
+        const suppressions = opts.uploadDir ? executerSuppressionsPrevues(db, opts.uploadDir).catch((e) => console.error("[suppression prévue]", e)) : Promise.resolve();
+        return suppressions.then(() => passeQuotidienne(db)).then(() => passeHebdo(db)).catch((e) => console.error("[rappel]", e));
     };
     setTimeout(tick, 5_000);
     const t = setInterval(tick, 3 * 3600_000); // every 3 h (the Sunday point goes out between 17:00 and 20:00); idempotent thanks to rappels_envoyes

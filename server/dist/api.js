@@ -1,6 +1,10 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { createHash, randomBytes } from "node:crypto";
+import { exporterFoyer } from "./export.js";
+import { budgetIa, coutAppel } from "./iaBudget.js";
+import { annulerSuppression, arreterALEcheance, demanderSuppression, ensureSuppressionSchema, etatFin, quitterFoyer, reprendreAbonnement } from "./suppression.js";
 import { basename, extname, join } from "node:path";
 import { extractDocument, heuristicExtract } from "./extract.js";
 import { deadlinesFor } from "./deadlines.js";
@@ -8,17 +12,19 @@ import { chargesReport, lignesFamille } from "./charges.js";
 import { generateLetter, templateLetter } from "./letters.js";
 import { rappelsEssai, rappelsEcheances } from "./rappels.js";
 import * as V from "./veille.js";
-import { ajouterVeillePayante, basculerAssistant } from "./abonnement.js";
+import { ajouterVeillePayante, basculerAssistant, PaiementIndisponible, simulationPaiement } from "./abonnement.js";
 import { AssistantErreur, ensureAssistantSchema, etatAssistant, repondre } from "./assistant.js";
 import { bridge, eb, fournisseur, notifierAlertes, synchroniserFoyer, synchroniserVeille } from "./banques.js";
 import { banquesFR, BANQUES_DEMO, ebConnectHousehold, ebFinishHousehold, ensureEbSchema, linkExtra, newState } from "./enablebanking.js";
 import { envoyerPush, pushOn } from "./push.js";
 import { appliquerAbonnement, capaciteComptes, creerCheckout, FORMULES, portail, resumeAbonnement, traiterWebhook } from "./abonnement.js";
 import { pointDuFoyer } from "./hebdo.js";
+import { monterEspaces } from "./espaces.js";
+import { adminOk, monterPartenaires } from "./partenaires.js";
 import { bordereau, etatDossiers, etatKit, KITS } from "./dossiers.js";
 import { zip } from "./zip.js";
 import { agendaIcs } from "./ics.js";
-import { AUTH_ON, consommerLien, cookieHeader, demanderLien, emailValide, sessionToken } from "./auth.js";
+import { AUTH_ON, consommerLien, cookieHeader, demandeAutorisee, demanderLien, emailValide, sessionToken } from "./auth.js";
 import { agendaSemaine, familleReport, echeancesFamille, coutsParMembre } from "./famille.js";
 import { boiteAddress, fromBrevo, processInboundEmail } from "./inbox.js";
 import { parseStatement, merchantOf, categorise, ruleCategory, fingerprint, TX_CATEGORIES, TX_LABEL } from "./transactions.js";
@@ -33,7 +39,7 @@ import { simulatedConnect, simulatedSync, verifyBridgeSignature } from "./bridge
  * still under the global monthly budget LUCIEN_IA_PLAFOND_GRATUIT_EUR shared by all free households.
  */
 export const FREE_LIMITS = {
-    documents: 50,
+    documents: 0, // no free plan any more: after the 15-day trial, papers stay readable and exportable, new ones need a subscription
     comptes: 1, // people who log in; member cards without a login (children, elderly parent) are unlimited on every plan
     lettersPerMonth: 3,
     iaLecturesParMois: Number(process.env.LUCIEN_IA_LECTURES_GRATUIT ?? 0),
@@ -44,11 +50,23 @@ export const FREE_LIMITS = {
 export const TRIAL_DAYS = Number(process.env.LUCIEN_ESSAI_JOURS ?? 15);
 const freeCapEur = () => Number(process.env.LUCIEN_IA_PLAFOND_GRATUIT_EUR ?? 2000);
 /** Content-Disposition with an ASCII fallback and an RFC 8187 UTF-8 name (', (, ), * encoded too). */
+/** jpg | png | webp from the first bytes, or null: the declared type is never trusted. */
+export function typePhoto(b) {
+    if (b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff)
+        return "jpg";
+    if (b.length > 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47)
+        return "png";
+    if (b.length > 12 && String.fromCharCode(...b.subarray(0, 4)) === "RIFF" && String.fromCharCode(...b.subarray(8, 12)) === "WEBP")
+        return "webp";
+    return null;
+}
 export function dispositionFichier(type, nom) {
     const ascii = nom.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\x20-\x7e]|["\\]/g, "_");
     const utf8 = encodeURIComponent(nom).replace(/['()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
     return `${type}; filename="${ascii}"; filename*=UTF-8''${utf8}`;
 }
+/** Opaque, stable name of an invitation (a hash of its token, which is a login link and must stay secret). */
+const idInvitation = (token) => createHash("sha256").update(token).digest("base64url").slice(0, 16);
 export function createApi(db, opts) {
     const api = new Hono();
     // Invalid input (zod) is the caller's mistake: 400 with the first message, not a server error.
@@ -61,6 +79,7 @@ export function createApi(db, opts) {
     V.ensureVeilleSchema(db);
     ensureAssistantSchema(db);
     ensureEbSchema(db);
+    ensureSuppressionSchema(db);
     const secure = () => (process.env.LUCIEN_PUBLIC_URL ?? "").startsWith("https://");
     // ---------- auth (magic link) ----------
     api.post("/auth/demander", async (c) => {
@@ -68,7 +87,12 @@ export function createApi(db, opts) {
         const email = body.email.trim().toLowerCase();
         if (!emailValide(email))
             return c.json({ error: "email", message: "Adresse email invalide." }, 400);
+        const ip = (c.req.header("x-forwarded-for") ?? "").split(",")[0].trim() || c.req.header("x-real-ip") || "inconnue";
+        if (!demandeAutorisee(`ip:${ip}`, 10) || !demandeAutorisee(`email:${email}`, 3))
+            return c.json({ error: "trop_de_demandes", message: "Trop de demandes de lien. Réessayez dans 15 minutes." }, 429);
         const r = await demanderLien(db, email);
+        if (!r.envoye && !r.lien)
+            return c.json({ error: "email_non_envoye", message: "L'email de connexion n'a pas pu partir. Réessayez dans quelques minutes." }, 503);
         return c.json({ ok: true, envoye: r.envoye, lien: r.lien });
     });
     api.get("/auth/lien", (c) => {
@@ -91,7 +115,7 @@ export function createApi(db, opts) {
      * without a session every route answers 401 `non_connecte`. LUCIEN_AUTH=0 keeps the single-household prototype.
      */
     api.use("*", async (c, next) => {
-        if (c.req.path.includes("/auth/") || c.req.path.endsWith("/inbox") || c.req.path.endsWith("/bank/webhook") || c.req.path.endsWith("/bank/callback") || c.req.path.endsWith("/bank/eb/callback") || c.req.path.endsWith("/stripe/webhook") || c.req.path.endsWith("/abonnement/simule") || c.req.path.endsWith("/waitlist") || c.req.path.includes("/veille/p/") || /\/agenda\/[^/]+\.ics$/.test(c.req.path) || c.req.path.endsWith("/veille/callback"))
+        if (c.req.path.includes("/auth/") || c.req.path.endsWith("/inbox") || c.req.path.endsWith("/bank/webhook") || c.req.path.endsWith("/bank/callback") || c.req.path.endsWith("/bank/eb/callback") || c.req.path.endsWith("/stripe/webhook") || c.req.path.endsWith("/waitlist") || (c.req.path.endsWith("/partenaires") && c.req.method === "POST") || c.req.path.includes("/admin/partenaires") || (c.req.path.endsWith("/ia/depense") && adminOk(c.req.header("authorization"))) || c.req.path.includes("/veille/p/") || c.req.path.includes("/comptable/") || /\/agenda\/[^/]+\.ics$/.test(c.req.path) || c.req.path.endsWith("/veille/callback"))
             return next();
         let row;
         let user = null;
@@ -119,7 +143,7 @@ export function createApi(db, opts) {
             const ordre = db.usersOfHousehold(row.id).sort((a, b) => Number(b.role === "proprietaire") - Number(a.role === "proprietaire") || a.rejoint_le.localeCompare(b.rejoint_le));
             const rang = ordre.findIndex((u) => u.id === user.id);
             const cap = capaciteComptes(db, row);
-            if (rang >= cap && !c.req.path.endsWith("/auth/moi") && !c.req.path.endsWith("/auth/deconnexion")) {
+            if (rang >= cap && !c.req.path.endsWith("/auth/moi") && !c.req.path.endsWith("/auth/deconnexion") && !c.req.path.endsWith("/compte/supprimer")) {
                 const proprio = ordre[0];
                 return c.json({ error: "compte_en_pause", message: `Le foyer « ${row.nom} » est en formule ${cap === 1 ? "gratuite (1 personne)" : `${cap} personnes`}. ${proprio?.prenom ?? "Le propriétaire"} peut passer à une formule plus grande pour vous rendre l'accès ; vos papiers vous attendent.` }, 402);
             }
@@ -132,6 +156,70 @@ export function createApi(db, opts) {
     const household = (c) => c.get("household");
     const currentUser = (c) => c.get("user");
     const isOwner = (c) => { const u = currentUser(c); return !u || db.householdsOfUser(u.id).find((h) => h.id === household(c).id)?.role === "proprietaire"; };
+    /**
+     * « Supprimer le compte » : a member deletes only his own account; the owner's household is erased at the end of
+     * the period already paid (no refund, nothing renews), or at once if he asks (`immediat`) or nothing paid is running.
+     */
+    api.post("/compte/supprimer", async (c) => {
+        const body = z.object({ confirmation: z.string(), immediat: z.boolean().default(false) }).parse(await c.req.json());
+        if (body.confirmation.trim().toUpperCase() !== "SUPPRIMER")
+            return c.json({ error: "confirmation", message: "Tapez SUPPRIMER pour confirmer." }, 400);
+        // without accounts (shared demo), nobody may erase the household everyone is looking at
+        if (!AUTH_ON())
+            return c.json({ error: "demo", message: "La suppression n'existe pas en démonstration." }, 403);
+        const h = household(c);
+        const u = currentUser(c);
+        if (u && !isOwner(c)) {
+            quitterFoyer(db, h.id, u.id);
+            c.header("set-cookie", cookieHeader(null, secure()));
+            return c.json({ ok: true, portee: "compte", le: null });
+        }
+        try {
+            const r = await demanderSuppression(db, h.id, opts.uploadDir, { prenom: u?.prenom ?? null, email: u?.email ?? null }, { immediat: body.immediat });
+            if (!r.le)
+                c.header("set-cookie", cookieHeader(null, secure()));
+            return c.json({ ok: true, portee: "foyer", ...r });
+        }
+        catch (e) {
+            console.error("[suppression] échec :", e);
+            return c.json({ error: "suppression_impossible", message: "L'arrêt de l'abonnement n'a pas abouti : rien n'a été effacé. Réessayez dans quelques minutes, ou écrivez à bonjour@monlucien.fr." }, 502);
+        }
+    });
+    api.post("/compte/annuler-suppression", async (c) => {
+        if (!isOwner(c))
+            return c.json({ error: "proprietaire", message: "Seul le titulaire du foyer peut annuler la suppression." }, 403);
+        await annulerSuppression(db, household(c).id);
+        return c.json({ ok: true });
+    });
+    /** « Résilier l'abonnement » : no renewal, it runs to the end of the period already paid (no refund). */
+    api.post("/abonnement/resilier", async (c) => {
+        if (!isOwner(c))
+            return c.json({ error: "proprietaire", message: "Seul le propriétaire du foyer gère l'abonnement." }, 403);
+        try {
+            const fin = await arreterALEcheance(db, household(c).id);
+            if (!fin)
+                return c.json({ error: "aucun_abonnement", message: "Aucun abonnement payant en cours." }, 400);
+            return c.json({ ok: true, fin });
+        }
+        catch (e) {
+            console.error("[résiliation]", e);
+            return c.json({ error: "stripe", message: "La résiliation n'a pas abouti. Réessayez dans quelques minutes." }, 502);
+        }
+    });
+    api.post("/abonnement/reprendre", async (c) => {
+        if (!isOwner(c))
+            return c.json({ error: "proprietaire", message: "Seul le propriétaire du foyer gère l'abonnement." }, 403);
+        if (etatFin(db, household(c).id).suppression_le)
+            return c.json({ error: "suppression_prevue", message: "Annulez d'abord la suppression du foyer." }, 400);
+        try {
+            await reprendreAbonnement(db, household(c).id);
+            return c.json({ ok: true });
+        }
+        catch (e) {
+            console.error("[reprise]", e);
+            return c.json({ error: "stripe", message: "La reprise n'a pas abouti. Réessayez dans quelques minutes." }, 502);
+        }
+    });
     // ---------- foyer partagé (comptes) ----------
     api.get("/auth/moi", (c) => {
         const u = currentUser(c);
@@ -139,7 +227,7 @@ export function createApi(db, opts) {
     });
     api.get("/foyer/comptes", (c) => {
         const h = household(c);
-        return c.json({ comptes: db.usersOfHousehold(h.id).map((u) => ({ id: u.id, email: u.email, prenom: u.prenom, role: u.role, rejoint_le: u.rejoint_le })), invitations: db.listInvitations(h.id).map((i) => ({ token: i.token, email: i.email, prenom: i.prenom, expire_le: i.expire_le })) });
+        return c.json({ comptes: db.usersOfHousehold(h.id).map((u) => ({ id: u.id, email: u.email, prenom: u.prenom, role: u.role, rejoint_le: u.rejoint_le })), invitations: db.listInvitations(h.id).map((i) => ({ id: idInvitation(i.token), email: i.email, prenom: i.prenom, expire_le: i.expire_le })) });
     });
     api.post("/invitations", async (c) => {
         const h = household(c);
@@ -160,9 +248,10 @@ export function createApi(db, opts) {
         const r = await demanderLien(db, email, { household_id: h.id, prenom: body.prenom, invite_par: u?.prenom ?? db.listMembers(h.id)[0]?.prenom ?? null });
         return c.json({ ok: true, envoye: r.envoye, lien: r.lien }, 201);
     });
-    api.delete("/invitations/:token", (c) => {
-        const l = db.getAuthLink(c.req.param("token"));
-        if (!l || l.household_id !== household(c).id)
+    // the invitation is named by an opaque id: its token is a login link and never leaves the server
+    api.delete("/invitations/:id", (c) => {
+        const l = db.listInvitations(household(c).id).find((i) => idInvitation(i.token) === c.req.param("id"));
+        if (!l)
             return c.json({ error: "introuvable" }, 404);
         db.deleteAuthLink(l.token);
         return c.json({ ok: true });
@@ -176,6 +265,9 @@ export function createApi(db, opts) {
         db.leaveHousehold(h.id, c.req.param("user_id"));
         return c.json({ ok: true });
     });
+    // ---------- offre et espaces payants (modules) ----------
+    monterEspaces(api, db, { household, isOwner, email: (c) => currentUser(c)?.email ?? null });
+    monterPartenaires(api, db, { household });
     // ---------- abonnement (Stripe) ----------
     api.post("/abonnement/checkout", async (c) => {
         const h = household(c);
@@ -184,8 +276,14 @@ export function createApi(db, opts) {
         if (comptes > FORMULES[body.formule].comptes) {
             return c.json({ error: "formule_trop_petite", message: `${comptes} personnes se connectent à ce foyer : la formule ${FORMULES[body.formule].nom} en accepte ${FORMULES[body.formule].comptes}. Choisissez une formule plus grande ou retirez un compte.` }, 400);
         }
-        const r = await creerCheckout(db, db.getHousehold(h.id), body.formule, body.periode, currentUser(c)?.email ?? null);
-        return c.json(r);
+        try {
+            return c.json(await creerCheckout(db, db.getHousehold(h.id), body.formule, body.periode, currentUser(c)?.email ?? null));
+        }
+        catch (e) {
+            if (e instanceof PaiementIndisponible)
+                return c.json({ error: "paiement_indisponible", message: e.message }, 503);
+            throw e;
+        }
     });
     api.post("/abonnement/portail", async (c) => {
         const url = await portail(db.getHousehold(household(c).id));
@@ -193,9 +291,11 @@ export function createApi(db, opts) {
     });
     /** Simulated checkout (no Stripe key): activates the plan right away. Never exposed when Stripe is configured. */
     api.get("/abonnement/simule", (c) => {
-        if (process.env.STRIPE_SECRET_KEY)
-            return c.json({ error: "stripe_actif" }, 400);
-        const h = db.getHousehold(c.req.query("h") ?? "");
+        if (!simulationPaiement())
+            return c.json({ error: "indisponible" }, 404);
+        if (!isOwner(c))
+            return c.json({ error: "proprietaire", message: "Seul le propriétaire du foyer gère l'abonnement." }, 403);
+        const h = db.getHousehold(household(c).id); // the session's household, never one named in the URL
         const periode = c.req.query("periode") === "annuel" ? "annuel" : "mensuel";
         const formule = (["solo", "duo", "tribu"].includes(c.req.query("formule") ?? "") ? c.req.query("formule") : "duo");
         if (!h)
@@ -233,7 +333,9 @@ export function createApi(db, opts) {
             boite_email: h.plan === "famille" ? boiteAddress(db.getHousehold(h.id).boite_code) : null,
             mcp_token: h.plan === "famille" ? db.getHousehold(h.id).mcp_token : null,
             utilisateur: currentUser(c),
-            abonnement: resumeAbonnement(db.getHousehold(h.id)),
+            titulaire: isOwner(c),
+            abonnement: { ...resumeAbonnement(db.getHousehold(h.id)), ...etatFin(db, h.id) },
+            modules: db.getModules(h.id),
             comptes: db.usersOfHousehold(h.id).length,
             capacite_comptes: capaciteComptes(db, db.getHousehold(h.id)),
             assistant: etatAssistant(db, db.getHousehold(h.id)),
@@ -248,6 +350,9 @@ export function createApi(db, opts) {
      */
     api.post("/inbox", async (c) => {
         const secret = process.env.LUCIEN_INBOX_SECRET;
+        // production (public https address) without a secret: the inbox stays closed rather than open to anyone
+        if (!secret && (process.env.LUCIEN_PUBLIC_URL ?? "").startsWith("https://"))
+            return c.json({ error: "boite_non_configuree", message: "LUCIEN_INBOX_SECRET manquant : la boîte de réception est fermée." }, 503);
         if (secret && c.req.query("secret") !== secret && c.req.header("x-lucien-secret") !== secret && c.req.header("x-nidou-secret") !== secret)
             return c.json({ error: "non_autorise" }, 401);
         const body = await c.req.json();
@@ -264,10 +369,16 @@ export function createApi(db, opts) {
     api.patch("/household", async (c) => {
         const h = household(c);
         const body = z.object({ plan: z.enum(["gratuit", "famille"]).optional(), terminer_essai: z.boolean().optional(), nom: z.string().min(1).max(60).optional(), hebdo: z.boolean().optional() }).parse(await c.req.json());
+        // The paid plan only comes from a payment (Stripe webhook, or the simulated checkout when Stripe is off).
+        if (body.plan === "famille")
+            return c.json({ error: "paiement_requis", message: "La formule complète s'active par l'abonnement, dans Réglages." }, 403);
+        // Choices that apply to everyone in the household are the owner's.
+        if ((body.plan || body.terminer_essai || body.hebdo !== undefined) && !isOwner(c))
+            return c.json({ error: "reserve_proprietaire", message: "Seul le titulaire du foyer peut changer ce réglage." }, 403);
         if (body.hebdo !== undefined)
             db.setHebdo(h.id, body.hebdo);
-        if (body.plan)
-            db.setPlan(h.id, body.plan);
+        if (body.plan === "gratuit")
+            db.setPlan(h.id, "gratuit");
         if (body.nom)
             db.renameHousehold(h.id, body.nom);
         if (body.terminer_essai)
@@ -292,12 +403,58 @@ export function createApi(db, opts) {
         db.updateMember(m.id, memberSchema.partial().parse(await c.req.json()));
         return c.json(db.getMember(m.id));
     });
-    api.delete("/members/:id", (c) => {
+    api.delete("/members/:id", async (c) => {
         const m = db.getMember(c.req.param("id"));
         if (!m || m.household_id !== household(c).id)
             return c.json({ error: "introuvable" }, 404);
+        if (m.photo)
+            await unlink(join(opts.uploadDir, basename(m.photo))).catch(() => { });
         db.deleteMember(m.id);
         return c.json({ ok: true });
+    });
+    /**
+     * Portrait of a member. The app sends a small square JPEG/PNG/WebP (resized in the browser); only real images
+     * (checked by their first bytes) are kept, and they are served back as images only, to the household.
+     */
+    api.put("/members/:id/photo", async (c) => {
+        const m = db.getMember(c.req.param("id"));
+        if (!m || m.household_id !== household(c).id)
+            return c.json({ error: "introuvable" }, 404);
+        const buf = Buffer.from(await c.req.arrayBuffer());
+        if (buf.length > 600 * 1024)
+            return c.json({ error: "photo_trop_grosse", message: "Photo trop lourde (600 Ko au plus)." }, 413);
+        const ext = typePhoto(buf);
+        if (!ext)
+            return c.json({ error: "photo_invalide", message: "Format accepté : JPEG, PNG ou WebP." }, 400);
+        await mkdir(opts.uploadDir, { recursive: true });
+        const nom = `membre-${m.id.replace(/[^\w-]/g, "")}-${randomBytes(6).toString("hex")}.${ext}`;
+        await writeFile(join(opts.uploadDir, nom), buf);
+        if (m.photo)
+            await unlink(join(opts.uploadDir, basename(m.photo))).catch(() => { });
+        db.setMemberPhoto(m.id, nom);
+        return c.json(db.getMember(m.id));
+    });
+    api.delete("/members/:id/photo", async (c) => {
+        const m = db.getMember(c.req.param("id"));
+        if (!m || m.household_id !== household(c).id)
+            return c.json({ error: "introuvable" }, 404);
+        if (m.photo)
+            await unlink(join(opts.uploadDir, basename(m.photo))).catch(() => { });
+        db.setMemberPhoto(m.id, null);
+        return c.json(db.getMember(m.id));
+    });
+    api.get("/members/:id/photo", async (c) => {
+        const m = db.getMember(c.req.param("id"));
+        if (!m || m.household_id !== household(c).id || !m.photo)
+            return c.json({ error: "introuvable" }, 404);
+        const buf = await readFile(join(opts.uploadDir, basename(m.photo))).catch(() => null);
+        const ext = buf && typePhoto(buf);
+        if (!buf || !ext)
+            return c.json({ error: "introuvable" }, 404);
+        return new Response(new Uint8Array(buf), { headers: {
+                "content-type": `image/${ext === "jpg" ? "jpeg" : ext}`, "x-content-type-options": "nosniff",
+                "content-security-policy": "default-src 'none'", "cache-control": "private, max-age=31536000, immutable",
+            } });
     });
     // ---------- organisation familiale ----------
     api.get("/famille", (c) => {
@@ -390,6 +547,12 @@ export function createApi(db, opts) {
                 "cache-control": "private, no-store",
             } });
     });
+    /** « Exporter tout » : the household's whole data and papers in one .zip (RGPD access and portability). */
+    api.get("/export.zip", async (c) => {
+        const h = household(c);
+        const nom = `Lucien - export ${h.nom ?? "foyer"} ${new Date().toISOString().slice(0, 10)}.zip`;
+        return new Response(new Uint8Array(await exporterFoyer(db, h.id, opts.uploadDir)), { headers: { "content-type": "application/zip", "content-disposition": dispositionFichier("attachment", nom), "x-content-type-options": "nosniff", "cache-control": "private, no-store" } });
+    });
     /** « Dossiers prêts » : for each usual request (rental, CAF, school, loan…), what is ready, too old or missing. */
     api.get("/dossiers", (c) => c.json(etatDossiers(db.listDocuments(household(c).id))));
     /** The whole folder in one .zip: a cover sheet (what is there, what is missing and where to get it) and the original files. */
@@ -423,7 +586,7 @@ export function createApi(db, opts) {
     api.post("/documents", async (c) => {
         const h = household(c);
         if (h.plan === "gratuit" && db.countDocuments(h.id) >= FREE_LIMITS.documents) {
-            return c.json({ error: "limite_plan", message: `Le plan gratuit est limité à ${FREE_LIMITS.documents} documents.` }, 402);
+            return c.json({ error: "limite_plan", message: "Votre essai est terminé : choisissez une formule pour ajouter des papiers. Les vôtres restent consultables et exportables." }, 402);
         }
         let texte, base64, mime, nomFichier;
         let fichier = null;
@@ -455,16 +618,20 @@ export function createApi(db, opts) {
         const gratuit = h.plan === "gratuit";
         const quotaOk = !gratuit || db.iaLecturesMois(h.id) < FREE_LIMITS.iaLecturesParMois;
         const capOk = !gratuit || db.iaDepenseMois().gratuit_eur < freeCapEur();
-        const iaAutorisee = quotaOk && capOk;
+        const budget = budgetIa(db, h.id);
+        const budgetOk = gratuit || budget.ok();
+        const iaAutorisee = quotaOk && capOk && budgetOk;
         const ex = iaAutorisee ? await extractDocument({ texte, base64, mime, nomFichier }) : { ...heuristicExtract({ texte, nomFichier }), modele: null };
         if (ex.modele)
             db.recordIaLecture(h.id, gratuit, ex.modele.cout_lecture_centimes);
-        if (!iaAutorisee) {
+        if (!budgetOk)
+            ex.resume = "Votre foyer a atteint ce mois-ci la limite de lectures par l'IA : ce papier a été lu sans IA. Vérifiez et complétez les champs ; la lecture par l'IA reprend le 1er du mois.";
+        else if (!iaAutorisee) {
             ex.resume = FREE_LIMITS.iaLecturesParMois === 0
-                ? "Plan gratuit : document lu localement, sans IA. Vérifiez et complétez les champs. Le plan Famille lit chaque document avec l'IA."
+                ? "Plan gratuit : document lu localement, sans IA. Vérifiez et complétez les champs. La formule complète lit chaque document avec l'IA."
                 : !capOk
-                    ? "Les lectures par l'IA du plan gratuit sont en pause jusqu'au mois prochain : vérifiez les champs lus localement. Le plan Famille n'a pas cette limite."
-                    : "Quota mensuel de lectures IA du plan gratuit atteint : vérifiez les champs lus localement. Le plan Famille lit chaque document avec l'IA.";
+                    ? "Les lectures par l'IA du plan gratuit sont en pause jusqu'au mois prochain : vérifiez les champs lus localement. La formule complète n'a pas cette limite."
+                    : "Quota mensuel de lectures IA du plan gratuit atteint : vérifiez les champs lus localement. La formule complète lit chaque document avec l'IA.";
         }
         const doc = db.insertDocument({
             household_id: h.id,
@@ -546,8 +713,8 @@ export function createApi(db, opts) {
         const id = c.req.param("id");
         if (id.startsWith("f:"))
             db.marquerFamilleFait(household(c).id, id.slice(2), body.fait);
-        else
-            db.setDeadlineDone(id, body.fait);
+        else if (!db.setDeadlineDone(household(c).id, id, body.fait))
+            return c.json({ error: "introuvable" }, 404);
         return c.json({ ok: true });
     });
     // ---------- charges fixes ----------
@@ -569,15 +736,19 @@ export function createApi(db, opts) {
         const doc = db.getDocument(body.document_id);
         if (!doc || doc.household_id !== h.id)
             return c.json({ error: "introuvable" }, 404);
-        const texte = h.plan === "gratuit"
-            ? templateLetter({ kind: body.kind, doc, expediteur: { nom: body.nom, adresse: body.adresse }, motif: body.motif })
-            : await generateLetter({ kind: body.kind, doc, expediteur: { nom: body.nom, adresse: body.adresse }, motif: body.motif });
+        const budget = budgetIa(db, h.id);
+        const avecIa = h.plan !== "gratuit" && budget.ok(coutAppel("rapide"));
+        const texte = avecIa
+            ? await generateLetter({ kind: body.kind, doc, expediteur: { nom: body.nom, adresse: body.adresse }, motif: body.motif })
+            : templateLetter({ kind: body.kind, doc, expediteur: { nom: body.nom, adresse: body.adresse }, motif: body.motif });
+        if (avecIa)
+            budget.compter(coutAppel("rapide"));
         return c.json({ texte });
     });
     // ---------- dépenses (relevés bancaires) ----------
     api.get("/budget", (c) => {
         const h = household(c);
-        const txs = db.listTransactions(h.id);
+        const txs = db.transactionsFoyer(h.id);
         const report = budgetReport(txs, db.listDocuments(h.id), db.listDecisions(h.id));
         if (h.plan === "gratuit") {
             // Free plan: the headline numbers and the two best actions.
@@ -591,14 +762,15 @@ export function createApi(db, opts) {
     });
     api.patch("/transactions/:id", async (c) => {
         const body = z.object({ categorie: z.enum(TX_CATEGORIES) }).parse(await c.req.json());
-        db.updateTransactionCategory(c.req.param("id"), body.categorie);
+        if (!db.updateTransactionCategory(household(c).id, c.req.param("id"), body.categorie))
+            return c.json({ error: "introuvable" }, 404);
         return c.json({ ok: true });
     });
     /** Import a statement: multipart file (CSV, TXT, PDF) or JSON { texte, compte } ; { demo: true } loads the sample. */
     api.post("/transactions/import", async (c) => {
         const h = household(c);
         if (h.plan === "gratuit" && !FREE_LIMITS.importReleves) {
-            return c.json({ error: "limite_plan", message: "L'import de relevés et l'analyse des dépenses font partie du plan Famille. Vos opérations déjà importées restent consultables." }, 402);
+            return c.json({ error: "limite_plan", message: "L'import de relevés et l'analyse des dépenses font partie de la formule complète. Vos opérations déjà importées restent consultables." }, 402);
         }
         let text = "", compte = null;
         const ct = c.req.header("content-type") ?? "";
@@ -611,7 +783,11 @@ export function createApi(db, opts) {
                 if (f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf")) {
                     if (!process.env.ANTHROPIC_API_KEY)
                         return c.json({ error: "pdf_sans_ia", message: "La lecture des relevés PDF nécessite la clé API Anthropic. Exportez le relevé en CSV depuis votre banque." }, 400);
+                    const budget = budgetIa(db, h.id);
+                    if (!budget.ok(coutAppel("precis", 3)))
+                        return c.json({ error: "budget_ia", message: "Votre foyer a atteint ce mois-ci la limite de lectures par l'IA. Exportez le relevé en CSV depuis votre banque : il s'importe sans IA." }, 429);
                     text = await pdfStatementToCsv(buf);
+                    budget.compter(coutAppel("precis", 3));
                 }
                 else
                     text = buf.toString("utf8");
@@ -625,7 +801,7 @@ export function createApi(db, opts) {
         const parsed = parseStatement(text, compte);
         if (parsed.length === 0)
             return c.json({ error: "format", message: "Aucune ligne reconnue. Format attendu : une ligne par opération avec date, libellé et montant (CSV de votre banque)." }, 400);
-        const cats = h.plan === "gratuit" ? parsed.map((t) => ruleCategory(t.libelle, t.montant) ?? "autre") : await categorise(parsed);
+        const cats = h.plan === "gratuit" ? parsed.map((t) => ruleCategory(t.libelle, t.montant) ?? "autre") : await categorise(parsed, budgetIa(db, h.id));
         const added = db.insertTransactions(parsed.map((t, i) => ({
             household_id: h.id, compte: t.compte, date: t.date, libelle: t.libelle, marchand: merchantOf(t.libelle), montant: t.montant, categorie: cats[i], empreinte: fingerprint(h.id, t),
         })));
@@ -655,7 +831,7 @@ export function createApi(db, opts) {
     api.post("/bank/connect", async (c) => {
         const h = household(c);
         if (h.plan === "gratuit")
-            return c.json({ error: "limite_plan", message: "La connexion bancaire automatique fait partie du plan Famille." }, 402);
+            return c.json({ error: "limite_plan", message: "La connexion bancaire automatique fait partie de la formule complète." }, 402);
         const f = fournisseur();
         if (f === "simule")
             return c.json(await simulatedConnect(db, h.id));
@@ -1010,7 +1186,7 @@ export function createApi(db, opts) {
     });
     api.delete("/push/abonner", async (c) => {
         const body = z.object({ endpoint: z.string() }).parse(await c.req.json());
-        db.deletePushSubscription(body.endpoint);
+        db.deletePushSubscription(body.endpoint, household(c).id);
         return c.json({ ok: true });
     });
     /** Sends a test notification to this household's devices. */
@@ -1019,7 +1195,8 @@ export function createApi(db, opts) {
         const n = await envoyerPush(db, h.id, { titre: "Lucien est prêt", corps: "Vous recevrez ici vos rappels d'échéances et vos économies.", url: "/#/notifs", tag: "test" });
         return c.json({ ok: true, envoyes: n, actif: pushOn() });
     });
-    api.get("/ia/depense", (c) => c.json({ ...db.iaDepenseMois(), plafond_gratuit_eur: freeCapEur(), fournisseur: process.env.LUCIEN_IA_PROVIDER ?? (process.env.ANTHROPIC_API_KEY ? "anthropic" : process.env.MISTRAL_API_KEY ? "mistral" : "aucun") }));
+    // platform-wide AI spend: for Lucien's admin only (Bearer LUCIEN_ADMIN_TOKEN), never for households
+    api.get("/ia/depense", (c) => adminOk(c.req.header("authorization")) ? c.json({ ...db.iaDepenseMois(), plafond_gratuit_eur: freeCapEur(), fournisseur: process.env.LUCIEN_IA_PROVIDER ?? (process.env.ANTHROPIC_API_KEY ? "anthropic" : process.env.MISTRAL_API_KEY ? "mistral" : "aucun") }) : c.json({ error: "interdit" }, 403));
     // ---------- MCP access log ----------
     api.get("/mcp/log", (c) => c.json(db.listMcpAccess(household(c).id)));
     return api;

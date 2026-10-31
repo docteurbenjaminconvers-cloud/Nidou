@@ -1,3 +1,4 @@
+import { budgetIa } from "./iaBudget.js";
 import { createHmac, timingSafeEqual, randomUUID } from "node:crypto";
 import { categorise, merchantOf, fingerprint } from "./transactions.js";
 import { demoStatement } from "./seed-statement.js";
@@ -55,6 +56,10 @@ export class BridgeClient {
             callback_url: `${this.cfg.publicUrl}${callbackPath}`,
             ...(context ? { context } : {}),
         }, token);
+    }
+    /** DELETE /v3/aggregation/users/{uuid} — removes the user and its bank connections at Bridge (account deletion). */
+    deleteUser(userUuid) {
+        return this.call("DELETE", `/v3/aggregation/users/${encodeURIComponent(userUuid)}`);
     }
     /** GET /v3/aggregation/accounts */
     async accounts(token) {
@@ -116,7 +121,7 @@ export async function syncHousehold(db, client, householdId) {
     }
     const raw = await client.transactions(access_token, link.curseur);
     const parsed = mapTransactions(raw, names);
-    const cats = await categorise(parsed);
+    const cats = await categorise(parsed, budgetIa(db, householdId));
     const added = db.insertTransactions(parsed.map((t, i) => ({
         household_id: householdId, compte: t.compte, date: t.date, libelle: t.libelle, marchand: merchantOf(t.libelle), montant: t.montant, categorie: cats[i],
         // Bridge ids are stable: use them so an updated transaction never duplicates.
@@ -141,7 +146,7 @@ export async function simulatedSync(db, householdId) {
         throw new Error("Aucune connexion bancaire pour ce foyer");
     db.upsertBankAccount({ id: "sim:1", household_id: householdId, item_id: "sim-1", nom: "Compte joint", banque: "Banque de démonstration", type: "checking", solde: 2487.91, devise: "EUR", maj_le: new Date().toISOString() });
     const parsed = parseStatement(demoStatement(), "Compte joint");
-    const cats = await categorise(parsed);
+    const cats = await categorise(parsed, budgetIa(db, householdId));
     const added = db.insertTransactions(parsed.map((t, i) => ({ household_id: householdId, compte: t.compte, date: t.date, libelle: t.libelle, marchand: merchantOf(t.libelle), montant: t.montant, categorie: cats[i], empreinte: fingerprint(householdId, t) })));
     const now = new Date().toISOString();
     db.upsertBankLink({ ...link, derniere_synchro: now, curseur: now, statut: "connecte" });

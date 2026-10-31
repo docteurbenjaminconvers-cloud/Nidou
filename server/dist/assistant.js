@@ -85,7 +85,7 @@ export class AssistantErreur extends Error {
 }
 function systeme(h, prenom) {
     const today = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-    return `Tu es Lucien, le majordome de la famille : l'appli qui range ses papiers, suit ses échéances et l'aide à faire des économies. Tu parles comme un majordome attentionné et discret : chaleureux, poli, efficace, sans jamais en faire trop.
+    return `Tu es Lucien, le majordome du foyer, qu'on vive seul ou en famille : l'appli qui range les papiers, suit les échéances et aide à faire des économies. Tu parles comme un majordome attentionné et discret : chaleureux, poli, efficace, sans jamais en faire trop.
 Nous sommes le ${today}. Tu parles au foyer « ${h.nom} »${prenom ? `, ici ${prenom}` : ""}.
 
 Règles :
@@ -103,11 +103,13 @@ const prix = (n) => `${n.toFixed(2).replace(".", ",").replace(",00", "")} €`;
 /** What the app does and where things are, so the assistant can guide the family in the app itself. Kept in step with the screens. */
 export const MODE_EMPLOI = `Mode d'emploi de Lucien (barre du bas : Aujourd'hui, Agenda, bouton +, Papiers, Budget ; en haut de l'accueil : cloche des notifications et roue des réglages).
 - Aujourd'hui (accueil) : prochaine échéance, papiers à vérifier, économies repérées, activités du jour, et la barre « Demander à Lucien ».
-- Votre semaine : carte « Votre semaine avec Lucien » sous la barre de l'accueil ; le même point arrive chaque dimanche soir (notification, et email avec le plan Famille), désactivable dans Réglages, « Le point du dimanche ».
+- Votre semaine : carte « Votre semaine avec Lucien » sous la barre de l'accueil ; le même point arrive chaque dimanche soir (notification, et email avec la formule complète), désactivable dans Réglages, « Le point du dimanche ».
 - Dossiers prêts (en haut de Papiers) : location, CAF, école et cantine, prêt immobilier, passeport ou carte d'identité, sinistre. Lucien dit quelles pièces sont prêtes, trop anciennes ou manquantes, où les obtenir, et prépare un .zip avec le bordereau et les fichiers.
 - Combien de temps garder un papier : indiqué sur chaque papier (durées de service-public.fr) ; « Grand ménage » en haut de Papiers liste ce qui peut partir.
 - Agenda du téléphone : en bas de l'écran Agenda, abonnement Google, Apple ou Outlook (échéances et activités des enfants).
 - En cas de coup dur (bas de l'accueil) : portefeuille perdu ou volé, dégât des eaux ou cambriolage, accident de voiture, hospitalisation ; étapes dans l'ordre, numéros utiles, numéros de contrat du foyer.
+- Vos espaces (accueil, sous « Votre semaine ») : modules en option. Budget expert (compte de résultat du foyer, prévisionnel par poste, bilan patrimonial, ratios d'endettement et d'épargne, clôture du mois, grand livre exportable). Vie pro (salarié : contrat, bulletins contrôlés, cumul du net imposable ; indépendant en BNC : livre des recettes et dépenses depuis le compte pro, rubriques de la 2035, micro ou réel, échéances). Patrimoine locatif (loyers rapprochés de la banque, impayés, quittances, relances, révision IRL, DPE, micro-foncier ou réel, LMNP).
+- L'offre (Réglages, « Modules et packs ») : socle Solo, Duo ou Tribu, modules à la carte, packs Sérénité, Indépendant, Patrimoine, Intégral ; annuel = 10 mois.
 - Ajouter un papier : bouton + au centre. Photo, PDF ou texte collé : Lucien lit le papier, le range, remplit les champs (organisme, montant, dates, préavis) et crée les rappels. On vérifie les champs avant d'enregistrer. Autre façon : transférer l'email à l'adresse Lucien personnelle (Réglages, « Papiers par email ») ; une règle de transfert automatique dans Gmail ou Outlook fait tout arriver seul.
 - Papiers : tous les documents, recherche et filtres par catégorie. Dans un document : modifier les champs, voir ses échéances, préparer un courrier (résiliation, réclamation, remboursement), supprimer.
 - Agenda : toutes les échéances (résiliation, renouvellement, expiration, garantie, paiement) et les activités de la semaine ; « marquer comme fait ».
