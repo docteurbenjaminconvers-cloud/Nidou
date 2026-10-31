@@ -309,3 +309,72 @@ html.intro-on { overflow: hidden; }
 @keyframes intro-centre { from { transform: scale(0) rotate(-30deg); } to { transform: none; } }
 @keyframes intro-salut { 0%, 100% { transform: rotate(0); } 35% { transform: rotate(-8deg); } 70% { transform: rotate(5deg); } }
 @keyframes intro-titre { from { opacity: 0; transform: translateY(14px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
+
+/* ---------- Le calcul des oublis ---------- */
+.simu { background: var(--peach-soft); }
+.simu-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 28px; margin-top: 34px; align-items: start; }
+.simu-list { background: var(--white); border-radius: 28px; box-shadow: var(--shadow); padding: 8px 20px; }
+.simu-row { display: grid; grid-template-columns: 1fr 92px; grid-template-areas: "nom prix" "choix choix"; gap: 8px 12px; padding: 14px 0; border-bottom: 1px solid var(--line); align-items: center; transition: background .2s; }
+.simu-row:last-child { border-bottom: 0; }
+.simu-row b { grid-area: nom; font-size: 16px; }
+.simu-prix { grid-area: prix; width: 100%; border: 2px solid var(--line); border-radius: 12px; padding: 6px 8px; font: inherit; font-weight: 800; text-align: right; background: var(--paper); color: var(--ink); }
+.simu-choix { grid-area: choix; display: flex; gap: 6px; flex-wrap: wrap; }
+.simu-choix button { font: inherit; font-size: 13.5px; font-weight: 800; border-radius: 999px; padding: 6px 12px; border: 2px solid var(--line); background: var(--white); color: var(--mist); cursor: pointer; }
+.simu-choix button[aria-pressed="true"] { background: var(--plum); border-color: var(--plum); color: var(--paper); }
+.simu-row.perdu .simu-choix button[aria-pressed="true"] { background: var(--nest); border-color: var(--nest); color: #fff; }
+.simu-row.garde .simu-choix button[aria-pressed="true"] { background: var(--mint-ink); border-color: var(--mint-ink); color: #fff; }
+.simu-row.perdu b { color: var(--nest); text-decoration: line-through; text-decoration-thickness: 2px; }
+.simu-total { position: sticky; top: 96px; background: var(--white); border-radius: 28px; box-shadow: var(--shadow-lg); padding: 26px; text-align: center; display: grid; gap: 4px; justify-items: center; }
+.simu-total > span { font-weight: 800; color: var(--mist); }
+.simu-total #simu-an { font-family: var(--display); font-style: italic; font-weight: 600; font-size: clamp(52px, 7vw, 76px); line-height: 1.05; color: var(--nest); font-variant-numeric: tabular-nums; }
+.simu-total small { color: var(--mist); font-weight: 800; font-size: 15px; margin-bottom: 6px; }
+.simu-total #simu-mois { font-weight: 700; }
+.simu-garde { color: var(--mint-ink); font-size: 14.5px; font-weight: 700; margin-bottom: 8px; }
+.simu-total .btn { margin-top: 8px; }
+.simu-total .small { margin-top: 10px; font-size: 13px; }
+@media (max-width: 860px) { .simu-grid { grid-template-columns: 1fr; } .simu-total { position: static; } }
+
+/* ---------- Un vrai majordome ---------- */
+.butler-grid { align-items: start; }
+.butler-h { font-family: var(--display); font-style: italic; font-weight: 600; font-size: 26px; margin: 26px 0 8px; }
+.butler p { color: var(--mist); }
+.mock-lettre, .mock-dossier { background: var(--white); border-radius: 30px; box-shadow: var(--shadow-lg); padding: 24px; position: relative; }
+.mock-lettre::before, .mock-dossier::before { content: ""; position: absolute; inset: 16px -12px -12px 16px; z-index: -1; border-radius: 30px; background: var(--lilac-soft); }
+.mock-dossier::before { background: var(--peach); }
+.mock-tete { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.mock-tete svg { width: 38px; height: 38px; }
+.mock-tete span { font-size: 13px; font-weight: 800; color: var(--mist); }
+.mock-lettre h3 { font-family: var(--display); font-style: italic; font-weight: 600; font-size: 25px; line-height: 1.15; margin: 0 0 8px; }
+.mock-lettre > p { color: var(--ink) !important; font-size: 15.5px; }
+.mock-lettre ul, .mock-dossier ul { list-style: none; margin: 14px 0 0; padding: 0; }
+.mock-lettre li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); font-weight: 700; font-size: 15px; }
+.mock-lettre li span { flex: 1; }
+.mock-lettre li em { font-style: italic; font-family: var(--display); font-weight: 600; color: var(--mint-ink); font-size: 19px; white-space: nowrap; }
+.mock-lettre .d { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-weight: 800; background: var(--peach); color: var(--ink); font-size: 14px; flex: 0 0 auto; }
+.mock-lettre .d.lil { background: var(--lilac-soft); color: var(--lilac-ink, #5a3f6e); font-size: 12px; }
+.mock-lettre .d.vert { background: var(--moss); color: var(--mint-ink); }
+.mock-sign { font-family: var(--display); font-style: italic; text-align: right; margin-top: 12px; color: var(--ink) !important; }
+.mock-dossier-tete { display: flex; gap: 14px; align-items: center; }
+.mock-jauge { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font-family: var(--display); font-weight: 600; font-size: 19px; background: conic-gradient(var(--nest) 0 80%, var(--line) 80% 100%); position: relative; flex: 0 0 auto; }
+.mock-jauge::before { content: ""; position: absolute; inset: 7px; border-radius: 50%; background: var(--white); }
+.mock-jauge { isolation: isolate; } .mock-jauge::before { z-index: -1; }
+.mock-dossier h3 { font-family: var(--display); font-style: italic; font-weight: 600; font-size: 24px; margin: 0; }
+.mock-dossier-tete span:not(.mock-jauge) { color: var(--mist); font-weight: 700; font-size: 14px; }
+.mock-dossier li { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; padding: 10px 12px; margin-top: 8px; border-radius: 14px; background: var(--paper); border-left: 4px solid var(--mint-ink); font-weight: 700; font-size: 14.5px; }
+.mock-dossier li b { font-size: 12px; font-weight: 800; border-radius: 999px; padding: 3px 9px; background: var(--moss); color: var(--mint-ink); }
+.mock-dossier li.warn { border-left-color: var(--yolk); }
+.mock-dossier li.warn b { background: var(--yolk-soft); color: #7a5a0e; }
+.mock-dossier li small { grid-column: 1 / -1; color: var(--mist); font-weight: 600; font-size: 13px; }
+.mock-btn { display: inline-block; margin-top: 16px; background: var(--nest); color: #fff; font-weight: 800; border-radius: 999px; padding: 10px 18px; font-size: 14.5px; }
+[dir="rtl"] .mock-dossier li { border-left: 0; border-right: 4px solid var(--mint-ink); }
+[dir="rtl"] .mock-dossier li.warn { border-right-color: var(--yolk); }
+@media (min-width: 1100px) { .simu-row { grid-template-columns: 1fr auto 86px; grid-template-areas: "nom choix prix"; } }
+@media (max-width: 860px) {
+  .simu-choix button { font-size: 12.5px; padding: 5px 9px; }
+  .simu-total { position: sticky; bottom: 10px; z-index: 5; grid-template-columns: 1fr auto; grid-template-areas: "lab an" "mois an" "cta cta"; text-align: left; justify-items: start; align-items: center; gap: 2px 12px; padding: 14px 18px; border: 2px solid var(--peach); }
+  .simu-total > span { grid-area: lab; font-size: 13.5px; }
+  .simu-total #simu-an { grid-area: an; font-size: 40px; justify-self: end; }
+  .simu-total #simu-mois { grid-area: mois; font-size: 13px; color: var(--mist); }
+  .simu-total small, .simu-total .simu-garde, .simu-total .small { display: none; }
+  .simu-total .btn { grid-area: cta; justify-self: stretch; min-height: 42px; padding: 8px 16px; font-size: 14.5px; margin-top: 8px; }
+}

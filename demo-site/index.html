@@ -114,7 +114,7 @@
   <div class="wrap">
     <p class="eyebrow rv" data-i18n="v0">La visite</p>
     <h2 class="rv" data-i18n="v00">Tout le foyer tient dans une seule appli.</h2>
-    <p class="lead rv" data-i18n="v000">Cinq écrans, et plus rien ne vous échappe. Faites défiler.</p>
+    <p class="lead rv" data-i18n="v000">Sept écrans, et plus rien ne vous échappe. Faites défiler.</p>
   </div>
   <div class="tour-track" id="tour" tabindex="0" aria-label="Écrans de l'application Lucien">
     <figure class="tour-card rv"><div class="device"><img src="img/app-home.webp" width="260" height="562" alt="Accueil de Lucien" loading="lazy"></div><figcaption><b data-i18n="v1">Aujourd'hui</b><span data-i18n="v2">La prochaine échéance en grand, la journée de chacun, et ce que vous avez déjà économisé.</span></figcaption></figure>
@@ -122,6 +122,8 @@
     <figure class="tour-card rv"><div class="device"><img src="img/app-docs.webp" width="260" height="562" alt="Papiers rangés dans Lucien" loading="lazy"></div><figcaption><b data-i18n="v5">Papiers</b><span data-i18n="v6">Chaque contrat avec ses dates, son préavis et son montant. Une recherche, et il est là.</span></figcaption></figure>
     <figure class="tour-card rv"><div class="device"><img src="img/app-famille.webp" width="260" height="562" alt="La famille dans Lucien" loading="lazy"></div><figcaption><b data-i18n="v7">Famille</b><span data-i18n="v8">Écoles, cantine, activités, parents à charge : ce que coûte chacun et les aides auxquelles il a droit.</span></figcaption></figure>
     <figure class="tour-card rv"><div class="device"><img src="img/app-budget.webp" width="260" height="562" alt="Budget et économies dans Lucien" loading="lazy"></div><figcaption><b data-i18n="v9">Budget</b><span data-i18n="v10">Vos vraies dépenses, et les économies faciles classées par gain, avec le bouton pour agir.</span></figcaption></figure>
+    <figure class="tour-card rv"><div class="device"><img src="img/app-semaine.webp" width="260" height="562" alt="La semaine de Lucien" loading="lazy"></div><figcaption><b data-i18n="v11">Votre semaine</b><span data-i18n="v12">Le point du dimanche soir : échéances, agenda des enfants, le geste qui rapporte et un conseil.</span></figcaption></figure>
+    <figure class="tour-card rv"><div class="device"><img src="img/app-dossiers.webp" width="260" height="562" alt="Dossier de location préparé par Lucien" loading="lazy"></div><figcaption><b data-i18n="v13">Dossiers prêts</b><span data-i18n="v14">Location, CAF, école, prêt : les pièces rassemblées, ce qui manque signalé, tout en un fichier.</span></figcaption></figure>
   </div>
   <div class="wrap tour-nav">
     <button class="round" id="tour-prev" type="button" aria-label="Écran précédent">‹</button>
@@ -160,6 +162,37 @@
   </div>
 </section>
 
+<!-- ========== SIMULATEUR ========== -->
+<section id="simulateur" class="simu">
+  <div class="wrap">
+    <p class="eyebrow rv" data-i18n="s0">Le calcul des oublis</p>
+    <h2 class="rv" data-i18n="s1">Combien payez-vous pour rien ?</h2>
+    <p class="lead rv" data-i18n="s2">Pour chaque abonnement, dites si vous l'avez et si vous vous en servez encore. Ce qui ne sert plus, c'est ce que Lucien vous aiderait à arrêter.</p>
+    <div class="simu-grid rv">
+      <div class="simu-list" id="simu-list">
+        <div class="simu-row" data-prix="13.49"><b>Netflix</b><input class="simu-prix" type="number" min="0" step="0.01" value="13.49" aria-label="Prix mensuel"><div class="simu-choix" role="radiogroup"><button type="button" data-v="non" aria-pressed="true" data-i18n="s3">Pas chez moi</button><button type="button" data-v="oui" data-i18n="s4">J'en profite</button><button type="button" data-v="plus" data-i18n="s5">Je n'y vais plus</button></div></div>
+        <div class="simu-row"><b>Disney+</b><input class="simu-prix" type="number" min="0" step="0.01" value="8.99" aria-label="Prix mensuel"><div class="simu-choix" role="radiogroup"><button type="button" data-v="non" aria-pressed="true" data-i18n="s3">Pas chez moi</button><button type="button" data-v="oui" data-i18n="s4">J'en profite</button><button type="button" data-v="plus" data-i18n="s5">Je n'y vais plus</button></div></div>
+        <div class="simu-row"><b>Canal+</b><input class="simu-prix" type="number" min="0" step="0.01" value="24.99" aria-label="Prix mensuel"><div class="simu-choix" role="radiogroup"><button type="button" data-v="non" aria-pressed="true" data-i18n="s3">Pas chez moi</button><button type="button" data-v="oui" data-i18n="s4">J'en profite</button><button type="button" data-v="plus" data-i18n="s5">Je n'y vais plus</button></div></div>
+        <div class="simu-row"><b>Amazon Prime</b><input class="simu-prix" type="number" min="0" step="0.01" value="6.99" aria-label="Prix mensuel"><div class="simu-choix" role="radiogroup"><button type="button" data-v="non" aria-pressed="true" data-i18n="s3">Pas chez moi</button><button type="button" data-v="oui" data-i18n="s4">J'en profite</button><button type="button" data-v="plus" data-i18n="s5">Je n'y vais plus</button></div></div>
+        <div class="simu-row"><b>Spotify, Deezer</b><input class="simu-prix" type="number" min="0" step="0.01" value="11.99" aria-label="Prix mensuel"><div class="simu-choix" role="radiogroup"><button type="button" data-v="non" aria-pressed="true" data-i18n="s3">Pas chez moi</button><button type="button" data-v="oui" data-i18n="s4">J'en profite</button><button type="button" data-v="plus" data-i18n="s5">Je n'y vais plus</button></div></div>
+        <div class="simu-row"><b data-i18n="s11">Salle de sport</b><input class="simu-prix" type="number" min="0" step="0.01" value="29.99" aria-label="Prix mensuel"><div class="simu-choix" role="radiogroup"><button type="button" data-v="non" aria-pressed="true" data-i18n="s3">Pas chez moi</button><button type="button" data-v="oui" data-i18n="s4">J'en profite</button><button type="button" data-v="plus" data-i18n="s5">Je n'y vais plus</button></div></div>
+        <div class="simu-row"><b data-i18n="s12">Assurance du téléphone</b><input class="simu-prix" type="number" min="0" step="0.01" value="9.99" aria-label="Prix mensuel"><div class="simu-choix" role="radiogroup"><button type="button" data-v="non" aria-pressed="true" data-i18n="s3">Pas chez moi</button><button type="button" data-v="oui" data-i18n="s4">J'en profite</button><button type="button" data-v="plus" data-i18n="s5">Je n'y vais plus</button></div></div>
+        <div class="simu-row"><b data-i18n="s13">Options de la box (TV, sécurité)</b><input class="simu-prix" type="number" min="0" step="0.01" value="5" aria-label="Prix mensuel"><div class="simu-choix" role="radiogroup"><button type="button" data-v="non" aria-pressed="true" data-i18n="s3">Pas chez moi</button><button type="button" data-v="oui" data-i18n="s4">J'en profite</button><button type="button" data-v="plus" data-i18n="s5">Je n'y vais plus</button></div></div>
+        <div class="simu-row"><b data-i18n="s14">Presse et magazines en ligne</b><input class="simu-prix" type="number" min="0" step="0.01" value="9.99" aria-label="Prix mensuel"><div class="simu-choix" role="radiogroup"><button type="button" data-v="non" aria-pressed="true" data-i18n="s3">Pas chez moi</button><button type="button" data-v="oui" data-i18n="s4">J'en profite</button><button type="button" data-v="plus" data-i18n="s5">Je n'y vais plus</button></div></div>
+      </div>
+      <aside class="simu-total" aria-live="polite">
+        <span data-i18n="s6">Ce que vous payez pour rien</span>
+        <b id="simu-an">0 €</b>
+        <small data-i18n="s7">par an</small>
+        <p id="simu-mois"></p>
+        <p id="simu-garde" class="simu-garde"></p>
+        <a class="btn" href="#inscription" data-i18n="s10">Je veux que Lucien cherche pour moi</a>
+        <p class="small" data-i18n="s9">Prix indicatifs, modifiables. Avec vos relevés, Lucien fait ce calcul tout seul et ajoute les hausses silencieuses, les doublons et les frais bancaires.</p>
+      </aside>
+    </div>
+  </div>
+</section>
+
 <!-- ========== HOW ========== -->
 <section id="fonctionnement">
   <div class="wrap">
@@ -181,6 +214,47 @@
       <div class="feature yolk rv"><span class="tag" data-i18n="t57">Économies faciles</span><h3 data-i18n="t58">Des euros, pas des camemberts</h3><p data-i18n="t59">Connectez votre banque ou importez un relevé : Lucien repère les abonnements fantômes, les hausses silencieuses, les doublons et les frais évitables. Chaque alerte donne le gain annuel et le bouton pour agir.</p></div>
       <div class="feature moss rv"><span class="tag" data-i18n="t60">Famille</span><h3 data-i18n="t61">Partagé avec ceux qui comptent</h3><p data-i18n="t62">Votre conjoint, vos enfants devenus grands, un parent âgé dont vous gérez les papiers. Chacun voit ce qu'il doit voir, et la charge ne repose plus sur une seule personne.</p></div>
       <div class="feature lilac rv"><span class="tag" data-i18n="t63">Connecteur IA</span><h3 data-i18n="t64">Votre assistant connaît enfin vos papiers</h3><p data-i18n="t65">Claude, ChatGPT ou tout assistant compatible peut interroger votre coffre, en lecture seule, avec votre accord et un journal de chaque accès.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== MAJORDOME ========== -->
+<section id="majordome" class="butler">
+  <div class="wrap">
+    <p class="eyebrow rv" data-i18n="m0">Un vrai majordome</p>
+    <h2 class="rv" data-i18n="m1">Il pense à tout, même le dimanche soir.</h2>
+    <p class="lead rv" data-i18n="m2">Lucien ne se contente pas de ranger. Il prépare, il prévient, il rassemble : comme un majordome, il a toujours un temps d'avance.</p>
+    <div class="grid2 butler-grid">
+      <div class="rv">
+        <div class="mock-lettre" aria-hidden="true">
+          <div class="mock-tete"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="32" fill="#D95F45"/><path d="M12 21.5c0-2.6 2.7-4.3 5-3.2l11.5 6.2v15l-11.5 6.2c-2.3 1.1-5-.6-5-3.2z" fill="#FBF4F0"/><path d="M52 21.5c0-2.6-2.7-4.3-5-3.2l-11.5 6.2v15l11.5 6.2c2.3 1.1 5-.6 5-3.2z" fill="#FBF4F0"/><rect x="26.5" y="24.5" width="11" height="15" rx="4" fill="#E9B23A"/></svg><span data-i18n="m23">Dimanche, 18 h</span></div>
+          <h3 data-i18n="m7">La semaine de la famille Martin</h3>
+          <p data-i18n="m8">Bonsoir Camille, voici ce qui vous attend : 2 échéances, 5 activités et un geste qui rapporte 419 € par an.</p>
+          <ul>
+            <li><i class="d">15</i><span data-i18n="m9">Taxe foncière : dernier jour pour payer</span></li>
+            <li><i class="d lil">mer</i><span data-i18n="m10">Judo de Jean à 14 h</span></li>
+            <li><i class="d vert">€</i><span data-i18n="m11">Le geste de la semaine : résilier Keepcool</span><em>419 €</em></li>
+          </ul>
+          <p class="mock-sign" data-i18n="m12">Lucien, votre majordome</p>
+        </div>
+        <h3 class="butler-h" data-i18n="m3">La semaine de Lucien</h3>
+        <p data-i18n="m4">Chaque dimanche soir, une lettre courte : les échéances à ne pas manquer, l'agenda des enfants jour par jour, le geste qui rapporte le plus et un conseil. Vous commencez la semaine l'esprit tranquille.</p>
+      </div>
+      <div class="rv">
+        <div class="mock-dossier" aria-hidden="true">
+          <div class="mock-dossier-tete"><span class="mock-jauge">4/5</span><div><h3 data-i18n="m13">Louer un logement</h3><span data-i18n="m14">4 pièces sur 5 prêtes</span></div></div>
+          <ul>
+            <li class="ok"><span data-i18n="m15">Pièce d'identité</span><b data-i18n="m21">Prête</b></li>
+            <li class="ok"><span data-i18n="m16">3 derniers bulletins de salaire</span><b data-i18n="m21">Prête</b></li>
+            <li class="ok"><span data-i18n="m17">Dernier avis d'impôt</span><b data-i18n="m21">Prête</b></li>
+            <li class="ok"><span data-i18n="m24">Contrat de travail</span><b data-i18n="m21">Prête</b></li>
+            <li class="warn"><span data-i18n="m18">Justificatif de domicile de moins de 3 mois</span><b data-i18n="m22">À renouveler</b><small data-i18n="m19">Trop ancien : ajoutez votre dernière facture d'électricité.</small></li>
+          </ul>
+          <span class="mock-btn" data-i18n="m20">Télécharger le dossier (.zip)</span>
+        </div>
+        <h3 class="butler-h" data-i18n="m5">Dossiers prêts à envoyer</h3>
+        <p data-i18n="m6">Location, CAF, inscription à l'école, prêt immobilier, passeport, sinistre : Lucien rassemble les pièces demandées, signale celles qui sont trop anciennes ou manquantes, dit où les obtenir, et tout part en un seul fichier.</p>
+      </div>
     </div>
   </div>
 </section>
@@ -450,6 +524,32 @@
     }
     vid.addEventListener("canplay", lancer, { once: true });
     if ("IntersectionObserver" in window && !reduce) new IntersectionObserver(function (en) { if (en[0].isIntersecting) lancer(); else vid.pause(); }, { threshold: 0.2 }).observe(vid);
+  }
+
+  // ---- calcul des oublis ----
+  var simu = document.getElementById("simu-list");
+  if (simu) {
+    var eur = function (n) { return Math.round(n).toLocaleString(document.documentElement.lang || "fr") + " €"; };
+    var calc = function () {
+      var perdu = 0, garde = 0;
+      simu.querySelectorAll(".simu-row").forEach(function (row) {
+        var prix = Math.max(0, parseFloat(String(row.querySelector(".simu-prix").value).replace(",", ".")) || 0);
+        var v = (row.querySelector("[aria-pressed=true]") || {}).getAttribute ? row.querySelector("[aria-pressed=true]").getAttribute("data-v") : "non";
+        row.classList.toggle("perdu", v === "plus"); row.classList.toggle("garde", v === "oui");
+        if (v === "plus") perdu += prix * 12; if (v === "oui") garde += prix * 12;
+      });
+      document.getElementById("simu-an").textContent = eur(perdu);
+      document.getElementById("simu-mois").textContent = perdu ? lucienT("s8").replace("{x}", eur(perdu / 12)) : lucienT("s15");
+      document.getElementById("simu-garde").textContent = garde ? lucienT("s16").replace("{x}", eur(garde)) : "";
+    };
+    simu.addEventListener("click", function (e) {
+      var b = e.target.closest && e.target.closest(".simu-choix button"); if (!b) return;
+      b.parentNode.querySelectorAll("button").forEach(function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); });
+      calc();
+    });
+    simu.addEventListener("input", calc);
+    window.addEventListener("lucien:lang", calc);
+    calc();
   }
 
   // ---- tour: arrows scroll one card ----
