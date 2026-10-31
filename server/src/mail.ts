@@ -8,7 +8,9 @@ export async function envoyerEmail(m: Mail): Promise<boolean> {
   const key = process.env.BREVO_API_KEY;
   const from = process.env.LUCIEN_EMAIL_FROM ?? "Lucien <bonjour@monlucien.fr>";
   if (!key) {
-    console.log(`[email → ${m.to}] ${m.subject}\n${m.text}\n`);
+    // Development: the email (with its login link) is printed. In production the content stays out of the logs.
+    if ((process.env.LUCIEN_PUBLIC_URL ?? "").startsWith("https://")) console.error(`[email] aucun service d'email configuré (BREVO_API_KEY) : « ${m.subject} » non envoyé`);
+    else console.log(`[email → ${m.to}] ${m.subject}\n${m.text}\n`);
     return false;
   }
   const [, name, email] = from.match(/^(.*?)\s*<([^>]+)>$/) ?? [null, "Lucien", from];

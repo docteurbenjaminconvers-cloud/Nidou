@@ -24,7 +24,7 @@ import { bordereau, etatDossiers, etatKit, KITS } from "./dossiers.js";
 import { zip } from "./zip.js";
 import { agendaIcs } from "./ics.js";
 
-import { AUTH_ON, consommerLien, cookieHeader, demanderLien, emailValide, sessionToken } from "./auth.js";
+import { AUTH_ON, consommerLien, cookieHeader, demandeAutorisee, demanderLien, emailValide, sessionToken } from "./auth.js";
 import { agendaSemaine, familleReport, echeancesFamille, JOURS, coutsParMembre } from "./famille.js";
 import { boiteAddress, fromBrevo, processInboundEmail, type InboundEmail } from "./inbox.js";
 import { parseStatement, merchantOf, categorise, ruleCategory, fingerprint, TX_CATEGORIES, TX_LABEL, type ParsedTx } from "./transactions.js";
@@ -86,7 +86,11 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     const body = z.object({ email: z.string() }).parse(await c.req.json());
     const email = body.email.trim().toLowerCase();
     if (!emailValide(email)) return c.json({ error: "email", message: "Adresse email invalide." }, 400);
+    const ip = (c.req.header("x-forwarded-for") ?? "").split(",")[0].trim() || c.req.header("x-real-ip") || "inconnue";
+    if (!demandeAutorisee(`ip:${ip}`, 10) || !demandeAutorisee(`email:${email}`, 3))
+      return c.json({ error: "trop_de_demandes", message: "Trop de demandes de lien. Réessayez dans 15 minutes." }, 429);
     const r = await demanderLien(db, email);
+    if (!r.envoye && !r.lien) return c.json({ error: "email_non_envoye", message: "L'email de connexion n'a pas pu partir. Réessayez dans quelques minutes." }, 503);
     return c.json({ ok: true, envoye: r.envoye, lien: r.lien });
   });
 

@@ -11,9 +11,28 @@ export const COOKIE = "lucien_session";
 export const ANCIEN_COOKIE = "nidou_session";
 const publicUrl = () => (process.env.LUCIEN_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, "");
 
+/**
+ * The login link may be handed back to the browser only in local development: no email service configured and no
+ * public https address. In production a link that could not be emailed is never returned (otherwise anyone could
+ * open someone else's account by asking for their link while the email service is down or over quota).
+ */
+export const lienVisibleEnDev = () => !process.env.BREVO_API_KEY && !(process.env.LUCIEN_PUBLIC_URL ?? "").startsWith("https://");
+
+/** Requests for a login link: at most 3 per address and 10 per network address every 15 minutes (in memory). */
+const FENETRE_MS = 15 * 60 * 1000;
+const demandes = new Map<string, number[]>();
+export function demandeAutorisee(cle: string, max: number, maintenant = Date.now()): boolean {
+  const recentes = (demandes.get(cle) ?? []).filter((t) => maintenant - t < FENETRE_MS);
+  if (recentes.length >= max) { demandes.set(cle, recentes); return false; }
+  recentes.push(maintenant); demandes.set(cle, recentes);
+  if (demandes.size > 50_000) for (const [k, v] of demandes) if (!v.some((t) => maintenant - t < FENETRE_MS)) demandes.delete(k);
+  return true;
+}
+export const oublierDemandes = () => demandes.clear();
+
 export const emailValide = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
 
-/** Login link. Returns the link itself only when no email transport is configured (dev), so the UI can show it. */
+/** Login link. Returns the link itself only in local development (see lienVisibleEnDev), so the UI can show it. */
 export async function demanderLien(db: Db, email: string, opts: { household_id?: string; prenom?: string | null; invite_par?: string | null } = {}): Promise<{ envoye: boolean; lien: string | null }> {
   const token = db.createAuthLink(email, { household_id: opts.household_id ?? null, prenom: opts.prenom ?? null, invite_par: opts.invite_par ?? null, ttlMinutes: opts.household_id ? 7 * 24 * 60 : 30 });
   const lien = `${publicUrl()}/api/auth/lien?token=${token}`;
@@ -26,7 +45,7 @@ export async function demanderLien(db: Db, email: string, opts: { household_id?:
       ? `${opts.invite_par ?? "Un proche"} partage avec vous les papiers, les échéances et le budget de « ${h?.nom}» sur Lucien.\n\nRejoindre le foyer : ${lien}\n\nCe lien est valable 7 jours.`
       : `Bonjour,\n\nVoici votre lien pour ouvrir Lucien : ${lien}\n\nIl est valable 30 minutes et ne sert qu'une fois. Si vous n'avez rien demandé, ignorez cet email.`,
   });
-  return { envoye, lien: envoye ? null : lien };
+  return { envoye, lien: !envoye && lienVisibleEnDev() ? lien : null };
 }
 
 export type LienResultat = { ok: true; user: UserRow; household: HouseholdRow; session: string } | { ok: false; raison: "invalide" | "expire" | "utilise" };
