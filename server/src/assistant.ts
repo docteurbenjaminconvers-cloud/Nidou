@@ -126,6 +126,7 @@ const prix = (n: number) => `${n.toFixed(2).replace(".", ",").replace(",00", "")
 export const MODE_EMPLOI = `Mode d'emploi de Lucien (barre du bas : Aujourd'hui, Agenda, bouton +, Papiers, Budget ; en haut de l'accueil : cloche des notifications et roue des réglages).
 - Aujourd'hui (accueil) : prochaine échéance, papiers à vérifier, économies repérées, activités du jour, et la barre « Demander à Lucien ».
 - Votre semaine : carte « Votre semaine avec Lucien » sous la barre de l'accueil ; le même point arrive chaque dimanche soir (notification, et email avec le plan Famille), désactivable dans Réglages, « Le point du dimanche ».
+- Dossiers prêts (en haut de Papiers) : location, CAF, école et cantine, prêt immobilier, passeport ou carte d'identité, sinistre. Lucien dit quelles pièces sont prêtes, trop anciennes ou manquantes, où les obtenir, et prépare un .zip avec le bordereau et les fichiers.
 - Ajouter un papier : bouton + au centre. Photo, PDF ou texte collé : Lucien lit le papier, le range, remplit les champs (organisme, montant, dates, préavis) et crée les rappels. On vérifie les champs avant d'enregistrer. Autre façon : transférer l'email à l'adresse Lucien personnelle (Réglages, « Papiers par email ») ; une règle de transfert automatique dans Gmail ou Outlook fait tout arriver seul.
 - Papiers : tous les documents, recherche et filtres par catégorie. Dans un document : modifier les champs, voir ses échéances, préparer un courrier (résiliation, réclamation, remboursement), supprimer.
 - Agenda : toutes les échéances (résiliation, renouvellement, expiration, garantie, paiement) et les activités de la semaine ; « marquer comme fait ».
@@ -139,7 +140,7 @@ export const MODE_EMPLOI = `Mode d'emploi de Lucien (barre du bas : Aujourd'hui,
 
 const ECRANS: Record<string, string> = {
   home: "Accueil", add: "Ajouter un papier", docs: "Papiers", deadlines: "Agenda", budget: "Budget", famille: "Famille",
-  notifs: "Notifications", settings: "Réglages", connecteur: "Tuto du connecteur IA", semaine: "Votre semaine",
+  notifs: "Notifications", settings: "Réglages", connecteur: "Tuto du connecteur IA", semaine: "Votre semaine", dossiers: "Dossiers prêts",
 };
 
 const OUTIL_ECRAN: Anthropic.Tool = {

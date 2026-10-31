@@ -16,6 +16,7 @@ import { Reveal, REVEAL_KEY } from "./screens/Reveal";
 import { Famille, MembreDetail, ActiviteDetail } from "./screens/Famille";
 import { Login } from "./screens/Login";
 import { Semaine, calculerSemaine } from "./screens/Semaine";
+import { Dossier, Dossiers } from "./screens/Dossiers";
 import { ConsentPage, VeilleDetail, VeilleNouvelle } from "./screens/Veille";
 import { ApiError } from "./api";
 import type { FamilleReport } from "./types";
@@ -100,7 +101,7 @@ export default function App() {
     );
   }
 
-  const tab = route.s === "doc" || route.s === "add" ? "" : route.s === "membre" || route.s === "activite" || route.s === "veille" || route.s === "veille-nouvelle" ? "famille" : route.s;
+  const tab = route.s === "dossiers" || route.s === "dossier" ? "docs" : route.s === "doc" || route.s === "add" ? "" : route.s === "membre" || route.s === "activite" || route.s === "veille" || route.s === "veille-nouvelle" ? "famille" : route.s;
 
   return (
     <div className="app">
@@ -116,10 +117,12 @@ export default function App() {
       {route.s === "budget" && <Budget api={api} charges={charges} budget={budget} household={household} go={go} onUpgrade={() => go("settings")} onChanged={reload} toast={toast} unread={notifs.unread} />}
       {route.s === "notifs" && <NotificationsScreen items={notifs.items} read={notifs.read} markRead={notifs.markRead} markAll={notifs.markAll} go={go} onBack={() => go("home")} api={api} toast={toast} />}
       {route.s === "assistant" && <Assistant api={api} household={household} go={go} onBack={() => history.length > 1 ? history.back() : go("home")} onChanged={reload} toast={toast} />}
+      {route.s === "dossiers" && <Dossiers docs={docs} go={go} onBack={() => go("docs")} />}
+      {route.s === "dossier" && route.id && <Dossier cle={route.id} api={api} household={household} docs={docs} go={go} onBack={() => go("dossiers")} toast={toast} />}
       {route.s === "semaine" && <Semaine point={calculerSemaine(household, deadlines, docs, budget, famille)} household={household} go={go} onBack={() => history.length > 1 ? history.back() : go("home")} />}
       {route.s === "connecteur" && <Connecteur household={household} go={go} onBack={() => history.length > 1 ? history.back() : go("settings")} toast={toast} />}
       {route.s === "settings" && <Settings api={api} household={household} onBack={() => go("home")} onPlan={() => reload()} toast={toast} go={go} />}
-      {(route.s === "home" || !["deadlines", "docs", "doc", "add", "budget", "settings", "notifs", "famille", "membre", "activite", "veille", "veille-nouvelle", "assistant", "connecteur", "semaine"].includes(route.s)) && (
+      {(route.s === "home" || !["deadlines", "docs", "doc", "add", "budget", "settings", "notifs", "famille", "membre", "activite", "veille", "veille-nouvelle", "assistant", "connecteur", "semaine", "dossiers", "dossier"].includes(route.s)) && (
         <Today household={household} deadlines={deadlines} docs={docs} charges={charges} budget={budget} go={go} onDone={onDone} unread={notifs.unread} famille={famille} />
       )}
 

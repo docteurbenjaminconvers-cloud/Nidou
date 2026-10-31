@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { basename, extname, join } from "node:path";
 import { extractDocument, heuristicExtract } from "./extract.js";
 import { deadlinesFor } from "./deadlines.js";
 import { chargesReport, lignesFamille } from "./charges.js";
@@ -15,6 +15,8 @@ import { banquesFR, BANQUES_DEMO, ebConnectHousehold, ebFinishHousehold, ensureE
 import { envoyerPush, pushOn } from "./push.js";
 import { appliquerAbonnement, capaciteComptes, creerCheckout, FORMULES, portail, resumeAbonnement, traiterWebhook } from "./abonnement.js";
 import { pointDuFoyer } from "./hebdo.js";
+import { bordereau, etatDossiers, etatKit, KITS } from "./dossiers.js";
+import { zip } from "./zip.js";
 import { AUTH_ON, consommerLien, cookieHeader, demanderLien, emailValide, sessionToken } from "./auth.js";
 import { familleReport, echeancesFamille, coutsParMembre } from "./famille.js";
 import { boiteAddress, fromBrevo, processInboundEmail } from "./inbox.js";
@@ -328,6 +330,43 @@ export function createApi(db, opts) {
         if (!d || d.household_id !== household(c).id)
             return c.json({ error: "introuvable" }, 404);
         return c.json({ ...publicDoc(d), texte: d.texte, echeances: db.listDeadlines(d.household_id, { includeDone: true }).filter((x) => x.document_id === d.id) });
+    });
+    /** The original file of a paper (photo or PDF), for the household only. */
+    api.get("/documents/:id/fichier", async (c) => {
+        const d = db.getDocument(c.req.param("id"));
+        if (!d || d.household_id !== household(c).id || !d.fichier)
+            return c.json({ error: "introuvable" }, 404);
+        const buf = await readFile(join(opts.uploadDir, basename(d.fichier))).catch(() => null);
+        if (!buf)
+            return c.json({ error: "introuvable" }, 404);
+        const nom = `${d.title.replace(/[^\p{L}\p{N} ._-]+/gu, "").trim().slice(0, 80) || "document"}${extname(d.fichier)}`;
+        return new Response(new Uint8Array(buf), { headers: { "content-type": d.mime ?? "application/octet-stream", "content-disposition": `inline; filename*=UTF-8''${encodeURIComponent(nom)}`, "cache-control": "private, no-store" } });
+    });
+    /** « Dossiers prêts » : for each usual request (rental, CAF, school, loan…), what is ready, too old or missing. */
+    api.get("/dossiers", (c) => c.json(etatDossiers(db.listDocuments(household(c).id))));
+    /** The whole folder in one .zip: a cover sheet (what is there, what is missing and where to get it) and the original files. */
+    api.get("/dossiers/:cle/zip", async (c) => {
+        const h = household(c);
+        const kit = KITS.find((k) => k.cle === c.req.param("cle"));
+        if (!kit)
+            return c.json({ error: "introuvable" }, 404);
+        const docs = db.listDocuments(h.id);
+        const e = etatKit(kit, docs);
+        const fichiers = [{ nom: "00 - Bordereau.txt", contenu: Buffer.from(bordereau(e, db.getHousehold(h.id).nom), "utf8") }];
+        let n = 1;
+        for (const p of e.pieces)
+            for (const ref of p.documents) {
+                const d = docs.find((x) => x.id === ref.id);
+                if (!d?.fichier)
+                    continue;
+                const buf = await readFile(join(opts.uploadDir, basename(d.fichier))).catch(() => null);
+                if (!buf)
+                    continue;
+                const titre = d.title.replace(/[^\p{L}\p{N} ._'-]+/gu, " ").replace(/\s+/g, " ").trim().slice(0, 70);
+                fichiers.push({ nom: `${String(n++).padStart(2, "0")} - ${p.libelle.replace(/[^\p{L}\p{N} ._'-]+/gu, " ").replace(/\s+/g, " ").trim().slice(0, 40)} - ${titre}${extname(d.fichier)}`, contenu: buf });
+            }
+        const nom = `Lucien - ${kit.titre}.zip`;
+        return new Response(new Uint8Array(zip(fichiers)), { headers: { "content-type": "application/zip", "content-disposition": `attachment; filename*=UTF-8''${encodeURIComponent(nom)}`, "cache-control": "private, no-store" } });
     });
     /**
      * Upload: multipart (file + optional texte) or JSON { texte, nomFichier }.

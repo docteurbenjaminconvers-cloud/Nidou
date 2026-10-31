@@ -83,7 +83,7 @@ export function DocumentDetail({ api, id, onBack, onChanged, toast }: { api: Api
     <div className="screen">
       <Back onClick={onBack} label="Papiers" />
       <h1 className="detail-title">{doc.title}</h1>
-      <p className="detail-sub">{[doc.organisme, CATEGORY_LABEL[doc.category]].filter(Boolean).join(" · ")}</p>
+      <p className="detail-sub">{[doc.organisme, CATEGORY_LABEL[doc.category]].filter(Boolean).join(" · ")}{doc.fichier && api.mode !== "demo" ? <> · <a href={`/api/documents/${doc.id}/fichier`} target="_blank" rel="noreferrer">Voir l'original</a></> : null}</p>
 
       {doc.resume && <p style={{ marginBottom: 16 }}>{doc.resume}</p>}
 

@@ -9,6 +9,7 @@ import { publicDoc } from "./api.js";
 import { budgetReport } from "./budget.js";
 import { entreeSemaine } from "./hebdo.js";
 import { pointSemaine } from "./semaine.js";
+import { etatKit, KITS } from "./dossiers.js";
 
 /**
  * Lucien MCP server — read-only access to a household's papers for any MCP-compatible assistant
@@ -104,6 +105,21 @@ export function createMcpServer(db: Db, householdId: string) {
       if (excluded.has("banque")) e.economies = null;
       const { notification, ...point } = pointSemaine(e);
       return text(point);
+    }
+  );
+
+  server.registerTool(
+    "dossier",
+    {
+      title: "Dossier prêt à envoyer",
+      description: `Pour une démarche courante, la liste des pièces demandées et, pour chacune, le papier du coffre qui convient, ou ce qui manque et où l'obtenir. Démarches : ${KITS.map((k) => `${k.cle} (${k.titre})`).join(", ")}. Les catégories exclues du connecteur ne sont pas consultées.`,
+      inputSchema: { demarche: z.enum(KITS.map((k) => k.cle) as [string, ...string[]]).describe("La démarche") },
+    },
+    async ({ demarche }) => {
+      log("dossier", { demarche });
+      const kit = KITS.find((k) => k.cle === demarche)!;
+      const e = etatKit(kit, visible());
+      return text({ ...e, icone: undefined, pieces: e.pieces.map((p) => ({ ...p, documents: p.documents.map(({ fichier, ...d }) => d) })) });
     }
   );
 

@@ -176,7 +176,8 @@ const serverApi: Api = {
 function makeDemoApi(): Api {
   const state = {
     household: structuredClone(demoHousehold) as Household,
-    docs: structuredClone(demoDocuments) as Doc[],
+    // Papers whose date must stay recent in the demo (payslips, tax notice): dated from today.
+    docs: (structuredClone(demoDocuments) as (Doc & { _age_jours?: number })[]).map(({ _age_jours, ...d }) => (_age_jours != null ? { ...d, date_document: new Date(Date.now() - _age_jours * 864e5).toISOString().slice(0, 10) } : d)) as Doc[],
     deadlines: structuredClone(demoDeadlines) as Deadline[],
     imported: false,
     bank: false,
