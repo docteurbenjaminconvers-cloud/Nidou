@@ -95,7 +95,7 @@ export function pointSemaine(e: SemaineEntree, now = new Date()): PointSemaine {
     agenda.push({ titre: JOURS[jourSemaine(d)], detail: lignes.map((c) => `${c.heure_debut ? c.heure_debut + " " : ""}${c.titre}${c.membre ? ` (${c.membre})` : ""}`).join(" · "), quand: d, route: "famille" });
   }
   const repasCantine = e.creneaux.filter((c) => c.type === "cantine").length;
-  if (agenda.length) sections.push({ cle: "agenda", titre: "L'agenda de la famille", items: agenda });
+  if (agenda.length) sections.push({ cle: "agenda", titre: "L'agenda de la semaine", items: agenda });
 
   // 3. Budget : ce qui est déjà récupéré, et le geste qui rapporte le plus.
   const budget: SemaineItem[] = [];

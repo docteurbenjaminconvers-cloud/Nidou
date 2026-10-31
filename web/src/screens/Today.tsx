@@ -20,6 +20,9 @@ export function Today({ api, household, deadlines, docs, charges, budget, go, on
   const parEmail = docs.filter((d) => d.source === "email" && Date.now() - new Date(d.cree_le).getTime() < 7 * 864e5).length;
   const hour = new Date().getHours();
   const hello = hour < 18 ? "Coucou" : "Bonsoir";
+  // Living alone is a first-class case: the third first step is the email inbox, not "add your partner".
+  const seul = (famille?.situation ?? household.situation) === "seul" && (famille?.membres.length ?? 1) <= 1;
+  const etape3 = seul ? docs.some((d) => d.source === "email") : household.membres.length >= 2;
 
   return (
     <div className="screen">
@@ -32,7 +35,7 @@ export function Today({ api, household, deadlines, docs, charges, budget, go, on
         <div className="top-actions"><Bell unread={unread} onClick={() => go("notifs")} /><button className="bell" aria-label="Réglages" onClick={() => go("settings")}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z" /></svg></button></div>
       </div>
 
-      {famille && <FamilleBandeau api={api} famille={famille} go={go} />}
+      {famille && !seul && <FamilleBandeau api={api} famille={famille} go={go} />}
 
       <button className="ask" onClick={() => go("assistant")}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" /></svg>
@@ -65,13 +68,15 @@ export function Today({ api, household, deadlines, docs, charges, budget, go, on
           <button className="link" onClick={() => go("docs")}>Voir</button>
         </div>
       )}
-      {household.essai?.actif && (docs.length === 0 || !budget?.nb_transactions || household.membres.length < 2) && (
+      {household.essai?.actif && (docs.length === 0 || !budget?.nb_transactions || !etape3) && (
         <section className="section steps" aria-label="Vos premiers gestes">
-          <div className="section-head"><h2>Votre foyer en 3 gestes</h2><span className="badge">{[docs.length > 0, !!budget?.nb_transactions, household.membres.length >= 2].filter(Boolean).length}/3</span></div>
+          <div className="section-head"><h2>Votre foyer en 3 gestes</h2><span className="badge">{[docs.length > 0, !!budget?.nb_transactions, etape3].filter(Boolean).length}/3</span></div>
           <ol>
             <li className={docs.length > 0 ? "done" : ""}><button onClick={() => go("add")}><i /><div><b>Photographiez un papier</b><span>30 secondes : il se range et crée ses rappels tout seul</span></div></button></li>
             <li className={budget?.nb_transactions ? "done" : ""}><button onClick={() => go("budget")}><i /><div><b>Connectez votre banque</b><span>1 minute : Lucien chiffre vos économies faciles</span></div></button></li>
-            <li className={household.membres.length >= 2 ? "done" : ""}><button onClick={() => go("settings")}><i /><div><b>Ajoutez votre conjoint</b><span>les papiers et les rappels se partagent</span></div></button></li>
+            {seul
+              ? <li className={etape3 ? "done" : ""}><button onClick={() => go("settings")}><i /><div><b>Transférez une facture par email</b><span>votre adresse Lucien : les papiers arrivent rangés</span></div></button></li>
+              : <li className={etape3 ? "done" : ""}><button onClick={() => go("settings")}><i /><div><b>Ajoutez votre conjoint</b><span>les papiers et les rappels se partagent</span></div></button></li>}
           </ol>
         </section>
       )}
@@ -188,7 +193,7 @@ function FamilleBandeau({ api, famille, go }: { api: Api; famille: FamilleReport
     return (
       <button className="famille-invite" onClick={() => go("famille")}>
         <span className="portrait plus" style={{ width: 46, height: 46 }} aria-hidden><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg></span>
-        <span><b>Ajoutez votre famille</b><span>Enfants, conjoint, parents : leurs photos, leur semaine, leurs papiers.</span></span>
+        <span><b>Des proches à suivre ?</b><span>Conjoint, enfants, parent âgé : leurs photos, leur semaine, leurs papiers.</span></span>
       </button>
     );
   }

@@ -387,3 +387,18 @@ html.intro-on { overflow: hidden; }
 .aussi-ico svg { width: 24px; height: 24px; fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .aussi-ico.moss { background: var(--moss); } .aussi-ico.peach { background: var(--peach); } .aussi-ico.lilac { background: var(--lilac-soft); }
 @media (max-width: 860px) { .aussi { grid-template-columns: 1fr; } }
+
+/* Pour qui */
+.pourqui { padding-bottom: clamp(20px, 4vw, 40px); }
+.pq-grille { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 36px; }
+@media (max-width: 1000px) { .pq-grille { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 600px) { .pq-grille { grid-template-columns: 1fr; } }
+.pq { background: var(--white); border-radius: var(--radius); padding: 24px 22px; box-shadow: var(--shadow); min-width: 0; }
+.pq:first-child { background: var(--moss-soft, #e4f3ea); }
+.pq-tetes { display: flex; margin-bottom: 14px; }
+.pq-tetes img { width: 56px; height: 56px; border-radius: 50%; box-shadow: 0 0 0 3px var(--white); }
+.pq-tetes img + img { margin-left: -12px; }
+.pq .tag { display: inline-block; font-size: 12.5px; font-weight: 800; background: var(--paper, #fbf4f0); border-radius: 999px; padding: 5px 12px; }
+.pq:first-child .tag { background: var(--white); }
+.pq h3 { font-family: var(--display); font-weight: 600; font-size: 21px; line-height: 1.25; margin: 12px 0 8px; }
+.pq p { font-size: 15.5px; opacity: .85; }

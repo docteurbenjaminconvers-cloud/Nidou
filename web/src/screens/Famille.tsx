@@ -79,7 +79,9 @@ export function Famille({ api, household, go, unread, onChanged, toast, sel, doc
   if (!f) return <div className="screen"><div className="top"><h1>Famille</h1></div><p className="note">Chargement…</p></div>;
 
   const membres = [...f.membres].sort((a, b) => ROLE_ORDRE[a.role] - ROLE_ORDRE[b.role] || (b.age ?? 0) - (a.age ?? 0));
-  const choisi = membres.find((m) => m.id === sel) ?? null;
+  // Living alone: the page is simply "me", with an option to add a relative whose papers one also handles.
+  const solo = membres.length === 1;
+  const choisi = membres.find((m) => m.id === sel) ?? (solo ? membres[0] : null);
   const addMember = async () => {
     if (!prenom.trim() || !adding) return;
     try {
@@ -91,13 +93,13 @@ export function Famille({ api, household, go, unread, onChanged, toast, sel, doc
 
   return (
     <div className="screen famille">
-      <div className="top"><div><h1>Famille</h1><p className="sub">{f.composition.adultes} adulte{f.composition.adultes > 1 ? "s" : ""}{f.composition.enfants ? ` · ${f.composition.enfants} enfant${f.composition.enfants > 1 ? "s" : ""}` : ""}{f.composition.a_charge ? ` · ${f.composition.a_charge} à charge` : ""}</p></div><Bell unread={unread} onClick={() => go("notifs")} /></div>
+      <div className="top"><div><h1>{solo ? "Mon foyer" : "Famille"}</h1><p className="sub">{solo ? (f.situation === "couple" ? "En couple" : "Vous vivez seul·e") : <>{f.composition.adultes} adulte{f.composition.adultes > 1 ? "s" : ""}{f.composition.enfants ? ` · ${f.composition.enfants} enfant${f.composition.enfants > 1 ? "s" : ""}` : ""}{f.composition.a_charge ? ` · ${f.composition.a_charge} à charge` : ""}</>}</p></div><Bell unread={unread} onClick={() => go("notifs")} /></div>
 
       <div className="trombi" ref={strip} role="tablist" aria-label="Membres de la famille">
-        <button role="tab" className="trombi-m" aria-selected={!choisi} onClick={() => go("famille")}>
+        {!solo && <button role="tab" className="trombi-m" aria-selected={!choisi} onClick={() => go("famille")}>
           <span className="trombi-tous" aria-hidden>{membres.slice(0, 4).map((m) => <Portrait key={m.id} api={api} m={m} size={30} />)}{membres.length === 0 && <span className="portrait adulte" style={{ width: 30, height: 30 }}>+</span>}</span>
           <b>Tous</b>
-        </button>
+        </button>}
         {membres.map((m) => (
           <button role="tab" key={m.id} className="trombi-m" aria-selected={choisi?.id === m.id} onClick={() => go("famille", m.id)}>
             <Portrait api={api} m={m} size={64} />
@@ -107,7 +109,7 @@ export function Famille({ api, household, go, unread, onChanged, toast, sel, doc
         ))}
         <button className="trombi-m trombi-plus" onClick={() => { setAdding(adding ? null : "enfant"); setPrenom(""); }} aria-expanded={!!adding}>
           <span className="portrait plus" style={{ width: 64, height: 64 }} aria-hidden><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg></span>
-          <b>Ajouter</b>
+          <b>{solo ? "Un proche" : "Ajouter"}</b>
         </button>
       </div>
 
@@ -120,8 +122,19 @@ export function Famille({ api, household, go, unread, onChanged, toast, sel, doc
         </div>
       )}
 
+      {solo && !adding && (
+        <div className="solo-carte">
+          <b>Lucien s'occupe de vous, tout simplement.</b>
+          <p>Vos papiers, vos dates, votre budget, votre semaine : tout est ici. Si vous gérez aussi les papiers d'un proche (un parent âgé, un enfant en garde alternée), ajoutez-le avec le bouton « Un proche ». Sinon, il n'y a rien d'autre à faire.</p>
+          <div className="pills" role="group" aria-label="Situation">
+            <button className="pill" aria-pressed={f.situation !== "couple"} onClick={async () => { await api.setSituation("seul"); await load(); onChanged(); }}>Je vis seul·e</button>
+            <button className="pill" aria-pressed={f.situation === "couple"} onClick={async () => { await api.setSituation("couple"); await load(); onChanged(); }}>En couple</button>
+          </div>
+        </div>
+      )}
+
       {choisi
-        ? <VueMembre key={choisi.id} api={api} f={f} m={choisi} go={go} docs={docs} deadlines={deadlines} toast={toast} onPhoto={async () => { await load(); onChanged(); }} />
+        ? <VueMembre key={choisi.id} moi={choisi.prenom === "Moi" || (!!household.utilisateur?.prenom && choisi.prenom.toLowerCase() === household.utilisateur.prenom.toLowerCase())} api={api} f={f} m={choisi} go={go} docs={docs} deadlines={deadlines} toast={toast} onPhoto={async () => { await load(); onChanged(); }} />
         : <VueFamille api={api} f={f} membres={membres} go={go} onSituation={async (s) => { await api.setSituation(s); await load(); onChanged(); }} />}
     </div>
   );
@@ -256,7 +269,7 @@ function Conseils({ conseils, vide, titre = "Conseils pour votre famille" }: { c
 }
 
 /** One member's page: portrait, who they are, their week, what is coming, their papers, what they cost, advice. */
-function VueMembre({ api, f, m, go, docs, deadlines, toast, onPhoto }: { api: Api; f: FamilleReport; m: Membre; go: Go; docs: Doc[]; deadlines: Deadline[]; toast: (t: string) => void; onPhoto: () => void }) {
+function VueMembre({ moi = false, api, f, m, go, docs, deadlines, toast, onPhoto }: { moi?: boolean; api: Api; f: FamilleReport; m: Membre; go: Go; docs: Doc[]; deadlines: Deadline[]; toast: (t: string) => void; onPhoto: () => void }) {
   const todayIdx = ((new Date().getDay() + 6) % 7) + 1;
   const creneaux = f.semaine.filter((s) => pour(s, m));
   const acts = f.activites.filter((a) => a.member_id === m.id);
@@ -291,7 +304,7 @@ function VueMembre({ api, f, m, go, docs, deadlines, toast, onPhoto }: { api: Ap
         <h2>{m.prenom}</h2>
         <p>{[m.age !== null ? `${m.age} ans` : null, ecole || (NIVEAU_LABEL[m.niveau] || null), m.role === "parent_a_charge" || m.role === "autre_a_charge" ? ROLE_LABEL[m.role] : null].filter(Boolean).join(" · ") || ROLE_LABEL[m.role]}</p>
         {jAnniv !== null && jAnniv <= 45 && <span className="fiche-anniv">Anniversaire {dans(jAnniv)}{anniv!.titre.match(/\((\d+) ans\)/) ? ` · ${anniv!.titre.match(/\((\d+) ans\)/)![1]} ans` : ""}</span>}
-        {!m.photo && <p className="fiche-astuce">Touchez le cercle pour ajouter sa photo.</p>}
+        {!m.photo && <p className="fiche-astuce">Touchez le cercle pour ajouter {moi ? "votre" : "sa"} photo.</p>}
         <div className="fiche-actions">
           <button className="btn ghost" onClick={() => go("membre", m.id)}>Modifier la fiche</button>
           <button className="btn ghost" onClick={() => go("activite", `nouvelle:${m.id}`)}>Ajouter une activité</button>
@@ -312,7 +325,7 @@ function VueMembre({ api, f, m, go, docs, deadlines, toast, onPhoto }: { api: Ap
       )}
 
       <section className="section">
-        <div className="section-head"><h2>Sa semaine</h2>{creneaux.length > 0 && <button className="link" onClick={() => go("activite", `nouvelle:${m.id}`)}>Ajouter</button>}</div>
+        <div className="section-head"><h2>{moi ? "Ma semaine" : "Sa semaine"}</h2>{creneaux.length > 0 && <button className="link" onClick={() => go("activite", `nouvelle:${m.id}`)}>Ajouter</button>}</div>
         {creneaux.length === 0 ? <p className="note">{m.role === "enfant" ? "Cantine, sport, musique, garde : ajoutez ses activités avec le jour et l'heure, et sa semaine se dessine ici." : "Rien dans l'agenda de la semaine. Ajoutez une activité régulière si besoin."}</p> : (
           <div className="semaine-membre">
             {[1, 2, 3, 4, 5, 6, 7].map((j) => {
@@ -336,7 +349,7 @@ function VueMembre({ api, f, m, go, docs, deadlines, toast, onPhoto }: { api: Ap
 
       <section className="section">
         <div className="section-head"><h2>À venir</h2></div>
-        {avenir.length === 0 ? <p className="note">Aucune date à surveiller pour {m.prenom}. Ajoutez sa date de naissance et ses papiers : Lucien suivra anniversaires, expirations et démarches.</p> : (
+        {avenir.length === 0 ? <p className="note">Aucune date à surveiller{moi ? "" : ` pour ${m.prenom}`}. {moi ? "Ajoutez votre date de naissance et vos papiers" : "Ajoutez sa date de naissance et ses papiers"} : Lucien suivra anniversaires, expirations et démarches.</p> : (
           <ul className="list">
             {avenir.map((e) => (
               <li key={e.cle}><button className="row-item" style={{ gridTemplateColumns: "auto 1fr" }} onClick={() => e.route ? go(...e.route) : go("deadlines")}>
@@ -349,8 +362,8 @@ function VueMembre({ api, f, m, go, docs, deadlines, toast, onPhoto }: { api: Ap
       </section>
 
       <section className="section">
-        <div className="section-head"><h2>Ses papiers</h2><button className="link" onClick={() => go("add")}>Ajouter</button></div>
-        {papiers.length === 0 ? <p className="note">{m.role === "enfant" ? "Carte d'identité, carnet de santé, certificat de scolarité, assurance scolaire : rangez-les à son nom pour les retrouver en un geste." : `Identité, contrats, attestations au nom de ${m.prenom} : en ajoutant un papier, choisissez « ${m.prenom} » comme personne concernée.`}</p> : (
+        <div className="section-head"><h2>{moi ? "Mes papiers" : "Ses papiers"}</h2><button className="link" onClick={() => go("add")}>Ajouter</button></div>
+        {papiers.length === 0 ? <p className="note">{m.role === "enfant" ? "Carte d'identité, carnet de santé, certificat de scolarité, assurance scolaire : rangez-les à son nom pour les retrouver en un geste." : moi ? "Identité, permis, contrats, attestations à votre nom : en ajoutant un papier, indiquez que vous êtes la personne concernée." : `Identité, contrats, attestations au nom de ${m.prenom} : en ajoutant un papier, choisissez « ${m.prenom} » comme personne concernée.`}</p> : (
           <ul className="list">
             {papiers.map((d) => (
               <li key={d.id}><button className="row-item" style={{ gridTemplateColumns: "1fr auto" }} onClick={() => go("doc", d.id)}>
@@ -375,7 +388,7 @@ function VueMembre({ api, f, m, go, docs, deadlines, toast, onPhoto }: { api: Ap
 
       {estProtegeable(m) && <VeilleCard api={api} membre={m} go={go} />}
 
-      <Conseils conseils={conseils} vide={null} titre={`Pour ${m.prenom}`} />
+      <Conseils conseils={conseils} vide={null} titre={moi ? "Pour vous" : `Pour ${m.prenom}`} />
 
       {m.notes && <p className="note fiche-notes">{m.notes}</p>}
     </div>

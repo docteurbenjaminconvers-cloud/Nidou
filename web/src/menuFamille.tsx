@@ -29,17 +29,17 @@ export function MenuFamille() {
 
   return (
     <span className="menu-famille">
-      <button className="moi-btn" aria-label="Ma famille" aria-expanded={ouvert} aria-haspopup="menu" onClick={() => setOuvert(!ouvert)}>
+      <button className="moi-btn" aria-label={membres.length > 1 ? "Ma famille" : "Mon espace"} aria-expanded={ouvert} aria-haspopup="menu" onClick={() => setOuvert(!ouvert)}>
         <Portrait api={api} m={moi} size={44} />
       </button>
       {ouvert && (
         <>
           <div className="mf-fond" onClick={() => setOuvert(false)} aria-hidden />
           <div className="mf-panneau" role="menu" aria-label="Ma famille">
-            <button role="menuitem" className="mf-ligne mf-tous" onClick={() => ouvrir()}>
+            {membres.length > 1 && <button role="menuitem" className="mf-ligne mf-tous" onClick={() => ouvrir()}>
               <span className="mf-tetes" aria-hidden>{membres.slice(0, 4).map((m) => <Portrait key={m.id} api={api} m={m} size={22} />)}</span>
               <span><b>Toute la famille</b><small>La semaine, les dates clés, les conseils</small></span>
-            </button>
+            </button>}
             {membres.map((m) => (
               <button role="menuitem" key={m.id} className="mf-ligne" onClick={() => ouvrir(m.id)}>
                 <Portrait api={api} m={m} size={40} />
@@ -49,7 +49,7 @@ export function MenuFamille() {
             ))}
             <button role="menuitem" className="mf-ligne mf-ajout" onClick={() => ouvrir()}>
               <span className="portrait plus" style={{ width: 40, height: 40 }} aria-hidden><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg></span>
-              <span><b>Ajouter quelqu'un</b></span>
+              <span><b>{membres.length > 1 ? "Ajouter quelqu'un" : "Ajouter un proche"}</b>{membres.length <= 1 && <small>Seulement si vous gérez aussi ses papiers</small>}</span>
             </button>
           </div>
         </>
