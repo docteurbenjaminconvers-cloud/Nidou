@@ -1,3 +1,4 @@
+import { prevoirFinDeMois } from "./prevision.js";
 import { suivis } from "./resiliations.js";
 import { ensureSuppressionSchema, executerSuppressionsPrevues } from "./suppression.js";
 import { entretienVeilles } from "./veille.js";
@@ -126,6 +127,19 @@ export function rappelsAbonnements(db: Db, h: HouseholdRow, now = new Date()): R
   return out;
 }
 
+/** Overdraft ahead: warned once a month, when the forecast goes under zero within the next 10 days. */
+export function rappelsPrevision(db: Db, h: HouseholdRow, now = new Date()): Rappel[] {
+  const solde = db.soldeFoyer(h.id);
+  const txs = db.transactionsFoyer(h.id);
+  if (solde === null || !txs.length) return [];
+  const aujourdhui = now.toISOString().slice(0, 10);
+  const p = prevoirFinDeMois(solde, txs, aujourdhui);
+  if (!p.alerte || (Date.parse(p.alerte.jour) - Date.parse(aujourdhui)) / 864e5 > 10) return [];
+  const date = p.alerte.jour.split("-").reverse().slice(0, 2).join("/");
+  return [{ cle: `decouvert:${aujourdhui.slice(0, 7)}`, titre: `Découvert probable vers le ${date}`,
+    corps: `Avec les prélèvements prévus et vos dépenses habituelles, votre solde passerait à ${Math.round(p.alerte.solde).toLocaleString("fr-FR")} €. Un virement d'épargne ou un report de dépense l'évite.`, route: "#/budget" }];
+}
+
 /** Default transport: push to every device of the household; email too for Famille households (free = push only). */
 export async function transportParDefaut(db: Db, h: HouseholdRow, r: Rappel) {
   const n = await envoyerPush(db, h.id, { titre: r.titre, corps: r.corps, url: `/${r.route}`, tag: r.cle.split(":")[0] });
@@ -143,7 +157,7 @@ export async function transportParDefaut(db: Db, h: HouseholdRow, r: Rappel) {
 export async function passeQuotidienne(db: Db, envoyer: (h: HouseholdRow, r: Rappel) => Promise<void> = (h, r) => transportParDefaut(db, h, r)) {
   let n = 0;
   for (const h of db.listHouseholds()) {
-    for (const r of [...rappelsEssai(db, h), ...rappelsEcheances(db, h), ...rappelsAlertes(db, h), ...rappelsRenouvellement(db, h), ...rappelsAbonnements(db, h)]) {
+    for (const r of [...rappelsEssai(db, h), ...rappelsEcheances(db, h), ...rappelsAlertes(db, h), ...rappelsRenouvellement(db, h), ...rappelsAbonnements(db, h), ...rappelsPrevision(db, h)]) {
       if (db.marquerRappel(h.id, r.cle)) { await envoyer(h, r); n++; }
     }
   }

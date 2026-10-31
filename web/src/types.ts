@@ -155,6 +155,14 @@ export interface BudgetReport {
   resiliations?: Resiliation[];
   /** Savings proven by the bank: no more debit after the cancellation. */
   economies_prouvees?: number;
+  /** End-of-month forecast (only with a bank connection). */
+  prevision?: Prevision | null;
+}
+
+export interface Prevision {
+  solde_actuel: number; revenus_attendus: { libelle: string; montant: number; jour: number }[]; prelevements_a_venir: { libelle: string; montant: number; jour: number }[];
+  depenses_courantes: number; depense_courante_jour: number; solde_prevu: number; fin_mois: string; jours_restants: number;
+  plus_bas: { jour: string; solde: number }; alerte: { jour: string; solde: number } | null;
 }
 
 export interface Resiliation {

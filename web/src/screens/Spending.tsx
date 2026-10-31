@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Api } from "../api";
 import { ApiError } from "../api";
-import type { AideResiliation, BudgetAction, BudgetReport, Household, Resiliation } from "../types";
+import type { AideResiliation, BudgetAction, BudgetReport, Household, Prevision, Resiliation } from "../types";
 import { Feuille } from "./espacesCommun";
 import { fmtEuro } from "../ui";
 import { BankLink } from "./BankLink";
@@ -87,6 +87,7 @@ export function Spending({ api, budget, household, go, onChanged, onUpgrade, toa
           <button onClick={() => {}}><b>{fmtEuro(budget.depenses_moyenne_mensuelle)}</b><span>moyenne mensuelle</span></button>
           <button onClick={() => {}}><b>{fmtEuro(budget.reste_a_vivre_moyen)}</b><span>reste chaque mois</span></button>
         </div>
+        {budget.prevision && <CartePrevision p={budget.prevision} />}
         <p className="note">{budget.nb_transactions} opérations sur {budget.periode.mois} mois · revenus moyens {fmtEuro(budget.revenus_moyenne_mensuelle)} / mois</p>
       </section>
 
@@ -232,6 +233,32 @@ function SuiviResiliations({ liste, api, toast, onChanged, onLettre }: { liste: 
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+const jourFr = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+
+/** End of the month: today's balance, what comes in, what goes out, and the overdraft warning with its date. */
+function CartePrevision({ p }: { p: Prevision }) {
+  const [ouvert, setOuvert] = useState(false);
+  const ton = p.alerte ? "alerte" : p.plus_bas.solde < 200 ? "juste" : "ok";
+  return (
+    <div className={`prevision ${ton}`}>
+      <button className="prevision-tete" onClick={() => setOuvert(!ouvert)} aria-expanded={ouvert}>
+        <span><small>Fin du mois, le {jourFr(p.fin_mois)}</small><b>{fmtEuro(p.solde_prevu)}</b></span>
+        <span className="prevision-detail">aujourd'hui {fmtEuro(p.solde_actuel)}</span>
+      </button>
+      {p.alerte
+        ? <p className="prevision-msg">Découvert probable vers le {jourFr(p.alerte.jour)} ({fmtEuro(p.alerte.solde)}). Un virement d'épargne ou un report de dépense l'évite.</p>
+        : <p className="prevision-msg">Point le plus bas : {fmtEuro(p.plus_bas.solde)} le {jourFr(p.plus_bas.jour)}.</p>}
+      {ouvert && (
+        <ul className="prevision-lignes">
+          {p.revenus_attendus.map((x) => <li key={`r${x.libelle}`}><span>{x.libelle} · le {x.jour}</span><b className="plus">+{fmtEuro(x.montant)}</b></li>)}
+          {p.prelevements_a_venir.map((x) => <li key={`p${x.libelle}`}><span>{x.libelle} · le {x.jour}</span><b>−{fmtEuro(x.montant)}</b></li>)}
+          <li><span>Dépenses courantes ({p.jours_restants} jours, environ {fmtEuro(p.depense_courante_jour)} par jour)</span><b>−{fmtEuro(p.depenses_courantes)}</b></li>
+        </ul>
+      )}
     </div>
   );
 }

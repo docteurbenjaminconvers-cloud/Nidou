@@ -3,6 +3,7 @@ import { z } from "zod";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { createHash, randomBytes } from "node:crypto";
 import { exporterFoyer } from "./export.js";
+import { prevoirFinDeMois } from "./prevision.js";
 import { annulerSuivi, demarrerSuivi, economieAnnuelle, nomMarchand, ensureResiliationsSchema, lettreRemboursement, lettreResiliation, marcheASuivre, suivis } from "./resiliations.js";
 import { estMedical, MESSAGE_MEDICAL } from "./extract.js";
 import { budgetIa, coutAppel } from "./iaBudget.js";
@@ -772,7 +773,9 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     const report = budgetReport(txs, db.listDocuments(h.id), db.listDecisions(h.id));
     const { liste: resiliations } = suivis(db, h.id, txs);
     const economies_prouvees = Math.round(resiliations.filter((s) => s.statut === "confirmee").reduce((t, s) => t + s.economie_annuelle, 0) * 100) / 100;
-    Object.assign(report, { resiliations, economies_prouvees });
+    const solde = db.soldeFoyer(h.id);
+    const prevision = solde !== null && txs.length ? prevoirFinDeMois(solde, txs, new Date().toISOString().slice(0, 10)) : null;
+    Object.assign(report, { resiliations, economies_prouvees, prevision });
     if (h.plan === "gratuit") {
       // Free plan: the headline numbers and the two best actions.
       return c.json({ ...report, actions: report.actions.slice(0, 2), actions_total: report.actions.length, apercu: true });

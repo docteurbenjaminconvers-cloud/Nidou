@@ -604,6 +604,13 @@ export class Db {
     this.raw.prepare("UPDATE households SET modules = ? WHERE id = ?").run(JSON.stringify(modules), id);
   }
   /** Household operations without professional accounts (declared in the budget space): the family budget is not the practice's. */
+  /** Today's balance of the household accounts (professional accounts left out), or null without a bank connection. */
+  soldeFoyer(household_id: string): number | null {
+    const exclus = new Set(this.getModuleData<{ comptes_exclus?: string[] }>(household_id, "budget")?.comptes_exclus ?? []);
+    const comptes = this.listBankAccounts(household_id).filter((a) => a.solde !== null && a.solde !== undefined && !exclus.has(a.nom));
+    return comptes.length ? Math.round(comptes.reduce((s, a) => s + Number(a.solde), 0) * 100) / 100 : null;
+  }
+
   transactionsFoyer(household_id: string): TransactionRow[] {
     const exclus = new Set(this.getModuleData<{ comptes_exclus?: string[] }>(household_id, "budget")?.comptes_exclus ?? []);
     return this.listTransactions(household_id).filter((t) => !t.compte || !exclus.has(t.compte));

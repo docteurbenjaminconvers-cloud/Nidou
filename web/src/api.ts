@@ -1,4 +1,4 @@
-import type { AssistantEtat, AssistantMessage, AssistantReponse, AideResiliation, Resiliation } from "./types";
+import type { AssistantEtat, AssistantMessage, AssistantReponse, AideResiliation, Resiliation, Prevision } from "./types";
 import type { Activite, BankStatus, BudgetAction, BudgetReport, ChargesReport, Deadline, Doc, FamilleReport, Household, ImportResult, Member, Mesure, Temoin, Banque, BanquesReport, Veille, VeillesReport, VuePersonne } from "./types";
 import demoFamille from "./demo/famille.json";
 import { MODULES, PACKS, SOCLE, SOCLE_INCLUT, droits, normaliser, type Espace, type ModuleId } from "../../server/src/offre";
@@ -331,6 +331,7 @@ function makeDemoApi(): Api {
       base.economies_possibles = base.actions.filter((a) => a.decision !== "garde").reduce((s, a) => s + a.economie_annuelle, 0);
       base.resiliations = structuredClone(state.resiliations);
       base.economies_prouvees = 0;
+      base.prevision = previsionDemo();
       return base;
     },
     importStatement: async () => {
@@ -651,6 +652,23 @@ export interface VueComptable { prenom: string; nom_comptable: string | null; ex
 
 /** Demo: the same pure functions as the server, on the Martin family's fictional accounts. */
 const nouvelId = () => Math.random().toString(36).slice(2, 10);
+
+/** Demo end-of-month forecast, computed like the server's from a fixed sample (balance, debits, salary, daily spending). */
+function previsionDemo(): Prevision {
+  const auj = new Date(), y = auj.getFullYear(), m = auj.getMonth(), j0 = auj.getDate();
+  const dernier = new Date(y, m + 1, 0).getDate();
+  const iso = (j: number) => `${y}-${String(m + 1).padStart(2, "0")}-${String(j).padStart(2, "0")}`;
+  const prelev = [{ libelle: "Keepcool", montant: 34.9, jour: 16 }, { libelle: "Canal+", montant: 29.99, jour: 20 }, { libelle: "Edf", montant: 142, jour: 22 }, { libelle: "Free", montant: 39.99, jour: 25 }].filter((x) => x.jour > j0);
+  const revenus = [{ libelle: "Atelier Verdier", montant: 2850, jour: 28 }].filter((x) => x.jour > j0);
+  const parJour = 62.4;
+  let solde = 2487.91, plusBas = { jour: iso(j0), solde };
+  for (let j = j0 + 1; j <= dernier; j++) {
+    solde += revenus.filter((x) => x.jour === j).reduce((s, x) => s + x.montant, 0) - prelev.filter((x) => x.jour === j).reduce((s, x) => s + x.montant, 0) - parJour;
+    if (solde < plusBas.solde) plusBas = { jour: iso(j), solde: Math.round(solde * 100) / 100 };
+  }
+  return { solde_actuel: 2487.91, revenus_attendus: revenus, prelevements_a_venir: prelev, depenses_courantes: Math.round(parJour * (dernier - j0)), depense_courante_jour: parJour,
+    solde_prevu: Math.round(solde * 100) / 100, fin_mois: iso(dernier), jours_restants: dernier - j0, plus_bas: plusBas, alerte: null };
+}
 function makeEspacesDemo(state: { household: Household; famille: FamilleReport; docs: Doc[] }) {
   const today = new Date().toISOString().slice(0, 10);
   const txs: TxB[] = [...lireReleveDemo(demoStatement(today), "Compte joint"), ...demoComptePro(today), ...demoLoyers(today)];
