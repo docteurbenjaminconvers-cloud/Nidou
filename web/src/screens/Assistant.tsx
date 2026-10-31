@@ -5,10 +5,12 @@ import type { AssistantEtat, AssistantMessage, AssistantReponse, Household } fro
 type Bulle = AssistantMessage & { liens?: AssistantReponse["liens"]; courrier?: AssistantReponse["courrier"]; erreur?: boolean };
 
 const SUGGESTIONS = [
-  "Qu'est-ce que je dois faire ce mois-ci ?",
+  "Qu'est-ce qui nous attend cette semaine ?",
   "Où est-ce que je peux économiser ?",
+  "Prépare mon dossier de location",
+  "J'ai perdu mon portefeuille, je fais quoi ?",
+  "Quels papiers je peux jeter ?",
   "Résilie mon assurance auto",
-  "Quand expire le passeport de Léa ?",
 ];
 
 const fmt = (n: number) => `${n.toLocaleString("fr-FR", { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 })} €`;

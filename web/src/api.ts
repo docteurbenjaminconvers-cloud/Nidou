@@ -1,6 +1,10 @@
 import type { AssistantEtat, AssistantMessage, AssistantReponse } from "./types";
 import type { Activite, BankStatus, BudgetAction, BudgetReport, ChargesReport, Deadline, Doc, FamilleReport, Household, ImportResult, Member, Mesure, Temoin, Banque, BanquesReport, Veille, VeillesReport, VuePersonne } from "./types";
 import demoFamille from "./demo/famille.json";
+import { etatDossiers } from "../../server/src/dossiers";
+import { grandMenage } from "../../server/src/conservation";
+import { scenarios } from "../../server/src/urgence";
+import { pointSemaine } from "../../server/src/semaine";
 import demoBudget from "./demo/budget.json";
 import demoBudgetFamille from "./demo/budget-famille.json";
 import demoHousehold from "./demo/household.json";
@@ -290,7 +294,7 @@ function makeDemoApi(): Api {
       if (e.restantes <= 0) throw new ApiError(429, "quota", "Les questions offertes pendant la démo sont épuisées.");
       await new Promise((r) => setTimeout(r, 900));
       state.assistantQuestions++;
-      return { ...assistantDemo(messages.at(-1)?.content ?? "", state.docs, state.deadlines, demoChargesFamille as ChargesReport), etat: assistantEtatDemo(state) };
+      return { ...assistantDemo(messages.at(-1)?.content ?? "", state.docs, state.deadlines, demoChargesFamille as ChargesReport, state.famille, state.household), etat: assistantEtatDemo(state) };
     },
     assistantOption: async (actif) => { state.assistantOption = actif; return assistantEtatDemo(state); },
     renommer: async (nom) => { state.household.nom = nom; },
@@ -445,7 +449,7 @@ function assistantEtatDemo(state: { household: Household; assistantOption: boole
   return { disponible: true, acces, quota, utilisees: state.assistantQuestions, restantes: Math.max(0, quota - state.assistantQuestions), en_pause: false, prix: { mensuel: 2.9, annuel: 29 }, option: state.assistantOption };
 }
 
-function assistantDemo(q: string, docs: Doc[], deadlines: Deadline[], charges: ChargesReport): Omit<AssistantReponse, "etat"> {
+function assistantDemo(q: string, docs: Doc[], deadlines: Deadline[], charges: ChargesReport, famille?: FamilleReport, household?: Household): Omit<AssistantReponse, "etat"> {
   const t = q.toLowerCase();
   const euro = (n: number) => `${Math.round(n).toLocaleString("fr-FR")} €`;
   const date = (iso: string) => new Date(iso + "T00:00:00Z").toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "UTC" });
@@ -471,6 +475,25 @@ function assistantDemo(q: string, docs: Doc[], deadlines: Deadline[], charges: C
     if (/invit|conjoint/.test(t)) return { reponse: "Dans Réglages, rubrique « Famille partagée », saisissez l'email de votre conjoint : il reçoit un lien et voit les mêmes papiers et rappels. La formule Duo couvre 2 personnes connectées, Tribu jusqu'à 6.", liens: ecran("settings", "Réglages"), courrier: null };
     if (/notification/.test(t)) return { reponse: "Ouvrez la cloche en haut de l'accueil, puis activez les notifications en bas de l'écran : Lucien vous prévient avant chaque échéance et dès qu'une économie est repérée.", liens: ecran("notifs", "Notifications"), courrier: null };
     return { reponse: "Gratuit pour 1 personne. Solo 6,90 € par mois, Duo 9,90 € (2 personnes), Tribu 13,90 € (jusqu'à 6), ou 10 fois le prix mensuel à l'année. Tout est compris dans chaque formule ; l'assistant est une option à 2,90 € par mois. Sans engagement.", liens: ecran("settings", "Réglages"), courrier: null };
+  }
+  const ecranLien = (id: string, titre: string) => [{ type: "ecran" as const, id, titre }];
+  if (/perdu|vol[ée]?\b|portefeuille|sac\b|d[ée]g[âa]t|fuite|cambriol|accident|h[ôo]pital|urgence/.test(t)) {
+    const s = scenarios(docs).find((x) => (/d[ée]g[âa]t|fuite|cambriol/.test(t) ? x.cle === "degat_eaux" : /accident/.test(t) ? x.cle === "accident" : /h[ôo]pital/.test(t) ? x.cle === "hopital" : x.cle === "portefeuille"))!;
+    return { reponse: `${s.titre} : voici l'ordre.\n${s.etapes.slice(0, 4).map((e, i) => `${i + 1}. ${e.titre}${e.delai ? ` (${e.delai})` : ""}${e.tel ? `, au ${e.tel.replace(/(\d)(\d{3})(\d{3})(\d{3})/, "$1 $2 $3 $4")}` : ""}`).join("\n")}${s.references.length ? `\nVos références : ${s.references.slice(0, 2).map((r) => `${r.titre}${r.numero ? ` (n° ${r.numero})` : ""}`).join(", ")}.` : ""}`, liens: ecranLien("urgence", "En cas de coup dur"), courrier: null };
+  }
+  if (/dossier|louer|location|appartement|caf\b|pr[êe]t immo|inscri/.test(t)) {
+    const cle = /caf\b/.test(t) ? "caf" : /pr[êe]t/.test(t) ? "pret" : /inscri|[ée]cole|cantine/.test(t) ? "ecole" : "location";
+    const e = etatDossiers(docs).find((k) => k.cle === cle)!;
+    const manque = e.pieces.filter((p) => p.statut !== "ok" && !p.optionnelle);
+    return { reponse: `${e.titre} : ${e.prets} pièce${e.prets > 1 ? "s" : ""} sur ${e.requis} prête${e.prets > 1 ? "s" : ""}.${manque.length ? `\nIl manque :\n${manque.map((p) => `• ${p.libelle}${p.statut === "ancien" ? " (celui que j'ai est trop ancien)" : p.statut === "expire" ? " (celui que j'ai est expiré)" : ""}`).join("\n")}` : " Tout y est."}\nDans Dossiers prêts, je prépare le .zip avec le bordereau.`, liens: ecranLien("dossiers", "Dossiers prêts"), courrier: null };
+  }
+  if (/jeter|garder|m[ée]nage|conserver|trier/.test(t)) {
+    const m = grandMenage(docs);
+    return { reponse: m.length ? `${m.length} papier${m.length > 1 ? "s peuvent" : " peut"} partir : ${m.map((x) => `${x.doc.title} (${x.etat.garder.toLowerCase()})`).join(", ")}. Le reste est encore utile : chaque papier indique jusqu'à quand le garder.` : "Rien à jeter pour l'instant : chaque papier indique jusqu'à quand le garder.", liens: ecranLien("menage", "Grand ménage"), courrier: null };
+  }
+  if (/semaine|ce week|dimanche|nous attend/.test(t) && household) {
+    const p = pointSemaine({ foyer: household.nom, echeances: deadlines.map((d) => ({ id: d.id, titre: d.titre, date: d.date, fait: d.fait, note: d.note, document_id: d.document_id })), creneaux: famille?.semaine ?? [], aVerifier: 0, economies: null, conseils: famille?.conseils ?? [] });
+    return { reponse: `${p.intro}\n${p.sections.filter((s) => s.cle !== "conseil").flatMap((s) => s.items.slice(0, 3).map((i) => `• ${i.titre}${i.detail && s.cle === "agenda" ? ` : ${i.detail}` : ""}`)).join("\n")}`, liens: ecranLien("semaine", "Votre semaine"), courrier: null };
   }
   if (/[ée]conom|budget|cher|payer moins|d[ée]pens/.test(t)) {
     const top = charges.alertes.filter((a) => a.economie_estimee).slice(0, 3);
