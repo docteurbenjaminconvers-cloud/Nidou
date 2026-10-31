@@ -378,3 +378,12 @@ html.intro-on { overflow: hidden; }
   .simu-total small, .simu-total .simu-garde, .simu-total .small { display: none; }
   .simu-total .btn { grid-area: cta; justify-self: stretch; min-height: 42px; padding: 8px 16px; font-size: 14.5px; margin-top: 8px; }
 }
+
+.aussi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 48px; }
+.aussi-item { background: var(--white); border-radius: 24px; box-shadow: var(--shadow); padding: 20px; display: grid; gap: 6px; align-content: start; }
+.aussi-item b { font-family: var(--display); font-style: italic; font-weight: 600; font-size: 20px; }
+.aussi-item span:not(.aussi-ico) { color: var(--mist); font-size: 15px; }
+.aussi-ico { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; margin-bottom: 6px; }
+.aussi-ico svg { width: 24px; height: 24px; fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.aussi-ico.moss { background: var(--moss); } .aussi-ico.peach { background: var(--peach); } .aussi-ico.lilac { background: var(--lilac-soft); }
+@media (max-width: 860px) { .aussi { grid-template-columns: 1fr; } }
