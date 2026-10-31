@@ -17,7 +17,7 @@ export const DONNEES_PRO_VIDES: DonneesPro = { personnes: [] };
 export const RUBRIQUES = {
   recettes: "Recettes encaissées",
   achats: "Achats",
-  cet: "Contribution économique territoriale (CFE)",
+  cet: "Contribution économique territoriale",
   autres_impots: "Autres impôts",
   loyers: "Loyers et charges locatives",
   location_materiel: "Location de matériel et de mobilier",
@@ -25,18 +25,25 @@ export const RUBRIQUES = {
   petit_outillage: "Petit outillage",
   energie: "Chauffage, eau, gaz, électricité",
   honoraires: "Honoraires ne constituant pas des rétrocessions",
-  assurances: "Primes d'assurance",
+  assurances: "Primes d'assurances",
   vehicule: "Frais de véhicules",
   deplacements: "Autres frais de déplacements",
   sociales_obligatoires: "Charges sociales personnelles obligatoires",
+  urssaf: "URSSAF : cotisations, CSG et CRDS (à ventiler)",
+  csg_deductible: "CSG déductible",
+  salaires: "Salaires nets et avantages en nature",
+  charges_salaires: "Charges sociales sur salaires",
+  tva: "TVA reversée",
+  interimaire: "Personnel intérimaire",
+  pertes: "Pertes diverses",
   sociales_facultatives: "Charges sociales personnelles facultatives (Madelin)",
   reception: "Frais de réception, de représentation et de congrès",
-  fournitures: "Fournitures de bureau, documentation, correspondance et téléphone",
+  fournitures: "Fournitures de bureau, frais de documentation, de correspondance et de téléphone",
   actes: "Frais d'actes et de contentieux",
   cotisations_pro: "Cotisations syndicales et professionnelles",
   divers_gestion: "Autres frais divers de gestion",
   frais_financiers: "Frais financiers",
-  immobilisation: "À immobiliser et amortir (achat de plus de 500 € HT)",
+  immobilisation: "À immobiliser et amortir (achat de plus de 500 € HT ?)",
   prelevements: "Prélèvements personnels (non déductibles)",
   a_classer: "À classer",
 } as const;
@@ -44,7 +51,10 @@ export type Rubrique = keyof typeof RUBRIQUES;
 
 const REGLES: [RegExp, Rubrique][] = [
   [/vir(ement)? (vers|pour)? ?(compte joint|perso|personnel|m\.? ?martin|mme)/i, "prelevements"],
-  [/urssaf|carpimko|carmf|cipav|carcdsf|cavp|carpv|cnbf|crpcen|cavamac|cavec/i, "sociales_obligatoires"],
+  [/urssaf/i, "urssaf"],
+  [/carpimko|carmf|cipav|carcdsf|cavp|carpv|cnbf|crpcen|cavamac|cavec/i, "sociales_obligatoires"],
+  [/dgfip tva|tva\b/i, "tva"],
+  [/salaire|paie\b/i, "salaires"],
   [/madelin|prevoyance|retraite complementaire facultative/i, "sociales_facultatives"],
   [/\bcfe\b|cotisation fonciere/i, "cet"],
   [/scm|loyer|bail|cabinet/i, "loyers"],
@@ -66,8 +76,8 @@ export function rubriqueDe(t: TxB, forcees: Record<string, Rubrique> = {}): Rubr
   const k = cleLibelle(t.libelle);
   if (forcees[k]) return forcees[k];
   if (t.montant > 0) return /vir(ement)? (de|depuis) (compte joint|perso)/i.test(t.libelle) ? "a_classer" : "recettes";
-  for (const [re, r] of REGLES) if (re.test(t.libelle)) return r === "fournitures" && t.montant <= -600 ? "immobilisation" : r;
-  return t.montant <= -600 ? "immobilisation" : "a_classer";
+  for (const [re, r] of REGLES) if (re.test(t.libelle)) return r === "fournitures" && t.montant <= -500 ? "immobilisation" : r;
+  return t.montant <= -500 ? "immobilisation" : "a_classer";
 }
 export const cleLibelle = (l: string) => l.toUpperCase().replace(/\d{2}\/\d{2}|\d{4,}/g, "").replace(/\s+/g, " ").trim();
 
@@ -151,6 +161,8 @@ export function rapportIndependant(i: Independant, txs: TxB[], today: string): R
     : benefice < base_micro
       ? `Au réel (2035), vous déclarez ${Math.round(base_micro - benefice).toLocaleString("fr-FR")} € de moins qu'en micro à ce stade de l'année : vos charges dépassent l'abattement de 34 %.`
       : `En micro, l'abattement de 34 % dépasse vos charges réelles : le micro-BNC vous ferait déclarer ${Math.round(benefice - base_micro).toLocaleString("fr-FR")} € de moins à ce stade.`;
+  const urssaf = tot.get("urssaf")?.montant ?? 0;
+  const noteUrssaf = urssaf > 0 ? ` Les prélèvements URSSAF (${Math.round(urssaf).toLocaleString("fr-FR")} €) mêlent cotisations, CSG et CRDS : sur la 2035, la CSG déductible a sa propre ligne et la part non déductible (CSG non déductible, CRDS) ne se déduit pas. Reprenez le détail de votre attestation annuelle URSSAF : le bénéfice réel sera un peu plus élevé que cette estimation.` : "";
   const lim = limite2035(annee + 1);
   const echeances = [
     { date: `${annee}-12-15`, titre: "CFE à payer", detail: "Cotisation foncière des entreprises, avis dans votre espace professionnel impots.gouv.fr." },
@@ -163,7 +175,7 @@ export function rapportIndependant(i: Independant, txs: TxB[], today: string): R
     par_rubrique: [...tot].map(([r, v]) => ({ rubrique: r, libelle: RUBRIQUES[r], ...v })).sort((a, b) => b.montant - a.montant),
     a_classer: livre.filter((l) => l.rubrique === "a_classer").map(({ date, libelle, montant }) => ({ date, libelle, montant })),
     immobilisations: livre.filter((l) => l.rubrique === "immobilisation").map(({ date, libelle, montant }) => ({ date, libelle, montant })),
-    livre, micro: { eligible, seuil, base_micro, base_reel: benefice, conseil }, echeances,
+    livre, micro: { eligible, seuil, base_micro, base_reel: benefice, conseil: conseil + noteUrssaf }, echeances,
   };
 }
 

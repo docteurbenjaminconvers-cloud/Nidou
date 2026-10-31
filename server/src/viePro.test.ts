@@ -22,13 +22,15 @@ test("vie pro indépendant : rubriques 2035, matériel à amortir, prélèvement
   const c = r.personnes[1].independant!;
   const rub = Object.fromEntries(c.par_rubrique.map((x) => [x.rubrique, x.montant]));
   assert.equal(rub.loyers, 880 * 10);
-  assert.equal(rub.sociales_obligatoires, (640 + 415) * 10);
+  assert.equal(rub.sociales_obligatoires, 415 * 10, "CARPIMKO: personal pension contributions");
+  assert.equal(rub.urssaf, 640 * 10, "URSSAF mixes contributions and CSG-CRDS: kept apart, to split");
+  assert.match(c.micro.conseil, /CSG déductible/);
   assert.equal(c.immobilisations.length, 1, "massage table over 500 € is amortised, not expensed");
   assert.equal(c.prelevements, 2800 * 9, "transfers to the joint account are not expenses");
   assert.equal(c.benefice, Math.round((c.recettes - c.depenses) * 100) / 100);
   assert.ok(c.recettes < seuilMicroBnc(2026));
   assert.match(c.micro.conseil, /réel|micro/);
-  assert.equal(rubriqueDe({ date: "", libelle: "PRLV URSSAF", montant: -10, categorie: "autre" }), "sociales_obligatoires");
+  assert.equal(rubriqueDe({ date: "", libelle: "PRLV CARMF", montant: -10, categorie: "autre" }), "sociales_obligatoires");
   assert.equal(rubriqueDe({ date: "", libelle: "PRLV URSSAF", montant: -10, categorie: "autre" }, { "PRLV URSSAF": "a_classer" }), "a_classer", "manual choice wins");
   assert.ok(livreCsv(c).startsWith("Date;Libellé;Rubrique 2035;Recette;Dépense"));
 });

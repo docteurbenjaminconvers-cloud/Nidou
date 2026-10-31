@@ -131,7 +131,7 @@ export function EspaceLocatif({ api, go, onBack, toast }: { api: Api; go: (s: st
           <div className="section-head"><h2>Déclaration des loyers</h2></div>
           {r.fiscal.nu && <div className="conseil-fiscal"><b>Location nue · {eur(r.fiscal.nu.recettes)} de loyers par an</b><p>{r.fiscal.nu.conseil}</p><small>Micro-foncier : {eur(r.fiscal.nu.micro.base)} imposés (plafond 15 000 €). Réel : {eur(r.fiscal.nu.reel.resultat)} après {eur(r.fiscal.nu.charges_deductibles)} de charges. {r.fiscal.nu.cases}</small></div>}
           {r.fiscal.meuble && <div className="conseil-fiscal"><b>Location meublée · {eur(r.fiscal.meuble.recettes)} de recettes par an</b><p>{r.fiscal.meuble.conseil}</p><small>Micro-BIC : {eur(r.fiscal.meuble.micro.base)} imposés (plafond {eur(r.fiscal.meuble.seuil)}). {r.fiscal.meuble.cases}</small></div>}
-          <p className="note">Estimations sur les loyers des baux en cours, à vérifier chaque année sur impots.gouv.fr. Prélèvements sociaux en plus (17,2 % sur les revenus fonciers).</p>
+          <p className="note">Estimations sur les loyers des baux en cours, à vérifier chaque année sur impots.gouv.fr. Prélèvements sociaux en plus : 17,2 % sur les loyers nus, 18,6 % sur la location meublée depuis la loi de financement de la sécurité sociale pour 2026. Meublé de tourisme non classé : plafond et abattement différents (15 000 €, 30 %).</p>
         </section>
       )}
 
