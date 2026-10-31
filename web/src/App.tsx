@@ -18,6 +18,7 @@ import { Login } from "./screens/Login";
 import { Semaine, calculerSemaine } from "./screens/Semaine";
 import { Dossier, Dossiers } from "./screens/Dossiers";
 import { Menage } from "./screens/Menage";
+import { CoupDur, Urgence } from "./screens/Urgence";
 import { ConsentPage, VeilleDetail, VeilleNouvelle } from "./screens/Veille";
 import { ApiError } from "./api";
 import type { FamilleReport } from "./types";
@@ -114,23 +115,25 @@ export default function App() {
       {route.s === "veille" && route.id && <VeilleDetail api={api} id={route.id} onBack={() => history.length > 1 ? history.back() : go("famille")} toast={toast} />}
       {route.s === "docs" && <Documents docs={docs} go={go} unread={notifs.unread} />}
       {route.s === "doc" && route.id && <DocumentDetail api={api} id={route.id} onBack={() => history.length > 1 ? history.back() : go("docs")} onChanged={reload} toast={toast} />}
-      {route.s === "add" && <Add api={api} household={household} onBack={() => go("home")} onAdded={(id) => { reload(); go("doc", id); }} toast={toast} />}
+      {route.s === "add" && <Add api={api} household={household} docs={docs} go={go} onBack={() => go("home")} onAdded={(id) => { reload(); go("doc", id); }} toast={toast} />}
       {route.s === "budget" && <Budget api={api} charges={charges} budget={budget} household={household} go={go} onUpgrade={() => go("settings")} onChanged={reload} toast={toast} unread={notifs.unread} />}
       {route.s === "notifs" && <NotificationsScreen items={notifs.items} read={notifs.read} markRead={notifs.markRead} markAll={notifs.markAll} go={go} onBack={() => go("home")} api={api} toast={toast} />}
       {route.s === "assistant" && <Assistant api={api} household={household} go={go} onBack={() => history.length > 1 ? history.back() : go("home")} onChanged={reload} toast={toast} />}
+      {route.s === "urgence" && <Urgence docs={docs} go={go} onBack={() => history.length > 1 ? history.back() : go("home")} />}
+      {route.s === "coup-dur" && route.id && <CoupDur cle={route.id} docs={docs} go={go} onBack={() => go("urgence")} />}
       {route.s === "menage" && <Menage api={api} docs={docs} go={go} onBack={() => go("docs")} onChanged={reload} toast={toast} />}
       {route.s === "dossiers" && <Dossiers docs={docs} go={go} onBack={() => go("docs")} />}
       {route.s === "dossier" && route.id && <Dossier cle={route.id} api={api} household={household} docs={docs} go={go} onBack={() => go("dossiers")} toast={toast} />}
       {route.s === "semaine" && <Semaine point={calculerSemaine(household, deadlines, docs, budget, famille)} household={household} go={go} onBack={() => history.length > 1 ? history.back() : go("home")} />}
       {route.s === "connecteur" && <Connecteur household={household} go={go} onBack={() => history.length > 1 ? history.back() : go("settings")} toast={toast} />}
       {route.s === "settings" && <Settings api={api} household={household} onBack={() => go("home")} onPlan={() => reload()} toast={toast} go={go} />}
-      {(route.s === "home" || !["deadlines", "docs", "doc", "add", "budget", "settings", "notifs", "famille", "membre", "activite", "veille", "veille-nouvelle", "assistant", "connecteur", "semaine", "dossiers", "dossier", "menage"].includes(route.s)) && (
+      {(route.s === "home" || !["deadlines", "docs", "doc", "add", "budget", "settings", "notifs", "famille", "membre", "activite", "veille", "veille-nouvelle", "assistant", "connecteur", "semaine", "dossiers", "dossier", "menage", "urgence", "coup-dur"].includes(route.s)) && (
         <Today household={household} deadlines={deadlines} docs={docs} charges={charges} budget={budget} go={go} onDone={onDone} unread={notifs.unread} famille={famille} />
       )}
 
       <nav className="tabs" aria-label="Navigation">
         <div className="tabs-inner">
-          <button className="tab" aria-current={tab === "home" || tab === "settings" || tab === "notifs" || tab === "semaine" || tab === "famille" || tab === "assistant" || tab === "connecteur" ? "page" : undefined} onClick={() => go("home")}><TabIcon d="M3 11l9-7 9 7v9a1 1 0 01-1 1h-5v-6h-6v6H4a1 1 0 01-1-1v-9z" />Aujourd'hui</button>
+          <button className="tab" aria-current={tab === "home" || tab === "settings" || tab === "notifs" || tab === "semaine" || tab === "urgence" || tab === "coup-dur" || tab === "famille" || tab === "assistant" || tab === "connecteur" ? "page" : undefined} onClick={() => go("home")}><TabIcon d="M3 11l9-7 9 7v9a1 1 0 01-1 1h-5v-6h-6v6H4a1 1 0 01-1-1v-9z" />Aujourd'hui</button>
           <button className="tab" aria-current={tab === "deadlines" ? "page" : undefined} onClick={() => go("deadlines")}><TabIcon d="M4 5h16v15H4zM4 9h16M8 3v4M16 3v4M9 14l2 2 4-4" />Agenda</button>
           <button className="tab-add" aria-label="Ajouter un papier" onClick={() => go("add")}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg></button>
           <button className="tab" aria-current={tab === "docs" ? "page" : undefined} onClick={() => go("docs")}><TabIcon d="M4 4h10l6 6v10H4zM14 4v6h6M8 13h8M8 17h5" />Papiers</button>

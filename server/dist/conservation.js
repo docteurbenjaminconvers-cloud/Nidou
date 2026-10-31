@@ -2,7 +2,7 @@
  * « Combien de temps garder ce papier ? » : la durée de conservation de chaque document, d'après les durées
  * publiées par service-public.fr, et la liste de ce qu'on peut jeter (grand ménage). Fonction pure, partagée appli/serveur.
  */
-export const SOURCE_CONSERVATION = "https://www.service-public.fr/particuliers/vosdroits/F19134";
+export const SOURCE_CONSERVATION = "https://www.service-public.gouv.fr/particuliers/vosdroits/F19134";
 const REGLES = [
     { cle: "bulletin", libelle: "Bulletin de salaire", match: (_d, t) => /bulletin de (salaire|paie)|fiche de paie/.test(t), garde: { type: "retraite" }, detail: "Ils prouvent vos droits à la retraite : gardez-les jusqu'à ce qu'elle soit liquidée." },
     { cle: "livret", libelle: "Livret de famille, acte d'état civil", match: (_d, t) => /livret de famille|acte de (naissance|mariage|décès|deces)|jugement de divorce/.test(t), garde: { type: "vie" }, detail: "À conserver toute la vie." },

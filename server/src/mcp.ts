@@ -10,6 +10,7 @@ import { budgetReport } from "./budget.js";
 import { entreeSemaine } from "./hebdo.js";
 import { pointSemaine } from "./semaine.js";
 import { etatKit, KITS } from "./dossiers.js";
+import { NUMEROS, scenarios } from "./urgence.js";
 
 /**
  * Lucien MCP server — read-only access to a household's papers for any MCP-compatible assistant
@@ -120,6 +121,20 @@ export function createMcpServer(db: Db, householdId: string) {
       const kit = KITS.find((k) => k.cle === demarche)!;
       const e = etatKit(kit, visible());
       return text({ ...e, icone: undefined, pieces: e.pieces.map((p) => ({ ...p, documents: p.documents.map(({ fichier, ...d }) => d) })) });
+    }
+  );
+
+  server.registerTool(
+    "coup_dur",
+    {
+      title: "En cas de coup dur",
+      description: "Marche à suivre, dans l'ordre, quand tout va mal : portefeuille, sac ou papiers perdus ou volés (portefeuille), dégât des eaux, incendie ou cambriolage (degat_eaux), accident de voiture (accident), hospitalisation (hopital). Avec les délais à respecter, les numéros utiles et les références du foyer (organisme, numéro de contrat).",
+      inputSchema: { situation: z.enum(["portefeuille", "degat_eaux", "accident", "hopital"]).describe("La situation") },
+    },
+    async ({ situation }) => {
+      log("coup_dur", { situation });
+      const s = scenarios(visible()).find((x) => x.cle === situation)!;
+      return text({ ...s, icone: undefined, numeros_urgence: NUMEROS });
     }
   );
 

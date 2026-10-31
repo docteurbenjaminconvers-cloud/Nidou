@@ -2,9 +2,13 @@ import { useRef, useState } from "react";
 import type { Api } from "../api";
 import { ApiError } from "../api";
 import { Back } from "../ui";
-import type { Household } from "../types";
+import type { Doc, Household } from "../types";
+import { etatDossiers, piecesSouhaitees } from "../../../server/src/dossiers";
 
-export function Add({ api, onBack, onAdded, toast, household }: { api: Api; onBack: () => void; onAdded: (id: string) => void; toast: (m: string) => void; household?: Household }) {
+const minus = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
+
+export function Add({ api, onBack, onAdded, toast, household, docs = [], go }: { api: Api; onBack: () => void; onAdded: (id: string) => void; toast: (m: string) => void; household?: Household; docs?: Doc[]; go?: (s: string, id?: string) => void }) {
+  const souhaits = piecesSouhaitees(etatDossiers(docs));
   const restantes = household?.ia_lectures_restantes ?? null;
   const [file, setFile] = useState<File | null>(null);
   const [texte, setTexte] = useState("");
@@ -70,6 +74,22 @@ export function Add({ api, onBack, onAdded, toast, household }: { api: Api; onBa
                 ? `Plan gratuit : ${restantes} lecture${restantes > 1 ? "s" : ""} par l'IA ce mois-ci. Ensuite, la lecture se fait sans IA et vous complétez les champs.`
                 : "Plan gratuit : quota mensuel de lectures IA atteint. La lecture se fait sans IA ; complétez les champs manquants. Le plan Famille lit chaque document avec l'IA."}
         </p>
+      )}
+
+      {souhaits.length > 0 && (
+        <section className="section souhaits" style={{ marginTop: 26 }}>
+          <div className="section-head"><h2>Ce qui me manque</h2>{go && <button className="link" onClick={() => go("dossiers")}>Dossiers</button>}</div>
+          <p className="note" style={{ marginBottom: 10 }}>Avec ces papiers, vos dossiers seront prêts le jour où on vous les demande.</p>
+          <ul className="list">
+            {souhaits.map((s) => (
+              <li key={s.cle} className="souhait">
+                <b>{s.libelle}</b>
+                <span className="souhait-pour">{s.statut === "ancien" ? "Le mien est trop ancien · " : s.statut === "expire" ? "Le mien est expiré · " : ""}Pour {s.pour.length > 2 ? `${s.pour.slice(0, 2).map(minus).join(", ")} et ${s.pour.length - 2} autre${s.pour.length - 2 > 1 ? "s" : ""}` : s.pour.map(minus).join(" et ")}</span>
+                <span className="souhait-ou">{s.obtenir}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </div>
   );

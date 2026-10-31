@@ -40,7 +40,7 @@ const LIVRET_FAMILLE = {
 export const KITS = [
     {
         cle: "location", titre: "Louer un logement", pour: "Le dossier à remettre au propriétaire ou à l'agence", icone: "M3 11l9-7 9 7v9a1 1 0 01-1 1h-5v-6h-6v6H4a1 1 0 01-1-1v-9z",
-        source: "https://www.service-public.fr/particuliers/vosdroits/F1169",
+        source: "https://www.service-public.gouv.fr/particuliers/recherche?keyword=dossier%20location%20pi%C3%A8ces%20justificatives",
         pieces: [
             IDENTITE, DOMICILE_3_MOIS, BULLETINS, CONTRAT_TRAVAIL, AVIS_IMPOT,
             { cle: "garant", libelle: "Dossier du garant (si vous en avez un)", optionnelle: true, match: re(/\bgarant\b|\bgarante\b|acte de caution|cautionnement|visale/),
@@ -58,7 +58,7 @@ export const KITS = [
     },
     {
         cle: "ecole", titre: "Inscription à l'école et à la cantine", pour: "Mairie, école, centre de loisirs", icone: "M3 9l9-5 9 5-9 5-9-5zM7 11.5V16c0 1.5 2.5 3 5 3s5-1.5 5-3v-4.5",
-        source: "https://www.service-public.fr/particuliers/vosdroits/F1865",
+        source: "https://www.service-public.gouv.fr/particuliers/recherche?keyword=inscription%20%C3%A9cole",
         pieces: [
             LIVRET_FAMILLE, DOMICILE_3_MOIS,
             { cle: "vaccins", libelle: "Carnet de santé, pages des vaccinations", match: (d) => d.category === "sante" && /vaccin|carnet de santé|carnet de sante/.test(t(d)),
@@ -71,7 +71,7 @@ export const KITS = [
     },
     {
         cle: "pret", titre: "Demande de prêt immobilier", pour: "Banque ou courtier", icone: "M3 21h18M5 21V10l7-5 7 5v11M9 21v-6h6v6",
-        source: "https://www.service-public.fr/particuliers/vosdroits/F1004",
+        source: "https://www.service-public.gouv.fr/particuliers/recherche?keyword=pr%C3%AAt%20immobilier",
         pieces: [
             IDENTITE, DOMICILE_3_MOIS, LIVRET_FAMILLE, CONTRAT_TRAVAIL, BULLETINS,
             { ...AVIS_IMPOT, cle: "avis_impot_2", libelle: "2 derniers avis d'impôt", nombre: 2, moins_de_mois: 30 },
@@ -83,7 +83,7 @@ export const KITS = [
     },
     {
         cle: "identite", titre: "Refaire un passeport ou une carte d'identité", pour: "Rendez-vous en mairie", icone: "M4 6h16v12H4zM8 10h3M8 14h6M15 10h1",
-        source: "https://www.service-public.fr/particuliers/vosdroits/F1342",
+        source: "https://www.service-public.gouv.fr/particuliers/recherche?keyword=passeport",
         pieces: [
             { ...DOMICILE_3_MOIS, cle: "domicile_1an", libelle: "Justificatif de domicile de moins d'un an", moins_de_mois: 12 },
             { cle: "ancien_titre", libelle: "Ancien passeport ou ancienne carte d'identité", match: cat("identite", /passeport|carte (nationale )?d'identit|\bcni\b/),
@@ -94,7 +94,7 @@ export const KITS = [
     },
     {
         cle: "sinistre", titre: "Déclarer un sinistre à l'assurance", pour: "Dégât des eaux, vol, bris, accident", icone: "M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z",
-        source: "https://www.service-public.fr/particuliers/vosdroits/F2697",
+        source: "https://www.service-public.gouv.fr/particuliers/vosdroits/F3077",
         pieces: [
             { cle: "contrat_assurance", libelle: "Contrat ou attestation d'assurance concerné", match: cat("assurance"),
                 obtenir: "Dans l'espace client de votre assureur, rubrique « Mes contrats »." },
@@ -154,4 +154,18 @@ export function bordereau(e, foyer, today = new Date().toISOString().slice(0, 10
         "",
         `Liste indicative d'après ${e.source}. Vérifiez auprès de l'organisme, qui peut demander d'autres pièces.`,
     ].join("\n");
+}
+/** The papers that would complete the most folders (missing or too old), for the « add a paper » screen. */
+export function piecesSouhaitees(etats, max = 4) {
+    const par = new Map();
+    for (const e of etats)
+        for (const p of e.pieces) {
+            if (p.statut === "ok" || p.optionnelle)
+                continue;
+            const cle = p.cle.replace(/_\d+$|_1an$/, "");
+            const x = par.get(cle) ?? { cle, libelle: p.libelle, obtenir: p.obtenir, pour: [], statut: p.statut };
+            x.pour.push(e.titre);
+            par.set(cle, x);
+        }
+    return [...par.values()].sort((a, b) => b.pour.length - a.pour.length).slice(0, max);
 }

@@ -54,7 +54,7 @@ test("dossiers : la famille de démo, et le bordereau", () => {
   assert.match(b, /\[x\] 3 derniers bulletins de salaire/);
   assert.match(b, /\[ \] Contrat de travail/);
   assert.match(b, /À fournir : /);
-  assert.match(b, /service-public\.fr/);
+  assert.match(b, /service-public\.gouv\.fr/);
 });
 
 test("zip : archive lisible (noms UTF-8, contenu restitué)", () => {

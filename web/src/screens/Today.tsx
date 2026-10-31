@@ -2,6 +2,7 @@ import { Bell } from "../notifications";
 import type { BudgetReport, ChargesReport, Deadline, Doc, FamilleReport, Household } from "../types";
 import { DateChip, daysUntil, fmtDate, fmtEuro, Logo, relative } from "../ui";
 import { SemaineCarte, calculerSemaine } from "./Semaine";
+import { UrgenceCarte } from "./Urgence";
 
 export function Today({ household, deadlines, docs, charges, budget, go, onDone, unread, famille }: {
   household: Household; deadlines: Deadline[]; docs: Doc[]; charges: ChargesReport | null; budget: BudgetReport | null;
@@ -164,6 +165,7 @@ export function Today({ household, deadlines, docs, charges, budget, go, onDone,
           </div>
         </section>
       )}
+      <UrgenceCarte go={go} />
     </div>
   );
 }

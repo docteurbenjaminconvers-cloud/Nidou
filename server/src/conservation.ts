@@ -11,7 +11,7 @@ export type Garde =
 
 interface Regle { cle: string; libelle: string; match: (d: DocConservation, txt: string) => boolean; garde: Garde; detail: string }
 
-export const SOURCE_CONSERVATION = "https://www.service-public.fr/particuliers/vosdroits/F19134";
+export const SOURCE_CONSERVATION = "https://www.service-public.gouv.fr/particuliers/vosdroits/F19134";
 
 const REGLES: Regle[] = [
   { cle: "bulletin", libelle: "Bulletin de salaire", match: (_d, t) => /bulletin de (salaire|paie)|fiche de paie/.test(t), garde: { type: "retraite" }, detail: "Ils prouvent vos droits à la retraite : gardez-les jusqu'à ce qu'elle soit liquidée." },
