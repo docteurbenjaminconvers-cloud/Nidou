@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { createHash, randomBytes } from "node:crypto";
+import { exporterFoyer } from "./export.js";
 import { basename, extname, join } from "node:path";
 import type { Db, DocumentRow, HouseholdRow } from "./db.js";
 import { extractDocument, heuristicExtract } from "./extract.js";
@@ -470,6 +471,13 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
       "x-content-type-options": "nosniff", "content-security-policy": "sandbox; default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; object-src 'self'",
       "cache-control": "private, no-store",
     } });
+  });
+
+  /** « Exporter tout » : the household's whole data and papers in one .zip (RGPD access and portability). */
+  api.get("/export.zip", async (c) => {
+    const h = household(c);
+    const nom = `Lucien - export ${h.nom ?? "foyer"} ${new Date().toISOString().slice(0, 10)}.zip`;
+    return new Response(new Uint8Array(await exporterFoyer(db, h.id, opts.uploadDir)), { headers: { "content-type": "application/zip", "content-disposition": dispositionFichier("attachment", nom), "x-content-type-options": "nosniff", "cache-control": "private, no-store" } });
   });
 
   /** « Dossiers prêts » : for each usual request (rental, CAF, school, loan…), what is ready, too old or missing. */

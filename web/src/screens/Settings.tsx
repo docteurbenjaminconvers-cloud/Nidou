@@ -196,8 +196,8 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
 
       <section className="section">
         <div className="section-head"><h2>Vos données</h2></div>
-        <div className="settings-row"><div><div className="t">Hébergement</div><div className="s">Europe · chiffré · jamais revendu</div></div></div>
-        <div className="settings-row"><div><div className="t">Exporter tout</div><div className="s">Documents et échéances au format JSON</div></div><button className="link" onClick={() => toast("Export disponible dans la version serveur")}>Exporter</button></div>
+        <div className="settings-row"><div><div className="t">Hébergement</div><div className="s">Europe · connexion chiffrée · jamais revendu</div></div></div>
+        <div className="settings-row"><div><div className="t">Exporter tout</div><div className="s">Vos papiers d'origine et toutes vos données, dans un fichier .zip</div></div><button className="link" onClick={async () => { toast("Préparation de l'export…"); try { await api.exporter(); } catch (e) { toast((e as Error).message); } }}>Exporter</button></div>
         <div className="settings-row"><div><div className="t">Supprimer le compte</div><div className="s">Tout est effacé, sans délai</div></div><button className="link" style={{ color: "var(--ember)" }} onClick={() => toast("Dans le prototype, supprimez le fichier de données")}>Supprimer</button></div>
         {household.utilisateur && <div className="settings-row"><div><div className="t">Connecté·e</div><div className="s">{household.utilisateur.email}</div></div><button className="link" onClick={async () => { await api.deconnexion(); location.reload(); }}>Se déconnecter</button></div>}
       </section>

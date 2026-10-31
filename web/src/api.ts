@@ -63,6 +63,8 @@ export interface Api {
   comptes(): Promise<{ comptes: { id: string; email: string; prenom: string | null; role: string; rejoint_le: string }[]; invitations: { id: string; email: string; prenom: string | null; expire_le: string }[] }>;
   inviter(email: string, prenom: string | null): Promise<{ ok: boolean; envoye: boolean; lien: string | null }>;
   annulerInvitation(id: string): Promise<void>;
+  /** « Exporter tout » : downloads the household's whole data (a .zip from the server; JSON in the demo). */
+  exporter(): Promise<void>;
   retirerCompte(userId: string): Promise<void>;
   regenererMcp(): Promise<string>;
   assistant(messages: AssistantMessage[]): Promise<AssistantReponse>;
@@ -178,6 +180,13 @@ const serverApi: Api = {
   comptes: () => call("/foyer/comptes"),
   inviter: (email, prenom) => call("/invitations", json({ email, prenom })),
   annulerInvitation: async (id) => { await call(`/invitations/${encodeURIComponent(id)}`, { method: "DELETE" }); },
+  exporter: async () => {
+    const r = await fetch("/api/export.zip");
+    if (!r.ok) throw new ApiError(r.status, "export", "L'export n'a pas pu être préparé. Réessayez dans un instant.");
+    const url = URL.createObjectURL(await r.blob());
+    const a = document.createElement("a"); a.href = url; a.download = `Lucien - export ${new Date().toISOString().slice(0, 10)}.zip`; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  },
   retirerCompte: async (id) => { await call(`/foyer/comptes/${id}`, { method: "DELETE" }); },
   regenererMcp: async () => (await call<{ token: string }>("/mcp/regenerer", { method: "POST" })).token,
   assistant: (messages) => call("/assistant", json({ messages })),
@@ -328,6 +337,11 @@ function makeDemoApi(): Api {
       const cap = state.household.capacite_comptes ?? 6;
       if (state.comptes.length + state.invitations.length >= cap) throw new ApiError(402, "limite_comptes", cap === 1 ? "Le plan gratuit est réservé à une personne. Avec Duo, votre conjoint·e se connecte aussi ; avec Tribu, jusqu'à 6 personnes." : `Votre formule accepte ${cap} personnes connectées. Passez à Tribu pour en inviter plus.`); state.invitations.push({ id: crypto.randomUUID(), email, prenom, expire_le: new Date(Date.now() + 7 * 864e5).toISOString() }); return { ok: true, envoye: true, lien: null }; },
     annulerInvitation: async (id) => { state.invitations = state.invitations.filter((i) => i.id !== id); },
+    exporter: async () => {
+      const url = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], { type: "application/json" }));
+      const a = document.createElement("a"); a.href = url; a.download = "Lucien - export (démo).json"; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    },
     retirerCompte: async (id) => { state.comptes = state.comptes.filter((c) => c.id !== id); },
     regenererMcp: async () => "demo-" + crypto.randomUUID().slice(0, 8),
     assistant: async (messages) => {
