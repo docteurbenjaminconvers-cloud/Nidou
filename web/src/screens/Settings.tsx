@@ -76,9 +76,11 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
   const comptes = household.comptes ?? 1;
   const formuleActuelle = household.plan_souscrit === "famille" || household.abonnement?.statut === "simule" ? household.abonnement?.formule ?? null : null;
   const conseil: Formule = comptes >= 3 ? "tribu" : "duo";
+  const [demarrage, setDemarrage] = useState(false);
   const checkout = async (formule: Formule, p: "mensuel" | "annuel") => {
+    if (!formuleActuelle && !demarrage) { toast("Cochez d'abord la case sur le démarrage de l'abonnement."); return; }
     try {
-      const r = await api.checkout(formule, p);
+      const r = await api.checkout(formule, p, true);
       if (r.url) { location.href = r.url; return; }
       onPlan("famille"); toast(`Formule ${TIERS.find((t) => t.id === formule)!.nom} activée (démo)`);
     } catch (e) { toast((e as Error).message); }
@@ -108,6 +110,7 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
           {household.abonnement?.paiement === false && <p className="note" style={{ background: "var(--yolk-soft)", padding: "10px 12px", borderRadius: 12 }}>Le paiement en ligne arrive bientôt. D'ici là, votre essai et vos papiers restent tels quels.</p>}
           <CodePartenaire api={api} toast={toast} />
           <button className="offre-lien" onClick={() => go("offre")}><b>Modules et packs</b><span>Budget expert, Vie pro, Patrimoine locatif : composez votre Lucien.</span></button>
+          {!formuleActuelle && <ConsentementDemarrage coche={demarrage} onChange={setDemarrage} />}
           <div className="tiers">
             {TIERS.map((t) => {
               const actuel = formuleActuelle === t.id;
@@ -132,6 +135,7 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
               <p className="note">Formule {TIERS.find((t) => t.id === formuleActuelle)?.nom ?? ""}, paiement {household.abonnement.periode === "annuel" ? "annuel" : "mensuel"}{household.abonnement.fin ? `, prochaine échéance le ${new Date(household.abonnement.fin).toLocaleDateString("fr-FR")}` : ""}{household.abonnement.statut === "past_due" ? " · paiement en attente, mettez à jour votre carte" : ""}{household.abonnement.statut === "simule" ? " · simulé (Stripe non configuré)" : ""}.</p>
               {household.abonnement.gerable && <button className="link" style={{ marginTop: 6 }} onClick={async () => { const r = await api.portail(); location.href = r.url; }}>Gérer mon abonnement (carte, factures)</button>}
               <Resiliation api={api} household={household} toast={toast} />
+              <Retractation api={api} household={household} toast={toast} />
             </div>
           )}
         </div>
@@ -246,6 +250,27 @@ function CodePartenaire({ api, toast }: { api: Api; toast: (m: string) => void }
 const dateFr = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 /** A paid subscription is running (trial and the free plan are not). */
 const paiementEnCours = (h: Household) => ["active", "trialing", "past_due", "simule"].includes(h.abonnement?.statut ?? "");
+
+/** The consumer's express request for an immediate start (withdrawal right, Code de la consommation L221-25). */
+export function ConsentementDemarrage({ coche, onChange }: { coche: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="consentement">
+      <input type="checkbox" checked={coche} onChange={(e) => onChange(e.target.checked)} />
+      <span>Je demande que mon abonnement commence tout de suite. Je garde 14 jours pour me rétracter ; seuls les jours déjà utilisés seront alors retenus.</span>
+    </label>
+  );
+}
+
+/** « Me rétracter » : 14 days after a new paid subscription. */
+function Retractation({ api, household, toast }: { api: Api; household: Household; toast: (m: string) => void }) {
+  const r = household.abonnement?.retractation;
+  const [confirmer, setConfirmer] = useState(false);
+  if (!r?.possible || household.titulaire === false) return null;
+  return confirmer ? (
+    <div className="resil-note"><span>L'abonnement s'arrête tout de suite et vous êtes remboursé de ce que vous avez payé, moins les jours déjà utilisés. Vos papiers restent consultables.</span>
+      <div style={{ display: "flex", gap: 14 }}><button className="link" style={{ color: "var(--ember)" }} onClick={async () => { try { const x = await api.seRetracter(); toast(x.rembourse_centimes ? `Rétractation faite : ${(x.rembourse_centimes / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2 })} € remboursés sous quelques jours` : "Rétractation faite"); setTimeout(() => location.reload(), 1500); } catch (e) { toast((e as Error).message); } }}>Confirmer la rétractation</button><button className="link" onClick={() => setConfirmer(false)}>Garder</button></div></div>
+  ) : <button className="link" style={{ marginTop: 6, display: "block" }} onClick={() => setConfirmer(true)}>Me rétracter (jusqu'au {r.jusquau ? dateFr(r.jusquau) : "14e jour"})</button>;
+}
 
 /** « Résilier l'abonnement » : no renewal, active until the end of the period already paid; can be taken back. */
 function Resiliation({ api, household, toast }: { api: Api; household: Household; toast: (m: string) => void }) {

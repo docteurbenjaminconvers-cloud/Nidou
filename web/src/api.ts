@@ -79,7 +79,7 @@ export interface Api {
   setHebdo(actif: boolean): Promise<void>;
   /** The offer (socle, modules, packs) and the household's modules. */
   offre(): Promise<OffreEtat>;
-  choisirModules(modules: ModuleId[], pack: string | null, opts?: { formule: "solo" | "duo" | "tribu"; periode: "mensuel" | "annuel"; biens?: number; proches?: number }): Promise<{ souscrits: ModuleId[]; actifs: ModuleId[]; url?: string }>;
+  choisirModules(modules: ModuleId[], pack: string | null, opts?: { formule: "solo" | "duo" | "tribu"; periode: "mensuel" | "annuel"; biens?: number; proches?: number; demarrage_immediat?: boolean }): Promise<{ souscrits: ModuleId[]; actifs: ModuleId[]; url?: string }>;
   /** A paid space: its stored data, the report computed on the household's operations, and the bank accounts seen. */
   espace<E extends Espace>(e: E): Promise<EspaceReponse<E>>;
   sauverEspace<E extends Espace>(e: E, donnees: EspaceDonnees[E]): Promise<void>;
@@ -93,7 +93,9 @@ export interface Api {
   vueComptable(token: string): Promise<VueComptable>;
   agendaLien(): Promise<{ url: string }>;
   agendaLienNouveau(): Promise<{ url: string }>;
-  checkout(formule: "solo" | "duo" | "tribu", periode: "mensuel" | "annuel"): Promise<{ url: string; simule: boolean }>;
+  checkout(formule: "solo" | "duo" | "tribu", periode: "mensuel" | "annuel", demarrageImmediat?: boolean): Promise<{ url: string; simule: boolean }>;
+  /** « Me rétracter » : within 14 days of a new subscription. */
+  seRetracter(): Promise<{ rembourse_centimes: number }>;
   pushCle(): Promise<{ actif: boolean; cle: string | null; appareils: number }>;
   pushAbonner(s: { endpoint: string; keys: { p256dh: string; auth: string }; appareil: string | null }): Promise<void>;
   pushDesabonner(endpoint: string): Promise<void>;
@@ -221,7 +223,8 @@ const serverApi: Api = {
   grandLivre: async () => { const r = await fetch("/api/espaces/budget/grand-livre.csv"); if (!r.ok) throw new ApiError(r.status, "erreur", "Export impossible"); return r.text(); },
   agendaLien: () => call("/agenda-lien"),
   agendaLienNouveau: () => call("/agenda-lien", { method: "POST" }),
-  checkout: (formule, periode) => call("/abonnement/checkout", json({ formule, periode })),
+  checkout: (formule, periode, demarrageImmediat = false) => call("/abonnement/checkout", json({ formule, periode, demarrage_immediat: demarrageImmediat })),
+  seRetracter: () => call("/abonnement/retractation", json({})),
   pushCle: () => call("/push/cle"),
   pushAbonner: async (s) => { await call("/push/abonner", json(s)); },
   pushDesabonner: async (endpoint) => { await call("/push/abonner", json({ endpoint }, "DELETE")); },
@@ -377,6 +380,7 @@ function makeDemoApi(): Api {
     ...makeEspacesDemo(state),
     agendaLien: async () => ({ url: "" }),
     agendaLienNouveau: async () => ({ url: "" }),
+    seRetracter: async () => { throw new ApiError(400, "demo", "En démonstration, il n'y a pas d'abonnement payé."); },
     checkout: async (formule, periode) => { state.household.plan = "famille"; state.household.plan_souscrit = "famille"; state.household.capacite_comptes = { solo: 1, duo: 2, tribu: 6 }[formule]; state.household.abonnement = { stripe: false, statut: "simule", formule, periode, fin: new Date(Date.now() + (periode === "annuel" ? 365 : 30) * 864e5).toISOString().slice(0, 10), prix: { mensuel: 9.9, annuel: 99 }, gerable: false }; return { url: "", simule: true }; },
     portail: async () => ({ url: "" }),
     pushCle: async () => ({ actif: false, cle: null, appareils: 0 }),

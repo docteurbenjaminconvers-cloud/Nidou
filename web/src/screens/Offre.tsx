@@ -4,6 +4,7 @@ import { couvre, devis, MODULES, PACKS, SOCLE, SOCLE_INCLUT, type Formule, type 
 import type { Household } from "../types";
 import { Back } from "../ui";
 import { eur, Ico, ICONES } from "./espacesCommun";
+import { ConsentementDemarrage } from "./Settings";
 
 const ORDRE: ModuleId[] = ["budget_expert", "vie_pro_salarie", "vie_pro_micro", "vie_pro_independant", "locatif", "assistant", "veille"];
 const VIE_PRO: ModuleId[] = ["vie_pro_salarie", "vie_pro_micro", "vie_pro_independant"];
@@ -23,6 +24,8 @@ export function Offre({ api, household, focus, onBack, onChange, toast }: { api:
   const [proches, setProches] = useState(1);
   const [ouvert, setOuvert] = useState<ModuleId | null>(focus && focus in MODULES ? (focus as ModuleId) : null);
   const [envoi, setEnvoi] = useState(false);
+  const [demarrage, setDemarrage] = useState(false);
+  const abonne = ["active", "trialing", "past_due", "simule"].includes(household.abonnement?.statut ?? "");
   useEffect(() => { api.offre().then((e) => { setEtat(e); if (e.souscrits.length && !focus) setMods(e.souscrits); }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const choix = { formule, periode, modules: mods, pack, biens, proches };
@@ -37,7 +40,8 @@ export function Offre({ api, household, focus, onBack, onChange, toast }: { api:
   const activer = async () => {
     setEnvoi(true);
     try {
-      const r = await api.choisirModules(d.modules.filter((m) => !dansPack(m)), pack, { formule, periode, biens, proches });
+      if (!abonne && !demarrage) { toast("Cochez d'abord la case sur le démarrage de l'abonnement."); return; }
+      const r = await api.choisirModules(d.modules.filter((m) => !dansPack(m)), pack, { formule, periode, biens, proches, demarrage_immediat: true });
       if (r.url) { location.href = r.url; return; } // Stripe Checkout
       toast(api.mode === "demo" ? "Modules activés (démo)" : "Modules activés"); onChange();
     }
@@ -119,6 +123,7 @@ export function Offre({ api, household, focus, onBack, onChange, toast }: { api:
 
       <p className="note">Prix TTC, sans engagement en mensuel. Le socle est obligatoire pour ajouter des modules. Sans abonnement après l'essai, vos papiers restent consultables et exportables.</p>
 
+      {!abonne && <ConsentementDemarrage coche={demarrage} onChange={setDemarrage} />}
       <div className="devis">
         {d.lignes.length > 1 && <div className="devis-lignes">
           {d.lignes.map((l) => <div key={l.libelle}><span>{l.libelle}{l.detail ? <small> · {l.detail}</small> : null}</span><b>{eur(prixP(l.mensuel), true)}</b></div>)}

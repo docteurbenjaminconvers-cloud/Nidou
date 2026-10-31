@@ -5,6 +5,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { exporterFoyer } from "./export.js";
 import { estMedical, MESSAGE_MEDICAL } from "./extract.js";
 import { budgetIa, coutAppel } from "./iaBudget.js";
+import { ensureRetractationSchema, etatRetractation, marquerDebutAbonnement, seRetracter } from "./retractation.js";
 import { annulerSuppression, arreterALEcheance, demanderSuppression, ensureSuppressionSchema, etatFin, quitterFoyer, reprendreAbonnement } from "./suppression.js";
 import { basename, extname, join } from "node:path";
 import type { Db, DocumentRow, HouseholdRow } from "./db.js";
@@ -14,7 +15,7 @@ import { chargesReport, lignesFamille } from "./charges.js";
 import { generateLetter, templateLetter } from "./letters.js";
 import { rappelsEssai, rappelsEcheances } from "./rappels.js";
 import * as V from "./veille.js";
-import { ajouterVeillePayante, basculerAssistant, PaiementIndisponible, simulationPaiement } from "./abonnement.js";
+import { ajouterVeillePayante, basculerAssistant, PaiementIndisponible, simulationPaiement, ConsentementRequis } from "./abonnement.js";
 import { AssistantErreur, ensureAssistantSchema, etatAssistant, repondre } from "./assistant.js";
 import { bridge, eb, fournisseur, notifierAlertes, synchroniserFoyer, synchroniserVeille } from "./banques.js";
 import { banquesFR, BANQUES_DEMO, ebConnectHousehold, ebFinishHousehold, ensureEbSchema, linkExtra, newState } from "./enablebanking.js";
@@ -86,6 +87,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
   ensureAssistantSchema(db);
   ensureEbSchema(db);
   ensureSuppressionSchema(db);
+  ensureRetractationSchema(db);
 
   const secure = () => (process.env.LUCIEN_PUBLIC_URL ?? "").startsWith("https://");
 
@@ -213,6 +215,13 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     return c.json({ ok: true });
   });
 
+  /** « Me rétracter » : within 14 days of a new subscription, stopped at once and refunded minus the days used. */
+  api.post("/abonnement/retractation", async (c) => {
+    if (!isOwner(c)) return c.json({ error: "proprietaire", message: "Seul le propriétaire du foyer gère l'abonnement." }, 403);
+    try { return c.json({ ok: true, ...(await seRetracter(db, household(c).id)) }); }
+    catch (e) { console.error("[rétractation]", e); return c.json({ error: "retractation", message: (e as Error).message.startsWith("Le délai") ? (e as Error).message : "La rétractation n'a pas abouti. Réessayez dans quelques minutes, ou écrivez à bonjour@monlucien.fr." }, 400); }
+  });
+
   /** « Résilier l'abonnement » : no renewal, it runs to the end of the period already paid (no refund). */
   api.post("/abonnement/resilier", async (c) => {
     if (!isOwner(c)) return c.json({ error: "proprietaire", message: "Seul le propriétaire du foyer gère l'abonnement." }, 403);
@@ -283,13 +292,17 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
   // ---------- abonnement (Stripe) ----------
   api.post("/abonnement/checkout", async (c) => {
     const h = household(c);
-    const body = z.object({ formule: z.enum(["solo", "duo", "tribu"]).default("duo"), periode: z.enum(["mensuel", "annuel"]) }).parse(await c.req.json());
+    const body = z.object({ formule: z.enum(["solo", "duo", "tribu"]).default("duo"), periode: z.enum(["mensuel", "annuel"]), demarrage_immediat: z.boolean().optional() }).parse(await c.req.json());
     const comptes = db.usersOfHousehold(h.id).length;
     if (comptes > FORMULES[body.formule].comptes) {
       return c.json({ error: "formule_trop_petite", message: `${comptes} personnes se connectent à ce foyer : la formule ${FORMULES[body.formule].nom} en accepte ${FORMULES[body.formule].comptes}. Choisissez une formule plus grande ou retirez un compte.` }, 400);
     }
-    try { return c.json(await creerCheckout(db, db.getHousehold(h.id)!, body.formule, body.periode, currentUser(c)?.email ?? null)); }
-    catch (e) { if (e instanceof PaiementIndisponible) return c.json({ error: "paiement_indisponible", message: e.message }, 503); throw e; }
+    try { return c.json(await creerCheckout(db, db.getHousehold(h.id)!, body.formule, body.periode, currentUser(c)?.email ?? null, undefined, body.demarrage_immediat === true)); }
+    catch (e) {
+      if (e instanceof PaiementIndisponible) return c.json({ error: "paiement_indisponible", message: e.message }, 503);
+      if (e instanceof ConsentementRequis) return c.json({ error: "demarrage_immediat", message: e.message }, 400);
+      throw e;
+    }
   });
 
   api.post("/abonnement/portail", async (c) => {
@@ -306,6 +319,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     const formule = (["solo", "duo", "tribu"].includes(c.req.query("formule") ?? "") ? c.req.query("formule") : "duo") as Formule;
     if (!h) return c.json({ error: "introuvable" }, 404);
     appliquerAbonnement(db, h, { statut: "simule", formule, periode, fin: new Date(Date.now() + (periode === "annuel" ? 365 : 30) * 864e5).toISOString().slice(0, 10) });
+    marquerDebutAbonnement(db, h.id);
     return c.redirect("/#/settings?paiement=ok");
   });
 
@@ -340,7 +354,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
       mcp_token: h.plan === "famille" ? db.getHousehold(h.id)!.mcp_token : null,
       utilisateur: currentUser(c),
       titulaire: isOwner(c),
-      abonnement: { ...resumeAbonnement(db.getHousehold(h.id)!), ...etatFin(db, h.id) },
+      abonnement: { ...resumeAbonnement(db.getHousehold(h.id)!), ...etatFin(db, h.id), retractation: etatRetractation(db, h.id) },
       modules: db.getModules(h.id),
       comptes: db.usersOfHousehold(h.id).length,
       capacite_comptes: capaciteComptes(db, db.getHousehold(h.id)!),

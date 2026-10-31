@@ -1,3 +1,4 @@
+import { marquerDebutAbonnement } from "./retractation.js";
 import { ensureSuppressionSchema } from "./suppression.js";
 import Stripe from "stripe";
 import type { Db, HouseholdRow } from "./db.js";
@@ -18,6 +19,10 @@ export const stripeOn = () => Boolean(process.env.STRIPE_SECRET_KEY);
 /** Simulated payments (no money taken) only on a test instance that asks for them explicitly; never in production. */
 export const simulationPaiement = () => !stripeOn() && process.env.LUCIEN_PAIEMENT_SIMULE === "1";
 export const paiementDisponible = () => stripeOn() || simulationPaiement();
+/** A new subscription needs the consumer's express request to start before the 14-day withdrawal period ends. */
+export class ConsentementRequis extends Error {
+  constructor() { super("Cochez la case demandant que l'abonnement commence tout de suite pour continuer."); }
+}
 export class PaiementIndisponible extends Error {
   constructor() { super("Le paiement en ligne arrive bientôt. D'ici là, rien ne change pour vous."); }
 }
@@ -52,7 +57,8 @@ export function capaciteComptes(db: Db, h: HouseholdRow): number {
   return FORMULES[(h.formule as Formule) ?? "duo"]?.comptes ?? FORMULES.duo.comptes;
 }
 
-export async function creerCheckout(db: Db, h: HouseholdRow, formule: Formule, periode: Periode, email: string | null, modules?: ChoixModules): Promise<{ url: string; simule: boolean }> {
+export async function creerCheckout(db: Db, h: HouseholdRow, formule: Formule, periode: Periode, email: string | null, modules?: ChoixModules, demarrageImmediat = false): Promise<{ url: string; simule: boolean }> {
+  if (!demarrageImmediat) throw new ConsentementRequis();
   if (!stripeOn()) {
     if (!simulationPaiement()) throw new PaiementIndisponible();
     return { url: `${publicUrl()}/api/abonnement/simule?formule=${formule}&periode=${periode}`, simule: true };
@@ -69,7 +75,7 @@ export async function creerCheckout(db: Db, h: HouseholdRow, formule: Formule, p
     customer: h.stripe_customer_id ?? undefined,
     customer_email: h.stripe_customer_id ? undefined : email ?? undefined,
     client_reference_id: h.id,
-    metadata: { household_id: h.id, formule, periode, ...(choix ? { modules: choix } : {}) },
+    metadata: { household_id: h.id, formule, periode, demarrage_immediat: "demande", ...(choix ? { modules: choix } : {}) },
     // Partner cabinets: the first subscription of their clients starts with one month free.
     subscription_data: { metadata: { household_id: h.id, formule, periode, ...(choix ? { modules: choix } : {}) }, ...(joursOfferts(db, h) ? { trial_period_days: joursOfferts(db, h) } : {}) },
     allow_promotion_codes: true,
@@ -85,7 +91,7 @@ export async function creerCheckout(db: Db, h: HouseholdRow, formule: Formule, p
  * without a subscription goes through Checkout (socle + modules in one subscription); an existing subscription has
  * its module lines added, changed or removed, prorated. The webhook then confirms the modules from the billed items.
  */
-export async function changerModules(db: Db, h: HouseholdRow, c: ChoixModules, email: string | null): Promise<{ url?: string; simule: boolean; modules: ModuleId[] }> {
+export async function changerModules(db: Db, h: HouseholdRow, c: ChoixModules, email: string | null, demarrageImmediat = false): Promise<{ url?: string; simule: boolean; modules: ModuleId[] }> {
   const lignes = lignesModules(c);
   const voulus = normaliser([...(PACKS.find((p) => p.id === c.pack)?.modules ?? []), ...c.modules]);
   if (!stripeOn()) {
@@ -94,7 +100,7 @@ export async function changerModules(db: Db, h: HouseholdRow, c: ChoixModules, e
     return { simule: true, modules: voulus };
   }
   if (!h.stripe_subscription_id || !["active", "trialing", "past_due"].includes(h.abonnement_statut ?? "")) {
-    const r = await creerCheckout(db, h, c.formule, c.periode, email, c);
+    const r = await creerCheckout(db, h, c.formule, c.periode, email, c, demarrageImmediat);
     return { url: r.url, simule: false, modules: voulus };
   }
   const manquants = prixManquants(lignes);
@@ -202,6 +208,7 @@ export function appliquerEvenement(db: Db, event: EvenementMinimal): string {
     const h = (o.client_reference_id && db.getHousehold(o.client_reference_id)) || (o.metadata?.household_id && db.getHousehold(o.metadata.household_id));
     if (!h) return "checkout: foyer inconnu";
     appliquerAbonnement(db, h, { customer: o.customer ?? null, subscription: o.subscription ?? null, statut: "active", formule: formuleDe(), periode: periodeDe() });
+    marquerDebutAbonnement(db, h.id); // a new contract: the 14-day withdrawal period starts
     try { const m = o.metadata?.modules ? JSON.parse(o.metadata.modules) : null; if (m) db.setModules(h.id, (Array.isArray(m) ? m : modulesDuChoix(m)) as ModuleId[]); } catch { /* malformed metadata: the subscription event will set them */ }
     return `checkout: ${h.nom} → famille`;
   }

@@ -11,7 +11,7 @@ import { DONNEES_BUDGET_VIDES, grandLivre, rapportBudget, type DonneesBudget } f
 import { livreCsv, rapportIndependant, rapportPro, type DonneesPro } from "./viePro.js";
 import { randomBytes } from "node:crypto";
 import { rapportLocatif, type DonneesLocatif } from "./locatif.js";
-import { changerModules, paiementDisponible, PaiementIndisponible } from "./abonnement.js";
+import { changerModules, paiementDisponible, PaiementIndisponible, ConsentementRequis } from "./abonnement.js";
 
 type Ctx = { household: (c: any) => { id: string; nom: string; plan: string; essai_jours_restants: number | null; plan_souscrit: string; essai_fin: string | null }; isOwner: (c: any) => boolean; email: (c: any) => string | null };
 
@@ -78,16 +78,18 @@ export function monterEspaces(api: Hono<any>, db: Db, ctx: Ctx) {
       modules: z.array(z.enum(MODULE_IDS)).max(10), pack: z.string().max(30).nullable().optional(),
       formule: z.enum(["solo", "duo", "tribu"]).optional(), periode: z.enum(["mensuel", "annuel"]).optional(),
       biens: z.number().int().min(0).max(200).optional(), proches: z.number().int().min(0).max(10).optional(),
+      demarrage_immediat: z.boolean().optional(),
     }).parse(await c.req.json());
     const h = db.getHousehold(ctx.household(c).id)!;
     const formule = b.formule ?? (h.formule as "solo" | "duo" | "tribu" | null) ?? "duo";
     const periode = b.periode ?? (h.abonnement_periode as "mensuel" | "annuel" | null) ?? "mensuel";
     if (b.pack && !PACKS.some((p) => p.id === b.pack)) return c.json({ error: "saisie_invalide" }, 400);
     try {
-      const r = await changerModules(db, h, { formule, periode, modules: b.modules, pack: b.pack ?? null, biens: b.biens, proches: b.proches }, ctx.email(c));
+      const r = await changerModules(db, h, { formule, periode, modules: b.modules, pack: b.pack ?? null, biens: b.biens, proches: b.proches }, ctx.email(c), b.demarrage_immediat === true);
       return c.json({ ...r, souscrits: r.modules, actifs: [...actifs(c)] });
     } catch (e) {
       if (e instanceof PaiementIndisponible) return c.json({ error: "paiement_indisponible", message: e.message }, 503);
+      if (e instanceof ConsentementRequis) return c.json({ error: "demarrage_immediat", message: e.message }, 400);
       return c.json({ error: "paiement", message: (e as Error).message }, 400);
     }
   });

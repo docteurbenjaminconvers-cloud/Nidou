@@ -77,7 +77,7 @@ test("abonnement : sans Stripe, pas de paiement simulé en production ; en test,
   const ck = (s: string) => ({ cookie: `lucien_session=${s}`, "content-type": "application/json" });
   await api.request("/invitations", { method: "POST", headers: ck(a.session), body: JSON.stringify({ email: "b@x.fr", prenom: null }) });
   const b = await login("b@x.fr", a.household.id);
-  const co = await api.request("/abonnement/checkout", { method: "POST", headers: ck(a.session), body: JSON.stringify({ formule: "duo", periode: "mensuel" }) });
+  const co = await api.request("/abonnement/checkout", { method: "POST", headers: ck(a.session), body: JSON.stringify({ formule: "duo", periode: "mensuel", demarrage_immediat: true }) });
   assert.equal(co.status, 503);
   assert.equal((await api.request(`/abonnement/simule?formule=tribu&h=${a.household.id}`, { headers: ck(b.session) })).status, 404, "no simulation in production");
   assert.equal((await api.request(`/abonnement/simule?formule=tribu&h=${a.household.id}`)).status, 401, "never without a session");

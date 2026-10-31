@@ -867,3 +867,5 @@ b, strong { font-weight: 800; }
 .resil-note { display: grid; gap: 6px; margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: var(--paper, #fbf3f6); font-size: 14px; }
 .resil-note .link { justify-self: start; }
 .suppr-prevue .t { color: var(--ember); }
+.consentement { display: flex; gap: 10px; align-items: flex-start; margin: 12px 0; padding: 12px 14px; border-radius: 14px; background: var(--paper, #fbf3f6); font-size: 13.5px; line-height: 1.45; }
+.consentement input { margin-top: 3px; width: 18px; height: 18px; flex: none; }
