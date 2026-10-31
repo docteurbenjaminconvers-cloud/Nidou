@@ -1,4 +1,4 @@
-import type { AssistantEtat, AssistantMessage, AssistantReponse } from "./types";
+import type { AssistantEtat, AssistantMessage, AssistantReponse, AideResiliation, Resiliation } from "./types";
 import type { Activite, BankStatus, BudgetAction, BudgetReport, ChargesReport, Deadline, Doc, FamilleReport, Household, ImportResult, Member, Mesure, Temoin, Banque, BanquesReport, Veille, VeillesReport, VuePersonne } from "./types";
 import demoFamille from "./demo/famille.json";
 import { MODULES, PACKS, SOCLE, SOCLE_INCLUT, droits, normaliser, type Espace, type ModuleId } from "../../server/src/offre";
@@ -39,6 +39,11 @@ export interface Api {
   budget(): Promise<BudgetReport>;
   importStatement(input: { file?: File; texte?: string; demo?: boolean; compte?: string }): Promise<ImportResult>;
   decide(cle: string, decision: "garde" | "resilie" | "a_faire"): Promise<void>;
+  /** The subscription loop. */
+  aideResiliation(cle: string): Promise<AideResiliation>;
+  demarrerResiliation(cle: string): Promise<void>;
+  annulerResiliation(cle: string): Promise<void>;
+  lettreRemboursement(cle: string): Promise<{ lettre: string }>;
   bankStatus(): Promise<BankStatus>;
   bankConnect(email: string, aspsp?: Banque): Promise<{ url: string }>;
   banques(): Promise<BanquesReport>;
@@ -173,6 +178,10 @@ const serverApi: Api = {
     return call("/transactions/import", json({ texte, demo, compte }));
   },
   decide: async (cle, decision) => { await call("/budget/decision", json({ cle, decision })); },
+  aideResiliation: (cle) => call(`/resiliations/aide?cle=${encodeURIComponent(cle)}`),
+  demarrerResiliation: async (cle) => { await call("/resiliations", json({ cle })); },
+  annulerResiliation: async (cle) => { await call(`/resiliations/${encodeURIComponent(cle)}`, { method: "DELETE" }); },
+  lettreRemboursement: (cle) => call(`/resiliations/${encodeURIComponent(cle)}/remboursement`),
   bankStatus: () => call("/bank/status"),
   bankConnect: (email, aspsp) => call("/bank/connect", json(aspsp ? { aspsp } : { email })),
   banques: () => call("/bank/banques"),
@@ -256,6 +265,7 @@ const serverApi: Api = {
 // ---------- demo adapter ----------
 function makeDemoApi(): Api {
   const state = {
+    resiliations: [] as Resiliation[],
     household: structuredClone(demoHousehold) as Household,
     // Papers whose date must stay recent in the demo (payslips, tax notice): dated from today.
     docs: (structuredClone(demoDocuments) as (Doc & { _age_jours?: number })[]).map(({ _age_jours, ...d }) => (_age_jours != null ? { ...d, date_document: new Date(Date.now() - _age_jours * 864e5).toISOString().slice(0, 10) } : d)) as Doc[],
@@ -319,6 +329,8 @@ function makeDemoApi(): Api {
       base.actions = base.actions.map((a) => ({ ...a, decision: (state.decisions[a.cle] as BudgetAction["decision"]) ?? a.decision }));
       base.economies_decidees = base.actions.filter((a) => a.decision === "resilie").reduce((s, a) => s + a.economie_annuelle, 0);
       base.economies_possibles = base.actions.filter((a) => a.decision !== "garde").reduce((s, a) => s + a.economie_annuelle, 0);
+      base.resiliations = structuredClone(state.resiliations);
+      base.economies_prouvees = 0;
       return base;
     },
     importStatement: async () => {
@@ -327,6 +339,22 @@ function makeDemoApi(): Api {
       return { lues: 127, ajoutees: 127, doublons: 0 };
     },
     decide: async (cle, decision) => { state.decisions[cle] = decision; },
+    aideResiliation: async (cle: string) => {
+      const a = (structuredClone(state.household.plan === "famille" ? demoBudgetFamille : demoBudget) as BudgetReport).actions.find((x) => x.marchand === cle);
+      const marchand = (a?.marchand ?? cle).replace(/(^|[\s-])(\p{L})/gu, (_, x: string, y: string) => x + y.toUpperCase()), eco = a?.economie_annuelle ?? 0, montant = Math.round((eco / 12) * 100) / 100;
+      return { marchand, montant, frequence: "mensuel", economie_annuelle: eco,
+        etapes: [`Connectez-vous à votre espace client ${marchand} : un bouton « Résilier » doit y être visible si le contrat a été souscrit en ligne.`, "Sinon, envoyez la lettre ci-dessous par email ou par courrier recommandé.", "Un dernier prélèvement peut encore passer pour le mois commencé : c'est normal.", "Touchez « C'est fait, j'ai résilié » : Lucien vérifiera vos prochains relevés."],
+        lettre: `Moi\n[votre adresse]\n\n${marchand}\nService client\n\nObjet : Résiliation de mon abonnement\n\nMadame, Monsieur,\n\nJe vous informe de ma décision de résilier mon abonnement, pour lequel vous prélevez ${montant.toLocaleString("fr-FR")} € sur mon compte. Merci de cesser tout prélèvement et de me confirmer la date de fin.\n\nSalutations distinguées.` };
+    },
+    demarrerResiliation: async (cle: string) => {
+      const act = (structuredClone(state.household.plan === "famille" ? demoBudgetFamille : demoBudget) as BudgetReport).actions.find((x) => x.marchand === cle);
+      const aide = act ? { marchand: (act.marchand ?? cle).replace(/(^|[\s-])(\p{L})/gu, (_, x: string, y: string) => x + y.toUpperCase()), montant: Math.round((act.economie_annuelle / 12) * 100) / 100, economie_annuelle: act.economie_annuelle } : null;
+      const auj = new Date().toISOString().slice(0, 10), verif = new Date(Date.now() + 38 * 864e5).toISOString().slice(0, 10);
+      state.resiliations = [{ cle, marchand: aide?.marchand ?? cle, montant: aide?.montant ?? 0, frequence: "mensuel", demande_le: auj, statut: "en_cours", economie_annuelle: aide?.economie_annuelle ?? 0, verification_le: verif, message: `Résiliation en cours. Lucien vérifie vos relevés jusqu'au ${verif.split("-").reverse().join("/")}.` }, ...state.resiliations.filter((r) => r.cle !== cle)];
+      state.decisions[`fantome:${cle}`] = "resilie";
+    },
+    annulerResiliation: async (cle: string) => { state.resiliations = state.resiliations.filter((r) => r.cle !== cle); },
+    lettreRemboursement: async () => ({ lettre: "En démonstration, aucun prélèvement n'est revenu." }),
     bankStatus: async () => ({
       fournisseur: "simule", connecte: state.bank, statut: state.bank ? "connecte" : "aucune", derniere_synchro: state.bank ? new Date().toISOString() : null,
       comptes: state.bank ? [{ id: "sim:1", nom: "Compte joint", banque: "Banque de démonstration", solde: 2487.91, devise: "EUR", maj_le: new Date().toISOString() }] : [],

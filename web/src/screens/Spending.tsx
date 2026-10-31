@@ -1,7 +1,8 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Api } from "../api";
 import { ApiError } from "../api";
-import type { BudgetAction, BudgetReport, Household } from "../types";
+import type { AideResiliation, BudgetAction, BudgetReport, Household, Resiliation } from "../types";
+import { Feuille } from "./espacesCommun";
 import { fmtEuro } from "../ui";
 import { BankLink } from "./BankLink";
 
@@ -31,6 +32,8 @@ export function Spending({ api, budget, household, go, onChanged, onUpgrade, toa
     } finally { setBusy(false); }
   };
 
+  const [resil, setResil] = useState<string | null>(null);
+  const [lettre, setLettre] = useState<{ titre: string; texte: string } | null>(null);
   const decide = async (a: BudgetAction, decision: "garde" | "resilie") => {
     await api.decide(a.cle, decision);
     toast(decision === "resilie" ? `${fmtEuro(a.economie_annuelle)} par an d'économie prévue` : "Noté, on n'en reparle plus");
@@ -92,6 +95,9 @@ export function Spending({ api, budget, household, go, onChanged, onUpgrade, toa
           <h2>Économies faciles</h2>
           {budget.economies_possibles > 0 && <span className="badge">{fmtEuro(budget.economies_possibles)} / an</span>}
         </div>
+        {(budget.economies_prouvees ?? 0) > 0 && (
+          <div className="confidence ok" style={{ display: "flex", width: "100%" }}>Prouvé par vos relevés : {fmtEuro(budget.economies_prouvees!)} par an ne sont plus prélevés.</div>
+        )}
         {budget.economies_decidees > 0 && (
           <div className="confidence ok" style={{ display: "flex", width: "100%" }}>Déjà décidé : {fmtEuro(budget.economies_decidees)} par an économisés grâce à {done.length} résiliation{done.length > 1 ? "s" : ""}.</div>
         )}
@@ -105,7 +111,7 @@ export function Spending({ api, budget, household, go, onChanged, onUpgrade, toa
                   <div className="t">{a.titre}</div>
                   <div className="d">{a.detail}</div>
                   <div style={{ display: "flex", gap: 14, marginTop: 8, flexWrap: "wrap" }}>
-                    {(a.type === "fantome" || a.type === "doublon") && <button className="link" onClick={() => decide(a, "resilie")}>Je résilie</button>}
+                    {(a.type === "fantome" || a.type === "doublon") && <button className="link" onClick={() => (a.marchand ? setResil(a.marchand) : decide(a, "resilie"))}>Je résilie</button>}
                     {a.type === "hausse" && a.document_id && <button className="link" onClick={() => go("doc", a.document_id!)}>Courrier de résiliation</button>}
                     {a.type === "hausse" && !a.document_id && <button className="link" onClick={() => decide(a, "resilie")}>Je renégocie</button>}
                     {a.type === "sans_contrat" && <button className="link" onClick={() => go("add")}>Ajouter le contrat</button>}
@@ -119,6 +125,7 @@ export function Spending({ api, budget, household, go, onChanged, onUpgrade, toa
             ))}
           </div>
         )}
+        {!!budget.resiliations?.length && <SuiviResiliations liste={budget.resiliations} api={api} toast={toast} onChanged={onChanged} onLettre={setLettre} />}
         {budget.apercu && hidden > 0 && (
           <div className="lock">
             <b>{hidden} autre{hidden > 1 ? "s" : ""} économie{hidden > 1 ? "s" : ""} repérée{hidden > 1 ? "s" : ""}</b>
@@ -158,6 +165,8 @@ export function Spending({ api, budget, household, go, onChanged, onUpgrade, toa
         </ul>
       </section>
 
+      {resil && <SheetResiliation api={api} cle={resil} onClose={() => setResil(null)} onLettre={setLettre} onFait={() => { setResil(null); onChanged(); }} toast={toast} />}
+      {lettre && <Feuille titre={lettre.titre} texte={lettre.texte} fichier={`${lettre.titre.replace(/[^\p{L}\p{N} -]+/gu, "")}.txt`} onClose={() => setLettre(null)} />}
     </>
   );
 }
@@ -177,6 +186,52 @@ function ImportBox({ busy, err, texte, setTexte, pick, onFile, onText, onDemo }:
       {texte.trim() && <div style={{ marginTop: 8 }}><button className="btn ghost block" disabled={busy} onClick={onText}>Importer ces lignes</button></div>}
       {err && <p className="note" style={{ color: "var(--ember)", marginTop: 8 }}>{err}</p>}
       <p className="note" style={{ marginTop: 8 }}>Les opérations restent dans votre coffre ; le connecteur IA n'y accède pas tant que vous n'activez pas le périmètre « banque ».</p>
+    </div>
+  );
+}
+
+const CHIP: Record<Resiliation["statut"], string> = { en_cours: "Vérification en cours", confirmee: "Prouvé par la banque", encore_prelevee: "Encore prélevé" };
+
+/** « Je résilie » : how to cancel, the letter, then « C'est fait » so Lucien watches the next statements. */
+function SheetResiliation({ api, cle, onClose, onLettre, onFait, toast }: { api: Api; cle: string; onClose: () => void; onLettre: (l: { titre: string; texte: string }) => void; onFait: () => void; toast: (m: string) => void }) {
+  const [aide, setAide] = useState<AideResiliation | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { api.aideResiliation(cle).then(setAide).catch((e) => { toast((e as Error).message); onClose(); }); }, [cle]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <div className="feuille-fond" onClick={onClose}>
+      <div className="feuille resil-feuille" role="dialog" aria-modal="true" aria-label={`Résilier ${aide?.marchand ?? ""}`} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}>
+        <div className="feuille-tete"><b>Résilier {aide?.marchand ?? "…"}</b><button className="link" onClick={onClose}>Fermer</button></div>
+        {!aide ? <p className="note">Lucien prépare la résiliation…</p> : (
+          <>
+            <p className="resil-gain">{fmtEuro(aide.economie_annuelle)} par an</p>
+            <ol className="resil-etapes">{aide.etapes.map((e) => <li key={e}>{e}</li>)}</ol>
+            <button className="btn ghost block" onClick={() => onLettre({ titre: `Résiliation ${aide.marchand}`, texte: aide.lettre })}>Voir la lettre de résiliation</button>
+            <button className="btn block" style={{ marginTop: 10 }} disabled={busy} onClick={async () => {
+              setBusy(true);
+              try { await api.demarrerResiliation(cle); toast(`Noté. Lucien vérifiera vos relevés : plus aucun prélèvement de ${aide.marchand}, et l'économie sera prouvée.`); onFait(); }
+              catch (e) { toast((e as Error).message); setBusy(false); }
+            }}>C'est fait, j'ai résilié</button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Cancellations followed on the bank statements: in progress, proven, or still charged (refund letter ready). */
+function SuiviResiliations({ liste, api, toast, onChanged, onLettre }: { liste: Resiliation[]; api: Api; toast: (m: string) => void; onChanged: () => void; onLettre: (l: { titre: string; texte: string }) => void }) {
+  return (
+    <div className="resil-suivi">
+      <h3>Résiliations suivies</h3>
+      {liste.map((r) => (
+        <div key={r.cle} className={`resil-item ${r.statut}`}>
+          <div><b>{r.marchand}</b> <span className="resil-chip">{CHIP[r.statut]}</span><p>{r.message}</p></div>
+          <div className="resil-actions">
+            {r.statut === "encore_prelevee" && <button className="link" onClick={async () => { try { const x = await api.lettreRemboursement(r.cle); onLettre({ titre: `Remboursement ${r.marchand}`, texte: x.lettre }); } catch (e) { toast((e as Error).message); } }}>Lettre de remboursement</button>}
+            {r.statut === "en_cours" && <button className="link" style={{ color: "var(--mist)" }} onClick={async () => { await api.annulerResiliation(r.cle); onChanged(); }}>Je ne l'ai pas résilié</button>}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

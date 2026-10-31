@@ -1,3 +1,4 @@
+import { suivis } from "./resiliations.js";
 import { ensureSuppressionSchema, executerSuppressionsPrevues } from "./suppression.js";
 import { entretienVeilles } from "./veille.js";
 import type { Db, HouseholdRow } from "./db.js";
@@ -98,6 +99,33 @@ export function rappelsRenouvellement(db: Db, h: HouseholdRow, now = new Date())
     route: "#/settings" }];
 }
 
+/**
+ * The subscription loop, in the daily pass: a cancellation proven by the bank (no more debit), a debit that came back
+ * after a cancellation, and — for a ghost subscription the person has not decided about — the debit coming in 2 days.
+ */
+export function rappelsAbonnements(db: Db, h: HouseholdRow, now = new Date()): Rappel[] {
+  const txs = db.transactionsFoyer(h.id);
+  if (!txs.length) return [];
+  const aujourdhui = now.toISOString().slice(0, 10);
+  const out: Rappel[] = [];
+  for (const s of suivis(db, h.id, txs, aujourdhui).liste) {
+    if (s.statut === "confirmee") out.push({ cle: `resiliation:${s.cle}:confirmee`, titre: `${s.marchand} ne prélève plus rien`, corps: s.message, route: "#/budget" });
+    if (s.statut === "encore_prelevee") out.push({ cle: `resiliation:${s.cle}:prelevee:${s.dernier_preleve}`, titre: `${s.marchand} a encore prélevé votre compte`, corps: s.message, route: "#/budget" });
+  }
+  const rapport = budgetReport(txs, db.listDocuments(h.id), db.listDecisions(h.id), aujourdhui);
+  const suivies = new Set(suivis(db, h.id, txs, aujourdhui).liste.map((s) => s.cle));
+  const jour = now.getUTCDate(), mois = aujourdhui.slice(0, 7);
+  for (const a of rapport.actions) {
+    if (a.type !== "fantome" || a.decision || !a.marchand) continue;
+    const r = rapport.recurrences.find((x) => x.marchand === a.marchand);
+    if (!r?.jour_du_mois || suivies.has(r.cle)) continue;
+    const dans = r.jour_du_mois - jour;
+    if (dans === 2 || dans === 1) out.push({ cle: `imminent:${r.cle}:${mois}`, titre: `${r.marchand} prélève ${r.dernier_montant.toLocaleString("fr-FR")} € ${dans === 1 ? "demain" : "dans 2 jours"}`,
+      corps: "Vous l'utilisez encore ? Si non, Lucien prépare la résiliation en une minute.", route: "#/budget" });
+  }
+  return out;
+}
+
 /** Default transport: push to every device of the household; email too for Famille households (free = push only). */
 export async function transportParDefaut(db: Db, h: HouseholdRow, r: Rappel) {
   const n = await envoyerPush(db, h.id, { titre: r.titre, corps: r.corps, url: `/${r.route}`, tag: r.cle.split(":")[0] });
@@ -115,7 +143,7 @@ export async function transportParDefaut(db: Db, h: HouseholdRow, r: Rappel) {
 export async function passeQuotidienne(db: Db, envoyer: (h: HouseholdRow, r: Rappel) => Promise<void> = (h, r) => transportParDefaut(db, h, r)) {
   let n = 0;
   for (const h of db.listHouseholds()) {
-    for (const r of [...rappelsEssai(db, h), ...rappelsEcheances(db, h), ...rappelsAlertes(db, h), ...rappelsRenouvellement(db, h)]) {
+    for (const r of [...rappelsEssai(db, h), ...rappelsEcheances(db, h), ...rappelsAlertes(db, h), ...rappelsRenouvellement(db, h), ...rappelsAbonnements(db, h)]) {
       if (db.marquerRappel(h.id, r.cle)) { await envoyer(h, r); n++; }
     }
   }

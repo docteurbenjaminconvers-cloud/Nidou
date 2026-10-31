@@ -151,7 +151,17 @@ export interface BudgetReport {
   economies_possibles: number;
   economies_decidees: number;
   nb_transactions: number;
+  /** The subscription loop: cancellations followed on the next bank statements. */
+  resiliations?: Resiliation[];
+  /** Savings proven by the bank: no more debit after the cancellation. */
+  economies_prouvees?: number;
 }
+
+export interface Resiliation {
+  cle: string; marchand: string; montant: number; frequence: string; demande_le: string;
+  statut: "en_cours" | "confirmee" | "encore_prelevee"; economie_annuelle: number; verification_le: string; message: string;
+}
+export interface AideResiliation { marchand: string; montant: number; frequence: string; economie_annuelle: number; etapes: string[]; lettre: string }
 
 export interface ImportResult { lues: number; ajoutees: number; doublons: number; de?: string; a?: string }
 

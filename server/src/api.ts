@@ -3,6 +3,7 @@ import { z } from "zod";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { createHash, randomBytes } from "node:crypto";
 import { exporterFoyer } from "./export.js";
+import { annulerSuivi, demarrerSuivi, economieAnnuelle, nomMarchand, ensureResiliationsSchema, lettreRemboursement, lettreResiliation, marcheASuivre, suivis } from "./resiliations.js";
 import { estMedical, MESSAGE_MEDICAL } from "./extract.js";
 import { budgetIa, coutAppel } from "./iaBudget.js";
 import { ensureRetractationSchema, etatRetractation, marquerDebutAbonnement, seRetracter } from "./retractation.js";
@@ -33,7 +34,7 @@ import { AUTH_ON, consommerLien, cookieHeader, demandeAutorisee, demanderLien, e
 import { agendaSemaine, familleReport, echeancesFamille, JOURS, coutsParMembre } from "./famille.js";
 import { boiteAddress, fromBrevo, processInboundEmail, type InboundEmail } from "./inbox.js";
 import { parseStatement, merchantOf, categorise, ruleCategory, fingerprint, TX_CATEGORIES, TX_LABEL, type ParsedTx } from "./transactions.js";
-import { budgetReport } from "./budget.js";
+import { budgetReport, findRecurrences } from "./budget.js";
 import { demoStatement } from "./seed-statement.js";
 import Anthropic from "@anthropic-ai/sdk";
 import { simulatedConnect, simulatedSync, verifyBridgeSignature } from "./bridge.js";
@@ -88,6 +89,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
   ensureEbSchema(db);
   ensureSuppressionSchema(db);
   ensureRetractationSchema(db);
+  ensureResiliationsSchema(db);
 
   const secure = () => (process.env.LUCIEN_PUBLIC_URL ?? "").startsWith("https://");
 
@@ -768,6 +770,9 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     const h = household(c);
     const txs = db.transactionsFoyer(h.id);
     const report = budgetReport(txs, db.listDocuments(h.id), db.listDecisions(h.id));
+    const { liste: resiliations } = suivis(db, h.id, txs);
+    const economies_prouvees = Math.round(resiliations.filter((s) => s.statut === "confirmee").reduce((t, s) => t + s.economie_annuelle, 0) * 100) / 100;
+    Object.assign(report, { resiliations, economies_prouvees });
     if (h.plan === "gratuit") {
       // Free plan: the headline numbers and the two best actions.
       return c.json({ ...report, actions: report.actions.slice(0, 2), actions_total: report.actions.length, apercu: true });
@@ -827,6 +832,44 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     const body = z.object({ cle: z.string(), decision: z.enum(["garde", "resilie", "a_faire"]) }).parse(await c.req.json());
     db.setDecision(h.id, body.cle, body.decision);
     return c.json({ ok: true });
+  });
+
+  // ---------- la boucle des abonnements : résilier, puis vérifier en banque ----------
+  const expediteur = (c: any) => { const u = currentUser(c); return u?.prenom ? `${u.prenom}` : household(c).nom.replace(/\s*\(démo\)$/, ""); };
+  const recurrence = (hid: string, cle: string) => findRecurrences(db.transactionsFoyer(hid)).find((r) => r.cle === cle);
+
+  /** How to cancel, and the letter, before the person does it. */
+  api.get("/resiliations/aide", (c) => {
+    const h = household(c);
+    const r = recurrence(h.id, c.req.query("cle") ?? "");
+    if (!r) return c.json({ error: "introuvable", message: "Ce prélèvement n'apparaît plus dans vos relevés." }, 404);
+    const nom = nomMarchand(r.marchand);
+    return c.json({ marchand: nom, montant: r.dernier_montant, frequence: r.frequence, economie_annuelle: economieAnnuelle(r.dernier_montant, r.frequence),
+      etapes: marcheASuivre(nom, r.frequence), lettre: lettreResiliation({ marchand: nom, montant: r.dernier_montant, expediteur: expediteur(c) }) });
+  });
+
+  /** « C'est fait, j'ai résilié » : Lucien watches the next statements. */
+  api.post("/resiliations", async (c) => {
+    const h = household(c);
+    const { cle } = z.object({ cle: z.string().min(1).max(200) }).parse(await c.req.json());
+    const r = recurrence(h.id, cle);
+    if (!r) return c.json({ error: "introuvable", message: "Ce prélèvement n'apparaît plus dans vos relevés." }, 404);
+    demarrerSuivi(db, h.id, { cle: r.cle, marchand: nomMarchand(r.marchand), montant: r.dernier_montant, frequence: r.frequence });
+    return c.json({ ok: true, ...suivis(db, h.id, db.transactionsFoyer(h.id)).liste.find((s) => s.cle === cle) }, 201);
+  });
+
+  api.delete("/resiliations/:cle", (c) => {
+    annulerSuivi(db, household(c).id, c.req.param("cle"));
+    return c.json({ ok: true });
+  });
+
+  /** Refund request when a debit came back after the cancellation. */
+  api.get("/resiliations/:cle/remboursement", (c) => {
+    const h = household(c);
+    const s = suivis(db, h.id, db.transactionsFoyer(h.id)).liste.find((x) => x.cle === c.req.param("cle"));
+    if (!s) return c.json({ error: "introuvable" }, 404);
+    const tardifs = s.apres_demande.filter((t) => t.date > s.demande_le);
+    return c.json({ lettre: lettreRemboursement({ marchand: s.marchand, demande_le: s.demande_le, prelevements: tardifs, expediteur: expediteur(c) }) });
   });
 
   api.get("/budget/categories", (c) => c.json(TX_CATEGORIES.map((k) => ({ cle: k, libelle: TX_LABEL[k] }))));
