@@ -861,3 +861,5 @@ b, strong { font-weight: 800; }
 .partenaire-bloc form { display: flex; gap: 8px; margin-top: 4px; }
 .partenaire-bloc input { flex: 1; min-width: 0; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line, #eadfe6); font: inherit; letter-spacing: .06em; }
 .partenaire-bloc .link { justify-self: start; }
+.suppr-liste { margin: 8px 0 14px; padding-left: 18px; display: grid; gap: 6px; font-size: 14px; line-height: 1.45; }
+.feuille:has(.suppr-liste) { overflow-y: auto; }

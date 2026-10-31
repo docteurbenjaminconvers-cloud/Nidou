@@ -80,6 +80,11 @@ export class BridgeClient {
     }, token);
   }
 
+  /** DELETE /v3/aggregation/users/{uuid} — removes the user and its bank connections at Bridge (account deletion). */
+  deleteUser(userUuid: string) {
+    return this.call<unknown>("DELETE", `/v3/aggregation/users/${encodeURIComponent(userUuid)}`);
+  }
+
   /** GET /v3/aggregation/accounts */
   async accounts(token: string): Promise<BridgeAccount[]> {
     return this.paginate<BridgeAccount>(token, "/v3/aggregation/accounts?limit=100");

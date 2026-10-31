@@ -71,6 +71,7 @@ const ROLE_LABEL: Record<string, string> = { adulte: "adulte", enfant: "enfant",
 
 export function Settings({ api, household, onBack, onPlan, toast, go }: { api: Api; household: Household; onBack: () => void; onPlan: (p: Household["plan"]) => void; toast: (m: string) => void; go: (s: string, id?: string) => void }) {
   const mcpUrl = `${location.origin}/mcp`;
+  const [suppression, setSuppression] = useState(false);
   const [periode, setPeriode] = useState<"mensuel" | "annuel">("annuel");
   const comptes = household.comptes ?? 1;
   const formuleActuelle = household.plan_souscrit === "famille" || household.abonnement?.statut === "simule" ? household.abonnement?.formule ?? null : null;
@@ -198,9 +199,10 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
         <div className="section-head"><h2>Vos données</h2></div>
         <div className="settings-row"><div><div className="t">Hébergement</div><div className="s">Europe · connexion chiffrée · jamais revendu</div></div></div>
         <div className="settings-row"><div><div className="t">Exporter tout</div><div className="s">Vos papiers d'origine et toutes vos données, dans un fichier .zip</div></div><button className="link" onClick={async () => { toast("Préparation de l'export…"); try { await api.exporter(); } catch (e) { toast((e as Error).message); } }}>Exporter</button></div>
-        <div className="settings-row"><div><div className="t">Supprimer le compte</div><div className="s">Tout est effacé, sans délai</div></div><button className="link" style={{ color: "var(--ember)" }} onClick={() => toast("Dans le prototype, supprimez le fichier de données")}>Supprimer</button></div>
+        <div className="settings-row"><div><div className="t">Supprimer le compte</div><div className="s">{household.titulaire === false ? "Vous quittez le foyer, votre compte est effacé" : "Tout le foyer est effacé, l'abonnement est résilié et remboursé au prorata"}</div></div><button className="link" style={{ color: "var(--ember)" }} onClick={() => setSuppression(true)}>Supprimer</button></div>
         {household.utilisateur && <div className="settings-row"><div><div className="t">Connecté·e</div><div className="s">{household.utilisateur.email}</div></div><button className="link" onClick={async () => { await api.deconnexion(); location.reload(); }}>Se déconnecter</button></div>}
       </section>
+      {suppression && <SuppressionCompte api={api} titulaire={household.titulaire !== false} foyer={household.nom} onClose={() => setSuppression(false)} toast={toast} />}
     </div>
   );
 }
@@ -234,6 +236,44 @@ function CodePartenaire({ api, toast }: { api: Api; toast: (m: string) => void }
           </form>
         </>
       )}
+    </div>
+  );
+}
+
+/** Confirmation sheet for « Supprimer le compte »: what goes, the export first, then SUPPRIMER typed by hand. */
+function SuppressionCompte({ api, titulaire, foyer, onClose, toast }: { api: Api; titulaire: boolean; foyer: string; onClose: () => void; toast: (m: string) => void }) {
+  const [mot, setMot] = useState("");
+  const [busy, setBusy] = useState(false);
+  const valider = async () => {
+    setBusy(true);
+    try {
+      const r = await api.supprimerCompte(mot);
+      const rembourse = r.rembourse_centimes ? ` ${(r.rembourse_centimes / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2 })} € vous seront remboursés sous quelques jours.` : "";
+      toast(r.portee === "foyer" ? `Foyer supprimé.${rembourse}` : "Votre compte est supprimé.");
+      setTimeout(() => { location.hash = ""; location.reload(); }, 1800);
+    } catch (e) { toast((e as Error).message); setBusy(false); }
+  };
+  return (
+    <div className="feuille-fond" onClick={onClose}>
+      <div className="feuille" role="dialog" aria-modal="true" aria-label="Supprimer le compte" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}>
+        <div className="feuille-tete"><b>{titulaire ? `Supprimer le foyer « ${foyer} »` : "Quitter le foyer et supprimer mon compte"}</b><button className="link" onClick={onClose}>Annuler</button></div>
+        {titulaire ? (
+          <ul className="suppr-liste">
+            <li>Tous les papiers, fichiers, photos, échéances, opérations bancaires et modules sont effacés, pour toutes les personnes du foyer.</li>
+            <li>L'accès à votre banque est coupé.</li>
+            <li>L'abonnement est résilié tout de suite, et la part non utilisée de votre dernier paiement vous est remboursée.</li>
+            <li>Les autres personnes connectées au foyer sont prévenues par email. Vos factures restent disponibles chez notre prestataire de paiement, comme la loi l'impose.</li>
+          </ul>
+        ) : (
+          <ul className="suppr-liste">
+            <li>Votre compte et vos sessions sont effacés, et vous n'avez plus accès au foyer.</li>
+            <li>Le foyer, ses papiers et son abonnement restent en place pour les autres.</li>
+          </ul>
+        )}
+        <button className="btn ghost block" onClick={async () => { try { await api.exporter(); } catch (e) { toast((e as Error).message); } }}>Exporter mes données d'abord</button>
+        <label className="champ" style={{ marginTop: 14 }}><span>Pour confirmer, tapez SUPPRIMER</span><input value={mot} onChange={(e) => setMot(e.target.value)} autoCapitalize="characters" autoComplete="off" aria-label="Tapez SUPPRIMER pour confirmer" /></label>
+        <button className="btn block danger" style={{ marginTop: 12 }} disabled={busy || mot.trim().toUpperCase() !== "SUPPRIMER"} onClick={valider}>{busy ? <span className="spinner" /> : titulaire ? "Supprimer définitivement" : "Supprimer mon compte"}</button>
+      </div>
     </div>
   );
 }

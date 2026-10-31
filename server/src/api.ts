@@ -3,6 +3,7 @@ import { z } from "zod";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { createHash, randomBytes } from "node:crypto";
 import { exporterFoyer } from "./export.js";
+import { quitterFoyer, supprimerFoyer } from "./suppression.js";
 import { basename, extname, join } from "node:path";
 import type { Db, DocumentRow, HouseholdRow } from "./db.js";
 import { extractDocument, heuristicExtract } from "./extract.js";
@@ -143,7 +144,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
       const ordre = db.usersOfHousehold(row.id).sort((a, b) => Number(b.role === "proprietaire") - Number(a.role === "proprietaire") || a.rejoint_le.localeCompare(b.rejoint_le));
       const rang = ordre.findIndex((u) => u.id === user!.id);
       const cap = capaciteComptes(db, row);
-      if (rang >= cap && !c.req.path.endsWith("/auth/moi") && !c.req.path.endsWith("/auth/deconnexion")) {
+      if (rang >= cap && !c.req.path.endsWith("/auth/moi") && !c.req.path.endsWith("/auth/deconnexion") && !c.req.path.endsWith("/compte/supprimer")) {
         const proprio = ordre[0];
         return c.json({ error: "compte_en_pause", message: `Le foyer « ${row.nom} » est en formule ${cap === 1 ? "gratuite (1 personne)" : `${cap} personnes`}. ${proprio?.prenom ?? "Le propriétaire"} peut passer à une formule plus grande pour vous rendre l'accès ; vos papiers vous attendent.` }, 402);
       }
@@ -157,6 +158,33 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
   const household = (c: any) => c.get("household") as { id: string; nom: string; plan: "gratuit" | "famille"; plan_souscrit: "gratuit" | "famille"; essai_fin: string | null; essai_jours_restants: number | null };
   const currentUser = (c: any) => c.get("user") as { id: string; email: string; prenom: string | null } | null;
   const isOwner = (c: any) => { const u = currentUser(c); return !u || db.householdsOfUser(u.id).find((h) => h.id === household(c).id)?.role === "proprietaire"; };
+
+  /**
+   * « Supprimer le compte » : the owner erases the whole household (subscription cancelled and refunded pro rata,
+   * bank access revoked, every row and file removed); a member only deletes his own account and leaves.
+   */
+  api.post("/compte/supprimer", async (c) => {
+    const body = z.object({ confirmation: z.string() }).parse(await c.req.json());
+    if (body.confirmation.trim().toUpperCase() !== "SUPPRIMER") return c.json({ error: "confirmation", message: "Tapez SUPPRIMER pour confirmer." }, 400);
+    // without accounts (shared demo), nobody may erase the household everyone is looking at
+    if (!AUTH_ON()) return c.json({ error: "demo", message: "La suppression n'existe pas en démonstration." }, 403);
+    const h = household(c);
+    const u = currentUser(c);
+    if (u && !isOwner(c)) {
+      quitterFoyer(db, h.id, u.id);
+      c.header("set-cookie", cookieHeader(null, secure()));
+      return c.json({ ok: true, portee: "compte" });
+    }
+    try {
+      const r = await supprimerFoyer(db, h.id, opts.uploadDir, { prenom: u?.prenom ?? null, email: u?.email ?? null });
+      c.header("set-cookie", cookieHeader(null, secure()));
+      return c.json({ ok: true, portee: "foyer", ...r });
+    } catch (e) {
+      console.error("[suppression] échec :", e);
+      return c.json({ error: "suppression_impossible", message: "La résiliation de l'abonnement n'a pas abouti : rien n'a été effacé. Réessayez dans quelques minutes, ou écrivez à bonjour@monlucien.fr." }, 502);
+    }
+  });
+
 
   // ---------- foyer partagé (comptes) ----------
   api.get("/auth/moi", (c) => {
@@ -267,6 +295,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
       boite_email: h.plan === "famille" ? boiteAddress(db.getHousehold(h.id)!.boite_code) : null,
       mcp_token: h.plan === "famille" ? db.getHousehold(h.id)!.mcp_token : null,
       utilisateur: currentUser(c),
+      titulaire: isOwner(c),
       abonnement: resumeAbonnement(db.getHousehold(h.id)!),
       modules: db.getModules(h.id),
       comptes: db.usersOfHousehold(h.id).length,
