@@ -390,7 +390,7 @@ html.intro-on { overflow: hidden; }
 
 /* Pour qui */
 .pourqui { padding-bottom: clamp(20px, 4vw, 40px); }
-.pq-grille { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 36px; }
+.pq-grille { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 36px; }
 @media (max-width: 1000px) { .pq-grille { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 600px) { .pq-grille { grid-template-columns: 1fr; } }
 .pq { background: var(--white); border-radius: var(--radius); padding: 24px 22px; box-shadow: var(--shadow); min-width: 0; }
@@ -428,3 +428,29 @@ html.intro-on { overflow: hidden; }
 .cpt-form input { border-color: var(--line, #f0e3ec); }
 .cpt-form .btn { grid-column: 1 / -1; }
 @media (max-width: 560px) { .cpt-form { grid-template-columns: 1fr; } }
+
+/* ---------- Pour qui : profils indépendant et bailleur ---------- */
+.pq-ico { width: 56px; height: 56px; border-radius: 50%; margin-left: -12px; display: grid; place-items: center; background: var(--lilac-soft, #efe7f6); box-shadow: 0 0 0 3px var(--white); }
+.pq-ico svg { width: 26px; height: 26px; fill: none; stroke: var(--plum, #3b2a3a); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- Les espaces (modules) ---------- */
+.espaces { padding: 90px 0 70px; }
+.espaces-grille { display: grid; grid-template-columns: repeat(3, 280px); justify-content: center; gap: 28px; margin-top: 36px; }
+.espaces-grille .tour-card { width: auto; }
+.espaces-lien { text-align: center; margin-top: 28px; }
+@media (max-width: 960px) {
+  .espaces-grille { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; justify-content: flex-start; padding: 6px 4px 18px; scrollbar-width: none; }
+  .espaces-grille::-webkit-scrollbar { display: none; }
+  .espaces-grille .tour-card { flex: 0 0 260px; }
+}
+
+/* ---------- Bouton collant sur téléphone ---------- */
+.cta-colle { display: none; }
+@media (max-width: 720px) {
+  .cta-colle { display: block; position: fixed; left: 16px; right: 16px; bottom: calc(14px + env(safe-area-inset-bottom)); z-index: 40; text-align: center; padding: 15px 18px; border-radius: 16px; background: var(--nest); color: #fff; font-weight: 800; text-decoration: none; box-shadow: 0 10px 30px rgba(59, 42, 58, .25); transform: translateY(140%); transition: transform .3s; }
+  .cta-colle.on { transform: none; }
+}
+
+/* menu : sur une ligne ; les liens secondaires disparaissent quand la place manque */
+.nav nav a, .nav .btn { white-space: nowrap; }
+@media (max-width: 1340px) { .nav nav a.nav-sec { display: none; } }

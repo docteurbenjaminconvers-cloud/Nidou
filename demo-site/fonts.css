@@ -1,0 +1,10 @@
+/* Polices hébergées par Lucien (pas d'appel à Google Fonts) : Fraunces et Nunito, licence SIL OFL. */
+@font-face { font-family: "Fraunces"; font-style: normal; font-weight: 500; font-display: swap; src: url("fonts/fraunces-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Fraunces"; font-style: italic; font-weight: 500; font-display: swap; src: url("fonts/fraunces-latin-500-italic.woff2") format("woff2"); }
+@font-face { font-family: "Fraunces"; font-style: normal; font-weight: 600; font-display: swap; src: url("fonts/fraunces-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Fraunces"; font-style: italic; font-weight: 600; font-display: swap; src: url("fonts/fraunces-latin-600-italic.woff2") format("woff2"); }
+@font-face { font-family: "Nunito"; font-style: normal; font-weight: 500; font-display: swap; src: url("fonts/nunito-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Nunito"; font-style: normal; font-weight: 600; font-display: swap; src: url("fonts/nunito-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Nunito"; font-style: normal; font-weight: 700; font-display: swap; src: url("fonts/nunito-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Nunito"; font-style: normal; font-weight: 800; font-display: swap; src: url("fonts/nunito-latin-800-normal.woff2") format("woff2"); }
+@font-face { font-family: "Nunito"; font-style: normal; font-weight: 900; font-display: swap; src: url("fonts/nunito-latin-900-normal.woff2") format("woff2"); }
