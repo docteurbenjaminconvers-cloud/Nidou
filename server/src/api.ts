@@ -1074,11 +1074,11 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
   api.get("/assistant", (c) => c.json(etatAssistant(db, db.getHousehold(household(c).id)!)));
   api.post("/assistant", async (c) => {
     const h = db.getHousehold(household(c).id)!;
-    const body = z.object({ messages: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(4000) })).min(1).max(40) }).safeParse(await c.req.json().catch(() => null));
+    const body = z.object({ messages: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(4000) })).min(1).max(40), langue: z.enum(["fr", "en"]).optional() }).safeParse(await c.req.json().catch(() => null));
     if (!body.success) return c.json({ error: "requete", message: "Question illisible." }, 400);
     try {
       const u = currentUser(c);
-      return c.json(await repondre(db, h, body.data.messages, { nom: u?.prenom ?? null }));
+      return c.json(await repondre(db, h, body.data.messages, { nom: u?.prenom ?? null, langue: body.data.langue ?? "fr" }));
     } catch (e) {
       if (e instanceof AssistantErreur) return c.json({ error: e.code, message: e.message, etat: etatAssistant(db, h) }, e.code === "acces" ? 402 : e.code === "quota" ? 429 : e.code === "requete" ? 400 : 503);
       throw e;

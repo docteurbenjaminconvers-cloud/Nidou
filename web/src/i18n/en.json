@@ -1434,60 +1434,568 @@
   "Notifications sur ce téléphone": "Notifications on this phone",
   "Les notifications push seront activées à la mise en production (clés VAPID côté serveur).": "Push notifications will be switched on when the app goes live (VAPID keys on the server).",
   "Dépenses courantes": "Everyday spending",
-  "Pas de document médical : Lucien ne les garde pas.": "No medical documents: Lucien does not keep them."
+  "Pas de document médical : Lucien ne les garde pas.": "No medical documents: Lucien does not keep them.",
+  "Saisie invalide": "Invalid input",
+  "Erreur interne": "Internal error",
+  "Adresse email invalide.": "Invalid email address.",
+  "Trop de demandes de lien. Réessayez dans 15 minutes.": "Too many link requests. Try again in 15 minutes.",
+  "L'email de connexion n'a pas pu partir. Réessayez dans quelques minutes.": "The sign-in email could not be sent. Try again in a few minutes.",
+  "Connectez-vous pour ouvrir votre espace.": "Sign in to open your space.",
+  "gratuite (1 personne)": "free (1 person)",
+  "Le propriétaire": "The owner",
+  "Tapez SUPPRIMER pour confirmer.": "Type SUPPRIMER to confirm.",
+  "La suppression n'existe pas en démonstration.": "Deletion is not available in the demo.",
+  "L'arrêt de l'abonnement n'a pas abouti : rien n'a été effacé. Réessayez dans quelques minutes, ou écrivez à bonjour@monlucien.fr.": "Stopping the subscription did not go through: nothing has been deleted. Try again in a few minutes, or write to bonjour@monlucien.fr.",
+  "Seul le titulaire du foyer peut annuler la suppression.": "Only the household account holder can cancel the deletion.",
+  "Seul le propriétaire du foyer gère l'abonnement.": "Only the household owner manages the subscription.",
+  "La rétractation n'a pas abouti. Réessayez dans quelques minutes, ou écrivez à bonjour@monlucien.fr.": "The withdrawal did not go through. Try again in a few minutes, or write to bonjour@monlucien.fr.",
+  "Aucun abonnement payant en cours.": "No paid subscription in progress.",
+  "La résiliation n'a pas abouti. Réessayez dans quelques minutes.": "The cancellation did not go through. Try again in a few minutes.",
+  "Annulez d'abord la suppression du foyer.": "Cancel the household deletion first.",
+  "La reprise n'a pas abouti. Réessayez dans quelques minutes.": "The resumption did not go through. Try again in a few minutes.",
+  "Duo ou Tribu": "Duo or Tribu",
+  "Seul le propriétaire du foyer peut retirer un compte.": "Only the household owner can remove an account.",
+  "Vous ne pouvez pas vous retirer vous-même.": "You cannot remove yourself.",
+  "Le portail de facturation nécessite Stripe.": "The billing portal requires Stripe.",
+  "LUCIEN_INBOX_SECRET manquant : la boîte de réception est fermée.": "LUCIEN_INBOX_SECRET missing: the inbox is closed.",
+  "La formule complète s'active par l'abonnement, dans Réglages.": "The full plan is activated by subscribing, in Settings.",
+  "Seul le titulaire du foyer peut changer ce réglage.": "Only the household account holder can change this setting.",
+  "Photo trop lourde (600 Ko au plus).": "Photo too large (600 KB maximum).",
+  "Format accepté : JPEG, PNG ou WebP.": "Accepted formats: JPEG, PNG or WebP.",
+  "Lien d'agenda inconnu ou remplacé : abonnez-vous à nouveau depuis Lucien.": "Unknown or replaced calendar link: subscribe again from Lucien.",
+  "Votre essai est terminé : choisissez une formule pour ajouter des papiers. Les vôtres restent consultables et exportables.": "Your trial has ended: choose a plan to add papers. Yours can still be viewed and exported.",
+  "Lucien accepte les PDF, les photos (JPEG, PNG, HEIC, WebP) et les fichiers texte.": "Lucien accepts PDFs, photos (JPEG, PNG, HEIC, WebP) and text files.",
+  "Votre foyer a atteint ce mois-ci la limite de lectures par l'IA : ce papier a été lu sans IA. Vérifiez et complétez les champs ; la lecture par l'IA reprend le 1er du mois.": "Your household has reached this month's limit of AI readings: this paper was read without AI. Check and complete the fields; AI reading resumes on the 1st of the month.",
+  "Plan gratuit : document lu localement, sans IA. Vérifiez et complétez les champs. La formule complète lit chaque document avec l'IA.": "Free plan: document read locally, without AI. Check and complete the fields. The full plan reads every document with AI.",
+  "Les lectures par l'IA du plan gratuit sont en pause jusqu'au mois prochain : vérifiez les champs lus localement. La formule complète n'a pas cette limite.": "Free-plan AI readings are paused until next month: check the fields read locally. The full plan has no such limit.",
+  "Quota mensuel de lectures IA du plan gratuit atteint : vérifiez les champs lus localement. La formule complète lit chaque document avec l'IA.": "Monthly quota of free-plan AI readings reached: check the fields read locally. The full plan reads every document with AI.",
+  "L'import de relevés et l'analyse des dépenses font partie de la formule complète. Vos opérations déjà importées restent consultables.": "Importing statements and spending analysis are part of the full plan. Transactions you have already imported can still be viewed.",
+  "La lecture des relevés PDF nécessite la clé API Anthropic. Exportez le relevé en CSV depuis votre banque.": "Reading PDF statements requires the Anthropic API key. Export the statement as a CSV from your bank.",
+  "Votre foyer a atteint ce mois-ci la limite de lectures par l'IA. Exportez le relevé en CSV depuis votre banque : il s'importe sans IA.": "Your household has reached this month's limit of AI readings. Export the statement as a CSV from your bank: it imports without AI.",
+  "Compte joint (démo)": "Joint account (demo)",
+  "Aucune ligne reconnue. Format attendu : une ligne par opération avec date, libellé et montant (CSV de votre banque).": "No lines recognised. Expected format: one line per transaction with date, description and amount (CSV from your bank).",
+  "Ce prélèvement n'apparaît plus dans vos relevés.": "This direct debit no longer appears in your statements.",
+  "La connexion bancaire automatique fait partie de la formule complète.": "Automatic bank connection is part of the full plan.",
+  "Synchronisation impossible": "Sync not possible",
+  "La veille bancaire d'un proche ouvrira après validation juridique.": "Bank monitoring for a relative will open after legal review.",
+  "Question illisible.": "Unreadable question.",
+  "L'assistant s'ajoute à une formule Solo, Duo ou Tribu.": "The assistant is added to a Solo, Duo or Tribu plan.",
+  "La veille bancaire est arrêtée. Les opérations seront effacées.": "Bank monitoring has been stopped. The transactions will be deleted.",
+  "simulé": "simulated",
+  "Lucien est prêt": "Lucien is ready",
+  "Vous recevrez ici vos rappels d'échéances et vos économies.": "Your deadline reminders and savings will appear here.",
+  "Tuto du connecteur IA": "AI connector tutorial",
+  "Les questions offertes pendant l'essai sont épuisées. L'option assistant les rend illimitées au quotidien.": "The questions included in the trial have run out. The assistant option makes them unlimited day to day.",
+  "Le nombre de questions de ce mois est atteint. Il se renouvelle le 1er du mois.": "This month's question limit has been reached. It resets on the 1st of the month.",
+  "L'assistant fait une courte pause. Réessayez un peu plus tard.": "The assistant is taking a short break. Try again a little later.",
+  "L'assistant n'est pas encore branché sur ce serveur (clé ANTHROPIC_API_KEY manquante).": "The assistant is not yet connected to this server (ANTHROPIC_API_KEY missing).",
+  "Je n'ai pas de réponse à cette question.": "I don't have an answer to this question.",
+  "La question demande trop de recherches d'un coup. Pouvez-vous la préciser ?": "The question needs too many searches at once. Could you narrow it down?",
+  "L'assistant n'a pas pu répondre. Réessayez dans un instant.": "The assistant could not answer. Try again in a moment.",
+  "2 min": "2 min",
+  "année": "year",
+  "prochain prélèvement": "next direct debit",
+  "15 min": "15 min",
+  "Ajoutez le contrat ou la dernière facture : Lucien pourra surveiller l'échéance et comparer le tarif.": "Add the contract or the latest bill: Lucien can then track the deadline and compare the price.",
+  "Le contrat est peut-être payé depuis un autre compte, ou déjà résilié. Vérifiez et mettez le document à jour.": "The contract may be paid from another account, or already cancelled. Check and update the document.",
+  "Revenus du travail": "Earned income",
+  "Prestations et aides": "Benefits and allowances",
+  "Autres revenus et remboursements": "Other income and refunds",
+  "Logement (loyer ou crédit, copropriété)": "Housing (rent or mortgage, co-ownership charges)",
+  "Énergie et eau": "Energy and water",
+  "Restaurants et livraisons": "Restaurants and deliveries",
+  "Transports et carburant": "Transport and fuel",
+  "Télécom et internet": "Telecoms and internet",
+  "Assurances et mutuelle": "Insurance and top-up health insurance",
+  "Enfants et scolarité": "Children and schooling",
+  "Loisirs et achats": "Leisure and shopping",
+  "Impôts et taxes": "Taxes and duties",
+  "Divers et retraits": "Miscellaneous and cash withdrawals",
+  "Au-delà de 35 % (assurance comprise), les banques refusent en général un nouveau crédit : c'est la norme du Haut Conseil de stabilité financière.": "Above 35% (insurance included), banks generally refuse a new loan: this is the standard set by the Haut Conseil de stabilité financière.",
+  "On conseille souvent 3 à 6 mois de dépenses disponibles sans délai, pour un coup dur.": "It is often advised to keep 3 to 6 months of spending available at short notice, for a rainy day.",
+  "Deux mois de suite en déficit": "Two months in a row in deficit",
+  "Les dépenses dépassent les revenus : regardez les postes au-dessus de leur prévisionnel.": "Spending exceeds income: look at the items above their forecast.",
+  "Date;Compte;Intitulé du compte;Libellé;Débit;Crédit": "Date;Account;Account name;Description;Debit;Credit",
+  "Virements vers l'épargne": "Transfers to savings",
+  "Compte joint Crédit Agricole": "Joint account Crédit Agricole",
+  "Maison, Montpellier (estimation)": "House, Montpellier (estimate)",
+  "Peugeot 3008 (cote)": "Peugeot 3008 (market value)",
+  "Crédit immobilier BNP": "BNP mortgage",
+  "Épargne": "Savings",
+  "résilier": "cancel",
+  "Les offres d'entrée box + mobile sont souvent 20 à 30 % moins chères.": "Entry-level broadband + mobile deals are often 20 to 30% cheaper.",
+  "Ensuite, le contrat se résilie ou se renégocie sans frais. Bon moment pour comparer.": "After that, the contract can be cancelled or renegotiated at no cost. A good time to compare.",
+  "Après un an de contrat, la loi permet de changer d'assureur quand vous voulez, sans attendre l'échéance. Un devis moins cher suffit : le nouvel assureur s'occupe de la résiliation.": "After one year, the law lets you change insurer whenever you like, without waiting for the renewal date. A cheaper quote is enough: the new insurer takes care of the cancellation.",
+  "Résiliable à tout moment : le nouvel assureur s'occupe de la résiliation.": "Can be cancelled at any time: the new insurer takes care of the cancellation.",
+  "C'est le poste où un effort de négociation rapporte le plus.": "This is the item where negotiating pays off most.",
+  "changer d'opérateur": "switch operator",
+  "changer de fournisseur": "switch supplier",
+  "changer d'assureur": "switch insurer",
+  "Ils prouvent vos droits à la retraite : gardez-les jusqu'à ce qu'elle soit liquidée.": "They prove your pension rights: keep them until your pension has been finalised.",
+  "Livret de famille, acte d'état civil": "Family record book, civil status certificate",
+  "À conserver toute la vie.": "Keep for life.",
+  "Diplôme": "Diploma",
+  "Carnet de santé, examens": "Health record, tests",
+  "Votre histoire médicale : à garder toute la vie.": "Your medical history: keep for life.",
+  "Remboursements de santé": "Health reimbursements",
+  "2 ans : le délai pour contester un remboursement.": "2 years: the time limit to dispute a reimbursement.",
+  "Avis d'impôt sur le revenu": "Income tax notice",
+  "L'administration peut contrôler pendant 3 ans : gardez l'avis et les justificatifs jusqu'à la fin de la 3e année.": "The tax authority can audit for 3 years: keep the notice and supporting documents until the end of the 3rd year.",
+  "Taxe foncière ou d'habitation": "Property tax or housing tax",
+  "1 an, jusqu'à la fin de l'année suivante.": "1 year, until the end of the following year.",
+  "Facture d'électricité, de gaz ou d'eau": "Electricity, gas or water bill",
+  "5 ans : le fournisseur peut réclamer un impayé pendant ce délai.": "5 years: the supplier can claim an unpaid bill during this period.",
+  "Contrat d'énergie": "Energy contract",
+  "le contrat court, puis 5 ans": "while the contract runs, then 5 years",
+  "Le contrat sert tant qu'il court ; ses factures se gardent 5 ans.": "The contract is useful while it runs; keep its bills for 5 years.",
+  "Facture de téléphone ou d'internet": "Phone or internet bill",
+  "Abonnement téléphone ou internet": "Phone or internet subscription",
+  "l'abonnement court, puis 1 an": "while the subscription runs, then 1 year",
+  "Le contrat sert tant qu'il court ; ses factures se gardent 1 an.": "The contract is useful while it runs; keep its bills for 1 year.",
+  "le compte est ouvert": "while the account is open",
+  "Utile tant que le compte existe.": "Useful as long as the account exists.",
+  "Relevé de compte": "Account statement",
+  "5 ans.": "5 years.",
+  "Contrat de crédit": "Loan agreement",
+  "le crédit court, puis 2 ans": "while the loan runs, then 2 years",
+  "Jusqu'à 2 ans après le dernier remboursement.": "Up to 2 years after the last repayment.",
+  "Avis d'échéance d'assurance": "Insurance renewal notice",
+  "2 ans.": "2 years.",
+  "Contrat d'assurance": "Insurance policy",
+  "le contrat court, puis 2 ans": "while the policy runs, then 2 years",
+  "Pendant toute la durée du contrat, puis 2 ans après sa résiliation.": "For the whole life of the policy, then 2 years after it is cancelled.",
+  "Bail et quittances de loyer": "Lease and rent receipts",
+  "la location dure, puis 3 ans": "while the tenancy lasts, then 3 years",
+  "Jusqu'à 3 ans après votre départ du logement.": "Up to 3 years after you leave the property.",
+  "Acte de propriété, travaux": "Title deed, building work",
+  "vous êtes propriétaire, puis 10 ans pour les travaux": "while you own the property, then 10 years for building works",
+  "Tant que vous êtes propriétaire ; les factures de gros travaux, 10 ans (garantie décennale).": "For as long as you own the property; invoices for major works, 10 years (ten-year guarantee).",
+  "Papiers du véhicule": "Vehicle papers",
+  "vous gardez le véhicule": "you keep the vehicle",
+  "Carte grise, contrôles techniques, factures d'entretien : jusqu'à la revente (l'acheteur les demandera).": "Registration certificate, roadworthiness inspections, servicing invoices: until you sell (the buyer will ask for them).",
+  "Passeport, carte d'identité": "Passport, ID card",
+  "il est valide (l'ancien sert pour le renouveler)": "it is valid (the old one helps with renewal)",
+  "Jusqu'à son renouvellement : l'ancien titre facilite la demande.": "Until it is renewed: the old document makes the application easier.",
+  "Facture d'achat": "Purchase invoice",
+  "vous avez l'objet": "you own the item",
+  "Elle prouve la garantie (2 ans minimum) et la valeur de l'objet en cas de vol ou de sinistre.": "It proves the warranty (2 years minimum) and the value of the item in case of theft or damage.",
+  "Papiers de scolarité": "School papers",
+  "l'année scolaire en cours": "the current school year",
+  "Inscriptions, cantine, assurance scolaire : utiles pour l'année en cours.": "Enrolments, canteen, school insurance: useful for the current year.",
+  "À vie": "For life",
+  "Jusqu'à la retraite": "Until retirement",
+  "Tant qu'il est en cours": "For as long as it is running",
+  "Après un an de contrat, une assurance auto, habitation ou une complémentaire santé peut toutefois être résiliée à tout moment (loi Hamon, résiliation infra-annuelle) : comparer les tarifs reste utile.": "After one year, car, home or top-up health insurance can nevertheless be cancelled at any time (Hamon law, mid-term cancellation): comparing prices is still worthwhile.",
+  "Comparer le tarif pour l'échéance suivante.": "Compare the price for the next deadline.",
+  "Garantie légale de conformité de 2 ans à compter de l'achat. Vérifier la facture pour une extension.": "Two-year legal guarantee of conformity from the date of purchase. Check the invoice for an extension.",
+  "Échéance": "Deadline",
+  "Pièce d'identité en cours de validité": "Valid proof of identity",
+  "Carte d'identité ou passeport : demande en mairie sur rendez-vous, pré-demande sur ants.gouv.fr.": "ID card or passport: apply at the town hall by appointment, pre-application on ants.gouv.fr.",
+  "Justificatif de domicile de moins de 3 mois": "Proof of address less than 3 months old",
+  "Facture d'électricité, de gaz, d'eau, d'internet ou quittance de loyer.": "Electricity, gas, water or internet bill, or rent receipt.",
+  "Téléchargez votre dernière facture dans l'espace client de votre fournisseur d'énergie ou d'internet, puis ajoutez-la à Lucien.": "Download your latest bill from your energy or internet provider's customer area, then add it to Lucien.",
+  "Dernier avis d'impôt sur le revenu": "Latest income tax notice",
+  "impots.gouv.fr, espace particulier, rubrique « Documents » : l'avis se télécharge en PDF.": "impots.gouv.fr, personal area, \"Documents\" section: the notice can be downloaded as a PDF.",
+  "3 derniers bulletins de salaire": "Last 3 payslips",
+  "Votre employeur ou votre coffre-fort de paie (Digiposte, Cegedim…). Indépendant : bilan ou attestation comptable.": "Your employer or your payslip vault (Digiposte, Cegedim…). Self-employed: accounts or an accountant's certificate.",
+  "Contrat de travail ou attestation de l'employeur": "Employment contract or employer's certificate",
+  "Demandez une attestation d'emploi au service RH : elle indique le poste, la date d'embauche et la période d'essai.": "Ask HR for a certificate of employment: it states the position, start date and trial period.",
+  "Dans l'appli de votre banque, rubrique « RIB » : un PDF à partager.": "In your bank's app, \"RIB\" section: a PDF to share.",
+  "Livret de famille ou acte de naissance": "Family record book or birth certificate",
+  "Acte de naissance gratuit en ligne sur service-public.fr (rubrique « Demande d'acte de naissance »). Photographiez aussi le livret de famille.": "Free birth certificate online at service-public.fr (\"Birth certificate request\" section). Also photograph the family record book.",
+  "Louer un logement": "Renting a home",
+  "Le dossier à remettre au propriétaire ou à l'agence": "The file to hand to the landlord or the agency",
+  "Dossier du garant (si vous en avez un)": "Guarantor's file (if you have one)",
+  "Pas de garant ? La garantie Visale d'Action Logement est gratuite : visale.fr.": "No guarantor? Action Logement's Visale guarantee is free: visale.fr.",
+  "Demande à la CAF": "CAF application",
+  "Allocations familiales, APL, prime d'activité": "Family allowances, housing benefit (APL), activity bonus",
+  "Bail ou quittance de loyer (pour l'aide au logement)": "Lease or rent receipt (for housing benefit)",
+  "Votre bail signé, ou une quittance demandée au propriétaire. Il remplira aussi une attestation de loyer pour la CAF.": "Your signed lease, or a receipt requested from the landlord. They will also complete a rent certificate for the CAF.",
+  "Inscription à l'école et à la cantine": "School and canteen enrolment",
+  "Mairie, école, centre de loisirs": "Town hall, school, after-school club",
+  "Carnet de santé, pages des vaccinations": "Health record, vaccination pages",
+  "Document médical : Lucien ne le garde pas. Présentez le carnet de santé directement à l'école ou joignez une photocopie des pages « vaccinations ».": "Medical document: Lucien does not keep it. Show the health record directly at the school or attach a photocopy of the \"vaccinations\" pages.",
+  "Attestation d'assurance scolaire": "School insurance certificate",
+  "Souvent incluse dans l'assurance habitation (responsabilité civile) : demandez l'attestation à votre assureur.": "Often included in home insurance (liability): ask your insurer for the certificate.",
+  "Attestation de quotient familial CAF (tarif de la cantine)": "CAF quotient familial certificate (canteen rate)",
+  "caf.fr, « Mon compte », « Attestations » : l'attestation de quotient familial se télécharge en PDF.": "caf.fr, \"My account\", \"Certificates\": the quotient familial certificate can be downloaded as a PDF.",
+  "Demande de prêt immobilier": "Mortgage application",
+  "Banque ou courtier": "Bank or broker",
+  "2 derniers avis d'impôt": "Last 2 tax notices",
+  "3 derniers relevés de compte": "Last 3 account statements",
+  "Dans l'appli de votre banque, rubrique « Relevés » : téléchargez les 3 derniers en PDF.": "In your bank's app, \"Statements\" section: download the last 3 as PDFs.",
+  "Tableaux d'amortissement des crédits en cours": "Repayment schedules for current loans",
+  "Demandez-les à votre banque, ou dans l'espace client du prêteur.": "Ask your bank for them, or find them in the lender's customer area.",
+  "Refaire un passeport ou une carte d'identité": "Renewing a passport or ID card",
+  "Rendez-vous en mairie": "Appointment at the town hall",
+  "Justificatif de domicile de moins d'un an": "Proof of address less than a year old",
+  "Ancien passeport ou ancienne carte d'identité": "Old passport or ID card",
+  "Si vous ne l'avez plus : déclaration de perte ou de vol, et un acte de naissance.": "If you no longer have it: a declaration of loss or theft, and a birth certificate.",
+  "Timbre fiscal (passeport seulement)": "Tax stamp (passport only)",
+  "Timbre électronique sur timbres.impots.gouv.fr (86 € pour un passeport adulte).": "Electronic stamp at timbres.impots.gouv.fr (86 € for an adult passport).",
+  "Déclarer un sinistre à l'assurance": "Reporting a claim to your insurer",
+  "Dégât des eaux, vol, bris, accident": "Water damage, theft, breakage, accident",
+  "Contrat ou attestation d'assurance concerné": "Relevant insurance policy or certificate",
+  "Dans l'espace client de votre assureur, rubrique « Mes contrats ».": "In your insurer's customer area, \"My policies\" section.",
+  "Factures des biens abîmés ou volés": "Invoices for damaged or stolen items",
+  "Retrouvez-les dans vos emails ou l'espace client du magasin. Photos des biens à défaut.": "Find them in your emails or the shop's customer area. Photos of the items otherwise.",
+  "Récépissé de dépôt de plainte (en cas de vol)": "Police report receipt (in case of theft)",
+  "Pré-plainte en ligne sur pre-plainte-en-ligne.gouv.fr, puis rendez-vous au commissariat ou à la gendarmerie.": "Online pre-complaint at pre-plainte-en-ligne.gouv.fr, then go to the police or gendarmerie station.",
+  "Constat amiable (dégât des eaux, accident)": "Joint accident report (water damage, accident)",
+  "Formulaire disponible chez votre assureur ; à remplir avec le voisin ou l'autre conducteur.": "Form available from your insurer; to be completed with the neighbour or the other driver.",
+  "Le titre que j'ai est expiré : il faut le renouveler.": "The document I have has expired: it needs renewing.",
+  "(si besoin)": "(if needed)",
+  "Ajoutez une photo ou un PDF.": "Add a photo or a PDF.",
+  "Une photo ou un PDF, s'il vous plaît.": "A photo or a PDF, please.",
+  "Seule une activité d'indépendant se partage avec un comptable.": "Only a self-employed activity can be shared with an accountant.",
+  "Allocation de rentrée scolaire : vérifier le versement CAF": "Back-to-school allowance: check the CAF payment",
+  "Versée vers la mi-août aux familles sous conditions de ressources, pour chaque enfant de 6 à 18 ans scolarisé. Si rien n'arrive, vérifiez votre dossier CAF.": "Paid around mid-August to families on a means-tested basis, for each schoolchild aged 6 to 18. If nothing arrives, check your CAF file.",
+  "Demande de bourse de collège ou de lycée": "Middle or high school grant application",
+  "La campagne se fait en septembre-octobre sur le portail Scolarité Services (ou auprès de l'établissement). Sous conditions de ressources.": "The campaign runs in September–October on the Scolarité Services portal (or through the school). Means-tested.",
+  "Inscription et vœux de mi-janvier à mi-mars, dossier à compléter début avril. Dates exactes sur parcoursup.gouv.fr.": "Registration and choices from mid-January to mid-March, file to complete in early April. Exact dates on parcoursup.gouv.fr.",
+  "Dossier social étudiant (bourse et logement CROUS)": "Student social file (CROUS grant and housing)",
+  "À déposer entre mi-janvier et fin mai sur messervices.etudiant.gouv.fr, avant même de connaître l'affectation.": "To be submitted between mid-January and end of May on messervices.etudiant.gouv.fr, even before you know the placement.",
+  "Réinscriptions cantine, périscolaire et activités pour la rentrée": "Re-enrolment for canteen, after-school care and activities for the new school year",
+  "Les places partent vite en juin : cantine et garderie en mairie, clubs et conservatoires avant l'été.": "Places go fast in June: canteen and after-school care at the town hall, clubs and music schools before summer.",
+  "Réinscrire, changer ou arrêter ? Les tarifs des clubs se renégocient à la réinscription.": "Re-enrol, change or stop? Club fees can be renegotiated at re-enrolment.",
+  "Déclaration de revenus : frais de garde, pensions, personnes à charge": "Tax return: childcare costs, maintenance payments, dependants",
+  "Pensez aux cases souvent oubliées : frais de garde des moins de 6 ans, pension versée à un enfant étudiant ou à un parent, frais d'hébergement d'un parent dépendant.": "Think of the boxes often overlooked: childcare costs for under-6s, maintenance paid to a student child or a parent, accommodation costs for a dependent parent.",
+  "Les frais de garde hors domicile (crèche, assistante maternelle, garderie) d'un enfant de moins de 6 ans ouvrent droit à un crédit d'impôt de 50 %, plafonné par enfant. La CAF verse aussi le complément de libre choix du mode de garde (CMG).": "Childcare costs outside the home (nursery, childminder, after-school care) for a child under 6 qualify for a 50% tax credit, capped per child. The CAF also pays the childcare choice supplement (CMG).",
+  "Versée en août par la CAF, sous conditions de ressources, de 6 à 18 ans. Aucune démarche si vous êtes déjà allocataire (sauf après 16 ans : justifier la scolarité).": "Paid in August by the CAF, means-tested, from age 6 to 18. No action needed if you already receive CAF benefits (after age 16: proof of schooling required).",
+  "Demande en septembre-octobre, sous conditions de ressources. Au lycée, s'y ajoutent parfois une prime d'équipement (filières pro) et une bourse au mérite.": "Apply in September–October, means-tested. In high school, an equipment bonus (vocational courses) and a merit grant are sometimes added.",
+  "Vœux de mi-janvier à mi-mars, dossier début avril, réponses à partir de fin mai. Déposez le dossier social étudiant (CROUS) en parallèle, sans attendre l'affectation.": "Choices from mid-January to mid-March, file in early April, answers from the end of May. Submit the student social file (CROUS) in parallel, without waiting for the placement.",
+  "Deux options fiscales : garder l'enfant rattaché au foyer (demi-part) ou le détacher et déduire la pension versée, dans la limite d'un plafond annuel. Comparez les deux chaque année ; l'étudiant détaché peut aussi demander l'APL pour son logement.": "Two tax options: keep the child attached to the household (half-share) or detach them and deduct the maintenance paid, up to an annual cap. Compare both every year; a detached student can also claim APL for their housing.",
+  "Le dossier social étudiant se dépose entre mi-janvier et fin mai. La bourse sur critères sociaux dépend des revenus du foyer, du nombre d'enfants et de l'éloignement.": "The student social file is submitted between mid-January and end of May. The means-tested grant depends on household income, number of children and distance from home.",
+  "La plupart des communes facturent la cantine selon le quotient familial CAF, parfois avec un tarif à 1 €. Si votre situation a changé (naissance, baisse de revenus), demandez une révision du tarif.": "Most councils charge for the canteen based on the CAF quotient familial, sometimes with a €1 rate. If your situation has changed (birth, drop in income), ask for the rate to be reviewed.",
+  "Aide de l'État à la rentrée pour l'inscription dans un club sportif, pour les 6-17 ans sous conditions (allocataires ARS, AEEH…). De nombreuses villes et comités d'entreprise ajoutent leur propre aide.": "State aid at the start of the school year for joining a sports club, for ages 6 to 17 under conditions (ARS, AEEH recipients…). Many towns and works councils add their own aid.",
+  "Famille nombreuse : carte SNCF et parts fiscales": "Large family: SNCF card and tax shares",
+  "À partir de 3 enfants : carte Famille nombreuse (réductions SNCF et partenaires), 1 part fiscale entière dès le 3e enfant, complément familial sous conditions.": "From 3 children: Famille nombreuse card (SNCF and partner discounts), a full tax share from the 3rd child, family supplement under conditions.",
+  "La pension versée à un ascendant dans le besoin est déductible, et les frais d'hébergement en établissement ouvrent droit à une réduction d'impôt. Selon l'âge et l'autonomie : APA, aide ménagère, congé de proche aidant indemnisé (AJPA).": "Maintenance paid to a parent in need is deductible, and care home costs qualify for a tax reduction. Depending on age and independence: APA, home help, paid carer's leave (AJPA).",
+  "Lucien peut ranger les papiers d'un proche avec son consentement. S'il est sous tutelle ou curatelle, c'est le tuteur ou le curateur qui autorise l'accès, en particulier à la banque. Pensez au mandat de protection future tant que la personne peut le signer.": "Lucien can file a relative's papers with their consent. If they are under guardianship or curatorship, the guardian or curator authorises access, especially to the bank. Consider a future protection mandate while the person can still sign it.",
+  "En couple : déclaration commune ou séparée ?": "As a couple: joint or separate tax return?",
+  "Mariés ou pacsés : déclaration commune par défaut, intéressante quand les revenus sont inégaux. En concubinage : deux déclarations, et les enfants rattachés à l'un ou l'autre ; répartir les enfants peut optimiser les parts.": "Married or in a civil partnership: joint return by default, worthwhile when incomes are unequal. Living together: two returns, with children attached to one or the other; splitting the children can optimise the tax shares.",
+  "Parent seul : demi-part supplémentaire et aides": "Single parent: extra half-share and benefits",
+  "Un parent qui élève seul ses enfants bénéficie d'une demi-part fiscale supplémentaire (case T) et, sous conditions, de l'allocation de soutien familial (ASF) de la CAF.": "A parent raising children alone gets an extra half tax share (box T) and, under conditions, the CAF's family support allowance (ASF).",
+  "Fixez une enveloppe par enfant et revoyez-la à chaque réinscription (juin). Les activités non fréquentées depuis deux mois sont des abonnements fantômes comme les autres.": "Set a budget per child and review it at each re-enrolment (June). Activities not attended for two months are ghost subscriptions like any other.",
+  "Remplissez l'agenda de la semaine": "Fill in the weekly schedule",
+  "Activités, cantine, garde alternée : une fois saisies, Lucien vous rappelle les fins de saison, calcule le coût mensuel et affiche qui est où chaque jour.": "Activities, canteen, shared custody: once entered, Lucien reminds you of season ends, works out the monthly cost and shows who is where each day.",
+  "Champs du bulletin de salaire.": "Payslip fields.",
+  "Champs du bail.": "Lease fields.",
+  "Le mois ou le net payé n'ont pas pu être lus : ajoutez ce bulletin à la main.": "The month or net pay could not be read: add this payslip by hand.",
+  "Le loyer ou la date de début n'ont pas pu être lus : ajoutez ce bail à la main.": "The rent or start date could not be read: add this lease by hand.",
+  "DPE non renseigné : il est obligatoire pour louer un logement.": "EPC not provided: it is mandatory to let a property.",
+  "Classé G : interdit à la location pour un nouveau bail ou un renouvellement depuis le 1er janvier 2025 (logement indécent). Des travaux s'imposent.": "Rated G: not allowed to be let under a new lease or renewal since 1 January 2025 (substandard housing). Works are required.",
+  "Classé F : loyer gelé, et location interdite à partir du 1er janvier 2028. Prévoyez les travaux.": "Rated F: rent frozen, and letting banned from 1 January 2028. Plan the works.",
+  "Classé E : location interdite à partir du 1er janvier 2034.": "Rated E: letting banned from 1 January 2034.",
+  "DPE réalisé avant juillet 2021 : il n'est plus valable, faites-le refaire.": "EPC carried out before July 2021: it is no longer valid, have it redone.",
+  "Plus de 15 000 € de loyers nus par an : le régime réel (déclaration 2044) s'applique.": "Over €15,000 of unfurnished rent a year: the actual-expenses regime (return 2044) applies.",
+  "Déclaration 2042, case 4BE (loyers bruts).": "Return 2042, box 4BE (gross rent).",
+  "Déclaration 2044, résultat reporté sur la 2042 (cases 4BA, ou 4BB/4BC en cas de déficit).": "Return 2044, result carried over to the 2042 (boxes 4BA, or 4BB/4BC in case of a loss).",
+  "Location meublée de longue durée (LMNP) : en micro-BIC, 50 % des recettes sont imposés. Le réel permet d'amortir le bien et le mobilier, souvent plus favorable avec un crédit : il demande une comptabilité (liasse 2031).": "Long-term furnished letting (LMNP): under micro-BIC, 50% of receipts are taxed. The actual-expenses regime lets you depreciate the property and furniture, often more favourable with a loan: it requires accounts (form 2031).",
+  "Recettes au-dessus du plafond du micro-BIC : le régime réel s'applique.": "Receipts above the micro-BIC ceiling: the actual-expenses regime applies.",
+  "Déclaration 2042-C-PRO, case 5ND (micro-BIC, location meublée non professionnelle).": "Return 2042-C-PRO, box 5ND (micro-BIC, non-professional furnished letting).",
+  "Le classement du meublé (étoiles) ou le régime réel sont souvent plus favorables.": "Having the property star-rated or using the actual-expenses regime is often more favourable.",
+  "SCI à l'impôt sur les sociétés : résultat estimé après amortissement du bâti (sur 30 ans, terrain exclu), impôt à 15 % jusqu'à 42 500 € de bénéfice puis 25 % (taux réduit sous conditions de détention). Liasse 2065 ; votre comptable découpe l'amortissement par composants.": "Corporation-tax SCI: estimated result after depreciation of the building (over 30 years, land excluded), tax at 15% up to €42,500 of profit then 25% (reduced rate under shareholding conditions). Form 2065; your accountant splits the depreciation by component.",
+  "Comparez les provisions encaissées aux charges récupérables réelles, justificatifs à l'appui.": "Compare the advance payments collected with the actual recoverable charges, with supporting documents.",
+  "Ajoutez le bail pour suivre les loyers.": "Add the lease to track the rent.",
+  "Taxe foncière": "Property tax",
+  "déclaration 2072-S": "2072-S return",
+  "liasse 2065": "form 2065",
+  "En ligne, date limite indicative (fixée chaque année, vers le 20 mai).": "Online, indicative deadline (set each year, around 20 May).",
+  "Choisissez des membres du foyer.": "Choose household members.",
+  "Choisissez deux membres du foyer.": "Choose two household members.",
+  "Sinon, envoyez la lettre ci-dessous, par email au service client ou par courrier recommandé, et gardez une copie.": "Otherwise, send the letter below, by email to customer service or by registered post, and keep a copy.",
+  "Pour un abonnement annuel, vérifiez la date d'échéance : la résiliation peut ne prendre effet qu'à cette date.": "For an annual subscription, check the deadline: the cancellation may only take effect on that date.",
+  "Un dernier prélèvement peut encore passer pour la période commencée : c'est normal.": "One last direct debit may still go through for the period already started: that's normal.",
+  "Revenez ici et touchez « C'est fait, j'ai résilié » : Lucien vérifiera sur vos prochains relevés que le prélèvement a bien disparu.": "Come back here and tap \"Done, I've cancelled\": Lucien will check on your next statements that the direct debit has really stopped.",
+  "Le délai de rétractation de 14 jours est passé, ou la rétractation a déjà été faite.": "The 14-day withdrawal period has passed, or the withdrawal has already been made.",
+  "À ne pas manquer": "Not to be missed",
+  "Le total des économies que vous avez décidées depuis votre arrivée.": "The total savings you have decided on since you arrived.",
+  "Elles attendent votre décision dans Budget.": "They are waiting for your decision in Budget.",
+  "Côté budget": "On the budget side",
+  "J'ai eu un doute en les lisant : un coup d'œil suffit.": "I had a doubt while reading them: a quick look will do.",
+  "Une semaine calme : rien d'urgent dans vos papiers. Je veille, profitez-en.": "A quiet week: nothing urgent in your papers. I'm keeping watch, so enjoy it.",
+  "Rien d'urgent cette semaine. Je veille.": "Nothing urgent this week. I'm keeping watch.",
+  "Le titulaire": "The account holder",
+  "le titulaire": "the account holder",
+  "Urgences (numéro européen)": "Emergency services (European number)",
+  "SAMU, urgence médicale": "SAMU, medical emergency",
+  "Police, gendarmerie": "Police, gendarmerie",
+  "Urgences par SMS (sourds, malentendants, ou si parler est dangereux)": "Emergency by text message (deaf or hard of hearing, or if speaking is dangerous)",
+  "Portefeuille ou sac perdu, volé": "Wallet or bag lost or stolen",
+  "Cartes, papiers, clés : dans l'ordre, sans rien oublier.": "Cards, papers, keys: in order, without forgetting anything.",
+  "Faire opposition aux cartes bancaires": "Block the bank cards",
+  "Tout de suite, même la nuit : le numéro de votre banque (au dos de la carte, dans son appli), ou le serveur interbancaire d'opposition.": "Straight away, even at night: your bank's number (on the back of the card, in its app), or the interbank card-blocking service.",
+  "Immédiatement": "Immediately",
+  "En cas de vol : porter plainte": "If stolen: report it to the police",
+  "Pré-plainte en ligne, puis rendez-vous au commissariat ou à la gendarmerie. Le récépissé sert pour la banque, l'assurance et les nouveaux papiers.": "Online pre-complaint, then an appointment at the police station or gendarmerie. The receipt is needed for the bank, the insurer and new papers.",
+  "Carte d'identité, passeport": "ID card, passport",
+  "La perte se déclare au moment de refaire le titre (pré-demande en ligne, puis rendez-vous en mairie). En cas de vol, la plainte suffit.": "The loss is declared when you renew the document (online pre-application, then an appointment at the town hall). If it was stolen, the police report is enough.",
+  "Permis de conduire": "Driving licence",
+  "Déclaration de perte et demande de nouveau permis en ligne.": "Loss declaration and application for a new licence online.",
+  "Carte Vitale": "Carte Vitale",
+  "Signalez la perte ou le vol dans votre compte ameli : une nouvelle carte est commandée.": "Report the loss or theft in your ameli account: a new card will be ordered.",
+  "Clés et téléphone": "Keys and phone",
+  "Faites suspendre la ligne par votre opérateur. Si les clés et une adresse étaient ensemble, prévenez votre assureur habitation : changer les serrures est parfois couvert.": "Have the line suspended by your operator. If your keys and an address were together, let your home insurer know: changing the locks is sometimes covered.",
+  "Dégât des eaux, incendie, cambriolage": "Water damage, fire, burglary",
+  "Chez vous, quelque chose s'est mal passé.": "Something has gone wrong at home.",
+  "Mettre en sécurité": "Make things safe",
+  "Coupez l'eau (ou le gaz, l'électricité). Danger, feu, blessé : appelez les secours.": "Turn off the water (or gas, electricity). Danger, fire, injury: call the emergency services.",
+  "Cambriolage : porter plainte": "Burglary: report it to the police",
+  "Avant de ranger. Listez ce qui manque ; le récépissé est exigé par l'assureur.": "Before tidying up. List what is missing; the insurer requires the receipt.",
+  "Déclarer à l'assureur habitation": "Notify the home insurer",
+  "Par téléphone, appli ou courrier recommandé, avec le numéro de contrat. Dégât des eaux : remplissez un constat amiable avec le voisin concerné.": "By phone, app or registered post, with the contract number. Water damage: fill in a joint accident report with the neighbour concerned.",
+  "5 jours ouvrés (vol : 2 jours ouvrés)": "5 working days (theft: 2 working days)",
+  "Photographier et garder les preuves": "Photograph and keep the evidence",
+  "Photos des dégâts, objets abîmés gardés jusqu'au passage de l'expert, factures d'achat des biens.": "Photos of the damage, damaged items kept until the assessor visits, purchase invoices for the goods.",
+  "Accident de voiture": "Car accident",
+  "Sur la route, avec ou sans autre véhicule.": "On the road, with or without another vehicle.",
+  "Se protéger, alerter": "Protect yourself, raise the alarm",
+  "Gilet, triangle, warnings. Blessé : appelez les secours.": "Hi-vis vest, warning triangle, hazard lights. Injury: call the emergency services.",
+  "Remplir le constat amiable": "Fill in the joint accident report",
+  "Avec l'autre conducteur, sur papier ou dans l'appli e-constat auto. Un seul exemplaire signé par les deux, rien d'ajouté après coup.": "With the other driver, on paper or in the e-constat auto app. One copy signed by both, nothing added afterwards.",
+  "Envoyer le constat à l'assureur": "Send the report to the insurer",
+  "Avec le numéro de contrat, des photos et les coordonnées des témoins.": "With the contract number, photos and witnesses' details.",
+  "5 jours ouvrés": "5 working days",
+  "Hospitalisation, urgence médicale": "Hospital admission, medical emergency",
+  "Pour vous ou un proche : ce qu'on vous demandera à l'accueil.": "For you or a relative: what you'll be asked at reception.",
+  "Urgence vitale : le 15": "Life-threatening emergency: call 15",
+  "Le SAMU oriente vers le bon service. Pour un avis médical le soir ou le week-end, le 116 117.": "The SAMU directs you to the right service. For medical advice in the evening or at weekends, call 116 117.",
+  "À l'accueil de l'hôpital": "At hospital reception",
+  "Pièce d'identité, carte Vitale (ou attestation de droits), carte de mutuelle : avec elles, pas d'avance des frais couverts.": "ID, carte Vitale (or proof of entitlement), top-up health insurance card: with these, you don't pay covered costs upfront.",
+  "Prévenir la mutuelle": "Notify your top-up health insurer",
+  "Pour la prise en charge (chambre particulière, forfait journalier) et l'éventuelle assistance (aide à domicile, garde d'enfants).": "For cover (private room, daily hospital charge) and any assistance (home help, childcare).",
+  "Arrêt de travail": "Sick leave certificate",
+  "Envoyez-le à la CPAM et à l'employeur.": "Send it to the CPAM and to your employer.",
+  "48 heures": "48 hours",
+  "aucune mesure de protection": "no protection measure",
+  "Personne introuvable dans ce foyer.": "Person not found in this household.",
+  "La veille bancaire concerne un parent ou une personne aidée.": "Banking monitoring applies to a parent or a person being helped.",
+  "jugement d'habilitation familiale": "habilitation familiale judgment",
+  "Cette veille est terminée.": "This monitoring has ended.",
+  "consentement expiré, à renouveler": "consent expired, to be renewed",
+  "carte prépayée ou carte cadeau": "prepaid card or gift card",
+  "plateforme de cryptomonnaie": "cryptocurrency platform",
+  "transfert d'argent international": "international money transfer",
+  "Vente de marchandises": "Sale of goods",
+  "Prestations de services commerciales ou artisanales (BIC)": "Commercial or craft services (BIC)",
+  "Activité libérale (BNC, sécurité sociale des indépendants)": "Professional activity (BNC, social security for the self-employed)",
+  "Activité libérale réglementée (BNC, Cipav)": "Regulated professional activity (BNC, Cipav)",
+  "Seuil majoré de la franchise de TVA dépassé : la TVA est due dès le jour du dépassement.": "Higher VAT exemption threshold exceeded: VAT is due from the day it was exceeded.",
+  "Seuil de la franchise de TVA dépassé : la TVA s'appliquera l'an prochain (ou dès le dépassement du seuil majoré).": "VAT exemption threshold exceeded: VAT will apply next year (or as soon as the higher threshold is exceeded).",
+  "Plus de 80 % du seuil de franchise de TVA : surveillez les prochains encaissements.": "Over 80% of the VAT exemption threshold: keep an eye on upcoming receipts.",
+  "Recettes encaissées": "Receipts collected",
+  "Contribution économique territoriale": "Contribution économique territoriale",
+  "Autres impôts": "Other taxes",
+  "Loyers et charges locatives": "Rent and service charges",
+  "Location de matériel et de mobilier": "Hire of equipment and furniture",
+  "Entretien et réparations": "Maintenance and repairs",
+  "Petit outillage": "Small tools",
+  "Chauffage, eau, gaz, électricité": "Heating, water, gas, electricity",
+  "Honoraires ne constituant pas des rétrocessions": "Fees other than retrocessions",
+  "Primes d'assurances": "Insurance premiums",
+  "Frais de véhicules": "Vehicle costs",
+  "Autres frais de déplacements": "Other travel costs",
+  "Charges sociales personnelles obligatoires": "Compulsory personal social charges",
+  "URSSAF : cotisations, CSG et CRDS (à ventiler)": "URSSAF: contributions, CSG and CRDS (to be split)",
+  "CSG déductible": "Deductible CSG",
+  "Salaires nets et avantages en nature": "Net salaries and benefits in kind",
+  "Charges sociales sur salaires": "Social charges on salaries",
+  "TVA reversée": "VAT paid over",
+  "Personnel intérimaire": "Temporary staff",
+  "Pertes diverses": "Miscellaneous losses",
+  "Charges sociales personnelles facultatives (Madelin)": "Optional personal social charges (Madelin)",
+  "Frais de réception, de représentation et de congrès": "Reception, entertainment and conference costs",
+  "Fournitures de bureau, frais de documentation, de correspondance et de téléphone": "Office supplies, documentation, postage and telephone costs",
+  "Frais d'actes et de contentieux": "Legal and litigation costs",
+  "Cotisations syndicales et professionnelles": "Union and professional subscriptions",
+  "Autres frais divers de gestion": "Other miscellaneous management costs",
+  "Frais financiers": "Financial costs",
+  "À immobiliser et amortir (achat de plus de 500 € HT ?)": "To be capitalised and depreciated (purchase over 500 € excl. VAT?)",
+  "Prélèvements personnels (non déductibles)": "Personal drawings (non-deductible)",
+  "Net imposable supérieur au brut : un chiffre est mal lu ou mal saisi.": "Taxable net is higher than gross: a figure has been misread or mistyped.",
+  "plus élevé": "higher",
+  "plus bas": "lower",
+  ", impôt libératoire": ", flat-rate tax option",
+  "CFE à payer": "CFE to pay",
+  "Exonérée l'année de création. Avis dans votre espace professionnel impots.gouv.fr.": "Exempt in the year of creation. Notice in your professional area on impots.gouv.fr.",
+  "Chiffre d'affaires sur la 2042-C-PRO": "Turnover on the 2042-C-PRO",
+  "À déclarer même avec le versement libératoire (il sert au revenu fiscal de référence).": "To be declared even with the flat-rate tax payment (it counts towards the reference taxable income).",
+  "L'abattement forfaitaire est appliqué par l'administration.": "The flat-rate allowance is applied by the tax authorities.",
+  "Cotisation foncière des entreprises, avis dans votre espace professionnel impots.gouv.fr.": "Cotisation foncière des entreprises, notice in your professional area on impots.gouv.fr.",
+  "En ligne, avec ses annexes 2035-A et 2035-B. Date limite indicative : elle est fixée chaque année.": "Online, with its schedules 2035-A and 2035-B. Indicative deadline: it is set every year.",
+  "Report sur la 2042-C-PRO": "Carry over to the 2042-C-PRO",
+  "Le bénéfice de la 2035 se reporte sur la déclaration complémentaire des revenus.": "The profit from the 2035 is carried over to the supplementary income return.",
+  "Les recettes encaissées se déclarent sur la 2042-C-PRO, l'abattement de 34 % est appliqué par l'administration.": "Receipts collected are declared on the 2042-C-PRO; the 34% allowance is applied by the tax authorities.",
+  "Responsable des achats, cadre": "Purchasing manager, executive",
+  "Professeure de yoga, micro-entreprise": "Yoga teacher, sole trader",
+  "Masseur-kinésithérapeute, mi-temps": "Physiotherapist, part-time",
+  "Masseur-kinésithérapeute libérale": "Self-employed physiotherapist",
+  "débit": "debit",
+  "crédit": "credit",
+  "Cochez la case demandant que l'abonnement commence tout de suite pour continuer.": "Tick the box asking for the subscription to start immediately to continue.",
+  "Le paiement en ligne arrive bientôt. D'ici là, rien ne change pour vous.": "Online payment is coming soon. Until then, nothing changes for you.",
+  "Choisissez d'abord une formule Solo, Duo ou Tribu.": "Please choose a Solo, Duo or Tribu plan first.",
+  "Prix Stripe de la veille manquant (STRIPE_PRICE_VEILLE_MENSUEL / _ANNUEL).": "Stripe price for Veille missing (STRIPE_PRICE_VEILLE_MENSUEL / _ANNUEL).",
+  "Prix Stripe de l'assistant manquant (STRIPE_PRICE_ASSISTANT_MENSUEL / _ANNUEL).": "Stripe price for the assistant missing (STRIPE_PRICE_ASSISTANT_MENSUEL / _ANNUEL).",
+  "STRIPE_WEBHOOK_SECRET manquant": "STRIPE_WEBHOOK_SECRET missing",
+  "checkout: foyer inconnu": "checkout: unknown household",
+  "subscription: foyer inconnu": "subscription: unknown household",
+  "s peuvent": "s can go",
+  "Keepcool : 34,9 € chaque mois": "Keepcool: 34,9 € every month",
+  "Prélevé 4 fois, aucun contrat enregistré dans Lucien. Si vous ne l'utilisez plus, résiliez avant le 16.": "Debited 4 times, no contract recorded in Lucien. If you no longer use it, cancel before the 16th.",
+  "2 abonnements de sport en même temps": "2 sports subscriptions at the same time",
+  "Keepcool et Basic Fit : 64,89 € par mois. Un seul suffit rarement à être utilisé deux fois.": "Keepcool and Basic Fit: 64,89 € a month. You rarely use both.",
+  "Canal+ Abonnement : 24,99 € chaque mois": "Canal+ Abonnement: 24,99 € every month",
+  "Prélevé 4 fois, aucun contrat enregistré dans Lucien. Si vous ne l'utilisez plus, résiliez avant le 15.": "Debited 4 times, no contract recorded in Lucien. If you no longer use it, cancel before the 15th.",
+  "Edf Clients Particuliers a augmenté de 22 %": "Edf Clients Particuliers went up by 22%",
+  "96 € → 117 €. Une hausse de tarif ouvre souvent un droit de résiliation sans frais ; demandez un devis concurrent.": "96 € → 117 €. A price rise often gives you the right to cancel free of charge; ask for a competitor's quote.",
+  "52 € de frais bancaires sur 4 mois": "52 € in bank fees over 4 months",
+  "5 lignes : Cotisation Visa Premier, Commission Intervention. Une banque en ligne ou une négociation de l'agence les ramène souvent à zéro.": "5 lines: Cotisation Visa Premier, Commission Intervention. An online bank or negotiating with your branch often brings them down to zero.",
+  "Amazon Prime : 6,99 € chaque mois": "Amazon Prime: 6,99 € every month",
+  "Prélevé 4 fois, aucun contrat enregistré dans Lucien. Si vous ne l'utilisez plus, résiliez avant le 12.": "Debited 4 times, no contract recorded in Lucien. If you no longer use it, cancel before the 12th.",
+  "4 services de streaming en parallèle": "4 streaming services at once",
+  "Canal+ Abonnement, Netflix Com, Disney Plus, Amazon Prime : 54,46 € par mois. Alternez-les plutôt que de les cumuler.": "Canal+ Abonnement, Netflix Com, Disney Plus, Amazon Prime: 54,46 € a month. Take turns with them rather than stacking them.",
+  "Apple Com/Bill Icloud : 2,99 € chaque mois": "Apple Com/Bill Icloud: 2,99 € every month",
+  "Prélevé 4 fois, aucun contrat enregistré dans Lucien. Si vous ne l'utilisez plus, résiliez avant le 14.": "Debited 4 times, no contract recorded in Lucien. If you no longer use it, cancel before the 14th.",
+  "Courses : +32 % ce mois-ci": "Groceries: +32% this month",
+  "592 € contre 448 € en moyenne : 144 € de plus ce mois-ci. Regardez les marchands du mois pour voir d'où vient l'écart.": "592 € against an average of 448 €: 144 € more this month. Look at this month's merchants to see where the gap comes from.",
+  "Shopping : +62 % ce mois-ci": "Shopping: +62% this month",
+  "164 € contre 101 € en moyenne : 63 € de plus ce mois-ci. Regardez les marchands du mois pour voir d'où vient l'écart.": "164 € against an average of 101 €: 63 € more this month. Look at this month's merchants to see where the gap comes from.",
+  "Credit Immo Bnp prélève 1 180 € / mois sans contrat dans Lucien": "Credit Immo Bnp debits 1 180 € / month with no contract in Lucien",
+  "Mutuelle santé famille": "Family top-up health insurance",
+  "Électricité — nouvel échéancier": "Electricity — new payment schedule",
+  "Cantine — école Jules-Ferry": "Canteen — Jules-Ferry school",
+  "Fibre + mobile": "Fibre + mobile",
+  "Assurance auto — Peugeot 3008": "Car insurance — Peugeot 3008",
+  "Assurance habitation — Maison": "Home insurance — House",
+  "Salle de sport": "Gym",
+  "Spotify Famille": "Spotify Family",
+  "+22 % sur Électricité — nouvel échéancier": "+22% on Electricity — new payment schedule",
+  "96 € → 117 € (mensuel). Une hausse de tarif ouvre souvent un droit de résiliation sans frais.": "96 € → 117 € (monthly). A price rise often gives you the right to cancel free of charge.",
+  "Fibre + mobile : plus d'engagement": "Fibre + mobile: no longer under contract",
+  "Vous pouvez changer d'opérateur ou demander une baisse sans frais de résiliation. Les offres d'entrée box + mobile sont souvent 20 à 30 % moins chères.": "You can switch provider or ask for a reduction with no cancellation fee. Entry-level broadband + mobile offers are often 20 to 30% cheaper.",
+  "4 abonnements en cours": "4 subscriptions running",
+  "Salle de sport, Spotify Famille, Netflix, Disney+. Garder ceux réellement utilisés ce mois-ci.": "Gym, Spotify Family, Netflix, Disney+. Keep the ones you actually use this month.",
+  "Mutuelle santé famille : résiliable à tout moment": "Family top-up health insurance: cancellable at any time",
+  "Assurance auto — Peugeot 3008 : résiliable à tout moment": "Car insurance — Peugeot 3008: cancellable at any time",
+  "Assurance habitation — Maison : 3 ans sans renégociation": "Home insurance — House: 3 years without renegotiation",
+  "Les tarifs d'entrée des concurrents sont souvent 10 à 20 % plus bas. Demander un devis comparatif. Résiliable à tout moment : le nouvel assureur s'occupe de la résiliation.": "Competitors' entry prices are often 10 to 20% lower. Ask for a comparison quote. Cancellable at any time: the new insurer handles the cancellation.",
+  "Anniversaire de Jean (10 ans)": "Jean's birthday (10)",
+  "Paiement : Taxe foncière 2026": "Payment: Property tax 2026",
+  "1 240 € à régler (DGFIP).": "1 240 € to pay (DGFIP).",
+  "Renouvellement : Assurance auto — Peugeot 3008": "Renewal: Car insurance — Peugeot 3008",
+  "Comparer le tarif avant reconduction (MAIF).": "Compare the price before it renews (MAIF).",
+  "Échéance : Contrôle technique — Peugeot 3008": "Deadline: Vehicle inspection — Peugeot 3008",
+  "Contrôle technique favorable, prochain contrôle dans 2 ans.": "Vehicle inspection passed, next one in 2 years.",
+  "Expiration : Passeport — Léa": "Expiry: Passport — Léa",
+  "Prévoir le renouvellement : les délais en mairie ou préfecture peuvent dépasser 2 mois.": "Plan ahead for renewal: waiting times at the town hall or prefecture can exceed 2 months.",
+  "Fin de garantie légale : Lave-linge Bosch — facture": "End of legal guarantee: Bosch washing machine — invoice",
+  "Anniversaire de Mamie Jeanne (80 ans)": "Granny Jeanne's birthday (80)",
+  "Dernier jour pour résilier : Salle de sport": "Last day to cancel: Gym",
+  "Préavis de 30 jours avant le renouvellement du 2027-04-11 (Basic-Fit). Au-delà, le contrat se renouvelle automatiquement.": "30 days' notice before the renewal on 2027-04-11 (Basic-Fit). After that, the contract renews automatically.",
+  "Parcoursup : vœux de Léa à confirmer": "Parcoursup: Léa's choices to confirm",
+  "Anniversaire de Léa (18 ans)": "Léa's birthday (18)",
+  "Renouvellement : Salle de sport": "Renewal: Gym",
+  "Comparer le tarif avant reconduction (Basic-Fit).": "Compare the price before it renews (Basic-Fit).",
+  "Anniversaire de Moi (43 ans)": "My birthday (43)",
+  "Échéance : Cantine — école Jules-Ferry": "Deadline: Canteen — Jules-Ferry school",
+  "Forfait cantine 4 jours, tarif tranche C.": "4-day canteen package, bracket C rate.",
+  "Fin de saison : Piano": "End of season: Piano",
+  "Fin de saison : Judo": "End of season: Judo",
+  "Fin de saison : Volley": "End of season: Volleyball",
+  "Dernier jour pour résilier : Mutuelle santé famille": "Last day to cancel: Family top-up health insurance",
+  "Préavis de 60 jours avant le renouvellement du 2027-09-23 (Harmonie Mutuelle). Au-delà, le contrat se renouvelle automatiquement.": "60 days' notice before the renewal on 2027-09-23 (Harmonie Mutuelle). After that, the contract renews automatically.",
+  "Dernier jour pour résilier : Assurance habitation — Maison": "Last day to cancel: Home insurance — House",
+  "Préavis de 60 jours avant le renouvellement du 2027-10-23 (Matmut). Au-delà, le contrat se renouvelle automatiquement.": "60 days' notice before the renewal on 2027-10-23 (Matmut). After that, the contract renews automatically.",
+  "Anniversaire de Camille (41 ans)": "Camille's birthday (41)",
+  "Renouvellement : Mutuelle santé famille": "Renewal: Family top-up health insurance",
+  "Comparer le tarif avant reconduction (Harmonie Mutuelle).": "Compare the price before it renews (Harmonie Mutuelle).",
+  "Renouvellement : Assurance habitation — Maison": "Renewal: Home insurance — House",
+  "Comparer le tarif avant reconduction (Matmut).": "Compare the price before it renews (Matmut).",
+  "Taxe foncière 2026": "Property tax 2026",
+  "Avis de taxe foncière, paiement en ligne avant la date limite.": "Property tax notice, pay online before the deadline.",
+  "Contrôle technique — Peugeot 3008": "Vehicle inspection — Peugeot 3008",
+  "Lave-linge Bosch — facture": "Bosch washing machine — invoice",
+  "Achat lave-linge Bosch Série 6, garantie légale 2 ans.": "Purchase of a Bosch Series 6 washing machine, 2-year legal guarantee.",
+  "Passeport — Léa": "Passport — Léa",
+  "Préfecture": "Prefecture",
+  "Passeport mineur, validité 5 ans.": "Child's passport, valid for 5 years.",
+  "Abonnement Comfort, engagement 12 mois.": "Comfort subscription, 12-month commitment.",
+  "Plan Famille, 6 comptes.": "Family plan, 6 accounts.",
+  "Abonnement Standard avec pub.": "Standard subscription with ads.",
+  "Abonnement Standard.": "Standard subscription.",
+  "Livebox fibre + 2 forfaits mobiles 100 Go. Engagement terminé.": "Livebox fibre + 2 mobile plans, 100 GB. Commitment ended.",
+  "Nouvel échéancier : 117 €/mois suite à révision annuelle.": "New payment schedule: 117 €/month following the annual review.",
+  "Électricité — facture": "Electricity — invoice",
+  "Mensualisation 96 €/mois, option heures creuses.": "Monthly payments of 96 €/month, off-peak option.",
+  "Couverture famille, 2 adultes 2 enfants, niveau 3.": "Family cover, 2 adults 2 children, level 3.",
+  "Multirisque habitation, 120 m², responsabilité civile incluse.": "Comprehensive home insurance, 120 m², third-party liability included.",
+  "Contrat tous risques, franchise 300 €. Renouvellement tacite chaque année.": "Comprehensive policy, 300 € excess. Renews automatically each year.",
+  "Avis d'impôt sur le revenu 2026": "Income tax notice 2026",
+  "Avis d'impôt 2026 sur les revenus 2025, foyer de 3 parts. Sert de justificatif de revenus (location, CAF, prêt).": "2026 tax notice on 2025 income, household of 3 parts. Serves as proof of income (rental, CAF, loan).",
+  "Bulletin de salaire — mois dernier": "Payslip — last month",
+  "Bulletin de paie, CDI cadre.": "Payslip, permanent contract, executive.",
+  "Bulletin de salaire — il y a 2 mois": "Payslip — 2 months ago",
+  "Bulletin de salaire — il y a 3 mois": "Payslip — 3 months ago",
+  "Livret de famille": "Livret de famille",
+  "Livret de famille : mariage, naissances de Léa et Jean.": "Livret de famille: marriage, births of Léa and Jean.",
+  "RIB — compte joint": "RIB — joint account",
+  "Relevé d'identité bancaire du compte joint.": "Bank details (RIB) for the joint account.",
+  "Facture Orange — mars 2024": "Orange invoice — March 2024",
+  "Facture mensuelle fibre et mobiles, mars 2024.": "Monthly invoice for fibre and mobiles, March 2024.",
+  "Mamie Jeanne": "Granny Jeanne",
+  "Vit à Uzès, aide pour les papiers avec son accord.": "Lives in Uzès, help with papers with her consent.",
+  "Dojo municipal": "Municipal dojo",
+  "Cours de conduite": "Driving lessons",
+  "Forfait 20 h, à renouveler": "20-hour package, to be renewed",
+  "Mamie Jeanne : courses et papiers": "Granny Jeanne: shopping and papers",
+  "Allocation de rentrée scolaire pour Léa": "Back-to-school allowance for Léa",
+  "Bourse de lycée pour Léa": "Secondary school grant for Léa",
+  "Parcoursup pour Léa : anticiper le calendrier": "Parcoursup for Léa: plan ahead for the calendar",
+  "Léa étudiant : rattachement ou pension ?": "Léa as a student: tax attachment or maintenance?",
+  "Bourse et logement CROUS pour Léa": "CROUS grant and housing for Léa",
+  "Cantine de Léa : vérifier le tarif au quotient familial": "Léa's canteen: check the quotient familial rate",
+  "Pass'Sport pour Léa": "Pass'Sport for Léa",
+  "Allocation de rentrée scolaire pour Jean": "Back-to-school allowance for Jean",
+  "Cantine de Jean : vérifier le tarif au quotient familial": "Jean's canteen: check the quotient familial rate",
+  "Pass'Sport pour Jean": "Pass'Sport for Jean",
+  "Vous aidez Mamie Jeanne : ce qui est déductible": "You are helping Granny Jeanne: what is deductible",
+  "Papiers de Mamie Jeanne : avec son accord": "Granny Jeanne's papers: with her consent",
+  "Les enfants coûtent 371 € par mois en cantine et activités": "The children cost 371 € a month in canteen and activities",
+  "Famille Martin (démo)": "Martin family (demo)",
+  "Fwd: Votre facture d'électricité": "Fwd: Your electricity bill",
+  "Fwd: Avis d'échéance habitation": "Fwd: Home insurance payment notice",
+  "janv": "Jan",
+  "févr": "Feb",
+  "avr": "Apr",
+  "juil": "Jul",
+  "sept": "Sep",
+  "oct": "Oct",
+  "nov": "Nov",
+  "déc": "Dec",
+  "jours": "days",
+  "Ajouter quelqu'un": "Add someone",
+  "Ajouter un proche": "Add a relative",
+  "Seulement si vous gérez aussi ses papiers": "Only if you also handle their papers",
+  "La semaine, les dates clés, les conseils": "The week, key dates, tips",
+  "(moi)": "(me)",
+  "Vie pro Indépendant": "Work life · Self-employed",
+  "Mon espace": "My space",
+  "lundi": "Monday",
+  "mardi": "Tuesday",
+  "mercredi": "Wednesday",
+  "jeudi": "Thursday",
+  "vendredi": "Friday",
+  "samedi": "Saturday",
+  "dimanche": "Sunday",
+  "frais de garde, pensions, personnes à charge": "childcare costs, maintenance payments, dependants",
+  "vérifier le versement CAF": "check the CAF payment"
  },
  "motifs": [
   [
-   "Fin du mois, le {0}",
-   "End of the month, {0}"
-  ],
-  [
-   "aujourd'hui {0}",
-   "today {0}"
-  ],
-  [
-   "Point le plus bas : {0} le {1}.",
-   "Lowest point: {0} on {1}."
-  ],
-  [
-   "Découvert probable vers le {0} ({1}). Un virement d'épargne ou un report de dépense l'évite.",
-   "Likely overdraft around {0} ({1}). A transfer from savings or postponing a purchase avoids it."
-  ],
-  [
-   "Dépenses courantes ({0} jours, environ {1} par jour)",
-   "Everyday spending ({0} days, about {1} a day)"
-  ],
-  [
-   "{0} · le {1}",
-   "{0} · on the {1}"
-  ],
-  [
-   "on lui doit {0}",
-   "is owed {0}"
-  ],
-  [
-   "doit {0}",
-   "owes {0}"
-  ],
-  [
-   "payé par {0} · pour {1}",
-   "paid by {0} · for {1}"
-  ],
-  [
-   "Prouvé par vos relevés : {0} par an ne sont plus prélevés.",
-   "Proven by your statements: {0} a year no longer charged."
-  ],
-  [
-   "Me rétracter (jusqu'au {0})",
-   "Withdraw (until {0})"
-  ],
-  [
-   "Dans {0} : {1}",
-   "In {0}: {1}"
-  ],
-  [
-   "Dans {0} j : {1}",
-   "In {0} d: {1}"
+   "<!doctype html><html lang=\"fr\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Ouvrir Lucien</title>\n<style>body{margin:0;min-height:100dvh;display:grid;place-items:center;background:#fbf3f6;font-family:system-ui,-apple-system,sans-serif;color:#3b2a3a}main{max-width:340px;padding:24px;text-align:center}h1{font-family:Georgia,serif;font-style:italic;font-weight:600;font-size:30px;margin:0 0 8px}p{color:#6b5a69;line-height:1.5}button{margin-top:14px;width:100%;min-height:48px;border:0;border-radius:14px;background:#d9634a;color:#fff;font:700 16px system-ui,sans-serif;cursor:pointer}</style></head>\n<body><main><h1>Lucien</h1><p>Touchez le bouton pour ouvrir Lucien sur cet appareil.</p>\n<form method=\"post\" action=\"lien\"><input type=\"hidden\" name=\"token\" value=\"{0}\"><button type=\"submit\">Ouvrir Lucien</button></form></main></body></html>",
+   "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Open Lucien</title>\n<style>body{margin:0;min-height:100dvh;display:grid;place-items:center;background:#fbf3f6;font-family:system-ui,-apple-system,sans-serif;color:#3b2a3a}main{max-width:340px;padding:24px;text-align:center}h1{font-family:Georgia,serif;font-style:italic;font-weight:600;font-size:30px;margin:0 0 8px}p{color:#6b5a69;line-height:1.5}button{margin-top:14px;width:100%;min-height:48px;border:0;border-radius:14px;background:#d9634a;color:#fff;font:700 16px system-ui,sans-serif;cursor:pointer}</style></head>\n<body><main><h1>Lucien</h1><p>Tap the button to open Lucien on this device.</p>\n<form method=\"post\" action=\"lien\"><input type=\"hidden\" name=\"token\" value=\"{0}\"><button type=\"submit\">Open Lucien</button></form></main></body></html>"
   ],
   [
    "[Votre nom]\n[Votre adresse]\n\n{0}\n\nLe {1}\n\nRéférence : contrat n° {2}\nObjet : Résiliation de mon contrat — {3}\n\nMadame, Monsieur,\n\nPar la présente, je vous informe de ma décision de résilier le contrat référencé ci-dessus.\n\nJe vous remercie de prendre en compte cette résiliation à la date la plus proche possible et de m'adresser une confirmation écrite précisant la date effective de fin de contrat.\n\nJe vous prie d'agréer, Madame, Monsieur, l'expression de mes salutations distinguées.\n\n[Votre nom]",
@@ -1498,12 +2006,44 @@
    "I've prepared the letter for {0} ({1}). The notice period for the annual renewal has passed, but after one year of contract the Hamon law lets you cancel at any time. For car insurance, the simplest way is to take out a policy elsewhere: the new insurer sends the cancellation itself. Fill in your name and address before sending."
   ],
   [
+   "Les prélèvements URSSAF ({0} €) mêlent cotisations, CSG et CRDS : sur la 2035, la CSG déductible a sa propre ligne et la part non déductible (CSG non déductible, CRDS) ne se déduit pas. Reprenez le détail de votre attestation annuelle URSSAF : le bénéfice réel sera un peu plus élevé que cette estimation.",
+   "URSSAF debits ({0} €) combine contributions, CSG and CRDS: on the 2035, deductible CSG has its own line and the non-deductible part (non-deductible CSG, CRDS) is not deducted. Use the detail from your annual URSSAF statement: the actual profit will be slightly higher than this estimate."
+  ],
+  [
    "Moi\n[votre adresse]\n\n{0}\nService client\n\nObjet : Résiliation de mon abonnement\n\nMadame, Monsieur,\n\nJe vous informe de ma décision de résilier mon abonnement, pour lequel vous prélevez {1} € sur mon compte. Merci de cesser tout prélèvement et de me confirmer la date de fin.\n\nSalutations distinguées.",
    "Me\n[your address]\n\n{0}\nCustomer service\n\nSubject: Cancellation of my subscription\n\nDear Sir or Madam,\n\nI am writing to inform you of my decision to cancel my subscription, for which you debit {1} € from my account. Please stop all direct debits and confirm the end date.\n\nYours faithfully."
   ],
   [
+   "Sans mesure de protection, {0} doit pouvoir donner son accord elle-même. Si ce n'est plus possible, une mesure doit être demandée au juge des contentieux de la protection (tribunal judiciaire) : tutelle, curatelle ou habilitation familiale. Lucien ne peut pas l'activer à sa place.",
+   "Without a protection measure, {0} must be able to give consent themselves. If that is no longer possible, a measure must be requested from the judge for protection matters (tribunal judiciaire): tutelle, curatelle or habilitation familiale. Lucien cannot activate it on their behalf."
+  ],
+  [
+   "Bonjour{0},\n\n{1} a demandé la suppression du foyer « {2} » sur Lucien. L'abonnement ne sera pas renouvelé et tout sera effacé le {3}, à la fin de la période déjà payée.\n\nD'ici là, tout reste accessible : pensez à exporter ce dont vous avez besoin (Réglages, Exporter tout).",
+   "Hello{0},\n\n{1} has asked for the household \"{2}\" to be deleted from Lucien. The subscription will not be renewed and everything will be erased on {3}, at the end of the period already paid.\n\nUntil then, everything remains accessible: remember to export what you need (Settings, Export everything)."
+  ],
+  [
    "Sans mesure de protection, {0} doit pouvoir donner son accord elle-même. Si ce n'est plus possible, une mesure doit être demandée au juge des contentieux de la protection : tutelle, curatelle ou habilitation familiale. Lucien ne peut pas l'activer à sa place.",
    "Without a legal protection measure, {0} must be able to give her consent herself. If that's no longer possible, a measure must be requested from the guardianship judge: guardianship (tutelle), curatorship (curatelle) or family authorisation. Lucien can't activate it on her behalf."
+  ],
+  [
+   "SCI à l'impôt sur le revenu : elle dépose la 2072-S, chaque associé reporte sa quote-part ({0} % pour le foyer) sur sa 2044, lignes 111 à 114. Le micro-foncier n'est possible que si vous louez aussi un bien en direct.",
+   "Income-tax SCI: it files the 2072-S, each partner reports their share ({0}% for the household) on their 2044, lines 111 to 114. Micro-foncier is only possible if you also let a property directly."
+  ],
+  [
+   "Connectez-vous à votre espace client {0} : un bouton « Résilier » ou « Résilier mon contrat » doit y être visible et facile d'accès si le contrat a été souscrit en ligne (obligation légale depuis juin 2023).",
+   "Log in to your {0} customer area: a \"Cancel\" or \"Cancel my contract\" button should be visible and easy to find if the contract was taken out online (a legal requirement since June 2023)."
+  ],
+  [
+   "Bonjour{0},\n\n{1} a supprimé le foyer « {2} » de Lucien. Ses papiers, échéances et données ont été effacés, et votre accès à ce foyer est fermé.\n\nPour toute question : bonjour@monlucien.fr.",
+   "Hello{0},\n\n{1} has deleted the household \"{2}\" from Lucien. Its papers, deadlines and data have been erased, and your access to this household is closed.\n\nFor any questions: bonjour@monlucien.fr."
+  ],
+  [
+   "« {0} » le {1}. C'est le moyen de paiement le plus utilisé par les escrocs (faux conseiller bancaire, faux petit-fils, faux support technique). Appelez votre proche avant toute chose.",
+   "\"{0}\" on {1}. This is the payment method most used by scammers (fake bank adviser, fake grandchild, fake tech support). Call your relative before anything else."
+  ],
+  [
+   "À faire au plus tard ce jour-là : prendre rendez-vous quelques semaines avant.{0} Rouler sans contrôle technique valide expose à une amende.",
+   "To be done by that day at the latest: book an appointment a few weeks ahead.{0} Driving without a valid roadworthiness inspection risks a fine."
   ],
   [
    "Voici le courrier de résiliation pour {0}. Complétez votre nom et votre adresse, puis envoyez-le en recommandé avec accusé de réception.",
@@ -1518,12 +2058,32 @@
    "Three quick wins, about {0} a year:\n{1}\nThe easiest place to start: the Orange broadband box, out of its commitment period, can be renegotiated in one call."
   ],
   [
+   "Le foyer « {0} » est en formule {1}. {2} peut passer à une formule plus grande pour vous rendre l'accès ; vos papiers vous attendent.",
+   "The household “{0}” is on the {1} plan. {2} can switch to a larger plan to give you back access; your papers are waiting for you."
+  ],
+  [
    "Connectez-vous à votre espace client {0} : un bouton « Résilier » doit y être visible si le contrat a été souscrit en ligne.",
    "Log in to your {0} customer account: a “Cancel” button should be visible there if the contract was taken out online."
   ],
   [
+   "Au réel (2035), vous déclarez {0} € de moins qu'en micro à ce stade de l'année : vos charges dépassent l'abattement de 34 %.",
+   "Under the real regime (2035), you declare {0} € less than under micro at this point in the year: your expenses exceed the 34% allowance."
+  ],
+  [
    "Arrêter la veille du compte de {0} ? Les opérations seront effacées après la durée de conservation ; le journal est gardé.",
    "Stop the watch on {0}'s account? Transactions will be erased after the retention period; the log is kept."
+  ],
+  [
+   "{0} personnes se connectent à ce foyer : la formule {1} en accepte {2}. Choisissez une formule plus grande ou retirez un compte.",
+   "{0} people sign in to this household: the {1} plan allows {2}. Choose a larger plan or remove an account."
+  ],
+  [
+   "En micro, l'abattement de 34 % dépasse vos charges réelles : le micro-BNC vous ferait déclarer {0} € de moins à ce stade.",
+   "Under micro, the 34% allowance exceeds your actual expenses: micro-BNC would have you declare {0} € less at this point."
+  ],
+  [
+   "Au réel, vos charges dépassent l'abattement de 30 % : vous déclareriez {0} de moins. L'option pour le réel engage 3 ans.",
+   "On actual expenses, your costs exceed the 30% allowance: you would declare {0} less. Opting for actual expenses commits you for 3 years."
   ],
   [
    "Le passeport de Léa expire le {0}. Les délais en mairie peuvent dépasser deux mois : prenez rendez-vous dès maintenant.",
@@ -1550,24 +2110,96 @@
    "Your account is read-only: paused, {0}. A plan picks up right where you left off, from 6,90 € a month."
   ],
   [
+   "{0}. Vérifiez qu'ils ont été souscrits en connaissance de cause (démarchage téléphonique, abonnements cachés).",
+   "{0}. Check that they were taken out knowingly (telephone sales, hidden subscriptions)."
+  ],
+  [
+   "{0} € retirés. Des retraits répétés peuvent signaler une pression (démarchage à domicile, « ami » insistant).",
+   "{0} € withdrawn. Repeated withdrawals can signal pressure (door-to-door selling, an insistent \"friend\")."
+  ],
+  [
    "{0}\n\n{1}\n\nObjet : {2} — {3}\n\nMadame, Monsieur,\n\n(Mode démo : le courrier complet est rédigé par le serveur Lucien.)\n\n{4}",
    "{0}\n\n{1}\n\nSubject: {2} — {3}\n\nDear Sir or Madam,\n\n(Demo mode: the full letter is written by the Lucien server.)\n\n{4}"
+  ],
+  [
+   "{0} → {1}. Une hausse de tarif ouvre souvent un droit de résiliation sans frais ; demandez un devis concurrent.",
+   "{0} → {1}. A price increase often gives the right to cancel free of charge; ask for a competing quote."
+  ],
+  [
+   "{0} contre {1} en moyenne : {2} de plus ce mois-ci. Regardez les marchands du mois pour voir d'où vient l'écart.",
+   "{0} against {1} on average: {2} more this month. Look at this month's merchants to see where the gap comes from."
   ],
   [
    "{0} papiers peuvent partir : {1}. Le reste est encore utile : chaque papier indique jusqu'à quand le garder.",
    "{0} papers can go: {1}. The rest is still useful: each paper shows how long to keep it."
   ],
   [
+   "Prélevé {0} fois, aucun contrat enregistré dans Lucien. Si vous ne l'utilisez plus, résiliez avant le {1}.",
+   "Debited {0} times, no contract saved in Lucien. If you no longer use it, cancel before the {1}."
+  ],
+  [
+   "Chiffre d'affaires {0}, à payer environ {1} (cotisations, impôt libératoire et formation professionnelle).",
+   "Turnover {0}, about {1} to pay (contributions, flat-rate income tax and vocational training)."
+  ],
+  [
    "{0} papier peut partir : {1}. Le reste est encore utile : chaque papier indique jusqu'à quand le garder.",
    "{0} paper can go: {1}. The rest is still useful: each paper shows how long to keep it."
+  ],
+  [
+   "Les tarifs d'entrée des concurrents sont souvent 10 à 20 % plus bas. Demander un devis comparatif.{0}",
+   "Competitors' entry-level prices are often 10 to 20% lower. Ask for a comparison quote.{0}"
+  ],
+  [
+   "Préavis de {0} jours avant le renouvellement du {1}{2}. Au-delà, le contrat se renouvelle automatiquement.",
+   "Notice period of {0} days before the renewal on {1}{2}. After that, the contract renews automatically."
+  ],
+  [
+   "{0} a encore prélevé {1} le {2}, après votre résiliation. Demandez le remboursement : la lettre est prête.",
+   "{0} took {1} again on {2}, after your cancellation. Ask for a refund: the letter is ready."
+  ],
+  [
+   "Meublé de tourisme {0} : en micro-BIC, {1} % des recettes sont imposés (abattement de {2} %, plafond {3} €).{4}",
+   "Furnished tourist let {0}: under micro-BIC, {1}% of receipts are taxed ({2}% allowance, ceiling {3} €).{4}"
   ],
   [
    "Le foyer reste accessible jusqu'au {0}, puis il est effacé ; vous pouvez changer d'avis d'ici là.",
    "The household stays accessible until {0}, then it's erased; you can change your mind until then."
   ],
   [
+   "Net payé {0} que d'habitude ({1} € pour {2} €) : prime, absence, régularisation ? Un coup d'œil suffit.",
+   "Net pay is {0} than usual ({1} € against {2} €): bonus, absence, adjustment? A quick look will do."
+  ],
+  [
+   "Liste indicative d'après {0}. Vérifiez auprès de l'organisme, qui peut demander d'autres pièces.",
+   "Indicative list based on {0}. Check with the organisation, which may ask for other papers."
+  ],
+  [
+   "{0} papier{1} partir : {2}. Le reste est encore utile : chaque papier indique jusqu'à quand le garder.",
+   "{0} paper{1}: {2}. The rest is still useful: each paper shows how long to keep it."
+  ],
+  [
    "Noté. Lucien vérifiera vos relevés : plus aucun prélèvement de {0}, et l'économie sera prouvée.",
    "Noted. Lucien will check your statements: no more direct debits from {0}, and the saving will be proven."
+  ],
+  [
+   "Le micro-foncier (abattement de 30 %) est plus favorable : {0} de moins à déclarer qu'au réel.",
+   "The micro-foncier regime (30% allowance) is more favourable: {0} less to declare than on actual expenses."
+  ],
+  [
+   "{0} ligne{1} : {2}. Une banque en ligne ou une négociation de l'agence les ramène souvent à zéro.",
+   "{0} line{1}: {2}. An online bank or a negotiation with your branch often brings them down to zero."
+  ],
+  [
+   "La veille d'un proche coûte {0} € par mois ({1} € par an) ; la formule Tribu en comprend une.",
+   "Monitoring a relative costs {0} € a month ({1} € a year); the Tribu plan includes one."
+  ],
+  [
+   "Découvert probable vers le {0} ({1}). Un virement d'épargne ou un report de dépense l'évite.",
+   "Likely overdraft around {0} ({1}). A transfer from savings or postponing a purchase avoids it."
+  ],
+  [
+   "Chiffre d'affaires {0} €, à payer environ {1} € (cotisations{2} et formation professionnelle).",
+   "Turnover {0} €, around {1} € to pay (contributions{2} and vocational training)."
   ],
   [
    "J'autorise la veille en ma qualité de représentant légal de {0}, qui en a été informée.",
@@ -1586,12 +2218,48 @@
    "{0} with {1}, contract no. {2}: {3} a year, fully comprehensive, 300 € excess. Renewal on {4}."
   ],
   [
+   "{0} € → {1} € ({2}). Une hausse de tarif ouvre souvent un droit de résiliation sans frais.",
+   "{0} € → {1} € ({2}). A price increase often gives the right to cancel free of charge."
+  ],
+  [
+   "Chiffre d'affaires {0}, à payer environ {1} (cotisations et formation professionnelle).",
+   "Turnover {0}, about {1} to pay (contributions and vocational training)."
+  ],
+  [
    "{0} : {1} pièce sur {2} prête.{3}\nDans Dossiers prêts, je prépare le .zip avec le bordereau.",
    "{0}: {1} document out of {2} ready.{3}\nIn Ready-to-send files, I prepare the .zip with the cover sheet."
   ],
   [
+   "{0} : {1} pièce{2} sur {3} prête{4}.{5}\nDans Dossiers prêts, je prépare le .zip avec le bordereau.",
+   "{0}: {1} item{2} ready out of {3} required item{4}.{5}\nIn Ready files, I will prepare the .zip with the cover sheet."
+  ],
+  [
+   "Votre formule accepte {0} personne{1} connectée{2}. Passez à {3} pour en inviter plus.",
+   "Your plan allows {0} connected user{1}{2}. Upgrade to {3} to invite more."
+  ],
+  [
    "Retirer {0} du foyer ? Ses activités seront supprimées, ses papiers restent.",
    "Remove {0} from the household? Their activities will be deleted, their papers stay."
+  ],
+  [
+   "L'assistant Lucien est une option à {0} € par mois, en plus d'une formule.",
+   "The Lucien assistant is an option at {0} € a month, on top of a plan."
+  ],
+  [
+   "Voici ce qui vous attend du {0} au {1} : {2}.{3} Je vous préviens le moment venu.",
+   "Here's what's coming up from {0} to {1}: {2}.{3} I'll let you know when the time comes."
+  ],
+  [
+   "{0}, {1}, autorise la veille dans les limites de l'acte ; {2} en est informée.",
+   "{0}, {1}, authorises monitoring within the limits of the legal act; {2} has been informed."
+  ],
+  [
+   "Recettes au-dessus de {0} € : la déclaration contrôlée (2035) s'impose.",
+   "Receipts above {0} €: the contrôlée return (2035) is mandatory."
+  ],
+  [
+   "« {0} » le {1}, bien au-dessus des dépenses habituelles ({2} € en médiane).",
+   "\"{0}\" on {1}, well above usual spending ({2} € median)."
   ],
   [
    "Retirer « {0} » de Lucien ? Le papier et ses rappels seront effacés.",
@@ -1602,8 +2270,28 @@
    "Your plan allows {0} connected people; Tribe goes up to 6."
   ],
   [
+   "Recettes au-dessus du plafond de {0} € : le régime réel s'applique.",
+   "Receipts above the {0} € ceiling: the actual-expenses regime applies."
+  ],
+  [
    "Votre formule accepte {0} personne connectée ; Tribu va jusqu'à 6.",
    "Your plan allows {0} connected person; Tribe goes up to 6."
+  ],
+  [
+   "{0} : {1} par mois. Un seul suffit rarement à être utilisé deux fois.",
+   "{0}: {1} a month. You rarely use even one of them enough."
+  ],
+  [
+   "Vous pouvez {0} ou demander une baisse sans frais de résiliation.{1}",
+   "You can {0} or ask for a reduction, with no cancellation fees.{1}"
+  ],
+  [
+   "Plus aucun prélèvement de {0} : {1} par an économisés, c'est prouvé.",
+   "No more direct debits from {0}: {1} a year saved, and it's proven."
+  ],
+  [
+   "Joignez le {0} (ajoutez-le dans Papiers, puis choisissez-le ici).",
+   "Attach the {0} (add it in Papers, then choose it here)."
   ],
   [
    "Résiliation en cours. Lucien vérifie vos relevés jusqu'au {0}.",
@@ -1612,6 +2300,18 @@
   [
    "{0} donne son accord, avec son curateur ou sa curatrice ({1}).",
    "{0} gives her consent, together with her curator ({1})."
+  ],
+  [
+   "Prouvé par vos relevés : {0} par an ne sont plus prélevés.",
+   "Proven by your statements: {0} a year no longer charged."
+  ],
+  [
+   "La formule Tribu accepte jusqu'à {0} personnes connectées.",
+   "The Tribu plan allows up to {0} connected people."
+  ],
+  [
+   "Les enfants coûtent {0} € par mois en cantine et activités",
+   "Children cost {0} € a month in canteen and activities"
   ],
   [
    "Rétractation faite : {0} € remboursés sous quelques jours",
@@ -1626,8 +2326,28 @@
    "The .zip contains the cover sheet and {0} original files."
   ],
   [
+   "{0} : {1} par mois. Alternez-les plutôt que de les cumuler.",
+   "{0}: {1} a month. Take turns rather than stacking them."
+  ],
+  [
+   "Le préavis de {0} jours est dépassé pour cette échéance{1}.",
+   "The {0}-day notice period has passed for this deadline{1}."
+  ],
+  [
+   "Cantine de {0} : vérifier le tarif au quotient familial",
+   "{0}'s canteen: check the quotient familial rate"
+  ],
+  [
+   "{0} au total, date indicative : elle figure sur l'avis.",
+   "{0} in total, indicative date: it appears on the notice."
+  ],
+  [
    "Le .zip contient le bordereau et {0} fichier original.",
    "The .zip contains the cover sheet and {0} original file."
+  ],
+  [
+   "Dossier préparé par Lucien le {0} : {1} pièce{2} sur {3} prête{4}.",
+   "File prepared by Lucien on {0}: {1} of {3} paper{2} ready{4}."
   ],
   [
    "Option assistant · {0} questions restantes ce mois-ci",
@@ -1638,6 +2358,10 @@
    "Your bank's authorisation expires in {0} days."
   ],
   [
+   "{0} opération{1} à classer, {2} grosse{3} dépense{4} à justifier.",
+   "{0} transaction{1} to categorise, {2} large expense{3}{4} to justify."
+  ],
+  [
    "L'autorisation de votre banque expire dans {0} jour.",
    "Your bank's authorisation expires in {0} day."
   ],
@@ -1646,16 +2370,56 @@
    "Assistant add-on · {0} question left this month"
   ],
   [
+   "En retard depuis le {0}. Si c'est réglé, cochez-la.",
+   "Overdue since {0}. If it's been paid, tick it off."
+  ],
+  [
+   "« {0} » le {1}. Premier virement vers ce destinataire.",
+   "\"{0}\" on {1}. First transfer to this recipient."
+  ],
+  [
+   "Dépenses courantes ({0} jours, environ {1} par jour)",
+   "Everyday spending ({0} days, about {1} a day)"
+  ],
+  [
    "Bulletin de {0} lu et ajouté : net payé {1} € (démo)",
    "{0} payslip read and added: net pay {1} € (demo)"
+  ],
+  [
+   "Vérifier qu'il ne s'agit pas d'un doublon : {0}.",
+   "Check that this is not a duplicate: {0}."
+  ],
+  [
+   "{0}. Garder ceux réellement utilisés ce mois-ci.",
+   "{0}. Keep the ones actually used this month."
+  ],
+  [
+   "Bail de {0} ajouté : {1} € hors charges depuis le {2}",
+   "Lease for {0} added: {1} € excluding charges since {2}"
   ],
   [
    "{0}, {1}, autorise la veille ; {2} en est informée.",
    "{0}, {1}, authorises the watch; {2} has been informed."
   ],
   [
+   "Parcoursup pour {0} : anticiper le calendrier",
+   "Parcoursup for {0}: plan the calendar ahead"
+  ],
+  [
    "{0} pièces sur {1} prêtes. Voici ce qui manque.",
    "{0} documents out of {1} ready. Here's what's missing."
+  ],
+  [
+   "{0} prélève {1} / mois sans contrat dans Lucien",
+   "{0} is debiting {1} / month with no contract in Lucien"
+  ],
+  [
+   "Épargne de précaution : {0} mois de dépenses",
+   "Emergency savings: {0} months of spending"
+  ],
+  [
+   "Virement de {0} € à un nouveau bénéficiaire",
+   "Transfer of {0} € to a new payee"
   ],
   [
    "Essai · {0} questions restantes ce mois-ci",
@@ -1664,6 +2428,18 @@
   [
    "{0} pièce sur {1} prête. Voici ce qui manque.",
    "{0} document out of {1} ready. Here's what's missing."
+  ],
+  [
+   "En attente de la publication de l'IRL {0}.",
+   "Waiting for the {0} IRL to be published."
+  ],
+  [
+   "Le geste de la semaine : {0} pour {1} par an.",
+   "This week's tip: {0} for {1} a year."
+  ],
+  [
+   "Le foyer « {0} » a été supprimé de Lucien",
+   "The household \"{0}\" has been deleted from Lucien"
   ],
   [
    "Extrait par l'IA avec {0} % de confiance",
@@ -1682,8 +2458,32 @@
    "Trial · {0} question left this month"
   ],
   [
+   "{0} : aucun prélèvement vu depuis 2 mois",
+   "{0}: no direct debit seen for 2 months"
+  ],
+  [
+   "Comparer le tarif avant reconduction{0}.",
+   "Compare the price before renewal{0}."
+  ],
+  [
+   "Celui que j'ai date de plus de {0} mois.",
+   "The one I have is more than {0} months old."
+  ],
+  [
+   "{0} étudiant : rattachement ou pension ?",
+   "{0} as a student: tax attachment or maintenance?"
+  ],
+  [
+   "Aucun paiement trouvé sur la facture {0}",
+   "No payment found on invoice {0}"
+  ],
+  [
    "et {0} autres pistes dans votre Budget.",
    "and {0} more ideas in your Budget."
+  ],
+  [
+   "Allocation de rentrée scolaire pour {0}",
+   "Back-to-school allowance for {0}"
   ],
   [
    "soit {0} par mois, sans changer de vie",
@@ -1694,12 +2494,56 @@
    "{0} large expenses without receipts"
   ],
   [
+   "{0} services de streaming en parallèle",
+   "{0} streaming services at the same time"
+  ],
+  [
+   "{0} abonnements de sport en même temps",
+   "{0} gym subscriptions at the same time"
+  ],
+  [
+   "{0} € dépensés ce mois pour {1} € prévus.",
+   "{0} € spent this month against {1} € planned."
+  ],
+  [
+   "Vous aidez {0} : ce qui est déductible",
+   "You support {0}: what is deductible"
+  ],
+  [
    "{0} par an d'économies vous attendent",
    "{0} a year in savings waiting for you"
   ],
   [
+   "Cet espace fait partie du module {0}.",
+   "This space is part of the {0} module."
+  ],
+  [
+   "Garde de {0} : crédit d'impôt de 50 %",
+   "{0}'s childcare: 50% tax credit"
+  ],
+  [
+   "{0} retraits d'espèces en une semaine",
+   "{0} cash withdrawals in one week"
+  ],
+  [
    "{0} grosse dépense sans justificatif",
    "{0} large expense without a receipt"
+  ],
+  [
+   "Parcoursup : vœux de {0} à confirmer",
+   "Parcoursup: {0}'s choices to confirm"
+  ],
+  [
+   "Bulletin de {0} ajouté : net payé {1} €",
+   "{0} payslip added: net pay {1} €"
+  ],
+  [
+   "{0} nouveaux prélèvements ce mois-ci",
+   "{0} new direct debits this month"
+  ],
+  [
+   "Le foyer « {0} » sera supprimé le {1}",
+   "The household \"{0}\" will be deleted on {1}"
   ],
   [
    ": {0} par an d'économies repérées",
@@ -1708,6 +2552,10 @@
   [
    "{0} % + {1} % d'impôt + {2} % formation",
    "{0}% + {1}% tax + {2}% training"
+  ],
+  [
+   "Bourse et logement CROUS pour {0}",
+   "CROUS grant and housing for {0}"
   ],
   [
    "Une veille existe déjà pour {0}.",
@@ -1726,12 +2574,40 @@
    "Consent valid for {0} more days."
   ],
   [
+   "{0} de frais bancaires sur {1} mois",
+   "{0} in bank fees over {1} months"
+  ],
+  [
+   "Dernier jour pour résilier : {0}",
+   "Last day to cancel: {0}"
+  ],
+  [
+   "Papiers de {0} : avec son accord",
+   "{0}'s papers: with their consent"
+  ],
+  [
+   "Régularisation des charges : {0}",
+   "Service charges reconciliation: {0}"
+  ],
+  [
+   "un geste qui rapporte {0} par an",
+   "a tip that saves {0} a year"
+  ],
+  [
+   "Déclaration 2035 des revenus {0}",
+   "2035 return for {0} income"
+  ],
+  [
    "{0} par an d'économies repérées",
    "{0} a year in savings spotted"
   ],
   [
    "{0} donne son accord elle-même.",
    "{0} gives her consent herself."
+  ],
+  [
+   "La cantine est notée {0} sur 7.",
+   "The school canteen is rated {0} out of 7."
   ],
   [
    "Les prochaines échéances :\n{0}",
@@ -1742,12 +2618,40 @@
    "Trial: {0} free questions"
   ],
   [
+   "{0} : résiliable à tout moment",
+   "{0}: can be cancelled at any time"
+  ],
+  [
+   "Prochain contrôle technique{0}",
+   "Next roadworthiness inspection{0}"
+  ],
+  [
+   "J'en ai {0} sur {1} assez récent{2}.",
+   "I have {0} of {1} recent enough paper{2}."
+  ],
+  [
    "Le foyer sera supprimé le {0}",
    "The household will be deleted on {0}"
   ],
   [
    "En attente de l'accord de {0}",
    "Awaiting {0}'s consent"
+  ],
+  [
+   "{0} : {1} ans sans renégociation",
+   "{0}: {1} years without renegotiation"
+  ],
+  [
+   "{0} pèse {1} % des charges fixes",
+   "{0} makes up {1}% of fixed costs"
+  ],
+  [
+   "Dépense inhabituelle de {0} €",
+   "Unusual spending of {0} €"
+  ],
+  [
+   "Point le plus bas : {0} le {1}.",
+   "Lowest point: {0} on {1}."
   ],
   [
    "Loyer de {0} noté comme reçu",
@@ -1766,8 +2670,36 @@
    "{0} tips are waiting for you."
   ],
   [
+   "Pouvait partir depuis le {0}",
+   "Could have gone since {0}"
+  ],
+  [
+   "Fin de garantie légale : {0}",
+   "End of legal warranty: {0}"
+  ],
+  [
+   "La semaine de la famille {0}",
+   "The {0} family's week"
+  ],
+  [
+   "Me rétracter (jusqu'au {0})",
+   "Withdraw (until {0})"
+  ],
+  [
    ", prochaine échéance le {0}",
    ", next payment on {0}"
+  ],
+  [
+   "Taux d'endettement de {0} %",
+   "Debt ratio of {0}%"
+  ],
+  [
+   "IRL {0} : {1} → {2} hors charges.",
+   "IRL {0}: {1} → {2} excluding charges."
+  ],
+  [
+   "Prix Stripe manquants : {0}",
+   "Stripe prices missing: {0}"
   ],
   [
    "Bulletin de {0} à regarder",
@@ -1794,6 +2726,18 @@
    "{0} business expenses to categorise"
   ],
   [
+   "{0} : prévisionnel dépassé",
+   "{0}: forecast exceeded"
+  ],
+  [
+   "{0} : fin d'engagement le {1}",
+   "{0}: commitment ends on {1}"
+  ],
+  [
+   "Anniversaire de {0} ({1} ans)",
+   "{0}'s birthday ({1} years old)"
+  ],
+  [
    "· quote-part du foyer {0}",
    "· household's share {0}"
   ],
@@ -1804,6 +2748,14 @@
   [
    "{0} dépense pro à classer",
    "{0} business expense to categorise"
+  ],
+  [
+   "DPE valable jusqu'au {0}.",
+   "EPC valid until {0}."
+  ],
+  [
+   "{0} par an déjà récupérés",
+   "{0} a year already recovered"
   ],
   [
    "{0} nouvelles opérations",
@@ -1842,6 +2794,18 @@
    "{0} transactions to categorise"
   ],
   [
+   "{0} abonnements en cours",
+   "{0} subscriptions running"
+  ],
+  [
+   "Dernier contrôle le {0}{1}.",
+   "Last check on {0}{1}."
+  ],
+  [
+   "Déclaration URSSAF : {0}",
+   "URSSAF return: {0}"
+  ],
+  [
    "Lucien - export {0}.zip",
    "Lucien - export {0}.zip"
   ],
@@ -1860,6 +2824,34 @@
   [
    "{0} opération à classer",
    "{0} transaction to categorise"
+  ],
+  [
+   "{0} a retiré son accord",
+   "{0} has withdrawn consent"
+  ],
+  [
+   "{0} : plus d'engagement",
+   "{0}: no longer tied in"
+  ],
+  [
+   "Bulletin de salaire {0}{1}",
+   "Payslip {0}{1}"
+  ],
+  [
+   "Révision du loyer : {0}",
+   "Rent review: {0}"
+  ],
+  [
+   "checkout: {0} → famille",
+   "checkout: {0} → family"
+  ],
+  [
+   "• {0} : jusqu'à {1} par an",
+   "• {0}: up to {1} a year"
+  ],
+  [
+   "vœux de {0} à confirmer",
+   "{0}'s choices to confirm"
   ],
   [
    "{0} pièces sur {1} prêtes",
@@ -1882,6 +2874,10 @@
    "{0} alerts to look at"
   ],
   [
+   "Clôture de {0} à finir",
+   "{0} close-off to finish"
+  ],
+  [
    "Jusqu'à {0} par an · {1}",
    "Up to {0} a year · {1}"
   ],
@@ -1902,12 +2898,48 @@
    "{0}: here's what to do, in order.\n{1}"
   ],
   [
+   "subscription {0}: {1} → {2}",
+   "subscription {0}: {1} → {2}"
+  ],
+  [
+   "{0} : voici l'ordre.\n{1}{2}",
+   "{0}: here is the order.\n{1}{2}"
+  ],
+  [
+   "Vos références : {0}.",
+   "Your references: {0}."
+  ],
+  [
+   "payé par {0} · pour {1}",
+   "paid by {0} · for {1}"
+  ],
+  [
    "{0} échéances créées",
    "{0} deadlines created"
   ],
   [
    "{0} % + {1} % formation",
    "{0}% + {1}% training"
+  ],
+  [
+   "{0} a augmenté de {1} %",
+   "{0} has gone up by {1}%"
+  ],
+  [
+   "{0} : +{1} % ce mois-ci",
+   "{0}: +{1}% this month"
+  ],
+  [
+   "Renouvellement : {0}",
+   "Renewal: {0}"
+  ],
+  [
+   "{0} : {1} en retard ({2}).",
+   "{0}: {1} overdue ({2})."
+  ],
+  [
+   "Fin du mois, le {0}",
+   "End of the month, {0}"
   ],
   [
    "· amortissement {0}",
@@ -1922,6 +2954,18 @@
    ", i.e. {0} a month"
   ],
   [
+   "Fin de saison : {0}",
+   "End of season: {0}"
+  ],
+  [
+   "Bourse de {0} pour {1}",
+   "{0} grant for {1}"
+  ],
+  [
+   "Pass'Sport pour {0}",
+   "Pass'Sport for {0}"
+  ],
+  [
    "· impôt estimé {0}",
    "· estimated tax {0}"
   ],
@@ -1932,6 +2976,14 @@
   [
    "{0} échéance créée",
    "{0} deadline created"
+  ],
+  [
+   "{0} contrats chez {1}",
+   "{0} contracts with {1}"
+  ],
+  [
+   "{0} sans locataire",
+   "{0} without a tenant"
   ],
   [
    "Résiliation — {0}",
@@ -1958,6 +3010,10 @@
    "Refund {0}"
   ],
   [
+   "La semaine de {0}",
+   "{0}'s week"
+  ],
+  [
    "À vérifier : {0}",
    "To check: {0}"
   ],
@@ -1978,6 +3034,22 @@
    "Delete on {0}"
   ],
   [
+   "{0}er trimestre {1}",
+   "Q{0} {1}"
+  ],
+  [
+   "{0}, {1} et {2#} autres",
+   "{0}, {1} and {2} others"
+  ],
+  [
+   "aujourd'hui {0}",
+   "today {0}"
+  ],
+  [
+   "on lui doit {0}",
+   "is owed {0}"
+  ],
+  [
    "Résiliation {0}",
    "Cancellation {0}"
   ],
@@ -1986,11 +3058,35 @@
    "· you are {0}"
   ],
   [
+   "{0} € à régler{1}.",
+   "{0} € to pay{1}."
+  ],
+  [
+   "À fournir : {0}",
+   "To provide: {0}"
+  ],
+  [
+   "{0}/an à gagner",
+   "{0}/year to gain"
+  ],
+  [
+   "jugement de {0}",
+   "{0} judgment"
+  ],
+  [
+   "Il manque :\n{0}",
+   "Missing:\n{0}"
+  ],
+  [
+   "{0}e trimestre {1}",
+   "Q{0} {1}"
+  ],
+  [
    "· {0} à charge",
    "· {0} dependant(s)"
   ],
   [
-   "{0} et {1} autres",
+   "{0} et {1#} autres",
    "{0} and {1} others"
   ],
   [
@@ -2000,6 +3096,26 @@
   [
    "{0} septembre {1}",
    "{0} September {1}"
+  ],
+  [
+   "Famille de {0}",
+   "{0}'s family"
+  ],
+  [
+   "{0} : {1} chaque {2}",
+   "{0}: {1} every {2}"
+  ],
+  [
+   "Paiement : {0}",
+   "Payment: {0}"
+  ],
+  [
+   "{0} à vérifier",
+   "{0} to check"
+  ],
+  [
+   "Dans {0} j : {1}",
+   "In {0} d: {1}"
   ],
   [
    "dans {0} mois",
@@ -2036,6 +3152,26 @@
   [
    "{0} décembre {1}",
    "{0} December {1}"
+  ],
+  [
+   "{0} personnes",
+   "{0} people"
+  ],
+  [
+   "{0} ({1} €/mois)",
+   "{0} ({1} €/month)"
+  ],
+  [
+   "Cantine — {0}",
+   "Canteen — {0}"
+  ],
+  [
+   "{0} en retard",
+   "{0} overdue"
+  ],
+  [
+   "{0} activités",
+   "{0} activities"
   ],
   [
    "remis à {0},",
@@ -2130,6 +3266,46 @@
    "December {0}"
   ],
   [
+   "Erreur : {0}",
+   "Error: {0}"
+  ],
+  [
+   "Tant que {0}",
+   "For as long as {0}"
+  ],
+  [
+   "Jusqu'au {0}",
+   "Until {0}"
+  ],
+  [
+   "Loyer {0} : {1}",
+   "Rent {0}: {1}"
+  ],
+  [
+   "{0} manquant",
+   "{0} missing"
+  ],
+  [
+   "{0} activité",
+   "{0} activity"
+  ],
+  [
+   "mercredi {0}",
+   "Wednesday {0}"
+  ],
+  [
+   "vendredi {0}",
+   "Friday {0}"
+  ],
+  [
+   "dimanche {0}",
+   "Sunday {0}"
+  ],
+  [
+   "Dans {0} : {1}",
+   "In {0}: {1}"
+  ],
+  [
    "dans {0} an",
    "in {0} year"
   ],
@@ -2194,6 +3370,18 @@
    "October {0}"
   ],
   [
+   "+{0} % sur {1}",
+   "+{0}% on {1}"
+  ],
+  [
+   "{0} € vers {1}",
+   "{0} € to {1}"
+  ],
+  [
+   "ignoré: {0}",
+   "ignored: {0}"
+  ],
+  [
    "dans {0} j",
    "in {0} d"
   ],
@@ -2220,6 +3408,46 @@
   [
    "{0} avril {1}",
    "{0} April {1}"
+  ],
+  [
+   "Lucien {0}",
+   "Lucien {0}"
+  ],
+  [
+   "{0} compte{1}",
+   "{0} account{1}"
+  ],
+  [
+   "{0} janv. {1}",
+   "{0} Jan {1}"
+  ],
+  [
+   "{0} févr. {1}",
+   "{0} Feb {1}"
+  ],
+  [
+   "{0} juil. {1}",
+   "{0} Jul {1}"
+  ],
+  [
+   "{0} sept. {1}",
+   "{0} Sep {1}"
+  ],
+  [
+   "{0} ans · {1}",
+   "{0} years old · {1}"
+  ],
+  [
+   "{0} autres",
+   "{0} others"
+  ],
+  [
+   "samedi {0}",
+   "Saturday {0}"
+  ],
+  [
+   "{0} · le {1}",
+   "{0} · on the {1}"
   ],
   [
    "· {0} ans",
@@ -2256,6 +3484,58 @@
   [
    "{0} août {1}",
    "{0} August {1}"
+  ],
+  [
+   "{0} janv.",
+   "{0} Jan"
+  ],
+  [
+   "{0} févr.",
+   "{0} Feb"
+  ],
+  [
+   "{0} avr. {1}",
+   "{0} Apr {1}"
+  ],
+  [
+   "{0} juil.",
+   "{0} Jul"
+  ],
+  [
+   "{0} sept.",
+   "{0} Sep"
+  ],
+  [
+   "{0} oct. {1}",
+   "{0} Oct {1}"
+  ],
+  [
+   "{0} nov. {1}",
+   "{0} Nov {1}"
+  ],
+  [
+   "{0} déc. {1}",
+   "{0} Dec {1}"
+  ],
+  [
+   "{0} · {1} · {2}",
+   "{0} · {1} · {2}"
+  ],
+  [
+   "lundi {0}",
+   "Monday {0}"
+  ],
+  [
+   "mardi {0}",
+   "Tuesday {0}"
+  ],
+  [
+   "jeudi {0}",
+   "Thursday {0}"
+  ],
+  [
+   "doit {0}",
+   "owes {0}"
   ],
   [
    "pour {0}",
@@ -2298,6 +3578,30 @@
    "August {0}"
   ],
   [
+   "{0} loué",
+   "{0} for rent"
+  ],
+  [
+   "{0} avr.",
+   "{0} Apr"
+  ],
+  [
+   "{0} oct.",
+   "{0} Oct"
+  ],
+  [
+   "{0} nov.",
+   "{0} Nov"
+  ],
+  [
+   "{0} déc.",
+   "{0} Dec"
+  ],
+  [
+   "{0} mois",
+   "{0} months"
+  ],
+  [
    "{0} ans",
    "{0} years old"
   ],
@@ -2314,8 +3618,16 @@
    "from {0}"
   ],
   [
+   "{0} · {1}",
+   "{0} · {1}"
+  ],
+  [
    "à {0}",
    "at {0}"
+  ],
+  [
+   "· {0}",
+   "· {0}"
   ]
  ]
 }

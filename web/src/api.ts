@@ -1,3 +1,4 @@
+import { langueChoisie } from "./i18n/traduction";
 import type { AssistantEtat, AssistantMessage, AssistantReponse, AideResiliation, Resiliation, Prevision, DepensePartagee, EtatPartages, ReglementPartage } from "./types";
 import type { Activite, BankStatus, BudgetAction, BudgetReport, ChargesReport, Deadline, Doc, FamilleReport, Household, ImportResult, Member, Mesure, Temoin, Banque, BanquesReport, Veille, VeillesReport, VuePersonne } from "./types";
 import demoFamille from "./demo/famille.json";
@@ -229,7 +230,7 @@ const serverApi: Api = {
   },
   retirerCompte: async (id) => { await call(`/foyer/comptes/${id}`, { method: "DELETE" }); },
   regenererMcp: async () => (await call<{ token: string }>("/mcp/regenerer", { method: "POST" })).token,
-  assistant: (messages) => call("/assistant", json({ messages })),
+  assistant: (messages) => call("/assistant", json({ messages, langue: langueChoisie() })),
   assistantOption: async (actif) => (await call<{ etat: AssistantEtat }>("/abonnement/assistant", json({ actif }))).etat,
   renommer: async (nom) => { await call("/household", json({ nom }, "PATCH")); },
   setHebdo: async (hebdo) => { await call("/household", json({ hebdo }, "PATCH")); },
