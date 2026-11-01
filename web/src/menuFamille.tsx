@@ -1,3 +1,4 @@
+import type React from "react";
 import { createContext, useContext, useEffect, useState } from "react";
 import type { Api } from "./api";
 import type { FamilleReport, Household } from "./types";
@@ -13,6 +14,16 @@ const ROLE = { adulte: "Adulte", enfant: "Enfant", parent_a_charge: "Parent à c
 export function MenuFamille() {
   const ctx = useContext(FamilleCtx);
   const [ouvert, setOuvert] = useState(false);
+  const [place, setPlace] = useState<React.CSSProperties>({});
+  // The panel is placed against the screen, not the button: on a narrow phone or with large text, a panel hung
+  // from the avatar went past the left edge.
+  const deplier = (b: HTMLElement) => {
+    const r = b.getBoundingClientRect(), vw = document.documentElement.clientWidth, marge = 12;
+    const largeur = Math.min(320, vw - 2 * marge);
+    const droite = Math.min(Math.max(marge, vw - r.right - 54), vw - largeur - marge);
+    setPlace({ top: r.bottom + 10, right: droite, width: largeur, maxHeight: `calc(100dvh - ${Math.round(r.bottom + 10 + 100)}px)` });
+    setOuvert(true);
+  };
   useEffect(() => {
     if (!ouvert) return;
     const k = (e: KeyboardEvent) => e.key === "Escape" && setOuvert(false);
@@ -29,13 +40,13 @@ export function MenuFamille() {
 
   return (
     <span className="menu-famille">
-      <button className="moi-btn" aria-label={membres.length > 1 ? "Ma famille" : "Mon espace"} aria-expanded={ouvert} aria-haspopup="menu" onClick={() => setOuvert(!ouvert)}>
+      <button className="moi-btn" aria-label={membres.length > 1 ? "Ma famille" : "Mon espace"} aria-expanded={ouvert} aria-haspopup="menu" onClick={(e) => (ouvert ? setOuvert(false) : deplier(e.currentTarget))}>
         <Portrait api={api} m={moi} size={44} />
       </button>
       {ouvert && (
         <>
           <div className="mf-fond" onClick={() => setOuvert(false)} aria-hidden />
-          <div className="mf-panneau" role="menu" aria-label="Ma famille">
+          <div className="mf-panneau" role="menu" aria-label="Ma famille" style={place}>
             {membres.length > 1 && <button role="menuitem" className="mf-ligne mf-tous" onClick={() => ouvrir()}>
               <span className="mf-tetes" aria-hidden>{membres.slice(0, 4).map((m) => <Portrait key={m.id} api={api} m={m} size={22} />)}</span>
               <span><b>Toute la famille</b><small>La semaine, les dates clés, les conseils</small></span>
