@@ -43,6 +43,19 @@ export function monterAcces(api, db) {
         }).catch(() => false) : false;
         return c.json({ ok: true, envoye }, 201);
     });
+    /** A login link made by the admin, to open on the phone: no email needed (before Brevo, or when an email is lost). */
+    api.post("/admin/acces/lien", async (c) => {
+        const r = interdit(c);
+        if (r)
+            return r;
+        const b = z.object({ email: z.string().trim().toLowerCase() }).parse(await c.req.json());
+        if (!emailValide(b.email))
+            return c.json({ error: "email", message: "Adresse email invalide." }, 400);
+        if (!accesAutorise(db, b.email))
+            return c.json({ error: "sur_invitation", message: "Invitez d'abord cette adresse." }, 403);
+        const token = db.createAuthLink(b.email, { ttlMinutes: 30 });
+        return c.json({ lien: `${publicUrl()}/api/auth/lien?token=${token}`, valable_minutes: 30 });
+    });
     api.delete("/admin/acces/:email", (c) => {
         const r = interdit(c);
         if (r)

@@ -1046,3 +1046,4 @@ select.in { width: 100%; border: 2px solid var(--line); background: var(--white)
 .admin-message { margin: 0; white-space: pre-wrap; font-size: 15px; line-height: 1.5; }
 .aide-fait { display: grid; gap: 6px; }
 .aide-infos { background: var(--line); border-radius: 10px; padding: 8px 10px; }
+.admin-lien { word-break: break-all; font-size: 13px; }

@@ -18,6 +18,9 @@ test("avant-première : seules les adresses invitées demandent un lien de conne
   const l = await (await api.request("/admin/acces", { headers: auth })).json();
   assert.equal(l.restreint, true);
   assert.equal(l.liste[0].email, "soeur@exemple.fr");
+  assert.equal((await api.request("/admin/acces/lien", json({ email: "inconnue@exemple.fr" }, "POST", auth))).status, 403);
+  const lien = await (await api.request("/admin/acces/lien", json({ email: "benjamin@exemple.fr" }, "POST", auth))).json();
+  assert.match(lien.lien, /\/api\/auth\/lien\?token=/);
   await api.request("/admin/acces/soeur%40exemple.fr", { method: "DELETE", headers: auth });
   assert.equal((await api.request("/auth/demander", json({ email: "soeur@exemple.fr" }))).status, 403, "removed");
   delete process.env.LUCIEN_ACCES; delete process.env.LUCIEN_ACCES_EMAILS; delete process.env.LUCIEN_ADMIN_TOKEN;

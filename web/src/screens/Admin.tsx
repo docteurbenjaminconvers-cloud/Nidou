@@ -45,6 +45,7 @@ function demo() {
     async acces() { return { restreint: true, liste: invites.map((x) => ({ ...x })) }; },
     async inviter(p: { email: string; prenom: string }) { invites = [{ email: p.email.toLowerCase(), prenom: p.prenom || null, note: null, cree_le: new Date().toISOString(), inscrit: false }, ...invites.filter((x) => x.email !== p.email.toLowerCase())]; return { envoye: true }; },
     async retirerAcces(email: string) { invites = invites.filter((x) => x.email !== email); },
+    async lienConnexion() { return { lien: "https://nidou.onrender.com/api/auth/lien?token=demo", valable_minutes: 30 }; },
   };
 }
 
@@ -67,6 +68,7 @@ function serveur(jeton: string) {
     traiter: (id: string, traite: boolean) => appel(`/admin/support/${id}`, { method: "POST", body: JSON.stringify({ traite }) }),
     acces: () => appel<{ restreint: boolean; liste: Invite[] }>("/admin/acces"),
     inviter: (p: { email: string; prenom: string }) => appel<{ envoye: boolean }>("/admin/acces", { method: "POST", body: JSON.stringify({ ...p, envoyer_email: true }) }),
+    lienConnexion: (email: string) => appel<{ lien: string; valable_minutes: number }>("/admin/acces/lien", { method: "POST", body: JSON.stringify({ email }) }),
     retirerAcces: (email: string) => appel(`/admin/acces/${encodeURIComponent(email)}`, { method: "DELETE" }),
   };
 }
@@ -85,6 +87,8 @@ export function PageAdmin({ api }: { api: Api }) {
   const [onglet, setOnglet] = useState<"cabinets" | "messages" | "acces">("cabinets");
   const [acces, setAcces] = useState<{ restreint: boolean; liste: Invite[] } | null>(null);
   const [nouvel, setNouvel] = useState({ email: "", prenom: "" });
+  const [lienEmail, setLienEmail] = useState("");
+  const [lien, setLien] = useState<string | null>(null);
   const [messages, setMessages] = useState<MessageSupport[] | null>(null);
   const client = useMemo(() => (enDemo ? demo() : jeton ? serveur(jeton) : null), [enDemo, jeton]);
   const recharger = async () => { if (!client) return; try { setData(await client.charger()); setErr(null); } catch (e) { setErr((e as Error).message); if (!enDemo) { setJeton(""); try { sessionStorage.removeItem(CLE); } catch { /* */ } } } };
@@ -151,6 +155,14 @@ export function PageAdmin({ api }: { api: Api }) {
             <input className="in" placeholder="Prénom" value={nouvel.prenom} onChange={(e) => setNouvel({ ...nouvel, prenom: e.target.value })} />
             <input className="in" required type="email" placeholder="Email" value={nouvel.email} onChange={(e) => setNouvel({ ...nouvel, email: e.target.value })} />
             <div className="admin-form-actions"><button className="btn">Inviter et envoyer l'email</button></div>
+          </form>
+          <form className="admin-form" onSubmit={async (e) => { e.preventDefault(); try { setLien((await client.lienConnexion(lienEmail.trim())).lien); } catch (x) { info((x as Error).message); } }}>
+            <b>Créer un lien de connexion</b>
+            <span className="note">Sans passer par l'email : ouvrez ce lien sur le téléphone de la personne (valable 30 minutes, une seule fois).</span>
+            <input className="in" required type="email" placeholder="Email (déjà invité)" value={lienEmail} onChange={(e) => { setLienEmail(e.target.value); setLien(null); }} />
+            <div className="admin-form-actions"><button className="btn">Créer le lien</button></div>
+            {lien && <><div className="code admin-lien" data-pas-traduire>{lien}</div>
+              <div className="admin-form-actions"><button type="button" className="btn ghost" onClick={async () => { try { await navigator.clipboard.writeText(lien); info("Lien copié"); } catch { info("Copiez le lien à la main"); } }}>Copier</button><a className="btn ghost" href={lien} target="_blank" rel="noreferrer">Ouvrir ici</a></div></>}
           </form>
           {(acces?.liste ?? []).map((x) => (
             <div key={x.email} className={`admin-carte ${x.inscrit ? "" : "en_attente"}`}>
