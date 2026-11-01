@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { Db } from "./db.js";
 import { createApi } from "./api.js";
 import { securiser } from "./securite.js";
-import { demarrerSynchroBanques } from "./banques.js";
+import { demarrerSynchroBanques, fournisseur } from "./banques.js";
 import { demarrerRappels } from "./rappels.js";
 import { handleMcpRequest } from "./mcp.js";
 import { seedDemo } from "./seed.js";
@@ -53,7 +53,9 @@ app.post("/api/waitlist", async (c) => {
 const SITE_DIR = join(__dirname, "..", "..", "site");
 if (existsSync(SITE_DIR))
     app.use("/site/*", serveStatic({ root: SITE_DIR.replace(process.cwd() + "/", ""), rewriteRequestPath: (p) => p.replace(/^\/site/, "") }));
-app.get("/health", (c) => c.json({ ok: true, ia: Boolean(process.env.ANTHROPIC_API_KEY), version: "0.1.0" }));
+/** What is switched on (never a secret): lets the setup be checked from outside. */
+const etat = () => ({ ia: Boolean(process.env.ANTHROPIC_API_KEY || process.env.MISTRAL_API_KEY), banque: fournisseur(), email: Boolean(process.env.BREVO_API_KEY), paiement: Boolean(process.env.STRIPE_SECRET_KEY), acces: process.env.LUCIEN_ACCES === "restreint" ? "sur invitation" : "ouvert" });
+app.get("/health", (c) => c.json({ ok: true, ...etat(), version: "0.1.0" }));
 // Static PWA (after `npm run build --workspace=web`).
 if (existsSync(WEB_DIST)) {
     app.use("/*", serveStatic({ root: WEB_DIST.replace(process.cwd() + "/", "") }));
@@ -62,5 +64,5 @@ if (existsSync(WEB_DIST)) {
 demarrerRappels(db, { uploadDir: join(DATA_DIR, "uploads") });
 demarrerSynchroBanques(db);
 serve({ fetch: app.fetch, port: PORT }, () => {
-    console.log(`Lucien · http://localhost:${PORT}  · API /api · MCP /mcp · IA ${process.env.ANTHROPIC_API_KEY ? "activée" : "désactivée (mode heuristique)"}`);
+    console.log(`Lucien · http://localhost:${PORT}  · API /api · MCP /mcp · ${JSON.stringify(etat())}`);
 });
