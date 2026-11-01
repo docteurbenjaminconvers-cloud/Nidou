@@ -4,6 +4,24 @@ import { livreCsv, MICRO, RUBRIQUES, cleLibelle, type PersonnePro, type RapportM
 import { PartageComptablePanneau } from "./Comptable";
 import { Alertes, Champ, Chiffres, dateFr, EnTete, eur, moisCourt, telecharger, useEspace, Verrou, LireDocument } from "./espacesCommun";
 
+/** A statement of the professional account (CSV or PDF), for a bank that cannot be connected, or to add earlier months. */
+function ImportReleve({ api, compte, libelle, onFait, toast }: { api: Api; compte: string; libelle: string; onFait: (compte: string) => void; toast: (m: string) => void }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <label className={`pill import-releve${busy ? " occupe" : ""}`}>
+      {busy ? "Lecture du relevé…" : libelle}
+      <input type="file" accept=".csv,.pdf,text/csv,application/pdf" hidden disabled={busy} onChange={async (e) => {
+        const file = e.target.files?.[0]; e.target.value = "";
+        if (!file) return;
+        setBusy(true);
+        try { const r = await api.importStatement({ file, compte }); toast(`${r.ajoutees} opération${r.ajoutees > 1 ? "s" : ""} ajoutée${r.ajoutees > 1 ? "s" : ""} : ${compte}`); onFait(compte); }
+        catch (x) { toast((x as Error).message); }
+        finally { setBusy(false); }
+      }} />
+    </label>
+  );
+}
+
 const RUBRIQUES_CHOIX = (Object.keys(RUBRIQUES) as Rubrique[]).filter((r) => r !== "a_classer");
 
 /** Vie pro : salariés (contrat, bulletins, net imposable) et indépendants (livre, 2035, échéances). */
@@ -106,7 +124,7 @@ export function EspacePro({ api, go, onBack, toast }: { api: Api; go: (s: string
       {ind && (
         <section className="section">
           <div className="section-head"><h2>Indépendant·e</h2><span className="badge">{ind.regime === "bnc_2035" ? "BNC · déclaration 2035" : ind.regime === "micro_entrepreneur" ? "micro-entreprise" : "micro-BNC"}</span></div>
-          <div className="carte-pro"><b>{ind.activite}</b><span>Compte {ind.compte_pro}</span><small>Année {ind.annee}, au {dateFr(new Date().toISOString().slice(0, 10))}</small></div>
+          <div className="carte-pro"><b>{ind.activite}</b><span>{ind.compte_pro}</span><ImportReleve api={api} compte={ind.compte_pro} libelle="Ajouter un relevé" toast={toast} onFait={() => charger()} /><small>Année {ind.annee}, au {dateFr(new Date().toISOString().slice(0, 10))}</small></div>
           {ind.micro_entreprise ? <BlocMicro me={ind.micro_entreprise} /> : <>
           <Chiffres items={[
             { label: "recettes encaissées", valeur: eur(ind.recettes), ton: "ok" },
@@ -179,7 +197,9 @@ export function EspacePro({ api, go, onBack, toast }: { api: Api; go: (s: string
                     <Champ label="Déclaration"><select className="in" value={form.periodicite} onChange={(e) => setForm({ ...form, periodicite: e.target.value })}><option value="trimestrielle">Trimestrielle</option><option value="mensuelle">Mensuelle</option></select></Champ>
                     <Champ label="Versement libératoire de l'impôt"><input type="checkbox" checked={form.vl} onChange={(e) => setForm({ ...form, vl: e.target.checked })} /></Champ>
                   </>}
-                  <Champ label="Compte professionnel"><select className="in" value={form.compte_pro} onChange={(e) => setForm({ ...form, compte_pro: e.target.value })}>{data.comptes.length ? data.comptes.map((c) => <option key={c}>{c}</option>) : <option value="">Connectez d'abord la banque</option>}</select></Champ>
+                  <Champ label="Compte professionnel"><select className="in" value={form.compte_pro} onChange={(e) => setForm({ ...form, compte_pro: e.target.value })}>{[...new Set([...data.comptes, ...(form.compte_pro ? [form.compte_pro] : [])])].length ? [...new Set([...data.comptes, ...(form.compte_pro ? [form.compte_pro] : [])])].map((c) => <option key={c}>{c}</option>) : <option value="">Aucun compte pour l'instant</option>}</select></Champ>
+                  <p className="note" style={{ margin: "4px 0 8px" }}>Le compte pro est tenu à part du budget du foyer. Connectez-le depuis Budget (choix « Compte professionnel »), ou importez un relevé :</p>
+                  <ImportReleve api={api} compte={`Compte pro ${p.prenom === "Moi" ? "" : p.prenom}`.trim()} libelle="Importer un relevé du compte pro" toast={toast} onFait={(c) => { setForm({ ...form, compte_pro: c }); charger(); }} />
                 </>
               )}
               <div style={{ display: "flex", gap: 10, marginTop: 10 }}><button className="btn" onClick={creer}>Enregistrer</button><button className="btn ghost" onClick={() => setNouveau(null)}>Annuler</button></div>

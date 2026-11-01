@@ -2013,7 +2013,12 @@
   "Ce format ne s'affiche pas ici : touchez « Enregistrer » pour l'ouvrir avec une autre appli.": "This format can't be shown here: tap “Save” to open it with another app.",
   "L'original de ce papier n'est pas disponible.": "The original of this paper isn't available.",
   "Annuelle": "Yearly",
-  "Paiement unique": "One-off payment"
+  "Paiement unique": "One-off payment",
+  "Lecture du relevé…": "Reading the statement…",
+  "Importer un relevé du compte pro": "Import a business account statement",
+  "Ajouter un relevé": "Add a statement",
+  "Aucun compte pour l'instant": "No account yet",
+  "Le compte pro est tenu à part du budget du foyer. Connectez-le depuis Budget (choix « Compte professionnel »), ou importez un relevé :": "The business account is kept apart from the household budget. Connect it from Budget (choose “Business account”), or import a statement:"
  },
  "motifs": [
   [
@@ -2837,6 +2842,10 @@
    "URSSAF return: {0}"
   ],
   [
+   "{0} opération{1} ajoutée{2} : {3}",
+   "{0} transaction{1} added: {3}"
+  ],
+  [
    "Lucien - export {0}.zip",
    "Lucien - export {0}.zip"
   ],
@@ -3143,6 +3152,10 @@
   [
    "{0} à vérifier",
    "{0} to check"
+  ],
+  [
+   "Compte pro {0}",
+   "Business account {0}"
   ],
   [
    "Dans {0} j : {1}",

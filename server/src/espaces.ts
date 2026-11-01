@@ -117,7 +117,7 @@ export function monterEspaces(api: Hono<any>, db: Db, ctx: Ctx) {
     const h = ctx.household(c);
     const d = donnees(h.id, e, h.nom);
     const txs = transactions(h.id);
-    const rapport = e === "budget" ? rapportBudget(txs, d as DonneesBudget)
+    const rapport = e === "budget" ? rapportBudget(txs, { ...(d as DonneesBudget), comptes_exclus: [...db.comptesPro(h.id)] })
       : e === "pro" ? rapportPro(d as DonneesPro, txs, db.listDocuments(h.id).map((x) => ({ id: x.id, title: x.title, category: x.category })))
       : rapportLocatif(d as DonneesLocatif, txs);
     if (e === "pro") {
@@ -196,7 +196,7 @@ export function monterEspaces(api: Hono<any>, db: Db, ctx: Ctx) {
     if (!verifier(c, "budget")) return refus(c, "budget");
     const h = ctx.household(c);
     const d = donnees(h.id, "budget", h.nom) as DonneesBudget;
-    return new Response(grandLivre(transactions(h.id), d), { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="grand-livre-lucien.csv"`, "x-content-type-options": "nosniff" } });
+    return new Response(grandLivre(transactions(h.id), { comptes_exclus: [...db.comptesPro(h.id)] }), { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="grand-livre-lucien.csv"`, "x-content-type-options": "nosniff" } });
   });
 
   // ---------- accès comptable (lecture seule, révocable, un an) ----------
