@@ -1,4 +1,3 @@
-import { langueNavigateur } from "./traduire.js";
 import { Hono } from "hono";
 import { z } from "zod";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
@@ -106,7 +105,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     const ip = (c.req.header("x-forwarded-for") ?? "").split(",")[0].trim() || c.req.header("x-real-ip") || "inconnue";
     if (!demandeAutorisee(`ip:${ip}`, 10) || !demandeAutorisee(`email:${email}`, 3))
       return c.json({ error: "trop_de_demandes", message: "Trop de demandes de lien. Réessayez dans 15 minutes." }, 429);
-    const r = await demanderLien(db, email, { langue: body.langue ?? (db.userByEmail(email)?.langue === "en" ? "en" : langueNavigateur(c.req.header("accept-language"))) });
+    const r = await demanderLien(db, email, { langue: body.langue ?? (db.userByEmail(email)?.langue === "en" ? "en" : "fr") });
     if (!r.envoye && !r.lien) return c.json({ error: "email_non_envoye", message: "L'email de connexion n'a pas pu partir. Réessayez dans quelques minutes." }, 503);
     return c.json({ ok: true, envoye: r.envoye, lien: r.lien });
   });

@@ -8,9 +8,9 @@ export type Langue = "fr" | "en";
 const CLE = "lucien.langue";
 
 export function langueChoisie(): Langue {
-  try { const l = localStorage.getItem(CLE); if (l === "fr" || l === "en") return l; } catch { /* storage refused */ }
-  const nav = (navigator.languages?.[0] ?? navigator.language ?? "fr").slice(0, 2).toLowerCase();
-  return nav === "en" ? "en" : "fr";
+  // French by default: English only when chosen in Settings
+  try { if (localStorage.getItem(CLE) === "en") return "en"; } catch { /* storage refused */ }
+  return "fr";
 }
 
 export function choisirLangue(l: Langue) {
