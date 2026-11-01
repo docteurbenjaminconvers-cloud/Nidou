@@ -3,7 +3,8 @@ import { envoyerEmail } from "./mail.js";
  * Accounts without passwords: a magic link by email. The same mechanism carries invitations to join a household.
  * LUCIEN_AUTH=0 keeps the single-household prototype mode (no login) for local development and the demo seed.
  */
-export const AUTH_ON = () => process.env.LUCIEN_AUTH !== "0";
+/** In production (the Docker image sets NODE_ENV=production) login is always required: LUCIEN_AUTH=0 would expose the first household to anyone. */
+export const AUTH_ON = () => process.env.LUCIEN_AUTH !== "0" || process.env.NODE_ENV === "production";
 export const COOKIE = "lucien_session";
 /** Cookie de session de l'ancien nom (Nidou) : encore lu, pour ne déconnecter personne au changement de nom. */
 export const ANCIEN_COOKIE = "nidou_session";

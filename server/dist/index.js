@@ -6,6 +6,7 @@ import { existsSync, mkdirSync, renameSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Db } from "./db.js";
+import { AUTH_ON } from "./auth.js";
 import { createApi } from "./api.js";
 import { securiser } from "./securite.js";
 import { demarrerSynchroBanques, fournisseur } from "./banques.js";
@@ -54,7 +55,7 @@ const SITE_DIR = join(__dirname, "..", "..", "site");
 if (existsSync(SITE_DIR))
     app.use("/site/*", serveStatic({ root: SITE_DIR.replace(process.cwd() + "/", ""), rewriteRequestPath: (p) => p.replace(/^\/site/, "") }));
 /** What is switched on (never a secret): lets the setup be checked from outside. */
-const etat = () => ({ ia: Boolean(process.env.ANTHROPIC_API_KEY || process.env.MISTRAL_API_KEY), banque: fournisseur(), email: Boolean(process.env.BREVO_API_KEY), paiement: Boolean(process.env.STRIPE_SECRET_KEY), acces: process.env.LUCIEN_ACCES === "restreint" ? "sur invitation" : "ouvert" });
+const etat = () => ({ connexion: AUTH_ON() ? "obligatoire" : "AUCUNE (prototype)", ia: Boolean(process.env.ANTHROPIC_API_KEY || process.env.MISTRAL_API_KEY), banque: fournisseur(), email: Boolean(process.env.BREVO_API_KEY), paiement: Boolean(process.env.STRIPE_SECRET_KEY), acces: process.env.LUCIEN_ACCES === "restreint" ? "sur invitation" : "ouvert" });
 app.get("/health", (c) => c.json({ ok: true, ...etat(), version: "0.1.0" }));
 // Static PWA (after `npm run build --workspace=web`).
 if (existsSync(WEB_DIST)) {
