@@ -980,3 +980,33 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .marque-signature { font-family: var(--display); font-style: italic; color: var(--nest); font-weight: 700; margin: 6px 0 14px; }
 .zone-signature { margin-top: 18px; }
 select.in { width: 100%; border: 2px solid var(--line); background: var(--white); border-radius: 18px; padding: 12px 14px; font-size: 15px; color: var(--ink); -webkit-appearance: none; appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--mist) 50%), linear-gradient(135deg, var(--mist) 50%, transparent 50%); background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%; background-size: 6px 6px; background-repeat: no-repeat; padding-right: 36px; }
+/* situations de vie */
+.situations-carte { display: grid; grid-template-columns: 44px 1fr 20px; gap: 12px; align-items: center; width: 100%; text-align: left; border: 0; border-radius: 22px; padding: 14px; margin: 14px 0 10px; background: var(--lilac-soft); color: var(--ink); }
+.situations-carte b { display: block; font-family: var(--display); font-style: italic; font-weight: 600; font-size: 17px; }
+.situations-carte span span { display: block; font-size: 13px; color: var(--mist); line-height: 1.35; margin-top: 2px; }
+.situations-ico { width: 44px; height: 44px; border-radius: 14px; background: var(--white); display: grid; place-items: center; color: var(--plum); }
+.situations-grille { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.situation-choix { text-align: left; border: 0; border-radius: 20px; padding: 14px; display: flex; flex-direction: column; gap: 6px; color: var(--ink); min-height: 150px; }
+.situation-choix b { font-size: 15.5px; }
+.situation-choix > span:last-child { font-size: 12.5px; color: var(--mist); line-height: 1.35; }
+.situation-choix.peach { background: var(--peach-soft); } .situation-choix.lilac { background: var(--lilac-soft); } .situation-choix.moss { background: var(--moss-soft); } .situation-choix.yolk { background: var(--yolk-soft); } .situation-choix.coral { background: #fbe4dc; }
+.situation-ico { width: 38px; height: 38px; border-radius: 12px; background: var(--white); display: grid; place-items: center; color: var(--plum); }
+.situation-active { display: grid; gap: 8px; width: 100%; text-align: left; border: 0; border-radius: 18px; padding: 12px 14px; background: var(--white); box-shadow: var(--shadow); margin-bottom: 10px; color: var(--ink); }
+.situation-active small { display: block; color: var(--mist); font-size: 13px; }
+.situation-active .prochaine { color: var(--nest); }
+.progres { display: block; height: 6px; border-radius: 6px; background: var(--line); overflow: hidden; }
+.progres i { display: block; height: 100%; background: var(--mint-ink, #1f6b4a); border-radius: 6px; }
+.progres.grand { height: 8px; margin: 10px 0 6px; }
+.etape { display: grid; grid-template-columns: 34px 1fr; gap: 10px; background: var(--white); border-radius: 18px; padding: 12px; margin-bottom: 10px; box-shadow: var(--shadow); }
+.etape.faite { opacity: .6; }
+.etape.retard .etape-corps small { color: var(--ember, #c6452e); font-weight: 700; }
+.etape-case { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--line); background: var(--white); color: var(--white); font-weight: 800; }
+.etape.faite .etape-case { background: var(--mint-ink, #1f6b4a); border-color: var(--mint-ink, #1f6b4a); }
+.etape-corps b { display: block; font-size: 15px; }
+.etape-corps small { display: block; color: var(--mist); font-size: 12.5px; margin: 2px 0 4px; }
+.etape-corps p { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--ink); }
+.etape-papiers { display: grid; gap: 4px; margin-top: 8px; }
+.etape-papier { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; background: var(--paper); border-radius: 10px; padding: 6px 10px; }
+.etape-papier .discret { color: var(--mist); }
+.etape-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.etape-actions .pill { font-size: 13px; text-decoration: none; }

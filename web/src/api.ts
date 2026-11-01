@@ -10,6 +10,7 @@ import { lireReleveDemo } from "../../server/src/categorie";
 import { demoStatement } from "../../server/src/seed-statement";
 import { etatDossiers } from "../../server/src/dossiers";
 import { grandMenage } from "../../server/src/conservation";
+import { SITUATIONS, dateEtape, etapesApplicables, lettreAdresse, lettreCongeLocataire, papiersConcernes, situationParCle, type CleSituation } from "../../server/src/situations";
 import { contenuBail, contenuEdl, type ContenuDocument, type DonneesBail, type DonneesEdl, type Section, type TypeDocLocation } from "../../server/src/documentsLocation";
 
 /** A lease or an inventory being prepared, signed or signed already (Patrimoine locatif). */
@@ -19,6 +20,18 @@ export interface DocLocation {
   signatures: { id: string; role: "bailleur" | "locataire"; nom: string; email: string | null; signe_le: string | null }[];
   liens?: { nom: string; email: string | null; lien: string; envoye: boolean }[];
 }
+/** A life event the household goes through (moving, birth…), its steps placed in the Agenda. */
+export interface SituationVue {
+  id: string; cle: CleSituation; titre: string; date: string; faites: number;
+  options: { locataire: boolean; ancienne_adresse?: string | null; nouvelle_adresse?: string | null; meuble?: boolean; zone_tendue?: boolean; bailleur?: string | null };
+  etapes: { cle: string; titre: string; detail: string; date: string; lien: { libelle: string; url: string } | null; dossier: string | null; ecran: string | null; courrier: "adresse" | "conge_locataire" | null; deadline_id: string | null; fait: boolean; papiers: { id: string; title: string; organisme: string | null }[] }[];
+}
+export interface SituationsEtat {
+  catalogue: { cle: CleSituation; titre: string; accroche: string; question: string; icone: string; teinte: string; etapes: number; locataire: boolean }[];
+  actives: SituationVue[];
+}
+export type NouvelleSituation = { cle: CleSituation; date: string; locataire: boolean; ancienne_adresse?: string | null; nouvelle_adresse?: string | null; meuble?: boolean; zone_tendue?: boolean; bailleur?: string | null };
+
 /** What the tenant sees from the personal link. */
 export interface SignaturePublique {
   titre: string; sous_titre: string; sections: Section[]; statut: DocLocation["statut"]; empreinte: string | null;
@@ -147,6 +160,11 @@ export interface Api {
   acheterVeille(periode: "mensuel" | "annuel"): Promise<void>;
   // the protected person's own page (no account)
   vuePersonne(jeton: string): Promise<VuePersonne>;
+  situations(): Promise<SituationsEtat>;
+  ouvrirSituation(s: NouvelleSituation): Promise<SituationVue>;
+  cocherEtape(id: string, cle: string, fait: boolean): Promise<SituationVue>;
+  fermerSituation(id: string): Promise<void>;
+  courrierSituation(id: string, etape: string, doc?: string | null): Promise<string>;
   docsLocation(): Promise<DocLocation[]>;
   creerDocLocation(d: { type: TypeDocLocation; bien_id: string; bail_id?: string | null; entree_id?: string | null; donnees: DonneesBail | DonneesEdl }): Promise<DocLocation>;
   majDocLocation(id: string, donnees: DonneesBail | DonneesEdl): Promise<DocLocation>;
@@ -307,6 +325,11 @@ const serverApi: Api = {
   journalCsvUrl: (id) => `/api/veilles/${id}/journal?format=csv`,
   acheterVeille: async (periode) => { await call("/abonnement/veille", json({ periode })); },
   vuePersonne: (jeton) => call(`/veille/p/${jeton}`),
+  situations: () => call("/situations"),
+  ouvrirSituation: (x) => call("/situations", json(x)),
+  cocherEtape: (id, cle, fait) => call(`/situations/${id}/etapes/${encodeURIComponent(cle)}`, json({ fait }, "PATCH")),
+  fermerSituation: async (id) => { await call(`/situations/${id}`, { method: "DELETE" }); },
+  courrierSituation: async (id, etape, doc) => (await call<{ lettre: string }>(`/situations/${id}/courrier?${new URLSearchParams({ etape, ...(doc ? { doc } : {}) })}`)).lettre,
   docsLocation: async () => (await call<{ documents: DocLocation[] }>("/locatif/documents")).documents,
   creerDocLocation: (d) => call("/locatif/documents", json(d)),
   majDocLocation: (id, donnees) => call(`/locatif/documents/${id}`, json({ donnees }, "PUT")),
@@ -515,6 +538,7 @@ function makeDemoApi(): Api {
     pushTest: async () => ({ envoyes: 0, actif: false }),
     ...veilleDemo,
     ...makeLocationDemo(),
+    ...makeSituationsDemo(state),
     letter: async ({ kind, nom }) => {
       const d = state.docs[0];
       return `${nom}\n\n${d?.organisme ?? "Service client"}\n\nObjet : ${kind === "resiliation" ? "Résiliation" : kind === "reclamation" ? "Réclamation" : "Demande de remboursement"} — ${d?.title ?? ""}\n\nMadame, Monsieur,\n\n(Mode démo : le courrier complet est rédigé par le serveur Lucien.)\n\n${nom}`;
@@ -885,5 +909,42 @@ function makeLocationDemo(): LocationApi {
       finir(d); return { statut: d.statut };
     },
     pdfPublicUrl: () => null,
+  };
+}
+
+// ---------- situations de vie, demo: steps written into the demo Agenda ----------
+type SituationsApi = Pick<Api, "situations" | "ouvrirSituation" | "cocherEtape" | "fermerSituation" | "courrierSituation">;
+function makeSituationsDemo(state: { deadlines: Deadline[]; docs: Doc[]; household: Household }): SituationsApi {
+  const ouvertes: { id: string; cle: CleSituation; date: string; options: SituationVue["options"]; liens: Record<string, string> }[] = [];
+  const vue = (s: (typeof ouvertes)[number]): SituationVue => {
+    const def = situationParCle(s.cle)!;
+    const etapes = etapesApplicables(def, { locataire: s.options.locataire }).map((e) => {
+      const dl = state.deadlines.find((d) => d.id === s.liens[e.cle]);
+      return { cle: e.cle, titre: e.titre, detail: e.detail, date: dateEtape(s.date, e.j), lien: e.lien ?? null, dossier: e.dossier ?? null, ecran: e.ecran ?? null, courrier: e.courrier ?? null, deadline_id: dl?.id ?? null, fait: !!dl?.fait, papiers: papiersConcernes(e, state.docs).map((d) => ({ id: d.id, title: d.title, organisme: d.organisme ?? null })) };
+    });
+    return { id: s.id, cle: s.cle, titre: def.titre, date: s.date, options: s.options, etapes, faites: etapes.filter((e) => e.fait).length };
+  };
+  const trouver = (id: string) => { const s = ouvertes.find((x) => x.id === id); if (!s) throw new ApiError(404, "introuvable", "Situation introuvable."); return s; };
+  return {
+    situations: async () => ({ catalogue: SITUATIONS.map((s) => ({ cle: s.cle, titre: s.titre, accroche: s.accroche, question: s.question, icone: s.icone, teinte: s.teinte, etapes: s.etapes.length, locataire: s.etapes.some((e) => e.si === "locataire") })), actives: ouvertes.map(vue) }),
+    ouvrirSituation: async (x) => {
+      const def = situationParCle(x.cle)!; const id = Math.random().toString(36).slice(2, 10);
+      const { cle, date, ...options } = x;
+      const liens: Record<string, string> = {};
+      for (const e of etapesApplicables(def, { locataire: x.locataire })) {
+        const d: Deadline = { id: `sit-${id}-${e.cle}`, document_id: null, titre: `${def.titre} : ${e.titre}`, type: "situation", date: dateEtape(date, e.j), rappel_jours: 5, fait: 0, note: null };
+        state.deadlines.push(d); liens[e.cle] = d.id;
+      }
+      const s = { id, cle, date, options, liens }; ouvertes.push(s); return vue(s);
+    },
+    cocherEtape: async (id, cle, fait) => { const s = trouver(id); const d = state.deadlines.find((x) => x.id === s.liens[cle]); if (d) d.fait = fait ? 1 : 0; return vue(s); },
+    fermerSituation: async (id) => { const s = trouver(id); const ids = new Set(Object.values(s.liens)); state.deadlines = state.deadlines.filter((d) => !ids.has(d.id) || d.fait); ouvertes.splice(ouvertes.indexOf(s), 1); },
+    courrierSituation: async (id, etape, doc) => {
+      const s = trouver(id); const e = situationParCle(s.cle)!.etapes.find((x) => x.cle === etape);
+      const exp = state.household.nom.replace(/\s*\(démo\)$/, "");
+      if (e?.courrier === "conge_locataire") return lettreCongeLocataire({ expediteur: exp, adresse: s.options.ancienne_adresse ?? "", bailleur: s.options.bailleur, meuble: !!s.options.meuble, zone_tendue: !!s.options.zone_tendue, date: s.date });
+      const d = doc ? state.docs.find((x) => x.id === doc) : null;
+      return lettreAdresse({ expediteur: exp, organisme: d?.organisme ?? "[organisme]", contrat: d?.numero_contrat ?? null, ancienne: s.options.ancienne_adresse ?? "", nouvelle: s.options.nouvelle_adresse ?? "", date: s.date });
+    },
   };
 }

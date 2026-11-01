@@ -30,6 +30,7 @@ import { pointDuFoyer } from "./hebdo.js";
 import { monterEspaces } from "./espaces.js";
 import { adminOk, monterPartenaires } from "./partenaires.js";
 import { monterPartages } from "./partages.js";
+import { monterSituations } from "./situationsApi.js";
 import { bordereau, etatDossiers, etatKit, KITS } from "./dossiers.js";
 import { zip } from "./zip.js";
 import { agendaIcs } from "./ics.js";
@@ -295,6 +296,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
   monterEspaces(api, db, { household, isOwner, email: (c) => currentUser(c)?.email ?? null, uploadDir: opts.uploadDir });
   monterPartenaires(api, db, { household });
   monterPartages(api, db, { household });
+  monterSituations(api, db, { household, prenom: (c) => currentUser(c)?.prenom ?? null });
 
   // ---------- abonnement (Stripe) ----------
   api.post("/abonnement/checkout", async (c) => {

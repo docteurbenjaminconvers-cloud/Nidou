@@ -7,7 +7,7 @@ import { DateChip, daysUntil, relative } from "../ui";
 
 const TYPE_LABEL: Record<string, string> = {
   resiliation: "Résiliation", renouvellement: "Renouvellement", expiration: "Expiration", garantie: "Garantie",
-  sante: "Santé", declaration: "Déclaration", echeance: "Échéance", famille: "Famille",
+  sante: "Santé", declaration: "Déclaration", echeance: "Échéance", famille: "Famille", situation: "Situation de vie",
 };
 
 export function Deadlines({ deadlines, go, onDone, unread, semaine, extra }: { deadlines: Deadline[]; go: (s: string, id?: string) => void; onDone: (id: string) => void; unread: number; semaine?: { jour: number; heure_debut: string | null; titre: string; membre: string | null; lieu: string | null }[]; extra?: ReactNode }) {
@@ -52,6 +52,7 @@ export function Deadlines({ deadlines, go, onDone, unread, semaine, extra }: { d
                     <div className="s">{TYPE_LABEL[d.type] ?? d.type} · {relative(d.date)}{d.note ? ` · ${d.note}` : ""}</div>
                     <div style={{ display: "flex", gap: 14, marginTop: 6 }}>
                       {d.document_id && <button className="link" onClick={() => go("doc", d.document_id!)}>Document</button>}
+                      {d.type === "situation" && <button className="link" onClick={() => go("situations")}>Situation</button>}
                       {d.type === "famille" && <button className="link" onClick={() => go(d.member_id ? "membre" : "famille", d.member_id ?? undefined)}>Famille</button>}
                       <button className="link" onClick={() => onDone(d.id)}>C'est fait</button>
                     </div>

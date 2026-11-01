@@ -2182,7 +2182,222 @@
   "3 ans": "3 years",
   "6 ans": "6 years",
   "9 mois (étudiant)": "9 months (student)",
-  "Bail et état des lieux préparés et signés en ligne": "Lease and inventory prepared and signed online"
+  "Bail et état des lieux préparés et signés en ligne": "Lease and inventory prepared and signed online",
+  "Déménagement": "Moving house",
+  "Préavis, énergie, box, assurance, courrier, carte grise : tout dans l'ordre.": "Notice, energy, broadband, insurance, mail, vehicle registration: everything in the right order.",
+  "Date du déménagement": "Moving date",
+  "Donner congé au bailleur": "Give notice to your landlord",
+  "Par lettre recommandée, remise en main propre ou acte de commissaire de justice. Préavis de 3 mois en location vide, 1 mois en meublé, en zone tendue ou dans les cas prévus par la loi (mutation, perte d'emploi, raison de santé…).": "By registered letter, hand delivery or a bailiff's notice (acte de commissaire de justice). Notice is 3 months for an unfurnished let, 1 month for a furnished one, in a high-demand area or in cases set out by law (job transfer, job loss, health reasons…).",
+  "Le préavis du locataire": "The tenant's notice",
+  "Réserver le déménageur ou l'utilitaire": "Book the removal firm or van",
+  "Plusieurs devis, surtout en fin de mois et l'été. Pour un salarié, certaines conventions collectives accordent un jour de congé pour déménagement.": "Get several quotes, especially at the end of the month and in summer. For employees, some collective agreements grant a day off for moving house.",
+  "Faire suivre le courrier": "Forward your mail",
+  "Contrat de réexpédition de La Poste, à souscrire environ deux semaines avant, pour 6 ou 12 mois.": "La Poste mail redirection contract: take it out about two weeks beforehand, for 6 or 12 months.",
+  "Électricité et gaz : résilier ou transférer": "Electricity and gas: cancel or transfer",
+  "Prévenez le fournisseur du départ et ouvrez le compteur du nouveau logement à votre nom. Relevez les compteurs le jour même, dans les deux logements.": "Tell your supplier you are leaving and open the meter at the new home in your name. Read the meters on the day itself, at both homes.",
+  "Internet : transférer la box": "Internet: transfer your broadband box",
+  "Le transfert de ligne prend souvent deux à trois semaines. Si le service n'est pas disponible à la nouvelle adresse, la résiliation se fait sans frais sur justificatif.": "Transferring a line often takes two to three weeks. If the service isn't available at the new address, you can cancel free of charge with proof.",
+  "Assurer le nouveau logement": "Insure your new home",
+  "Le locataire doit être assuré dès la remise des clés. Le déménagement permet de résilier l'ancien contrat ; après un an de contrat, la résiliation est de toute façon possible à tout moment.": "The tenant must be insured from the moment the keys are handed over. Moving house lets you cancel the old contract; after one year of cover, you can cancel at any time anyway.",
+  "États des lieux et relevés des compteurs": "Inventories and meter readings",
+  "État des lieux de sortie dans l'ancien logement, d'entrée dans le nouveau, avec photos. Notez les index des compteurs d'eau, d'électricité et de gaz.": "Check-out inventory at the old home, check-in at the new one, with photos. Note the water, electricity and gas meter readings.",
+  "Changer d'adresse auprès des administrations": "Change your address with the authorities",
+  "Un seul formulaire en ligne pour la CAF, les impôts, l'Assurance maladie, les caisses de retraite, France Travail et les fournisseurs d'énergie partenaires.": "One online form for the CAF, the tax office, Assurance maladie, pension funds, France Travail and partner energy suppliers.",
+  "Déclarer un changement de coordonnées": "Report a change of contact details",
+  "Banque, mutuelle, employeur, abonnements : nouvelle adresse": "Bank, top-up health insurance, employer, subscriptions: new address",
+  "Lucien prépare le courrier de changement d'adresse pour chaque contrat de vos papiers.": "Lucien prepares the change-of-address letter for each contract in your papers.",
+  "Carte grise : changer l'adresse": "Vehicle registration: change the address",
+  "Obligatoire dans le mois qui suit le déménagement, gratuit, en ligne sur le site de l'ANTS.": "Compulsory within one month of moving, free, online on the ANTS website.",
+  "Inscrire les enfants à l'école": "Enrol the children at school",
+  "Inscription en mairie de la nouvelle commune, puis admission à l'école. Lucien prépare le dossier.": "Register at the town hall of the new municipality, then apply for admission to the school. Lucien prepares the file.",
+  "S'inscrire sur les listes électorales": "Register on the electoral roll",
+  "Dans la nouvelle commune, en ligne. Possible toute l'année, au plus tard le sixième vendredi avant une élection.": "In the new municipality, online. Possible all year round, up to the sixth Friday before an election.",
+  "Inscription en ligne": "Register online",
+  "Récupérer le dépôt de garantie": "Get your deposit back",
+  "Le bailleur a un mois après la remise des clés si l'état des lieux de sortie est conforme à l'entrée, deux mois sinon. Au-delà, il doit 10 % du loyer par mois de retard.": "The landlord has one month after the keys are returned if the check-out inventory matches the check-in, two months otherwise. After that, they owe 10% of the rent per month of delay.",
+  "Naissance": "Birth",
+  "Déclaration, CAF, Assurance maladie, mutuelle, congés et garde.": "Declaration, CAF, Assurance maladie, top-up health insurance, leave and childcare.",
+  "Date de naissance (ou date prévue)": "Date of birth (or due date)",
+  "Déclarer la grossesse": "Declare the pregnancy",
+  "Avant la fin du troisième mois (14e semaine) à la CAF et à l'Assurance maladie : le médecin ou la sage-femme la transmet en ligne.": "Before the end of the third month (week 14) to the CAF and Assurance maladie: the doctor or midwife sends it online.",
+  "Chercher un mode de garde": "Find childcare",
+  "Crèche, assistante maternelle : les inscriptions se font souvent dès la grossesse. Le site monenfant.fr recense les places près de chez vous.": "Nursery, childminder: registration often starts during pregnancy. The monenfant.fr site lists places near you.",
+  "Reconnaissance anticipée (parents non mariés)": "Prenatal acknowledgement (unmarried parents)",
+  "En mairie, avant la naissance, pour établir la filiation du père. Elle peut aussi se faire au moment de la déclaration de naissance.": "At the town hall, before the birth, to establish the father's parentage. It can also be done when the birth is registered.",
+  "Prévenir l'employeur des congés": "Tell your employer about leave",
+  "Congé de maternité, et congé de paternité et d'accueil de l'enfant de 25 jours (dont 4 à prendre juste après la naissance) : prévenez l'employeur un mois avant pour la partie restante.": "Maternity leave, and 25 days of paternity and childcare leave (4 of which must be taken straight after the birth): tell your employer one month ahead for the remaining part.",
+  "Déclarer la naissance en mairie": "Register the birth at the town hall",
+  "Dans les 5 jours qui suivent l'accouchement, à la mairie du lieu de naissance (souvent possible à la maternité). Sans cette déclaration, l'acte de naissance ne peut être établi.": "Within 5 days of the delivery, at the town hall of the place of birth (often possible at the maternity ward). Without this declaration, the birth certificate cannot be drawn up.",
+  "Déclaration de naissance": "Birth registration",
+  "Rattacher l'enfant à l'Assurance maladie": "Add your child to Assurance maladie",
+  "Dans votre compte ameli, avec l'acte de naissance, pour qu'il soit pris en charge sur la carte Vitale d'un parent ou des deux.": "In your ameli account, with the birth certificate, so they are covered on the Carte Vitale of one or both parents.",
+  "Ajouter l'enfant à la mutuelle": "Add your child to your top-up health insurance",
+  "Avec l'acte de naissance, pour qu'il soit couvert dès ses premiers soins.": "With the birth certificate, so they are covered from their very first care.",
+  "Informer la CAF": "Inform the CAF",
+  "Déclarez la naissance dans votre espace CAF : allocations, prestation d'accueil du jeune enfant.": "Declare the birth in your CAF account: allowances and the early childhood benefit (prestation d'accueil du jeune enfant).",
+  "Impôts : mettre à jour le prélèvement à la source": "Tax: update your withholding tax",
+  "Signalez la naissance dans les 60 jours dans « Gérer mon prélèvement à la source » pour baisser le taux tout de suite.": "Report the birth within 60 days in “Gérer mon prélèvement à la source” (manage your withholding tax) to lower your rate straight away.",
+  "Ajouter l'enfant dans Lucien": "Add your child to Lucien",
+  "Sa page, ses papiers et ses dates clés : vaccins, inscriptions, aides.": "Their page, papers and key dates: vaccinations, enrolments, benefits.",
+  "Mariage ou PACS": "Marriage or PACS",
+  "Impôts, CAF, mutuelle, banque et assurances à mettre à jour.": "Tax, CAF, top-up health insurance, bank and insurance to update.",
+  "Date du mariage ou du PACS": "Date of the marriage or PACS",
+  "Déposer le dossier": "Submit the application",
+  "Mariage : dossier en mairie, avec publication des bans. PACS : en mairie ou chez un notaire, sur rendez-vous.": "Marriage: application at the town hall, with publication of the banns. PACS: at the town hall or with a notary, by appointment.",
+  "Se pacser": "Enter a PACS",
+  "Impôts : déclarer le changement dans les 60 jours": "Tax: report the change within 60 days",
+  "Dans « Gérer mon prélèvement à la source ». Imposition commune dès l'année du mariage ou du PACS ; une déclaration séparée reste possible cette année-là.": "In “Gérer mon prélèvement à la source” (manage your withholding tax). Joint taxation from the year of the marriage or PACS; a separate return remains possible that year.",
+  "Informer la CAF et l'Assurance maladie": "Inform the CAF and Assurance maladie",
+  "Le changement de situation peut modifier les aides (APL, prime d'activité).": "The change in situation may alter your benefits (APL, prime d'activité).",
+  "Mutuelle et assurances : regrouper ?": "Top-up health insurance and insurance: combine?",
+  "Un contrat famille revient souvent moins cher que deux contrats. Les assurances habitation et auto peuvent aussi être regroupées.": "A family policy is often cheaper than two separate ones. Home and car insurance can also be combined.",
+  "Prévenir l'employeur": "Tell your employer",
+  "Pour la mutuelle d'entreprise, et le congé pour mariage ou PACS (4 jours).": "For company top-up health insurance, and marriage or PACS leave (4 days).",
+  "Banque : compte joint, bénéficiaires": "Bank: joint account, beneficiaries",
+  "Compte joint, procurations, et bénéficiaires des contrats d'assurance vie à revoir.": "Joint account, powers of attorney, and life insurance beneficiaries to review.",
+  "Nom d'usage (si vous le souhaitez)": "Preferred surname (if you wish)",
+  "Le nom d'usage figure sur les nouveaux papiers d'identité, à la demande. Rien n'oblige à le changer.": "The preferred surname appears on new ID documents, on request. Nothing obliges you to change it.",
+  "Séparation": "Separation",
+  "Logement, comptes, impôts, CAF, enfants : ce qui doit changer.": "Home, accounts, tax, CAF, children: what needs to change.",
+  "Date de la séparation": "Date of the separation",
+  "Logement : bail ou prêt immobilier": "Home: lease or mortgage",
+  "Locataires : celui qui part donne congé (sa solidarité peut durer jusqu'à 6 mois). Propriétaires : vente, rachat de la part de l'autre ou indivision, avec le notaire et la banque.": "Tenants: the one leaving gives notice (their joint liability can last up to 6 months). Owners: sale, buying out the other's share or joint ownership, with the notary and the bank.",
+  "Comptes joints et crédits": "Joint accounts and loans",
+  "Désolidarisez-vous du compte joint par lettre à la banque, et faites le point sur les crédits en commun.": "Remove yourself from the joint account by letter to the bank, and review any shared loans.",
+  "Dans « Gérer mon prélèvement à la source ». Chacun fait ensuite sa propre déclaration.": "In “Gérer mon prélèvement à la source” (manage your withholding tax). Each of you then files your own return.",
+  "Les aides sont recalculées. En cas de pension alimentaire, l'intermédiation financière (ARIPA) sécurise son versement.": "Benefits are recalculated. If there is child maintenance, financial intermediation (ARIPA) secures its payment.",
+  "Pension alimentaire (ARIPA)": "Child maintenance (ARIPA)",
+  "Organisation des enfants": "Arrangements for the children",
+  "Résidence, droit de visite, pension : par accord écrit, convention homologuée ou décision du juge aux affaires familiales.": "Residence, visiting rights, maintenance: by written agreement, court-approved agreement or a family court judge's decision.",
+  "Assurances, mutuelle, abonnements : séparer": "Insurance, top-up health insurance, subscriptions: separate them",
+  "Chaque contrat au nom de celui qui le garde ; nouvelle adresse pour celui qui part.": "Each contract in the name of whoever keeps it; new address for whoever is leaving.",
+  "Mettre à jour le foyer dans Lucien": "Update your household in Lucien",
+  "Personnes du foyer, dépenses partagées : Lucien peut calculer qui doit quoi pour solder les comptes.": "People in the household, shared expenses: Lucien can work out who owes what to settle up.",
+  "Décès d'un proche": "Death of a relative",
+  "Les démarches de la première semaine, puis des premiers mois, dans l'ordre.": "The steps for the first week, then the first months, in order.",
+  "Date du décès": "Date of death",
+  "Déclarer le décès en mairie": "Register the death at the town hall",
+  "Dans les 24 heures, à la mairie du lieu du décès, avec le certificat de décès ; les pompes funèbres s'en chargent souvent.": "Within 24 hours, at the town hall of the place of death, with the death certificate; funeral directors often take care of this.",
+  "Démarches après un décès": "Steps after a death",
+  "Organiser les obsèques": "Arrange the funeral",
+  "L'inhumation ou la crémation a lieu au plus tard 14 jours après le décès. Les frais peuvent être prélevés en partie sur le compte du défunt, sur présentation de la facture.": "Burial or cremation takes place no later than 14 days after the death. Costs can be partly paid from the deceased's account, on presentation of the invoice.",
+  "Prévenir l'employeur, la banque et les caisses": "Notify the employer, the bank and the pension and benefit funds",
+  "Employeur ou caisses de retraite, banque (les comptes personnels sont bloqués), Assurance maladie, CAF, mutuelle.": "Employer or pension funds, bank (personal accounts are frozen), Assurance maladie, CAF, top-up health insurance.",
+  "Rechercher les assurances vie": "Search for life insurance policies",
+  "Le service AGIRA retrouve les contrats d'assurance vie dont le défunt était titulaire.": "The AGIRA service tracks down life insurance contracts held by the deceased.",
+  "Résilier ou transférer les contrats": "Cancel or transfer contracts",
+  "Énergie, box, abonnements, assurance habitation et auto : un certificat de décès suffit pour résilier sans frais.": "Energy, broadband, subscriptions, home and car insurance: a death certificate is enough to cancel free of charge.",
+  "Notaire et succession": "Notary and estate",
+  "Le notaire établit l'acte de notoriété et la déclaration de succession, à déposer dans les 6 mois.": "The notary draws up the certificate of inheritance (acte de notoriété) and the estate declaration, to be filed within 6 months.",
+  "Déclaration de succession": "Estate declaration",
+  "Dans les 6 mois du décès (en France), sauf petites successions exonérées de déclaration.": "Within 6 months of the death (in France), except small estates exempt from filing.",
+  "Impôts : déclaration des revenus du défunt": "Tax: return for the deceased's income",
+  "Au printemps suivant, pour la période du 1er janvier au décès ; le conjoint ou partenaire de PACS signale le décès dans les 60 jours pour adapter le prélèvement.": "The following spring, for the period from 1 January to the date of death; the spouse or PACS partner reports the death within 60 days to adjust the withholding tax.",
+  "Nouvelle voiture": "New car",
+  "Assurance, carte grise, vente de l'ancienne : rien n'oublie.": "Insurance, vehicle registration, selling the old one: nothing forgotten.",
+  "Date d'achat": "Purchase date",
+  "Assurer la voiture avant de rouler": "Insure the car before driving it",
+  "L'assurance au tiers au minimum est obligatoire dès la première sortie. Faites jouer la concurrence : après un an, l'ancien contrat se résilie à tout moment.": "At least third-party insurance is compulsory from the first drive. Shop around: after one year, the old contract can be cancelled at any time.",
+  "Faire la carte grise": "Get the vehicle registration",
+  "Voiture d'occasion : changement de titulaire dans le mois, en ligne sur le site de l'ANTS. Voiture neuve : le concessionnaire s'en charge souvent.": "Used car: change of owner within one month, online on the ANTS website. New car: the dealer often handles it.",
+  "Contrôle technique de moins de 6 mois": "Technical inspection less than 6 months old",
+  "Pour une voiture d'occasion de plus de 4 ans, le vendeur doit le fournir.": "For a used car more than 4 years old, the seller must provide it.",
+  "Vendre l'ancienne : déclaration de cession": "Selling the old one: declaration of sale",
+  "Le vendeur déclare la cession sur le site de l'ANTS dans les 15 jours, et résilie l'assurance de l'ancien véhicule à la date de vente.": "The seller declares the sale on the ANTS website within 15 days, and cancels the old vehicle's insurance as of the sale date.",
+  "Vignette Crit'Air": "Crit'Air sticker",
+  "Obligatoire dans les zones à faibles émissions de nombreuses villes. Commande uniquement sur le site officiel.": "Compulsory in the low-emission zones of many cities. Order only on the official website.",
+  "Perte d'emploi": "Job loss",
+  "France Travail, mutuelle, aides, budget : les bons réflexes.": "France Travail, top-up health insurance, benefits, budget: the right first steps.",
+  "Dernier jour du contrat": "Last day of the contract",
+  "Récupérer les documents de fin de contrat": "Collect your end-of-contract documents",
+  "Certificat de travail, attestation employeur pour France Travail, reçu pour solde de tout compte. Rangez-les dans Lucien.": "Employment certificate, employer's statement for France Travail, final settlement receipt. Keep them in Lucien.",
+  "S'inscrire à France Travail": "Register with France Travail",
+  "Dès le lendemain de la fin du contrat, en ligne. L'inscription ouvre les droits à l'allocation chômage s'ils existent.": "From the day after the contract ends, online. Registration opens up your unemployment benefit rights, if you have any.",
+  "Mutuelle d'entreprise : la portabilité": "Company top-up health insurance: portability",
+  "La mutuelle et la prévoyance de l'entreprise sont maintenues gratuitement pendant la durée du chômage indemnisé, jusqu'à 12 mois.": "Company top-up health insurance and provident cover are kept free of charge for as long as you receive unemployment benefit, up to 12 months.",
+  "Revoir les aides de la CAF": "Review your CAF benefits",
+  "Prime d'activité, APL : déclarez le changement de ressources.": "Prime d'activité, APL: report the change in income.",
+  "Ajuster le budget": "Adjust your budget",
+  "Lucien repère les abonnements à suspendre et annonce le solde de fin de mois.": "Lucien spots subscriptions to pause and shows your end-of-month balance.",
+  "Formation : votre compte CPF": "Training: your CPF account",
+  "Les droits acquis restent utilisables pendant la recherche d'emploi.": "The rights you have built up remain usable while you look for work.",
+  "Achat d'un logement": "Buying a home",
+  "Prêt, assurance emprunteur, signature, puis le déménagement.": "Loan, borrower insurance, signing, then the move.",
+  "Date de signature chez le notaire": "Date of signing at the notary's",
+  "Compromis et délai de rétractation": "Preliminary contract and cooling-off period",
+  "Après la signature du compromis, l'acheteur dispose de 10 jours pour se rétracter. Le prêt fait en général l'objet d'une condition suspensive.": "After the preliminary contract (compromis) is signed, the buyer has 10 days to withdraw. The loan is usually a condition of the sale.",
+  "Dossier de prêt": "Loan application",
+  "Lucien rassemble les pièces demandées par la banque ou le courtier.": "Lucien gathers the documents requested by the bank or broker.",
+  "Assurance emprunteur : comparer": "Borrower insurance: compare",
+  "Vous pouvez choisir une autre assurance que celle de la banque, et en changer à tout moment pendant le prêt.": "You can choose a different insurer from the bank's, and switch at any time during the loan.",
+  "Assurer le logement dès la remise des clés": "Insure the home from the day you get the keys",
+  "En copropriété, l'assurance responsabilité civile est obligatoire pour le propriétaire.": "In a co-owned building, liability insurance is compulsory for the owner.",
+  "Due par le propriétaire au 1er janvier ; l'acte prévoit souvent un remboursement au prorata au vendeur.": "Owed by the owner on 1 January; the deed often provides for a pro rata reimbursement to the seller.",
+  "Lancer la situation Déménagement": "Start the Moving house situation",
+  "Énergie, box, courrier, carte grise : Lucien enchaîne avec le déménagement.": "Energy, broadband, mail, vehicle registration: Lucien follows on with the move.",
+  "Un enfant part étudier": "A child leaves for university",
+  "Bourse, logement, APL, assurance, impôts : la rentrée sans oubli.": "Grant, housing, APL, insurance, tax: a smooth start to the academic year.",
+  "Date de rentrée": "Term start date",
+  "À déposer entre mi-janvier et fin mai, sans attendre l'affectation.": "To be submitted between mid-January and the end of May, without waiting for your placement.",
+  "Trouver le logement": "Find housing",
+  "Résidence CROUS, colocation ou studio : Lucien prépare le dossier de location. La garantie Visale peut remplacer un garant.": "CROUS residence, flatshare or studio: Lucien prepares the rental application. The Visale guarantee can replace a guarantor.",
+  "Demander l'APL": "Apply for APL",
+  "En ligne sur le site de la CAF dès l'entrée dans le logement.": "Online on the CAF website as soon as you move in.",
+  "Assurance habitation étudiante": "Student home insurance",
+  "Obligatoire pour le locataire, dès la remise des clés.": "Compulsory for the tenant, from the day the keys are handed over.",
+  "Payer la CVEC": "Pay the CVEC",
+  "Contribution vie étudiante et de campus, à acquitter avant l'inscription administrative (les boursiers en sont exonérés).": "Student and campus life contribution (contribution vie étudiante et de campus), to be paid before administrative enrolment (grant holders are exempt).",
+  "Rattachement fiscal ou pension ?": "Tax attachment or maintenance payments?",
+  "À la déclaration suivante : garder l'enfant rattaché au foyer, ou le détacher et déduire la pension versée. Lucien compare dans la page Famille.": "At the next tax return: keep the child attached to the household, or detach them and deduct the maintenance paid. Lucien compares on the Family page.",
+  "Départ à la retraite": "Retirement",
+  "Relevé de carrière, demande unique, mutuelle : six mois d'avance.": "Career statement, single application, top-up health insurance: start six months ahead.",
+  "Date de départ souhaitée": "Desired retirement date",
+  "Vérifier le relevé de carrière": "Check your career statement",
+  "Trimestres manquants, périodes à corriger : faites-les rectifier avant la demande.": "Missing quarters, periods to correct: get them fixed before applying.",
+  "Faire la demande de retraite": "Apply for your pension",
+  "Une seule demande en ligne pour tous les régimes, six mois avant la date choisie.": "A single online application for all schemes, six months before your chosen date.",
+  "Départ volontaire à la retraite : respectez le préavis prévu par la loi ou la convention collective.": "Voluntary retirement: observe the notice required by law or the collective agreement.",
+  "Mutuelle : garder sa couverture": "Top-up health insurance: keep your cover",
+  "En quittant la mutuelle d'entreprise, vous pouvez demander à la conserver à titre individuel dans les 6 mois (loi Évin), ou comparer d'autres contrats.": "When you leave the company top-up health insurance, you can ask to keep it individually within 6 months (loi Évin), or compare other policies.",
+  "Impôts : adapter le prélèvement": "Tax: adjust your withholding",
+  "Pension plus basse que le salaire : signalez la baisse de revenus dans « Gérer mon prélèvement à la source ».": "Pension lower than salary: report the drop in income in “Gérer mon prélèvement à la source” (manage your withholding tax).",
+  "Un grand moment à venir ?": "A big moment coming up?",
+  "Déménagement, naissance, mariage, nouvelle voiture… Lucien prépare chaque démarche, à la bonne date.": "Moving house, birth, marriage, new car… Lucien prepares each step, on the right date.",
+  "Indiquez la date, s'il vous plaît": "Please enter the date",
+  "Situations": "Situations",
+  "Je suis locataire de mon logement actuel": "I am a tenant in my current home",
+  "Logement loué meublé": "Furnished rental",
+  "En zone tendue (grandes villes : préavis d'un mois)": "In a high-demand area (large cities: one month's notice)",
+  "Bailleur ou agence (nom et adresse)": "Landlord or agency (name and address)",
+  "Adresse actuelle": "Current address",
+  "Nouvelle adresse": "New address",
+  "Si vous la connaissez déjà": "If you already know it",
+  "Préparation…": "Preparing…",
+  "Lucien s'en occupe": "Lucien takes care of it",
+  "Chaque démarche s'ajoute à votre agenda à sa date, avec un rappel avant.": "Each step is added to your Calendar on its date, with a reminder beforehand.",
+  "Situations de vie": "Life situations",
+  "Choisissez ce qui arrive et sa date : Lucien prépare chaque démarche, dans l'ordre, avec les courriers et les dossiers.": "Choose what's coming up and its date: Lucien prepares each step in order, with the letters and files.",
+  "En cours": "In progress",
+  "faites": "done",
+  "Ensuite :": "Next:",
+  "Que se passe-t-il ?": "What's happening?",
+  "Avant": "Before",
+  "Le jour même": "On the day",
+  "sur": "of",
+  "démarches faites": "steps done",
+  "Marquer comme à faire": "Mark as to do",
+  "Marquer comme fait": "Mark as done",
+  "Courrier": "Letter",
+  "Congé au bailleur": "Notice to landlord",
+  "Préparer la lettre de congé": "Prepare the notice letter",
+  "Changement d'adresse": "Change of address",
+  "Courrier de changement d'adresse": "Change-of-address letter",
+  "Ouvrir le dossier": "Open the file",
+  "Clore la situation retire de l'agenda les démarches qui restent à faire.": "Closing the situation removes the remaining steps from your Calendar.",
+  "Situation close": "Situation closed",
+  "Confirmer": "Confirm",
+  "Clore cette situation": "Close this situation",
+  "Situation de vie": "Life situation"
  },
  "motifs": [
   [
@@ -2770,6 +2985,10 @@
    "{0} cash withdrawals in one week"
   ],
   [
+   "{0} démarches ajoutées à votre agenda",
+   "{0} steps added to your calendar"
+  ],
+  [
    "{0} grosse dépense sans justificatif",
    "{0} large expense without a receipt"
   ],
@@ -2938,6 +3157,14 @@
    "The {0} family's week"
   ],
   [
+   "Un enfant part étudier : {0}",
+   "A child leaves to study: {0}"
+  ],
+  [
+   "{0} · {1} sur {2} démarches faites",
+   "{0} · {1} of {2} steps done"
+  ],
+  [
    "Me rétracter (jusqu'au {0})",
    "Withdraw (until {0})"
   ],
@@ -2994,6 +3221,14 @@
    "{0}'s birthday ({1} years old)"
   ],
   [
+   "Départ à la retraite : {0}",
+   "Retirement: {0}"
+  ],
+  [
+   "Changement d'adresse — {0}",
+   "Change of address — {0}"
+  ],
+  [
    "· quote-part du foyer {0}",
    "· household's share {0}"
   ],
@@ -3012,6 +3247,10 @@
   [
    "{0} par an déjà récupérés",
    "{0} a year already recovered"
+  ],
+  [
+   "Achat d'un logement : {0}",
+   "Buying a home: {0}"
   ],
   [
    "{0} nouvelles opérations",
@@ -3126,6 +3365,10 @@
    "{0}'s choices to confirm"
   ],
   [
+   "Décès d'un proche : {0}",
+   "Death of a relative: {0}"
+  ],
+  [
    "{0} pièces sur {1} prêtes",
    "{0} documents out of {1} ready"
   ],
@@ -3148,6 +3391,10 @@
   [
    "Clôture de {0} à finir",
    "{0} close-off to finish"
+  ],
+  [
+   "Nouvelle voiture : {0}",
+   "New car: {0}"
   ],
   [
    "Jusqu'à {0} par an · {1}",
@@ -3186,6 +3433,10 @@
    "{0} on {1}'s account"
   ],
   [
+   "Mariage ou PACS : {0}",
+   "Marriage or civil partnership: {0}"
+  ],
+  [
    "payé par {0} · pour {1}",
    "paid by {0} · for {1}"
   ],
@@ -3220,6 +3471,10 @@
   [
    "{0} Jusqu'à {1} par an.",
    "{0} Up to {1} a year."
+  ],
+  [
+   "Perte d'emploi : {0}",
+   "Job loss: {0}"
   ],
   [
    "Fin du mois, le {0}",
@@ -3288,6 +3543,10 @@
   [
    "{0} signature sur {1}",
    "{0} signature out of {1}"
+  ],
+  [
+   "Déménagement : {0}",
+   "Moving house: {0}"
   ],
   [
    "Résiliation — {0}",
@@ -3362,6 +3621,14 @@
    "{0}, {1} and {2} others"
   ],
   [
+   "Séparation : {0}",
+   "Separation: {0}"
+  ],
+  [
+   "Ensuite : {0} ({1})",
+   "Next: {0} ({1})"
+  ],
+  [
    "aujourd'hui {0}",
    "today {0}"
   ],
@@ -3418,6 +3685,10 @@
    " · signed on {0}"
   ],
   [
+   "Naissance : {0}",
+   "Birth: {0}"
+  ],
+  [
    "· {0} à charge",
    "· {0} dependant(s)"
   ],
@@ -3456,6 +3727,10 @@
   [
    "Dans {0} jours",
    "In {0} days"
+  ],
+  [
+   "{0} · {1}/{2} faites",
+   "{0} · {1}/{2} done"
   ],
   [
    "Dans {0} j : {1}",

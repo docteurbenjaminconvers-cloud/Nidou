@@ -3,6 +3,7 @@ import type { BudgetReport, ChargesReport, Deadline, Doc, FamilleReport, Househo
 import { DateChip, daysUntil, fmtDate, fmtEuro, Logo, relative } from "../ui";
 import { SemaineCarte, calculerSemaine } from "./Semaine";
 import { UrgenceCarte } from "./Urgence";
+import { SituationsCarte } from "./Situations";
 import { Portrait } from "./Famille";
 import { EspacesCarte } from "./espacesCommun";
 import type { Api } from "../api";
@@ -183,6 +184,7 @@ export function Today({ api, household, deadlines, docs, charges, budget, go, on
           </div>
         </section>
       )}
+      <SituationsCarte go={go} />
       <UrgenceCarte go={go} />
     </div>
   );
