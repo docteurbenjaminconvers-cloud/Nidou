@@ -1,5 +1,6 @@
 import { SituationDetail, Situations } from "./screens/Situations";
 import { DocumentsLocation, PageSignature } from "./screens/Location";
+import { PageAdmin } from "./screens/Admin";
 import { langueChoisie } from "./i18n/traduction";
 import { PageComptable } from "./screens/Comptable";
 import { Offre } from "./screens/Offre";
@@ -106,6 +107,7 @@ export default function App() {
   if (api && route.s === "consentement" && route.id) return <ConsentPage api={api} jeton={route.id.split("?")[0]} />;
   if (api && route.s === "comptable" && route.id) return <PageComptable api={api} token={route.id} />;
   if (api && route.s === "signer" && route.id) return <PageSignature api={api} jeton={route.id.split("?")[0]} />;
+  if (api && route.s === "admin") return <PageAdmin api={api} />;
   if (api && login !== false) return <Login api={api} erreur={login} />;
   if (api && pause) return (
     <div className="app"><div className="screen" style={{ minHeight: "85dvh", display: "flex", flexDirection: "column", justifyContent: "center", gap: 14 }}>

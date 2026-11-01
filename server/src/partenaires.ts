@@ -7,6 +7,7 @@ import type { Hono } from "hono";
 import { z } from "zod";
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import type { Db } from "./db.js";
+import { envoyerEmail } from "./mail.js";
 
 export interface Cabinet { code: string; nom: string; email: string; ville: string | null; statut: "en_attente" | "valide" | "refuse"; cree_le: string }
 
@@ -72,16 +73,76 @@ export function monterPartenaires(api: Hono<any>, db: Db, ctx: { household: (c: 
     return c.json({ code: cab.code, cabinet: { nom: cab.nom, ville: cab.ville }, offert: "Premier mois offert à l'abonnement" });
   });
 
-  // ---------- admin (Bearer LUCIEN_ADMIN_TOKEN) ----------
-  api.get("/admin/partenaires", (c) => {
-    if (!adminOk(c.req.header("authorization"))) return c.json({ error: "interdit" }, 403);
-    const rows = db.raw.prepare("SELECT c.*, (SELECT COUNT(*) FROM households h WHERE h.code_partenaire = c.code) AS clients FROM cabinets c ORDER BY cree_le DESC").all();
-    return c.json(rows);
+  // ---------- admin (Bearer LUCIEN_ADMIN_TOKEN): the page #/admin of the app ----------
+  const interdit = (c: any) => (adminOk(c.req.header("authorization")) ? null : c.json({ error: "interdit", message: "Code d'administration incorrect." }, 403));
+  const listeAdmin = () => db.raw.prepare(`SELECT c.*,
+      (SELECT COUNT(*) FROM households h WHERE h.code_partenaire = c.code) AS clients,
+      (SELECT COUNT(*) FROM households h WHERE h.code_partenaire = c.code AND h.abonnement_statut IN ('active', 'trialing', 'past_due', 'simule')) AS abonnes
+    FROM cabinets c ORDER BY CASE c.statut WHEN 'en_attente' THEN 0 WHEN 'valide' THEN 1 ELSE 2 END, c.cree_le DESC`).all() as unknown as (Cabinet & { clients: number; abonnes: number })[];
+  const publicUrl = () => (process.env.LUCIEN_PUBLIC_URL ?? "https://monlucien.fr").replace(/\/$/, "");
+  const emailCode = (cab: Cabinet) => envoyerEmail({ to: cab.email, subject: `Votre code partenaire Lucien : ${cab.code}`,
+    text: `Bonjour,\n\nVotre cabinet ${cab.nom} est maintenant partenaire de Lucien. Votre code : ${cab.code}\n\nDonnez-le à vos clients : en le saisissant dans Lucien (Réglages, « Code de votre comptable »), ils bénéficient du premier mois offert à leur abonnement. Lorsqu'un client indépendant vous ouvre son dossier dans Lucien, vous recevez de sa part un lien de consultation en lecture seule : livre des recettes et des dépenses, rubriques de la 2035, échéances.\n\nPrésentation pour vos clients : ${publicUrl()}/#comptables\n\nPour toute question : bonjour@monlucien.fr\n\nL'équipe Lucien` }).catch(() => false);
+
+  api.get("/admin/partenaires", (c) => interdit(c) ?? c.json(listeAdmin()));
+
+  /** Summary for the admin page: cabinets, households who came through them, and the AI spend of the month. */
+  api.get("/admin/resume", (c) => {
+    const r = interdit(c); if (r) return r;
+    const l = listeAdmin();
+    const foyers = db.raw.prepare("SELECT COUNT(*) AS n, SUM(CASE WHEN abonnement_statut IN ('active', 'trialing', 'past_due', 'simule') THEN 1 ELSE 0 END) AS abonnes FROM households").get() as { n: number; abonnes: number | null };
+    return c.json({
+      cabinets: { en_attente: l.filter((x) => x.statut === "en_attente").length, valides: l.filter((x) => x.statut === "valide").length, refuses: l.filter((x) => x.statut === "refuse").length },
+      via_cabinets: { foyers: l.reduce((s, x) => s + x.clients, 0), abonnes: l.reduce((s, x) => s + x.abonnes, 0) },
+      foyers: { total: foyers.n, abonnes: foyers.abonnes ?? 0 },
+      ia: db.iaDepenseMois(),
+    });
   });
+
+  /** A cabinet added by hand (met at a show, by phone…): validated at once. */
+  api.post("/admin/partenaires", async (c) => {
+    const r = interdit(c); if (r) return r;
+    const b = z.object({ nom: z.string().trim().min(2).max(120), email: z.string().trim().email().max(200), ville: z.string().trim().max(80).optional(), envoyer_email: z.boolean().default(true) }).parse(await c.req.json());
+    let code = nouveauCode(b.nom);
+    while (cabinet(db, code)) code = nouveauCode(b.nom);
+    db.raw.prepare("INSERT INTO cabinets (code, nom, email, ville, statut, cree_le) VALUES (?, ?, ?, ?, 'valide', ?)").run(code, b.nom, b.email.toLowerCase(), b.ville || null, new Date().toISOString());
+    const cab = cabinet(db, code)!;
+    const envoye = b.envoyer_email ? await emailCode(cab) : false;
+    return c.json({ ...cab, envoye }, 201);
+  });
+
+  /** Validate, refuse or put back on hold; validating can email the code to the cabinet. */
   api.post("/admin/partenaires/:code", async (c) => {
-    if (!adminOk(c.req.header("authorization"))) return c.json({ error: "interdit" }, 403);
-    const b = z.object({ statut: z.enum(["valide", "refuse", "en_attente"]) }).parse(await c.req.json());
-    db.raw.prepare("UPDATE cabinets SET statut = ? WHERE code = ?").run(b.statut, c.req.param("code").toUpperCase());
-    return c.json(cabinet(db, c.req.param("code")) ?? { error: "introuvable" });
+    const r = interdit(c); if (r) return r;
+    const b = z.object({ statut: z.enum(["valide", "refuse", "en_attente"]), envoyer_email: z.boolean().default(false) }).parse(await c.req.json());
+    const avant = cabinet(db, c.req.param("code"));
+    if (!avant) return c.json({ error: "introuvable" }, 404);
+    db.raw.prepare("UPDATE cabinets SET statut = ? WHERE code = ?").run(b.statut, avant.code);
+    const cab = cabinet(db, avant.code)!;
+    const envoye = b.statut === "valide" && b.envoyer_email ? await emailCode(cab) : false;
+    return c.json({ ...cab, envoye });
+  });
+
+  api.patch("/admin/partenaires/:code", async (c) => {
+    const r = interdit(c); if (r) return r;
+    const b = z.object({ nom: z.string().trim().min(2).max(120).optional(), email: z.string().trim().email().max(200).optional(), ville: z.string().trim().max(80).nullable().optional() }).parse(await c.req.json());
+    const cab = cabinet(db, c.req.param("code"));
+    if (!cab) return c.json({ error: "introuvable" }, 404);
+    db.raw.prepare("UPDATE cabinets SET nom = ?, email = ?, ville = ? WHERE code = ?").run(b.nom ?? cab.nom, (b.email ?? cab.email).toLowerCase(), b.ville === undefined ? cab.ville : b.ville || null, cab.code);
+    return c.json(cabinet(db, cab.code));
+  });
+
+  api.post("/admin/partenaires/:code/email", async (c) => {
+    const r = interdit(c); if (r) return r;
+    const cab = cabinet(db, c.req.param("code"));
+    if (!cab || cab.statut !== "valide") return c.json({ error: "statut", message: "Seul un cabinet validé reçoit son code." }, 409);
+    return c.json({ envoye: await emailCode(cab) });
+  });
+
+  /** CSV for a spreadsheet (separator « ; », opens in Excel). */
+  api.get("/admin/partenaires.csv", (c) => {
+    const r = interdit(c); if (r) return r;
+    const q = (x: unknown) => `"${String(x ?? "").replace(/"/g, '""')}"`;
+    const lignes = ["Code;Cabinet;Email;Ville;Statut;Inscrit le;Foyers;Abonnés", ...listeAdmin().map((x) => [x.code, x.nom, x.email, x.ville, x.statut, x.cree_le.slice(0, 10), x.clients, x.abonnes].map(q).join(";"))];
+    return new Response("\ufeff" + lignes.join("\r\n"), { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": 'attachment; filename="cabinets-partenaires.csv"', "cache-control": "no-store" } });
   });
 }
