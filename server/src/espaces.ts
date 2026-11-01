@@ -11,6 +11,7 @@ import { DONNEES_BUDGET_VIDES, grandLivre, rapportBudget, type DonneesBudget } f
 import { livreCsv, rapportIndependant, rapportPro, type DonneesPro } from "./viePro.js";
 import { randomBytes } from "node:crypto";
 import { rapportLocatif, type DonneesLocatif } from "./locatif.js";
+import { monterSignatures } from "./signatures.js";
 import { appliquerBail, appliquerBulletin, lire } from "./lecture.js";
 import { budgetIa, coutAppel } from "./iaBudget.js";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -100,6 +101,11 @@ export function monterEspaces(api: Hono<any>, db: Db, ctx: Ctx) {
 
   const verifier = (c: any, e: Espace) => actifs(c).has(ESPACES[e] as ModuleId); // Salarié is contained in Micro and Indépendant
   const refus = (c: any, e: Espace) => c.json({ error: "module", module: ESPACES[e], message: `Cet espace fait partie du module ${MODULES[ESPACES[e] as ModuleId].nom}.` }, 402);
+  // Bail et état des lieux signés en ligne (Patrimoine locatif)
+  monterSignatures(api, db, {
+    household: ctx.household, email: ctx.email, prenom: () => null, verifier: (c) => verifier(c, "locatif"), refus: (c) => refus(c, "locatif"),
+    uploadDir: ctx.uploadDir ?? "data/uploads", publicUrl: () => (process.env.LUCIEN_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, ""),
+  });
   const transactions = (hid: string) => db.listTransactions(hid).map((t) => ({ date: t.date, libelle: t.libelle, montant: t.montant, categorie: t.categorie, compte: t.compte }));
 
   const donnees = (hid: string, e: Espace, nom: string): unknown => {

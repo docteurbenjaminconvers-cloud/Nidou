@@ -181,6 +181,7 @@ export function EspaceLocatif({ api, go, onBack, toast }: { api: Api; go: (s: st
             )}
             {bienEdite === b.bien.id ? formBien() : (
               <div className="bien-gestion">
+                <button className="link" onClick={() => go("location", b.bien.id)}>Bail et état des lieux</button>
                 <button className="link" onClick={() => modifierBien(b.bien)}>Modifier le bien</button>
                 {b.bail && <button className="link" onClick={() => modifierBail(b.bail!)}>Modifier le bail</button>}
                 {aSupprimer === b.bien.id

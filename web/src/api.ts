@@ -10,6 +10,20 @@ import { lireReleveDemo } from "../../server/src/categorie";
 import { demoStatement } from "../../server/src/seed-statement";
 import { etatDossiers } from "../../server/src/dossiers";
 import { grandMenage } from "../../server/src/conservation";
+import { contenuBail, contenuEdl, type ContenuDocument, type DonneesBail, type DonneesEdl, type Section, type TypeDocLocation } from "../../server/src/documentsLocation";
+
+/** A lease or an inventory being prepared, signed or signed already (Patrimoine locatif). */
+export interface DocLocation {
+  id: string; bien_id: string; bail_id: string | null; type: TypeDocLocation; statut: "brouillon" | "a_signer" | "signe" | "annule";
+  donnees: DonneesBail | DonneesEdl; entree_id: string | null; document_id: string | null; cree_le: string; maj_le: string; empreinte: string | null;
+  signatures: { id: string; role: "bailleur" | "locataire"; nom: string; email: string | null; signe_le: string | null }[];
+  liens?: { nom: string; email: string | null; lien: string; envoye: boolean }[];
+}
+/** What the tenant sees from the personal link. */
+export interface SignaturePublique {
+  titre: string; sous_titre: string; sections: Section[]; statut: DocLocation["statut"]; empreinte: string | null;
+  moi: { nom: string; signe_le: string | null }; signatures: { role: "bailleur" | "locataire"; nom: string; signe_le: string | null }[];
+}
 import { scenarios } from "../../server/src/urgence";
 import { soldes as soldesPartages, suggestions as suggestionsPartages } from "../../server/src/partagesCalcul";
 import { pointSemaine } from "../../server/src/semaine";
@@ -133,6 +147,17 @@ export interface Api {
   acheterVeille(periode: "mensuel" | "annuel"): Promise<void>;
   // the protected person's own page (no account)
   vuePersonne(jeton: string): Promise<VuePersonne>;
+  docsLocation(): Promise<DocLocation[]>;
+  creerDocLocation(d: { type: TypeDocLocation; bien_id: string; bail_id?: string | null; entree_id?: string | null; donnees: DonneesBail | DonneesEdl }): Promise<DocLocation>;
+  majDocLocation(id: string, donnees: DonneesBail | DonneesEdl): Promise<DocLocation>;
+  supprimerDocLocation(id: string): Promise<void>;
+  envoyerDocLocation(id: string, envoyerEmail: boolean): Promise<DocLocation>;
+  signerDocLocation(id: string, image: string): Promise<DocLocation>;
+  /** The PDF (with signatures once signed); null in the demo, which shows the text only. */
+  pdfDocLocation(id: string): Promise<Blob | null>;
+  signaturePublique(jeton: string): Promise<SignaturePublique>;
+  signerPublic(jeton: string, image: string, empreinte: string | null): Promise<{ statut: DocLocation["statut"] }>;
+  pdfPublicUrl(jeton: string): string | null;
   consentirVeille(jeton: string, input: { nom_signataire: string; en_qualite_de: "personne" | "representant"; accepte: boolean }): Promise<VuePersonne>;
   retirerVeille(jeton: string, nom: string): Promise<VuePersonne>;
   banquesVeille(jeton: string): Promise<BanquesReport>;
@@ -282,6 +307,16 @@ const serverApi: Api = {
   journalCsvUrl: (id) => `/api/veilles/${id}/journal?format=csv`,
   acheterVeille: async (periode) => { await call("/abonnement/veille", json({ periode })); },
   vuePersonne: (jeton) => call(`/veille/p/${jeton}`),
+  docsLocation: async () => (await call<{ documents: DocLocation[] }>("/locatif/documents")).documents,
+  creerDocLocation: (d) => call("/locatif/documents", json(d)),
+  majDocLocation: (id, donnees) => call(`/locatif/documents/${id}`, json({ donnees }, "PUT")),
+  supprimerDocLocation: async (id) => { await call(`/locatif/documents/${id}`, { method: "DELETE" }); },
+  envoyerDocLocation: (id, envoyer_email) => call(`/locatif/documents/${id}/envoyer`, json({ envoyer_email })),
+  signerDocLocation: (id, image) => call(`/locatif/documents/${id}/signer`, json({ image, accepte: true })),
+  pdfDocLocation: async (id) => { const r = await fetch(`/api/locatif/documents/${encodeURIComponent(id)}/pdf`); if (!r.ok) throw new ApiError(r.status, "pdf", "Le PDF n'a pas pu être préparé."); return r.blob(); },
+  signaturePublique: (jeton) => call(`/signature/p/${encodeURIComponent(jeton)}`),
+  signerPublic: (jeton, image, empreinte) => call(`/signature/p/${encodeURIComponent(jeton)}/signer`, json({ image, accepte: true, empreinte })),
+  pdfPublicUrl: (jeton) => `/api/signature/p/${encodeURIComponent(jeton)}/pdf`,
   consentirVeille: (jeton, input) => call(`/veille/p/${jeton}/consentir`, json(input)),
   retirerVeille: (jeton, nom) => call(`/veille/p/${jeton}/retirer`, json({ nom })),
   banquesVeille: (jeton) => call(`/veille/p/${jeton}/banques`),
@@ -479,6 +514,7 @@ function makeDemoApi(): Api {
     pushDesabonner: async () => {},
     pushTest: async () => ({ envoyes: 0, actif: false }),
     ...veilleDemo,
+    ...makeLocationDemo(),
     letter: async ({ kind, nom }) => {
       const d = state.docs[0];
       return `${nom}\n\n${d?.organisme ?? "Service client"}\n\nObjet : ${kind === "resiliation" ? "Résiliation" : kind === "reclamation" ? "Réclamation" : "Demande de remboursement"} — ${d?.title ?? ""}\n\nMadame, Monsieur,\n\n(Mode démo : le courrier complet est rédigé par le serveur Lucien.)\n\n${nom}`;
@@ -806,4 +842,48 @@ function pageExemple(d: Doc): string {
 <text x="60" y="270" font-size="14" fill="#8b6f84" letter-spacing="1">INFORMATIONS DU CONTRAT</text>${f}${r}
 <text x="60" y="800" font-size="12" fill="#b9a3b3">Avec votre compte, c'est la photo ou le PDF d'origine qui s'affiche ici.</text>
 </svg>`;
+}
+
+// ---------- bail et état des lieux, demo: same texts, signatures simulated in memory ----------
+type LocationApi = Pick<Api, "docsLocation" | "creerDocLocation" | "majDocLocation" | "supprimerDocLocation" | "envoyerDocLocation" | "signerDocLocation" | "pdfDocLocation" | "signaturePublique" | "signerPublic" | "pdfPublicUrl">;
+function makeLocationDemo(): LocationApi {
+  const docs: DocLocation[] = [];
+  const jetons = new Map<string, { doc: string; sig: string }>();
+  const id = () => Math.random().toString(36).slice(2, 10);
+  const contenuDe = (d: DocLocation): ContenuDocument => d.type === "bail" ? contenuBail(d.donnees as DonneesBail)
+    : contenuEdl(d.donnees as DonneesEdl, d.entree_id ? (docs.find((x) => x.id === d.entree_id)?.donnees as DonneesEdl | undefined) ?? null : null);
+  const finir = (d: DocLocation) => { if (d.signatures.every((x) => x.signe_le)) { d.statut = "signe"; d.maj_le = new Date().toISOString(); } };
+  const trouver = (i: string) => { const d = docs.find((x) => x.id === i); if (!d) throw new ApiError(404, "introuvable", "Document introuvable."); return d; };
+  return {
+    docsLocation: async () => docs.filter((d) => d.statut !== "annule").map((d) => ({ ...d })),
+    creerDocLocation: async (x) => { const d: DocLocation = { id: id(), bien_id: x.bien_id, bail_id: x.bail_id ?? null, type: x.type, statut: "brouillon", donnees: x.donnees, entree_id: x.entree_id ?? null, document_id: null, cree_le: new Date().toISOString(), maj_le: new Date().toISOString(), empreinte: null, signatures: [] }; docs.unshift(d); return { ...d }; },
+    majDocLocation: async (i, donnees) => { const d = trouver(i); if (d.statut !== "brouillon") throw new ApiError(409, "fige", "Ce document est déjà envoyé pour signature : annulez-le pour le modifier."); d.donnees = donnees; d.maj_le = new Date().toISOString(); return { ...d }; },
+    supprimerDocLocation: async (i) => { const d = trouver(i); if (d.statut === "signe") throw new ApiError(409, "signe", "Un document signé se garde : il est rangé dans vos papiers."); d.statut = "annule"; },
+    envoyerDocLocation: async (i) => {
+      const d = trouver(i);
+      const don = d.donnees as DonneesBail & DonneesEdl;
+      const bailleur = d.type === "bail" ? (d.donnees as DonneesBail).bailleur.nom : (d.donnees as DonneesEdl).bailleur;
+      const locs = d.type === "bail" ? (d.donnees as DonneesBail).locataires.map((l) => ({ nom: l.nom, email: l.email ?? null })) : (don.locataires as unknown as string[]).map((nom) => ({ nom, email: null }));
+      if (!locs.length || locs.some((l) => !l.nom.trim())) throw new ApiError(400, "locataire", "Indiquez le nom de chaque locataire.");
+      d.statut = "a_signer"; d.empreinte = `demo-${id()}`;
+      d.signatures = [{ id: id(), role: "bailleur", nom: bailleur, email: null, signe_le: null }, ...locs.map((l) => ({ id: id(), role: "locataire" as const, nom: l.nom, email: l.email, signe_le: null }))];
+      d.liens = d.signatures.filter((x) => x.role === "locataire").map((x) => { const j = `demo${id()}${id()}`; jetons.set(j, { doc: d.id, sig: x.id }); return { nom: x.nom, email: x.email, lien: `${location.origin}${location.pathname}#/signer/${j}`, envoye: false }; });
+      return { ...d };
+    },
+    signerDocLocation: async (i) => { const d = trouver(i); const s = d.signatures.find((x) => x.role === "bailleur"); if (s && !s.signe_le) s.signe_le = new Date().toISOString(); finir(d); return { ...d }; },
+    pdfDocLocation: async () => null,
+    signaturePublique: async (j) => {
+      const r = jetons.get(j); const d = r && docs.find((x) => x.id === r.doc && x.statut !== "annule");
+      if (!r || !d) throw new ApiError(404, "introuvable", "Ce lien de signature n'est plus valable.");
+      const c = contenuDe(d); const moi = d.signatures.find((x) => x.id === r.sig)!;
+      return { titre: c.titre, sous_titre: c.sous_titre, sections: c.sections, statut: d.statut, empreinte: d.empreinte, moi: { nom: moi.nom, signe_le: moi.signe_le }, signatures: d.signatures.map((x) => ({ role: x.role, nom: x.nom, signe_le: x.signe_le })) };
+    },
+    signerPublic: async (j) => {
+      const r = jetons.get(j); const d = r && docs.find((x) => x.id === r.doc);
+      if (!r || !d) throw new ApiError(404, "introuvable", "Ce lien de signature n'est plus valable.");
+      const s = d.signatures.find((x) => x.id === r.sig)!; if (!s.signe_le) s.signe_le = new Date().toISOString();
+      finir(d); return { statut: d.statut };
+    },
+    pdfPublicUrl: () => null,
+  };
 }

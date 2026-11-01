@@ -940,3 +940,43 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .connexion-sup { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13.5px; color: var(--mist); padding: 4px 0; }
 .ajout-banque { margin-top: 8px; }
 .connecter-pro { margin-top: 8px; }
+/* bail et état des lieux */
+.location .form-doc h3 { margin: 22px 0 6px; font-family: var(--display); font-style: italic; font-size: 20px; }
+.location .case { display: flex; gap: 10px; align-items: flex-start; margin: 10px 0; font-size: 14.5px; }
+.location .case input { width: 20px; height: 20px; flex: none; margin-top: 1px; }
+.ligne-locataire { border-left: 3px solid var(--line); padding-left: 10px; margin: 8px 0; }
+.barre-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 18px 0 30px; }
+.statut-doc { font-size: 12px; font-weight: 800; padding: 3px 10px; border-radius: 999px; background: var(--line); color: var(--mist); white-space: nowrap; }
+.statut-doc.a_signer { background: var(--yolk-soft, #fbefd0); color: #7a5a10; }
+.statut-doc.signe { background: var(--moss-soft, #e4f3ea); color: var(--mint-ink, #1f6b4a); }
+.apercu-doc { background: var(--white); border-radius: 18px; padding: 18px 18px 8px; box-shadow: var(--shadow); font-size: 14px; line-height: 1.55; }
+.apercu-doc h2 { font-size: 20px; margin: 0; }
+.apercu-sous { color: var(--mist); font-size: 12.5px; margin: 2px 0 10px; }
+.apercu-doc h3 { font-size: 14.5px; margin: 16px 0 4px; }
+.apercu-doc p { margin: 0 0 6px; }
+.apercu-replie summary { cursor: pointer; font-weight: 700; color: var(--nest); margin: 8px 0; }
+.lecture-tete { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 14px; align-items: flex-start; }
+.signataires { list-style: none; padding: 0; margin: 0; font-size: 14px; }
+.signataires small { color: var(--mist); }
+.envoi-signature { flex-basis: 100%; background: var(--paper); border-radius: 14px; padding: 12px 14px; font-size: 14px; }
+.liens-signature { display: grid; gap: 8px; margin-bottom: 24px; }
+.liens-signature > div { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; background: var(--white); border-radius: 14px; padding: 10px 14px; }
+.liens-signature span { grid-column: 1; color: var(--mist); font-size: 13px; }
+.liens-signature .link { grid-row: 1 / span 2; grid-column: 2; align-self: center; }
+.pave-signature { margin: 10px 0 14px; }
+.pave-signature canvas { width: 100%; height: 170px; border: 2px dashed var(--line); border-radius: 16px; background: #fff; touch-action: none; display: block; }
+.pave-pied { display: flex; justify-content: space-between; font-size: 13px; color: var(--mist); margin-top: 4px; }
+.pieces-onglets { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 8px; }
+.pieces-onglets .pill { white-space: nowrap; }
+.pieces-onglets .pill.actif { background: var(--plum); color: var(--white); }
+.element-edl { background: var(--white); border-radius: 14px; padding: 10px 12px; margin-bottom: 8px; display: grid; gap: 6px; }
+.element-edl b { font-size: 14.5px; }
+.etats { display: flex; gap: 6px; flex-wrap: wrap; }
+.etat { border: 1.5px solid var(--line); background: var(--white); border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 700; color: var(--ink); }
+.etat.choisi.neuf, .etat.choisi.bon { background: var(--moss-soft, #e4f3ea); border-color: var(--mint-ink, #1f6b4a); color: var(--mint-ink, #1f6b4a); }
+.etat.choisi.moyen { background: var(--yolk-soft, #fbefd0); border-color: #c99a1c; color: #7a5a10; }
+.etat.choisi.mauvais { background: #fde3dc; border-color: var(--ember, #c6452e); color: var(--ember, #c6452e); }
+.page-signature { padding-bottom: 40px; }
+.marque-signature { font-family: var(--display); font-style: italic; color: var(--nest); font-weight: 700; margin: 6px 0 14px; }
+.zone-signature { margin-top: 18px; }
+select.in { width: 100%; border: 2px solid var(--line); background: var(--white); border-radius: 18px; padding: 12px 14px; font-size: 15px; color: var(--ink); -webkit-appearance: none; appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--mist) 50%), linear-gradient(135deg, var(--mist) 50%, transparent 50%); background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%; background-size: 6px 6px; background-repeat: no-repeat; padding-right: 36px; }

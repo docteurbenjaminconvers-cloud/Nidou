@@ -2048,7 +2048,141 @@
   "Pour toute question : bonjour@monlucien.fr.": "Any question: bonjour@monlucien.fr.",
   "Pour ne plus recevoir ce point du dimanche : Réglages, « Le point du dimanche ».": "To stop receiving this Sunday summary: Settings, “The Sunday summary”.",
   "Vous recevez ce point chaque dimanche soir. Pour l'arrêter : Réglages, « Le point du dimanche ».": "You receive this summary every Sunday evening. To stop it: Settings, “The Sunday summary”.",
-  "Ouvrir ma semaine": "Open my week"
+  "Ouvrir ma semaine": "Open my week",
+  "Bail": "Lease",
+  "État des lieux d'entrée": "Move-in inventory",
+  "État des lieux de sortie": "Move-out inventory",
+  "Brouillon": "Draft",
+  "En signature": "Out for signature",
+  "Signé": "Signed",
+  "Annulé": "Cancelled",
+  "Neuf": "New",
+  "Usage": "Worn",
+  "Mauvais": "Poor",
+  "Zone de signature : signez avec le doigt": "Signature area: sign with your finger",
+  "Signez dans le cadre": "Sign inside the box",
+  "Document signé par tous : il est rangé dans vos papiers": "Signed by everyone: it is filed in your papers",
+  "Votre signature est enregistrée": "Your signature is saved",
+  "Bail et états des lieux": "Lease and inventories",
+  "Lucien prépare le bail sur le modèle officiel et l'état des lieux pièce par pièce. Vous relisez, puis chacun signe en ligne : vous dans l'appli, le locataire depuis un lien personnel. Le document signé est rangé dans vos papiers.": "Lucien prepares the lease on the official French model and the inventory room by room. You read it over, then everyone signs online: you in the app, the tenant from a personal link. The signed document is filed in your papers.",
+  "+ Préparer le bail": "+ Prepare the lease",
+  "+ État des lieux d'entrée": "+ Move-in inventory",
+  "+ État des lieux de sortie": "+ Move-out inventory",
+  "Aucun document pour ce bien.": "No document for this property.",
+  "Signature électronique simple (article 1367 du Code civil) : Lucien conserve la date, l'heure, l'adresse IP de chaque signataire et l'empreinte du texte signé. Modèle à relire : en cas de doute, faites-le vérifier par un professionnel.": "Simple electronic signature (French Civil Code, article 1367): Lucien keeps the date, time and IP address of each signer and the fingerprint of the signed text. A model to read over: if in doubt, have it checked by a professional.",
+  "Enregistrement…": "Saving…",
+  "Enregistrer et relire": "Save and review",
+  "Le bailleur": "The landlord",
+  "Nom ou dénomination": "Name or company name",
+  "Qualité": "Status",
+  "Personne physique": "Individual",
+  "SCI familiale": "Family property company (SCI)",
+  "Société (personne morale)": "Company (legal entity)",
+  "Le ou les locataires": "The tenant(s)",
+  "Email (pour signer)": "Email (to sign)",
+  "+ Ajouter un colocataire": "+ Add a co-tenant",
+  "Clause de solidarité entre colocataires": "Joint liability clause between co-tenants",
+  "Le logement": "The home",
+  "Étage, porte": "Floor, door",
+  "Surface habitable (m²)": "Living area (m²)",
+  "Pièces principales": "Main rooms",
+  "Immeuble": "Building",
+  "En copropriété": "Co-owned building",
+  "Monopropriété (maison, immeuble entier)": "Single owner (house, whole building)",
+  "Construit": "Built",
+  "avant 1949, entre 1975 et 1989…": "before 1949, between 1975 and 1989…",
+  "Équipements": "Equipment",
+  "cuisine équipée, placards…": "fitted kitchen, cupboards…",
+  "Annexes privatives": "Private extras",
+  "cave, parking, jardin…": "cellar, parking, garden…",
+  "Chauffage": "Heating",
+  "Individuel": "Individual",
+  "Collectif": "Shared",
+  "Eau chaude": "Hot water",
+  "Individuelle": "Individual",
+  "Collective": "Shared",
+  "Classe DPE": "Energy rating (DPE)",
+  "Durée et argent": "Term and money",
+  "Prise d'effet": "Start date",
+  "Durée": "Term",
+  "Charges (€ par mois)": "Service charges (€ a month)",
+  "Charges payées": "Charges paid",
+  "Par provisions, régularisées": "As provisions, adjusted yearly",
+  "Au forfait": "As a flat rate",
+  "Payable le": "Due on day",
+  "Trimestre de l'IRL": "IRL quarter",
+  "trimestre": "quarter",
+  "Commune où les loyers sont encadrés (Paris, Lille, Lyon, Montpellier, Bordeaux…)": "Town with rent control (Paris, Lille, Lyon, Montpellier, Bordeaux…)",
+  "Loyer de référence (€ / mois)": "Reference rent (€ / month)",
+  "Loyer de référence majoré": "Upper reference rent",
+  "Complément de loyer (€)": "Rent supplement (€)",
+  "Justification du complément": "Reason for the supplement",
+  "Le reste": "Everything else",
+  "Travaux": "Works",
+  "Laisser vide : aucun travaux réalisés ni convenus": "Leave empty: no works done or agreed",
+  "Clauses particulières": "Special clauses",
+  "Animaux, entretien du jardin… (une clause par ligne)": "Pets, garden upkeep… (one clause per line)",
+  "Fait à": "Signed in",
+  "Compteurs": "Meters",
+  "Électricité (index)": "Electricity (reading)",
+  "Gaz (index)": "Gas (reading)",
+  "Eau froide (m³)": "Cold water (m³)",
+  "Eau chaude (m³)": "Hot water (m³)",
+  "Pièce par pièce": "Room by room",
+  "Murs": "Walls",
+  "Plafond": "Ceiling",
+  "Porte": "Door",
+  "Fenêtres et volets": "Windows and shutters",
+  "Prises et interrupteurs": "Sockets and switches",
+  "Éclairage": "Lighting",
+  "Remarque (tache, rayure, fonctionne…)": "Note (stain, scratch, works…)",
+  "Inventaire du mobilier": "Furniture inventory",
+  "Clés remises": "Keys handed over",
+  "Observations": "Remarks",
+  "Dans la démo, le document s'affiche ici ; avec votre compte, vous obtenez le PDF signé.": "In the demo the document shows here; with your account you get the signed PDF.",
+  "· en attente": "· waiting",
+  "Modifier": "Edit",
+  "Envoyer pour signature": "Send for signature",
+  "Le texte sera figé. Chaque locataire reçoit un lien personnel pour lire et signer": "The text will be locked. Each tenant gets a personal link to read and sign",
+  "par email": "by email",
+  ": ajoutez son email, ou copiez le lien pour le lui transmettre": ": add their email, or copy the link to pass it on",
+  ". Vous signerez ensuite ici.": ". You will then sign here.",
+  "Envoi…": "Sending…",
+  "Confirmer l'envoi": "Confirm sending",
+  "Signer comme bailleur": "Sign as landlord",
+  "Le PDF signé": "The signed PDF",
+  "Voir le PDF": "View the PDF",
+  "Brouillon supprimé": "Draft deleted",
+  "Signature annulée": "Signature cancelled",
+  "Supprimer le brouillon": "Delete the draft",
+  "Annuler la signature": "Cancel the signature",
+  "Lien de signature": "Signature link",
+  "Signer": "Sign",
+  "Relire le document": "Read the document again",
+  "J'ai lu et j'accepte ce document": "I have read and accept this document",
+  "Signature…": "Signing…",
+  "Lucien · signature en ligne": "Lucien · online signature",
+  ", voici le document à lire et à signer.": ", here is the document to read and sign.",
+  "Vous avez signé le": "You signed on",
+  "Tout le monde a signé : téléchargez votre exemplaire.": "Everyone has signed: download your copy.",
+  "Tout le monde a signé.": "Everyone has signed.",
+  "Vous recevrez le document signé quand tout le monde aura signé, sur ce même lien.": "You will get the signed document on this same link once everyone has signed.",
+  "Télécharger le PDF signé": "Download the signed PDF",
+  "En signant, vous acceptez que votre signature électronique ait la même valeur qu'une signature manuscrite (article 1367 du Code civil). La date, l'heure et votre adresse IP sont enregistrées.": "By signing, you agree that your electronic signature has the same value as a handwritten one (French Civil Code, article 1367). The date, time and your IP address are recorded.",
+  "Ce document n'est pas ouvert à la signature.": "This document is not open for signature.",
+  "Bail et état des lieux": "Lease and inventory",
+  "bailleur": "landlord",
+  "locataire": "tenant",
+  "Ce lien de signature n'est plus valable.": "This signature link is no longer valid.",
+  "Le PDF n'a pas pu être préparé.": "The PDF could not be prepared.",
+  "Indiquez le nom de chaque locataire.": "Enter each tenant's name.",
+  "Ce document est déjà envoyé pour signature : annulez-le pour le modifier.": "This document has already been sent for signature: cancel it to edit it.",
+  "Un document signé se garde : il est rangé dans vos papiers.": "A signed document is kept: it is filed in your papers.",
+  "1 an": "1 year",
+  "3 ans": "3 years",
+  "6 ans": "6 years",
+  "9 mois (étudiant)": "9 months (student)",
+  "Bail et état des lieux préparés et signés en ligne": "Lease and inventory prepared and signed online"
  },
  "motifs": [
   [
@@ -2478,6 +2612,10 @@
   [
    "Votre abonnement annuel Lucien se renouvelle le {0}",
    "Your annual Lucien subscription renews on {0}"
+  ],
+  [
+   "Bonjour {0}, voici le document à lire et à signer.",
+   "Hello {0}, here is the document to read and sign."
   ],
   [
    "Dépenses courantes ({0} jours, environ {1} par jour)",
@@ -2936,6 +3074,10 @@
    "{0} no longer charges anything"
   ],
   [
+   "Vous avez signé le {0}. {1}",
+   "You signed on {0}. {1}"
+  ],
+  [
    "Lucien - export {0}.zip",
    "Lucien - export {0}.zip"
   ],
@@ -3120,6 +3262,10 @@
    "Up to {0} a year."
   ],
   [
+   "{0} signatures sur {1}",
+   "{0} signatures out of {1}"
+  ],
+  [
    "· impôt estimé {0}",
    "· estimated tax {0}"
   ],
@@ -3138,6 +3284,10 @@
   [
    "{0} sans locataire",
    "{0} without a tenant"
+  ],
+  [
+   "{0} signature sur {1}",
+   "{0} signature out of {1}"
   ],
   [
    "Résiliation — {0}",
@@ -3174,6 +3324,14 @@
   [
    "Dans {0} jours : {1}",
    "In {0} days: {1}"
+  ],
+  [
+   "Lien envoyé à {0}",
+   "Link sent to {0}"
+  ],
+  [
+   "Mis à jour le {0}",
+   "Updated on {0}"
   ],
   [
    "À vérifier : {0}",
@@ -3254,6 +3412,10 @@
   [
    "{0} prélève {1} € {2}",
    "{0} will charge {1} € {2}"
+  ],
+  [
+   " · signé le {0}",
+   " · signed on {0}"
   ],
   [
    "· {0} à charge",
@@ -3366,6 +3528,14 @@
   [
    "{0} connectée",
    "{0} connected"
+  ],
+  [
+   "Locataire {0}",
+   "Tenant {0}"
+  ],
+  [
+   "{0} trimestre",
+   "{0} quarter"
   ],
   [
    "remis à {0},",

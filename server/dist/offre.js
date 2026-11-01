@@ -53,7 +53,7 @@ export const MODULES = {
         id: "locatif", nom: "Patrimoine locatif", mensuel: 4.9, par: "bien", teinte: "yolk", route: "module/locatif",
         accroche: "Vos biens loués suivis comme par une agence, sans les frais d'agence.",
         pour: "Propriétaires bailleurs, location nue ou meublée.",
-        inclut: ["Loyers rapprochés de la banque, impayés repérés", "Quittances et relances en un geste", "Révision IRL calculée à la date anniversaire", "Rentabilité de chaque bien, charges et taxe foncière", "Micro ou réel : le régime le plus favorable, cases à remplir"],
+        inclut: ["Loyers rapprochés de la banque, impayés repérés", "Quittances et relances en un geste", "Révision IRL calculée à la date anniversaire", "Rentabilité de chaque bien, charges et taxe foncière", "Micro ou réel : le régime le plus favorable, cases à remplir", "Bail et état des lieux préparés et signés en ligne"],
     },
     assistant: {
         id: "assistant", nom: "Demander à Lucien", mensuel: 2.9, teinte: "peach", route: "assistant",

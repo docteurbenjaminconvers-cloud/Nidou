@@ -4,6 +4,7 @@ import { DONNEES_BUDGET_VIDES, grandLivre, rapportBudget } from "./budgetExpert.
 import { livreCsv, rapportIndependant, rapportPro } from "./viePro.js";
 import { randomBytes } from "node:crypto";
 import { rapportLocatif } from "./locatif.js";
+import { monterSignatures } from "./signatures.js";
 import { appliquerBail, appliquerBulletin, lire } from "./lecture.js";
 import { budgetIa, coutAppel } from "./iaBudget.js";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -89,6 +90,11 @@ export function monterEspaces(api, db, ctx) {
     });
     const verifier = (c, e) => actifs(c).has(ESPACES[e]); // Salarié is contained in Micro and Indépendant
     const refus = (c, e) => c.json({ error: "module", module: ESPACES[e], message: `Cet espace fait partie du module ${MODULES[ESPACES[e]].nom}.` }, 402);
+    // Bail et état des lieux signés en ligne (Patrimoine locatif)
+    monterSignatures(api, db, {
+        household: ctx.household, email: ctx.email, prenom: () => null, verifier: (c) => verifier(c, "locatif"), refus: (c) => refus(c, "locatif"),
+        uploadDir: ctx.uploadDir ?? "data/uploads", publicUrl: () => (process.env.LUCIEN_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, ""),
+    });
     const transactions = (hid) => db.listTransactions(hid).map((t) => ({ date: t.date, libelle: t.libelle, montant: t.montant, categorie: t.categorie, compte: t.compte }));
     const donnees = (hid, e, nom) => {
         const d = db.getModuleData(hid, e);
