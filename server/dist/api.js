@@ -26,6 +26,7 @@ import { appliquerAbonnement, capaciteComptes, creerCheckout, FORMULES, portail,
 import { pointDuFoyer } from "./hebdo.js";
 import { monterEspaces } from "./espaces.js";
 import { adminOk, monterPartenaires } from "./partenaires.js";
+import { monterSupport } from "./support.js";
 import { monterPartages } from "./partages.js";
 import { monterSituations } from "./situationsApi.js";
 import { bordereau, etatDossiers, etatKit, KITS } from "./dossiers.js";
@@ -173,7 +174,7 @@ export function createApi(db, opts) {
             const ordre = db.usersOfHousehold(row.id).sort((a, b) => Number(b.role === "proprietaire") - Number(a.role === "proprietaire") || a.rejoint_le.localeCompare(b.rejoint_le));
             const rang = ordre.findIndex((u) => u.id === user.id);
             const cap = capaciteComptes(db, row);
-            if (rang >= cap && !c.req.path.endsWith("/auth/moi") && !c.req.path.endsWith("/auth/deconnexion") && !c.req.path.endsWith("/compte/supprimer")) {
+            if (rang >= cap && !c.req.path.endsWith("/auth/moi") && !c.req.path.endsWith("/auth/deconnexion") && !c.req.path.endsWith("/compte/supprimer") && !c.req.path.endsWith("/support")) {
                 const proprio = ordre[0];
                 return c.json({ error: "compte_en_pause", message: `Le foyer « ${row.nom} » est en formule ${cap === 1 ? "gratuite (1 personne)" : `${cap} personnes`}. ${proprio?.prenom ?? "Le propriétaire"} peut passer à une formule plus grande pour vous rendre l'accès ; vos papiers vous attendent.` }, 402);
             }
@@ -310,6 +311,7 @@ export function createApi(db, opts) {
     // ---------- offre et espaces payants (modules) ----------
     monterEspaces(api, db, { household, isOwner, email: (c) => currentUser(c)?.email ?? null, uploadDir: opts.uploadDir });
     monterPartenaires(api, db, { household });
+    monterSupport(api, db, { household, utilisateur: currentUser });
     monterPartages(api, db, { household });
     monterSituations(api, db, { household, prenom: (c) => currentUser(c)?.prenom ?? null });
     // ---------- abonnement (Stripe) ----------

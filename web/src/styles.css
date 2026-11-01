@@ -1042,3 +1042,7 @@ select.in { width: 100%; border: 2px solid var(--line); background: var(--white)
 .admin-form { display: grid; gap: 8px; background: var(--white); border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin-bottom: 14px; }
 .admin-form-actions { display: flex; gap: 8px; }
 .admin .toast { bottom: 24px; }
+.admin-onglets { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+.admin-message { margin: 0; white-space: pre-wrap; font-size: 15px; line-height: 1.5; }
+.aide-fait { display: grid; gap: 6px; }
+.aide-infos { background: var(--line); border-radius: 10px; padding: 8px 10px; }

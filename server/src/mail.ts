@@ -5,7 +5,7 @@
 import { traduire, type Langue } from "./traduire.js";
 
 /** `langue: "en"` translates subject and text for someone who uses Lucien in English (html is then built by the caller). */
-export interface Mail { to: string; subject: string; text: string; html?: string; langue?: Langue | string | null }
+export interface Mail { to: string; subject: string; text: string; html?: string; replyTo?: string | null; langue?: Langue | string | null }
 
 export async function envoyerEmail(mail: Mail): Promise<boolean> {
   const l = mail.langue === "en" ? "en" : "fr";
@@ -15,14 +15,14 @@ export async function envoyerEmail(mail: Mail): Promise<boolean> {
   if (!key) {
     // Development: the email (with its login link) is printed. In production the content stays out of the logs.
     if ((process.env.LUCIEN_PUBLIC_URL ?? "").startsWith("https://")) console.error(`[email] aucun service d'email configuré (BREVO_API_KEY) : « ${m.subject} » non envoyé`);
-    else console.log(`[email → ${m.to}] ${m.subject}\n${m.text}\n`);
+    else console.log(`[email → ${m.to}${m.replyTo ? ` (répondre à ${m.replyTo})` : ""}] ${m.subject}\n${m.text}\n`);
     return false;
   }
   const [, name, email] = from.match(/^(.*?)\s*<([^>]+)>$/) ?? [null, "Lucien", from];
   const r = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
     headers: { "api-key": key, "content-type": "application/json" },
-    body: JSON.stringify({ sender: { name: name || "Lucien", email }, to: [{ email: m.to }], subject: m.subject, textContent: m.text, htmlContent: m.html ?? `<pre style="font-family:sans-serif;white-space:pre-wrap">${escapeHtml(m.text)}</pre>` }),
+    body: JSON.stringify({ sender: { name: name || "Lucien", email }, to: [{ email: m.to }], ...(m.replyTo ? { replyTo: { email: m.replyTo } } : {}), subject: m.subject, textContent: m.text, htmlContent: m.html ?? `<pre style="font-family:sans-serif;white-space:pre-wrap">${escapeHtml(m.text)}</pre>` }),
   });
   if (!r.ok) { console.error("[email] Brevo", r.status, await r.text().catch(() => "")); return false; }
   return true;

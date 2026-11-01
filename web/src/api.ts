@@ -136,6 +136,8 @@ export interface Api {
   creerPartagePro(member_id: string | null, nom: string | null): Promise<PartageComptable>;
   revoquerPartagePro(token: string): Promise<void>;
   partenaire(): Promise<Partenaire>;
+  /** « Écrire à l'équipe Lucien » from Réglages. */
+  support(m: { sujet: SujetSupport; message: string; infos: boolean; appareil?: string; ecran?: string; langue?: string; page?: string }): Promise<{ ok: boolean; envoye: boolean; reponse_a: string | null }>;
   setPartenaire(code: string | null): Promise<Partenaire>;
   /** Public page of the accountant (secret link, no session). */
   vueComptable(token: string): Promise<VueComptable>;
@@ -304,6 +306,7 @@ const serverApi: Api = {
   creerPartagePro: (member_id, nom) => call("/espaces/pro/partages", json({ member_id, nom })),
   revoquerPartagePro: async (token) => { await call(`/espaces/pro/partages/${token}`, { method: "DELETE" }); },
   partenaire: () => call("/partenaire"),
+  support: (m) => call("/support", json(m)),
   setPartenaire: (code) => call("/partenaire", json({ code }, "PUT")),
   vueComptable: (token) => call(`/comptable/${token}`),
   grandLivre: async () => { const r = await fetch("/api/espaces/budget/grand-livre.csv"); if (!r.ok) throw new ApiError(r.status, "erreur", "Export impossible"); return r.text(); },
@@ -760,6 +763,7 @@ export type EspaceRapport = { budget: RapportBudget; pro: RapportPro; locatif: R
 export interface EspaceReponse<E extends Espace> { donnees: EspaceDonnees[E]; rapport: EspaceRapport[E]; comptes: string[] }
 export interface OffreEtat { socle: typeof SOCLE; socle_inclut: string[]; modules: typeof MODULES; packs: typeof PACKS; souscrits: ModuleId[]; actifs: ModuleId[]; paiement: boolean }
 export type { Espace, ModuleId };
+export type SujetSupport = "question" | "probleme" | "banque" | "abonnement" | "idee";
 export interface Partenaire { code: string | null; cabinet: { nom: string; ville: string | null } | null; offert: string | null }
 export interface PartageComptable { token: string; member_id: string | null; nom: string | null; cree_le: string; expire_le: string }
 export interface VueComptable { prenom: string; nom_comptable: string | null; expire_le: string; independant: import("../../server/src/viePro").RapportIndependant }
@@ -831,6 +835,7 @@ function makeEspacesDemo(state: { household: Household; famille: FamilleReport; 
     creerPartagePro: async (member_id: string | null, nom: string | null) => { const p = { token: Array.from(crypto.getRandomValues(new Uint8Array(24)), (b) => b.toString(16).padStart(2, "0")).join(""), member_id, nom, cree_le: new Date().toISOString(), expire_le: new Date(Date.now() + 365 * 864e5).toISOString() }; partages.unshift(p); return p; },
     revoquerPartagePro: async (token: string) => { partages = partages.filter((x) => x.token !== token); },
     partenaire: async (): Promise<Partenaire> => partenaire,
+    support: async () => ({ ok: true, envoye: false, reponse_a: null }),
     setPartenaire: async (code: string | null): Promise<Partenaire> => {
       if (!code) return (partenaire = { code: null, cabinet: null, offert: null });
       // demo: any code shaped like a partner code works (real ones are checked by the server)

@@ -95,7 +95,8 @@ export default function App() {
     if (q.get("paiement") === "annule") { toast("Paiement annulé, rien n'a été débité"); location.hash = "#/settings"; }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    const onHash = () => setRoute(parseHash());
+    // The screen seen just before (name only, never an id): attached to a message to the team when the person agrees.
+    const onHash = (e: HashChangeEvent) => { try { sessionStorage.setItem("lucien.page.precedente", new URL(e.oldURL).hash.replace(/^#\/?/, "").split(/[/?]/)[0] || "home"); } catch { /* */ } setRoute(parseHash()); };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);

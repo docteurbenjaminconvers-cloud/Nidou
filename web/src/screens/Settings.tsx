@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Api, Partenaire } from "../api";
+import type { Api, Partenaire, SujetSupport } from "../api";
 import { ApiError } from "../api";
 import type { Household } from "../types";
 import { Back } from "../ui";
@@ -73,6 +73,7 @@ const ROLE_LABEL: Record<string, string> = { adulte: "adulte", enfant: "enfant",
 export function Settings({ api, household, onBack, onPlan, toast, go }: { api: Api; household: Household; onBack: () => void; onPlan: (p: Household["plan"]) => void; toast: (m: string) => void; go: (s: string, id?: string) => void }) {
   const mcpUrl = `${location.origin}/mcp`;
   const [suppression, setSuppression] = useState(false);
+  const [aide, setAide] = useState(false);
   const [periode, setPeriode] = useState<"mensuel" | "annuel">("annuel");
   const comptes = household.comptes ?? 1;
   const formuleActuelle = household.plan_souscrit === "famille" || household.abonnement?.statut === "simule" ? household.abonnement?.formule ?? null : null;
@@ -202,6 +203,12 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
       </section>
 
       <section className="section">
+        <div className="section-head"><h2>Aide</h2></div>
+        {household.assistant && household.assistant.acces !== "aucun" && <div className="settings-row"><div><div className="t">Demander à Lucien</div><div className="s">Réponse immédiate pour se servir de l'appli</div></div><button className="link" onClick={() => go("assistant")}>Demander</button></div>}
+        <div className="settings-row"><div><div className="t">Écrire à l'équipe Lucien</div><div className="s">Une question, un souci, une idée : réponse par email sous 48 h ouvrées</div></div><button className="link" onClick={() => setAide(true)}>Écrire</button></div>
+      </section>
+
+      <section className="section">
         <div className="section-head"><h2>Vos données</h2></div>
         <div className="settings-row"><div><div className="t">Langue de l'appli</div><div className="s">Language of the app</div></div>
           <select className="in langue-choix" aria-label="Langue / Language" value={langueChoisie()} onChange={(e) => choisirLangue(e.target.value as "fr" | "en")} data-pas-traduire>
@@ -214,6 +221,7 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
         ) : <div className="settings-row"><div><div className="t">Supprimer le compte</div><div className="s">{household.titulaire === false ? "Vous quittez le foyer, votre compte est effacé" : "Le foyer est effacé à la fin de la période déjà payée"}</div></div><button className="link" style={{ color: "var(--ember)" }} onClick={() => setSuppression(true)}>Supprimer</button></div>}
         {household.utilisateur && <div className="settings-row"><div><div className="t">Connecté·e</div><div className="s">{household.utilisateur.email}</div></div><button className="link" onClick={async () => { await api.deconnexion(); location.reload(); }}>Se déconnecter</button></div>}
       </section>
+      {aide && <EcrireEquipe api={api} formule={household.abonnement?.formule ?? null} email={household.utilisateur?.email ?? null} onClose={() => setAide(false)} toast={toast} />}
       {suppression && <SuppressionCompte api={api} titulaire={household.titulaire !== false} foyer={household.nom} paye={paiementEnCours(household)} fin={household.abonnement?.fin ?? null} onClose={() => setSuppression(false)} toast={toast} />}
     </div>
   );
@@ -330,6 +338,60 @@ function SuppressionCompte({ api, titulaire, foyer, paye, fin, onClose, toast }:
         <button className="btn ghost block" onClick={async () => { try { await api.exporter(); } catch (e) { toast((e as Error).message); } }}>Exporter mes données d'abord</button>
         <label className="champ" style={{ marginTop: 14 }}><span>Pour confirmer, tapez SUPPRIMER</span><input value={mot} onChange={(e) => setMot(e.target.value)} autoCapitalize="characters" autoComplete="off" aria-label="Tapez SUPPRIMER pour confirmer" /></label>
         <button className="btn block danger" style={{ marginTop: 12 }} disabled={busy || mot.trim().toUpperCase() !== "SUPPRIMER"} onClick={valider}>{busy ? <span className="spinner" /> : !titulaire ? "Supprimer mon compte" : aEcheance ? `Supprimer le ${fin ? dateFr(fin) : "à l'échéance"}` : "Supprimer définitivement"}</button>
+      </div>
+    </div>
+  );
+}
+
+const SUJETS: [SujetSupport, string][] = [["question", "Une question"], ["probleme", "Quelque chose ne marche pas"], ["banque", "Connexion à ma banque"], ["abonnement", "Abonnement, facture, résiliation"], ["idee", "Une idée, une suggestion"]];
+
+/** The technical details joined to a message, shown in full before sending so the person knows what leaves. */
+function infosTechniques() {
+  const ua = navigator.userAgent;
+  const appareil = /iPhone|iPad/.test(ua) ? (/iPad/.test(ua) ? "iPad" : "iPhone") : /Android/.test(ua) ? "Android" : /Mac/.test(ua) ? "Mac" : /Windows/.test(ua) ? "Windows" : "Autre";
+  const nav = /CriOS|Chrome/.test(ua) && !/Edg/.test(ua) ? "Chrome" : /Edg/.test(ua) ? "Edge" : /Firefox|FxiOS/.test(ua) ? "Firefox" : /Safari/.test(ua) ? "Safari" : "navigateur";
+  const installee = window.matchMedia?.("(display-mode: standalone)").matches || (navigator as { standalone?: boolean }).standalone ? "appli installée" : "dans le navigateur";
+  let page = "réglages"; try { page = sessionStorage.getItem("lucien.page.precedente") ?? page; } catch { /* */ }
+  return { appareil: `${appareil}, ${nav}, ${installee}`, ecran: `${window.innerWidth}×${window.innerHeight}`, langue: langueChoisie(), page };
+}
+
+function EcrireEquipe({ api, formule, email, onClose, toast }: { api: Api; formule: string | null; email: string | null; onClose: () => void; toast: (m: string) => void }) {
+  const [sujet, setSujet] = useState<SujetSupport>("question");
+  const [message, setMessage] = useState("");
+  const [infos, setInfos] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [fait, setFait] = useState(false);
+  const t = infosTechniques();
+  const envoyer = async () => {
+    if (message.trim().length < 5) return toast("Écrivez quelques mots, s'il vous plaît");
+    setBusy(true);
+    try { await api.support({ sujet, message: message.trim(), infos, ...(infos ? t : {}) }); setFait(true); }
+    catch (e) { toast((e as Error).message); } finally { setBusy(false); }
+  };
+  return (
+    <div className="feuille-fond" onClick={onClose}>
+      <div className="feuille" role="dialog" aria-modal="true" aria-label="Écrire à l'équipe Lucien" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}>
+        <div className="feuille-tete"><b>Écrire à l'équipe Lucien</b><button className="link" onClick={onClose}>{fait ? "Fermer" : "Annuler"}</button></div>
+        {fait ? (
+          <div className="aide-fait">
+            <p><b>Message bien reçu, merci.</b></p>
+            <p>{api.mode === "demo" ? "Démonstration : le message n'est pas envoyé. Dans l'appli, il arrive directement à l'équipe." : `Nous vous répondons par email${email ? ` à ${email}` : ""}, sous 48 h ouvrées.`}</p>
+            <button className="btn block" onClick={onClose}>Fermer</button>
+          </div>
+        ) : (
+          <div className="form-espace">
+            <label className="champ"><span>C'est à propos de</span>
+              <select className="in" value={sujet} onChange={(e) => setSujet(e.target.value as SujetSupport)}>{SUJETS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+            {sujet === "banque" && <p className="note">Astuce : la plupart des soucis de connexion se règlent en reconnectant la banque (Budget, puis votre banque). Dites-nous quelle banque et ce qui s'affiche.</p>}
+            {sujet === "abonnement" && <p className="note">Vous pouvez résilier vous-même dans « Votre formule », plus haut. Pour une facture, « Gérer mon abonnement ».</p>}
+            <label className="champ"><span>Votre message</span>
+              <textarea className="in" rows={6} maxLength={5000} value={message} onChange={(e) => setMessage(e.target.value)} placeholder={sujet === "probleme" ? "Ce que vous faisiez, ce qui s'est passé, ce que vous attendiez" : "Écrivez-nous ici"} /></label>
+            <label className="case"><input type="checkbox" checked={infos} onChange={(e) => setInfos(e.target.checked)} /> Joindre les infos techniques pour aller plus vite</label>
+            {infos && <p className="note aide-infos" data-pas-traduire>{t.appareil} · écran {t.ecran} · dernier écran : {t.page} · formule {formule ?? "aucune"}</p>}
+            <p className="note">Vos papiers et vos opérations ne sont jamais joints. Nous répondons à votre adresse email{email ? ` (${email})` : ""}.</p>
+            <button className="btn block" disabled={busy} onClick={envoyer}>{busy ? "Envoi…" : "Envoyer"}</button>
+          </div>
+        )}
       </div>
     </div>
   );

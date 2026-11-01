@@ -4,6 +4,8 @@ import type { Api } from "../api";
 /** Lucien's own back office (not the families'): partner accounting firms. Opened at #/admin with LUCIEN_ADMIN_TOKEN. */
 type Statut = "en_attente" | "valide" | "refuse";
 interface CabinetAdmin { code: string; nom: string; email: string; ville: string | null; statut: Statut; cree_le: string; clients: number; abonnes: number }
+interface MessageSupport { id: string; user_email: string | null; sujet: string; message: string; contexte: Record<string, string>; traite: boolean; cree_le: string }
+const SUJET: Record<string, string> = { question: "Question", probleme: "Problème", banque: "Banque", abonnement: "Abonnement", idee: "Idée" };
 interface Resume { cabinets: { en_attente: number; valides: number; refuses: number }; via_cabinets: { foyers: number; abonnes: number }; foyers: { total: number; abonnes: number }; ia: { gratuit_eur: number; payant_eur: number } }
 
 const STATUT: Record<Statut, string> = { en_attente: "À valider", valide: "Validé", refuse: "Refusé" };
@@ -20,6 +22,10 @@ function demo() {
     { code: "COMP-2HWN", nom: "Compta Sud Conseil", email: "bonjour@comptasud.fr", ville: "Uzès", statut: "valide", cree_le: j(65), clients: 6, abonnes: 5 },
     { code: "TEST-QQQQ", nom: "Test test", email: "test@test.com", ville: null, statut: "refuse", cree_le: j(20), clients: 0, abonnes: 0 },
   ];
+  let messages: MessageSupport[] = [
+    { id: "m1", user_email: "camille@exemple.fr", sujet: "banque", message: "Bonjour, ma banque (Crédit Agricole) me demande de me reconnecter tous les 3 mois, c'est normal ?", contexte: { foyer: "Famille Martin", formule: "duo", abonnement: "active", appareil: "iPhone, Safari, appli installée", ecran: "390×844", page: "budget" }, traite: false, cree_le: j(0.2) },
+    { id: "m2", user_email: "sophie.d@exemple.fr", sujet: "idee", message: "Ce serait génial de pouvoir ajouter les vaccins du chat dans les échéances !", contexte: { foyer: "Sophie", formule: "solo", abonnement: "essai" }, traite: true, cree_le: j(2) },
+  ];
   const resume = (): Resume => ({
     cabinets: { en_attente: liste.filter((x) => x.statut === "en_attente").length, valides: liste.filter((x) => x.statut === "valide").length, refuses: liste.filter((x) => x.statut === "refuse").length },
     via_cabinets: { foyers: liste.reduce((s, x) => s + x.clients, 0), abonnes: liste.reduce((s, x) => s + x.abonnes, 0) },
@@ -32,6 +38,8 @@ function demo() {
     async ajouter(p: { nom: string; email: string; ville: string }) { const code = `${p.nom.normalize("NFD").replace(/[^A-Za-z]/g, "").toUpperCase().slice(0, 4).padEnd(4, "X")}-DEMO`; liste = [{ code, ...p, ville: p.ville || null, statut: "valide", cree_le: new Date().toISOString(), clients: 0, abonnes: 0 }, ...liste]; return { code, envoye: true }; },
     async renvoyer() { return { envoye: true }; },
     async csv() { return null; },
+    async messages() { return messages.map((m) => ({ ...m })); },
+    async traiter(id: string, traite: boolean) { messages = messages.map((m) => (m.id === id ? { ...m, traite } : m)); },
   };
 }
 
@@ -50,6 +58,8 @@ function serveur(jeton: string) {
     ajouter: (p: { nom: string; email: string; ville: string }) => appel<{ code: string; envoye: boolean }>("/admin/partenaires", { method: "POST", body: JSON.stringify({ ...p, envoyer_email: true }) }),
     renvoyer: (code: string) => appel<{ envoye: boolean }>(`/admin/partenaires/${code}/email`, { method: "POST" }),
     async csv() { const r = await fetch("/api/admin/partenaires.csv", { headers: h }); return r.ok ? r.blob() : null; },
+    messages: () => appel<MessageSupport[]>("/admin/support"),
+    traiter: (id: string, traite: boolean) => appel(`/admin/support/${id}`, { method: "POST", body: JSON.stringify({ traite }) }),
   };
 }
 
@@ -64,9 +74,13 @@ export function PageAdmin({ api }: { api: Api }) {
   const [msg, setMsg] = useState<string | null>(null);
   const [edition, setEdition] = useState<CabinetAdmin | null>(null);
   const [ajout, setAjout] = useState<{ nom: string; email: string; ville: string } | null>(null);
+  const [onglet, setOnglet] = useState<"cabinets" | "messages">("cabinets");
+  const [messages, setMessages] = useState<MessageSupport[] | null>(null);
   const client = useMemo(() => (enDemo ? demo() : jeton ? serveur(jeton) : null), [enDemo, jeton]);
   const recharger = async () => { if (!client) return; try { setData(await client.charger()); setErr(null); } catch (e) { setErr((e as Error).message); if (!enDemo) { setJeton(""); try { sessionStorage.removeItem(CLE); } catch { /* */ } } } };
   useEffect(() => { recharger(); }, [client]); // eslint-disable-line react-hooks/exhaustive-deps
+  const chargerMessages = async () => { if (client) setMessages(await client.messages().catch(() => [])); };
+  useEffect(() => { chargerMessages(); }, [client]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (data && filtre === "en_attente" && data.resume.cabinets.en_attente === 0) setFiltre("tous"); }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
   const info = (m: string) => { setMsg(m); setTimeout(() => setMsg(null), 3500); };
 
@@ -93,7 +107,7 @@ export function PageAdmin({ api }: { api: Api }) {
   return (
     <div className="app admin"><div className="screen admin-page">
       <div className="admin-tete">
-        <div><p className="admin-marque">Lucien · administration</p><h1 className="detail-title">Cabinets partenaires</h1></div>
+        <div><p className="admin-marque">Lucien · administration</p><h1 className="detail-title">{onglet === "messages" ? "Messages des utilisateurs" : "Cabinets partenaires"}</h1></div>
         <div className="admin-tete-actions">
           {!enDemo && <button className="btn ghost" onClick={async () => { const b = await client.csv(); if (!b) return; const u = URL.createObjectURL(b); const a = document.createElement("a"); a.href = u; a.download = "cabinets-partenaires.csv"; a.click(); setTimeout(() => URL.revokeObjectURL(u), 1000); }}>Exporter (CSV)</button>}
           <button className="btn" onClick={() => setAjout({ nom: "", email: "", ville: "" })}>+ Ajouter un cabinet</button>
@@ -113,6 +127,31 @@ export function PageAdmin({ api }: { api: Api }) {
         </div>
       )}
 
+      <div className="pills admin-onglets">
+        <button className="pill" aria-pressed={onglet === "cabinets"} onClick={() => setOnglet("cabinets")}>Cabinets</button>
+        <button className="pill" aria-pressed={onglet === "messages"} onClick={() => { setOnglet("messages"); chargerMessages(); }}>Messages des utilisateurs{messages ? ` (${messages.filter((m) => !m.traite).length} à traiter)` : ""}</button>
+      </div>
+
+      {onglet === "messages" ? (
+        !messages ? <p className="note">Chargement…</p> : messages.length === 0 ? <p className="note">Aucun message pour l'instant.</p> : (
+          <div className="admin-liste">
+            {messages.map((m) => (
+              <div key={m.id} className={`admin-carte ${m.traite ? "refuse" : "en_attente"}`}>
+                <div className="admin-carte-tete">
+                  <div><b>{SUJET[m.sujet] ?? m.sujet} · {m.contexte.foyer ?? ""}</b><span>{new Date(m.cree_le).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} · formule {m.contexte.formule ?? "?"} · {m.contexte.abonnement ?? ""}</span></div>
+                  <span className={`statut-cab ${m.traite ? "valide" : "en_attente"}`}>{m.traite ? "Traité" : "À traiter"}</span>
+                </div>
+                <p className="admin-message">{m.message}</p>
+                {m.contexte.appareil && <p className="note">{m.contexte.appareil} · écran {m.contexte.ecran} · dernier écran : {m.contexte.page} · langue {m.contexte.langue ?? "fr"}</p>}
+                <div className="admin-carte-actions">
+                  {m.user_email && <a className="btn" href={`mailto:${m.user_email}?subject=${encodeURIComponent(`Re: ${SUJET[m.sujet] ?? "Votre message"} – Lucien`)}&body=${encodeURIComponent(`Bonjour,\n\n\n\nBien à vous,\nBenjamin, pour l'équipe Lucien\n\n> ${m.message.replace(/\n/g, "\n> ")}`)}`}>Répondre à {m.user_email}</a>}
+                  <button className="link" onClick={async () => { await client.traiter(m.id, !m.traite); await chargerMessages(); }}>{m.traite ? "Remettre à traiter" : "Marquer comme traité"}</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      ) : <>
       {ajout && (
         <form className="admin-form" onSubmit={async (e) => { e.preventDefault(); try { const x = await client.ajouter(ajout); info(`Cabinet ajouté, code ${x.code}${x.envoye ? ", envoyé par email" : ""}`); setAjout(null); await recharger(); } catch (x) { info((x as Error).message); } }}>
           <b>Ajouter un cabinet (validé tout de suite, code envoyé par email)</b>
@@ -167,6 +206,7 @@ export function PageAdmin({ api }: { api: Api }) {
         </div>
       )}
       <p className="note" style={{ marginTop: 18 }}>Un cabinet validé reçoit son code par email. Ses clients le saisissent dans Réglages et ont le premier mois offert à leur premier abonnement. Désactiver un cabinet coupe l'avantage pour les nouveaux abonnements, sans toucher aux abonnements en cours.</p>
+      </>}
       {msg && <div className="toast" role="status">{msg}</div>}
     </div></div>
   );
