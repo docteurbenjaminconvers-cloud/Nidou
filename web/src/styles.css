@@ -915,3 +915,7 @@ b, strong { font-weight: 800; }
   input, select, textarea, input.in, .in.mini, .field input, .field select, .search input { font-size: max(16px, 1em) !important; }
 }
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+.bien-gestion { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.bien-gestion .link { font-size: 14px; }
+.bien-gestion .link.discret { color: var(--mist); margin-left: auto; }
+.bien-gestion .link.danger { color: #b3261e; }

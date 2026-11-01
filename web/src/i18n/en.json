@@ -1990,7 +1990,17 @@
   "samedi": "Saturday",
   "dimanche": "Sunday",
   "frais de garde, pensions, personnes à charge": "childcare costs, maintenance payments, dependants",
-  "vérifier le versement CAF": "check the CAF payment"
+  "vérifier le versement CAF": "check the CAF payment",
+  "Modifier le bien": "Edit property",
+  "Modifier le bail": "Edit lease",
+  "Confirmer la suppression": "Confirm deletion",
+  "Surface (m²)": "Floor area (m²)",
+  "Fin du bail (départ du locataire)": "End of lease (tenant leaving)",
+  "Bien modifié": "Property updated",
+  "Bail modifié": "Lease updated",
+  "Bail terminé : le bien attend son prochain locataire": "Lease ended: the property is waiting for its next tenant",
+  "Bien supprimé": "Property deleted",
+  "La fin du bail doit suivre son début": "The end of the lease must come after its start"
  },
  "motifs": [
   [
