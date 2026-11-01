@@ -45,6 +45,7 @@ export async function demanderLien(db, email, opts = {}) {
         text: invitation
             ? `${opts.invite_par ?? "Un proche"} partage avec vous les papiers, les échéances et le budget de « ${h?.nom}» sur Lucien.\n\nRejoindre le foyer : ${lien}\n\nCe lien est valable 7 jours.`
             : `Bonjour,\n\nVoici votre lien pour ouvrir Lucien : ${lien}\n\nIl est valable 30 minutes et ne sert qu'une fois. Si vous n'avez rien demandé, ignorez cet email.`,
+        langue: opts.langue ?? (db.userByEmail(email)?.langue === "en" ? "en" : "fr"),
     });
     return { envoye, lien: !envoye && lienVisibleEnDev() ? lien : null };
 }

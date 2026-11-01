@@ -15,6 +15,7 @@ import { basename, join } from "node:path";
 import { BridgeClient, bridgeConfig } from "./bridge.js";
 import { EbClient, ebConfig } from "./enablebanking.js";
 import { envoyerEmail } from "./mail.js";
+import { couperConnexions } from "./connexions.js";
 export function ensureSuppressionSchema(db) {
     const cols = db.raw.prepare("PRAGMA table_info(households)").all().map((c) => c.name);
     if (!cols.includes("suppression_le"))
@@ -79,6 +80,10 @@ async function arreterMaintenant(db, householdId, client) {
 }
 /** Revokes the bank access at the aggregator; failures are logged, never block the deletion. */
 async function couperBanque(db, householdId) {
+    {
+        const cfg = ebConfig();
+        await couperConnexions(db, cfg ? new EbClient(cfg) : null, householdId).catch((e) => console.error("[suppression] banques supplémentaires :", e.message));
+    }
     const link = db.getBankLink(householdId);
     if (!link || link.user_uuid.startsWith("attente:"))
         return;
@@ -114,7 +119,7 @@ function effacerUtilisateurOrphelin(db, userId) {
 const prevenir = async (db, householdId, sauf, sujet, corps) => {
     let n = 0;
     for (const u of db.usersOfHousehold(householdId).filter((x) => x.email !== sauf))
-        if (await envoyerEmail({ to: u.email, subject: sujet, text: corps(u.prenom) }).catch(() => false))
+        if (await envoyerEmail({ to: u.email, subject: sujet, text: corps(u.prenom), langue: db.langueUtilisateur(u.id) }).catch(() => false))
             n++;
     return n;
 };
@@ -129,7 +134,7 @@ export async function supprimerFoyer(db, householdId, uploadDir, par, client) {
     await couperBanque(db, householdId);
     // 3. who to tell, and which files to remove, before the rows go
     const nom = h.nom;
-    const destinataires = db.usersOfHousehold(householdId).filter((u) => u.email !== par.email).map((u) => ({ email: u.email, prenom: u.prenom }));
+    const destinataires = db.usersOfHousehold(householdId).filter((u) => u.email !== par.email).map((u) => ({ email: u.email, prenom: u.prenom, langue: db.langueUtilisateur(u.id) }));
     const membres = db.usersOfHousehold(householdId).map((u) => u.id);
     const fichiers = [
         ...db.raw.prepare("SELECT fichier AS f FROM documents WHERE household_id = ? AND fichier IS NOT NULL").all(householdId),
@@ -161,7 +166,7 @@ export async function supprimerFoyer(db, householdId, uploadDir, par, client) {
     // 6. the others are told
     let prevenus = 0;
     for (const u of destinataires) {
-        const ok = await envoyerEmail({ to: u.email, subject: `Le foyer « ${nom} » a été supprimé de Lucien`, text: `Bonjour${u.prenom ? ` ${u.prenom}` : ""},\n\n${par.prenom ?? "Le titulaire"} a supprimé le foyer « ${nom} » de Lucien. Ses papiers, échéances et données ont été effacés, et votre accès à ce foyer est fermé.\n\nPour toute question : bonjour@monlucien.fr.` }).catch(() => false);
+        const ok = await envoyerEmail({ to: u.email, subject: `Le foyer « ${nom} » a été supprimé de Lucien`, text: `Bonjour${u.prenom ? ` ${u.prenom}` : ""},\n\n${par.prenom ?? "Le titulaire"} a supprimé le foyer « ${nom} » de Lucien. Ses papiers, échéances et données ont été effacés, et votre accès à ce foyer est fermé.\n\nPour toute question : bonjour@monlucien.fr.`, langue: u.langue }).catch(() => false);
         if (ok)
             prevenus++;
     }

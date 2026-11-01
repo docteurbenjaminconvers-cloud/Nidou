@@ -1,3 +1,4 @@
+import { traduire } from "./traduire.js";
 import webpush from "web-push";
 /**
  * Web Push (VAPID). Keys: `npx web-push generate-vapid-keys` → VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY, VAPID_SUBJECT = mailto:…
@@ -20,8 +21,9 @@ export async function envoyerPush(db, household_id, m) {
     }
     setup();
     let ok = 0;
-    const payload = JSON.stringify({ title: m.titre, body: m.corps, url: m.url ?? "/#/notifs", tag: m.tag ?? "lucien", icon: "/icon-192.png", badge: "/icon-192.png" });
+    const charge = (l) => JSON.stringify({ title: traduire(m.titre, l), body: traduire(m.corps, l), url: m.url ?? "/#/notifs", tag: m.tag ?? "lucien", icon: "/icon-192.png", badge: "/icon-192.png" });
     for (const s of subs) {
+        const payload = charge(db.langueUtilisateur(s.user_id ?? null));
         try {
             await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 86400, urgency: "normal" });
             ok++;

@@ -1,4 +1,11 @@
-export async function envoyerEmail(m) {
+/**
+ * Outbound email: Brevo transactional API when BREVO_API_KEY is set, otherwise the console (development).
+ * Returns true when a real email left; false when it was only logged, so callers can show the link in dev.
+ */
+import { traduire } from "./traduire.js";
+export async function envoyerEmail(mail) {
+    const l = mail.langue === "en" ? "en" : "fr";
+    const m = l === "en" ? { ...mail, subject: traduire(mail.subject, l), text: traduire(mail.text, l) } : mail;
     const key = process.env.BREVO_API_KEY;
     const from = process.env.LUCIEN_EMAIL_FROM ?? "Lucien <bonjour@monlucien.fr>";
     if (!key) {

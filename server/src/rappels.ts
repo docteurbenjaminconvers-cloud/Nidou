@@ -33,9 +33,9 @@ export function rappelsEssai(db: Db, h: HouseholdRow, now = new Date()): Rappel[
   const eco = budget.economies_possibles;
   const perdu = [eco > 0 ? `${euro(eco)} par an d'économies repérées` : null, "la lecture des papiers par l'IA", budget.nb_transactions ? "le suivi des dépenses" : null].filter(Boolean).join(", ");
   const out: Rappel[] = [];
-  if (joursRestants === 2) out.push({ cle: "essai:j2", titre: "Votre formule complète offerte se termine dans 2 jours", corps: `Après, votre compte passe en gratuit et met en pause ${perdu}. Vos papiers et vos rappels restent.`, route: "#/settings" });
-  if (joursRestants === 1) out.push({ cle: "essai:dernier", titre: "Dernier jour de votre formule complète offerte", corps: eco > 0 ? `${euro(eco)} par an d'économies sont prêtes à être décidées. Gardez la formule complète pour 9,90 € par mois.` : "Gardez la lecture IA, la banque et les économies pour 9,90 € par mois ou 99 € par an.", route: "#/settings" });
-  if (joursRestants <= 0 && joursRestants > -3) out.push({ cle: "essai:termine", titre: eco > 0 ? `${euro(eco)} par an d'économies vous attendent` : "Votre essai est terminé, vos papiers restent", corps: `Compte passé en gratuit : en pause, ${perdu}. La formule complète reprend là où vous en étiez.`, route: "#/settings" });
+  if (joursRestants === 2) out.push({ cle: "essai:j2", titre: "Votre formule complète offerte se termine dans 2 jours", corps: `Après, sans abonnement, votre compte passe en lecture seule et met en pause ${perdu}. Vos papiers et vos rappels restent.`, route: "#/settings" });
+  if (joursRestants === 1) out.push({ cle: "essai:dernier", titre: "Dernier jour de votre formule complète offerte", corps: eco > 0 ? `${euro(eco)} par an d'économies sont prêtes à être décidées. Gardez tout Lucien à partir de 6,90 € par mois.` : "Gardez la lecture IA, la banque et les économies à partir de 6,90 € par mois.", route: "#/settings" });
+  if (joursRestants <= 0 && joursRestants > -3) out.push({ cle: "essai:termine", titre: eco > 0 ? `${euro(eco)} par an d'économies vous attendent` : "Votre essai est terminé, vos papiers restent", corps: `Compte en lecture seule : en pause, ${perdu}. Un abonnement reprend là où vous en étiez.`, route: "#/settings" });
   return out;
 }
 
@@ -146,8 +146,9 @@ export async function transportParDefaut(db: Db, h: HouseholdRow, r: Rappel) {
   if (db.effectivePlan(h) === "famille") {
     const base = (process.env.LUCIEN_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, "");
     for (const u of db.usersOfHousehold(h.id)) {
-      if (r.semaine) { await envoyerEmail({ to: u.email, ...emailSemaine(r.semaine, u.prenom, base) }); continue; }
-      await envoyerEmail({ to: u.email, subject: r.titre, text: `${r.corps}\n\nOuvrir Lucien : ${base}/${r.route}` });
+      const langue = db.langueUtilisateur(u.id);
+      if (r.semaine) { await envoyerEmail({ to: u.email, ...emailSemaine(r.semaine, u.prenom, base, langue) }); continue; }
+      await envoyerEmail({ to: u.email, subject: r.titre, text: `${r.corps}\n\nOuvrir Lucien : ${base}/${r.route}`, langue });
     }
   }
   if (!n) console.log(`[rappel] ${h.nom} · ${r.cle} · ${r.titre}`);

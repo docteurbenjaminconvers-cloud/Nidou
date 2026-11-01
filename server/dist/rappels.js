@@ -1,3 +1,5 @@
+import { prevoirFinDeMois } from "./prevision.js";
+import { suivis } from "./resiliations.js";
 import { ensureSuppressionSchema, executerSuppressionsPrevues } from "./suppression.js";
 import { entretienVeilles } from "./veille.js";
 import { budgetReport } from "./budget.js";
@@ -21,11 +23,11 @@ export function rappelsEssai(db, h, now = new Date()) {
     const perdu = [eco > 0 ? `${euro(eco)} par an d'économies repérées` : null, "la lecture des papiers par l'IA", budget.nb_transactions ? "le suivi des dépenses" : null].filter(Boolean).join(", ");
     const out = [];
     if (joursRestants === 2)
-        out.push({ cle: "essai:j2", titre: "Votre formule complète offerte se termine dans 2 jours", corps: `Après, votre compte passe en gratuit et met en pause ${perdu}. Vos papiers et vos rappels restent.`, route: "#/settings" });
+        out.push({ cle: "essai:j2", titre: "Votre formule complète offerte se termine dans 2 jours", corps: `Après, sans abonnement, votre compte passe en lecture seule et met en pause ${perdu}. Vos papiers et vos rappels restent.`, route: "#/settings" });
     if (joursRestants === 1)
-        out.push({ cle: "essai:dernier", titre: "Dernier jour de votre formule complète offerte", corps: eco > 0 ? `${euro(eco)} par an d'économies sont prêtes à être décidées. Gardez la formule complète pour 9,90 € par mois.` : "Gardez la lecture IA, la banque et les économies pour 9,90 € par mois ou 99 € par an.", route: "#/settings" });
+        out.push({ cle: "essai:dernier", titre: "Dernier jour de votre formule complète offerte", corps: eco > 0 ? `${euro(eco)} par an d'économies sont prêtes à être décidées. Gardez tout Lucien à partir de 6,90 € par mois.` : "Gardez la lecture IA, la banque et les économies à partir de 6,90 € par mois.", route: "#/settings" });
     if (joursRestants <= 0 && joursRestants > -3)
-        out.push({ cle: "essai:termine", titre: eco > 0 ? `${euro(eco)} par an d'économies vous attendent` : "Votre essai est terminé, vos papiers restent", corps: `Compte passé en gratuit : en pause, ${perdu}. La formule complète reprend là où vous en étiez.`, route: "#/settings" });
+        out.push({ cle: "essai:termine", titre: eco > 0 ? `${euro(eco)} par an d'économies vous attendent` : "Votre essai est terminé, vos papiers restent", corps: `Compte en lecture seule : en pause, ${perdu}. Un abonnement reprend là où vous en étiez.`, route: "#/settings" });
     return out;
 }
 /**
@@ -93,17 +95,64 @@ export function rappelsRenouvellement(db, h, now = new Date()) {
             corps: `Votre abonnement annuel se renouvellera automatiquement le ${date}, pour un an, au tarif de votre formule. Si vous ne souhaitez pas le renouveler, vous pouvez le résilier d'ici là en un geste, dans Réglages, Votre formule, « Résilier l'abonnement » : il restera actif jusqu'au ${date}, sans autre prélèvement.`,
             route: "#/settings" }];
 }
+/**
+ * The subscription loop, in the daily pass: a cancellation proven by the bank (no more debit), a debit that came back
+ * after a cancellation, and — for a ghost subscription the person has not decided about — the debit coming in 2 days.
+ */
+export function rappelsAbonnements(db, h, now = new Date()) {
+    const txs = db.transactionsFoyer(h.id);
+    if (!txs.length)
+        return [];
+    const aujourdhui = now.toISOString().slice(0, 10);
+    const out = [];
+    for (const s of suivis(db, h.id, txs, aujourdhui).liste) {
+        if (s.statut === "confirmee")
+            out.push({ cle: `resiliation:${s.cle}:confirmee`, titre: `${s.marchand} ne prélève plus rien`, corps: s.message, route: "#/budget" });
+        if (s.statut === "encore_prelevee")
+            out.push({ cle: `resiliation:${s.cle}:prelevee:${s.dernier_preleve}`, titre: `${s.marchand} a encore prélevé votre compte`, corps: s.message, route: "#/budget" });
+    }
+    const rapport = budgetReport(txs, db.listDocuments(h.id), db.listDecisions(h.id), aujourdhui);
+    const suivies = new Set(suivis(db, h.id, txs, aujourdhui).liste.map((s) => s.cle));
+    const jour = now.getUTCDate(), mois = aujourdhui.slice(0, 7);
+    for (const a of rapport.actions) {
+        if (a.type !== "fantome" || a.decision || !a.marchand)
+            continue;
+        const r = rapport.recurrences.find((x) => x.marchand === a.marchand);
+        if (!r?.jour_du_mois || suivies.has(r.cle))
+            continue;
+        const dans = r.jour_du_mois - jour;
+        if (dans === 2 || dans === 1)
+            out.push({ cle: `imminent:${r.cle}:${mois}`, titre: `${r.marchand} prélève ${r.dernier_montant.toLocaleString("fr-FR")} € ${dans === 1 ? "demain" : "dans 2 jours"}`,
+                corps: "Vous l'utilisez encore ? Si non, Lucien prépare la résiliation en une minute.", route: "#/budget" });
+    }
+    return out;
+}
+/** Overdraft ahead: warned once a month, when the forecast goes under zero within the next 10 days. */
+export function rappelsPrevision(db, h, now = new Date()) {
+    const solde = db.soldeFoyer(h.id);
+    const txs = db.transactionsFoyer(h.id);
+    if (solde === null || !txs.length)
+        return [];
+    const aujourdhui = now.toISOString().slice(0, 10);
+    const p = prevoirFinDeMois(solde, txs, aujourdhui);
+    if (!p.alerte || (Date.parse(p.alerte.jour) - Date.parse(aujourdhui)) / 864e5 > 10)
+        return [];
+    const date = p.alerte.jour.split("-").reverse().slice(0, 2).join("/");
+    return [{ cle: `decouvert:${aujourdhui.slice(0, 7)}`, titre: `Découvert probable vers le ${date}`,
+            corps: `Avec les prélèvements prévus et vos dépenses habituelles, votre solde passerait à ${Math.round(p.alerte.solde).toLocaleString("fr-FR")} €. Un virement d'épargne ou un report de dépense l'évite.`, route: "#/budget" }];
+}
 /** Default transport: push to every device of the household; email too for Famille households (free = push only). */
 export async function transportParDefaut(db, h, r) {
     const n = await envoyerPush(db, h.id, { titre: r.titre, corps: r.corps, url: `/${r.route}`, tag: r.cle.split(":")[0] });
     if (db.effectivePlan(h) === "famille") {
         const base = (process.env.LUCIEN_PUBLIC_URL ?? "http://localhost:3000").replace(/\/$/, "");
         for (const u of db.usersOfHousehold(h.id)) {
+            const langue = db.langueUtilisateur(u.id);
             if (r.semaine) {
-                await envoyerEmail({ to: u.email, ...emailSemaine(r.semaine, u.prenom, base) });
+                await envoyerEmail({ to: u.email, ...emailSemaine(r.semaine, u.prenom, base, langue) });
                 continue;
             }
-            await envoyerEmail({ to: u.email, subject: r.titre, text: `${r.corps}\n\nOuvrir Lucien : ${base}/${r.route}` });
+            await envoyerEmail({ to: u.email, subject: r.titre, text: `${r.corps}\n\nOuvrir Lucien : ${base}/${r.route}`, langue });
         }
     }
     if (!n)
@@ -113,7 +162,7 @@ export async function transportParDefaut(db, h, r) {
 export async function passeQuotidienne(db, envoyer = (h, r) => transportParDefaut(db, h, r)) {
     let n = 0;
     for (const h of db.listHouseholds()) {
-        for (const r of [...rappelsEssai(db, h), ...rappelsEcheances(db, h), ...rappelsAlertes(db, h), ...rappelsRenouvellement(db, h)]) {
+        for (const r of [...rappelsEssai(db, h), ...rappelsEcheances(db, h), ...rappelsAlertes(db, h), ...rappelsRenouvellement(db, h), ...rappelsAbonnements(db, h), ...rappelsPrevision(db, h)]) {
             if (db.marquerRappel(h.id, r.cle)) {
                 await envoyer(h, r);
                 n++;

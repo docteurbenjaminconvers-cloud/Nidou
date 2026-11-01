@@ -103,7 +103,7 @@ function effacerUtilisateurOrphelin(db: Db, userId: string) {
 
 const prevenir = async (db: Db, householdId: string, sauf: string | null, sujet: string, corps: (prenom: string | null) => string) => {
   let n = 0;
-  for (const u of db.usersOfHousehold(householdId).filter((x) => x.email !== sauf)) if (await envoyerEmail({ to: u.email, subject: sujet, text: corps(u.prenom) }).catch(() => false)) n++;
+  for (const u of db.usersOfHousehold(householdId).filter((x) => x.email !== sauf)) if (await envoyerEmail({ to: u.email, subject: sujet, text: corps(u.prenom), langue: db.langueUtilisateur(u.id) }).catch(() => false)) n++;
   return n;
 };
 
@@ -117,7 +117,7 @@ export async function supprimerFoyer(db: Db, householdId: string, uploadDir: str
   await couperBanque(db, householdId);
   // 3. who to tell, and which files to remove, before the rows go
   const nom = h.nom;
-  const destinataires = db.usersOfHousehold(householdId).filter((u) => u.email !== par.email).map((u) => ({ email: u.email, prenom: u.prenom }));
+  const destinataires = db.usersOfHousehold(householdId).filter((u) => u.email !== par.email).map((u) => ({ email: u.email, prenom: u.prenom, langue: db.langueUtilisateur(u.id) }));
   const membres = db.usersOfHousehold(householdId).map((u) => u.id);
   const fichiers = [
     ...(db.raw.prepare("SELECT fichier AS f FROM documents WHERE household_id = ? AND fichier IS NOT NULL").all(householdId) as { f: string }[]),
@@ -139,7 +139,7 @@ export async function supprimerFoyer(db: Db, householdId: string, uploadDir: str
   let prevenus = 0;
   for (const u of destinataires) {
     const ok = await envoyerEmail({ to: u.email, subject: `Le foyer « ${nom} » a été supprimé de Lucien`, text:
-      `Bonjour${u.prenom ? ` ${u.prenom}` : ""},\n\n${par.prenom ?? "Le titulaire"} a supprimé le foyer « ${nom} » de Lucien. Ses papiers, échéances et données ont été effacés, et votre accès à ce foyer est fermé.\n\nPour toute question : bonjour@monlucien.fr.` }).catch(() => false);
+      `Bonjour${u.prenom ? ` ${u.prenom}` : ""},\n\n${par.prenom ?? "Le titulaire"} a supprimé le foyer « ${nom} » de Lucien. Ses papiers, échéances et données ont été effacés, et votre accès à ce foyer est fermé.\n\nPour toute question : bonjour@monlucien.fr.`, langue: u.langue }).catch(() => false);
     if (ok) prevenus++;
   }
   return { prevenus };

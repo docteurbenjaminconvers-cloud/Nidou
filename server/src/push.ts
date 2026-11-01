@@ -1,3 +1,4 @@
+import { traduire } from "./traduire.js";
 import webpush from "web-push";
 import type { Db } from "./db.js";
 
@@ -21,8 +22,9 @@ export async function envoyerPush(db: Db, household_id: string, m: PushMessage):
   if (!pushOn()) { console.log(`[push ×${subs.length} → foyer ${household_id}] ${m.titre} — ${m.corps}`); return 0; }
   setup();
   let ok = 0;
-  const payload = JSON.stringify({ title: m.titre, body: m.corps, url: m.url ?? "/#/notifs", tag: m.tag ?? "lucien", icon: "/icon-192.png", badge: "/icon-192.png" });
+  const charge = (l: "fr" | "en") => JSON.stringify({ title: traduire(m.titre, l), body: traduire(m.corps, l), url: m.url ?? "/#/notifs", tag: m.tag ?? "lucien", icon: "/icon-192.png", badge: "/icon-192.png" });
   for (const s of subs) {
+    const payload = charge(db.langueUtilisateur(s.user_id ?? null));
     try {
       await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 86400, urgency: "normal" });
       ok++;

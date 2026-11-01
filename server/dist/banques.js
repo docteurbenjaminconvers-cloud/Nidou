@@ -3,6 +3,7 @@ import { envoyerEmail } from "./mail.js";
 import { envoyerPush } from "./push.js";
 import { bridgeConfig, BridgeClient, mapTransactions, syncHousehold } from "./bridge.js";
 import { ebConfig, EbClient, ebSyncHousehold, mapEbTransactions } from "./enablebanking.js";
+import { ebSynchroSup, ensureConnexionsSchema, listConnexions } from "./connexions.js";
 export function fournisseur() {
     const force = process.env.LUCIEN_BANQUE;
     if (force === "bridge" && bridgeConfig())
@@ -63,10 +64,10 @@ export async function synchroniserVeille(db, v) {
     await notifierAlertes(db, v, r.nouvelles);
 }
 /** Household sync with whichever connector holds the link. */
-export async function synchroniserFoyer(db, householdId) {
+async function synchroniserLienPrincipal(db, householdId) {
     const link = db.getBankLink(householdId);
     if (!link)
-        throw new Error("Aucune connexion bancaire pour ce foyer");
+        return null;
     if (link.fournisseur === "enablebanking") {
         const c = eb();
         if (!c)
@@ -78,6 +79,32 @@ export async function synchroniserFoyer(db, householdId) {
         throw new Error("Bridge n'est pas configuré");
     return syncHousehold(db, b.client, householdId);
 }
+/** Household sync: the main link, then every extra bank (another personal bank, professional accounts). */
+export async function synchroniserFoyer(db, householdId) {
+    const sups = listConnexions(db, householdId).filter((c) => c.fournisseur === "enablebanking" && c.statut !== "en_attente");
+    if (!db.getBankLink(householdId) && !sups.length)
+        throw new Error("Aucune connexion bancaire pour ce foyer");
+    const r = (await synchroniserLienPrincipal(db, householdId)) ?? { comptes: 0, lues: 0, ajoutees: 0, derniere_synchro: new Date().toISOString() };
+    const client = eb();
+    const erreurs = [];
+    for (const c of sups) {
+        if (!client)
+            break;
+        try {
+            const x = await ebSynchroSup(db, client, c);
+            r.comptes += x.comptes;
+            r.lues += x.lues;
+            r.ajoutees += x.ajoutees;
+        }
+        catch (e) {
+            erreurs.push(e.message);
+            console.error("[banque]", c.banque, e.message);
+        }
+    }
+    if (erreurs.length && !r.comptes)
+        throw new Error(erreurs[0]);
+    return r;
+}
 /**
  * Enable Banking has no account webhook: Lucien fetches every 6 hours (PSD2 allows four unattended fetches a day).
  * Bridge pushes `item.refreshed` webhooks instead, so only Enable Banking links are polled here.
@@ -86,7 +113,8 @@ export async function tacheBanques(db) {
     if (!ebConfig())
         return { foyers: 0, veilles: 0, erreurs: 0 };
     let foyers = 0, veilles = 0, erreurs = 0;
-    const links = db.raw.prepare("SELECT household_id FROM bank_links WHERE fournisseur = 'enablebanking' AND statut = 'connecte'").all();
+    ensureConnexionsSchema(db);
+    const links = db.raw.prepare("SELECT household_id FROM bank_links WHERE fournisseur = 'enablebanking' AND statut = 'connecte' UNION SELECT household_id FROM bank_connexions WHERE fournisseur = 'enablebanking' AND statut = 'connecte'").all();
     for (const l of links) {
         try {
             await synchroniserFoyer(db, l.household_id);

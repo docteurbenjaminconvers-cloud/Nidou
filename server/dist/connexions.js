@@ -1,0 +1,119 @@
+/**
+ * Several banks per household (decided on 01/11/2026): the first personal bank keeps the household's main link
+ * (bank_links, unchanged), and every further connection lives here: another personal bank (the partner's bank) or
+ * a professional account (Qonto, Shine, the « pro » offer of a high-street bank), opened with Enable Banking's
+ * business login. Accounts of a professional connection are typed « pro »: they stay out of the family budget and
+ * are offered to Vie pro. Read-only, like every bank access in Lucien.
+ */
+import { randomUUID } from "node:crypto";
+import { budgetIa } from "./iaBudget.js";
+import { categorise, fingerprint, merchantOf, parseStatement } from "./transactions.js";
+import { mapEbTransactions, newState } from "./enablebanking.js";
+export function ensureConnexionsSchema(db) {
+    db.raw.exec(`CREATE TABLE IF NOT EXISTS bank_connexions (
+    id TEXT PRIMARY KEY, household_id TEXT NOT NULL, usage TEXT NOT NULL, fournisseur TEXT NOT NULL, banque TEXT NOT NULL, pays TEXT NOT NULL,
+    user_uuid TEXT NOT NULL, statut TEXT NOT NULL, expire_le TEXT, comptes TEXT, derniere_synchro TEXT, curseur TEXT, cree_le TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS bank_connexions_foyer ON bank_connexions(household_id);`);
+}
+export const listConnexions = (db, hid) => {
+    ensureConnexionsSchema(db);
+    return db.raw.prepare("SELECT * FROM bank_connexions WHERE household_id = ? ORDER BY cree_le").all(hid);
+};
+const parId = (db, id) => db.raw.prepare("SELECT * FROM bank_connexions WHERE id = ?").get(id);
+const maj = (db, c) => db.raw.prepare("UPDATE bank_connexions SET user_uuid = ?, statut = ?, expire_le = ?, comptes = ?, derniere_synchro = ?, curseur = ? WHERE id = ?")
+    .run(c.user_uuid, c.statut, c.expire_le, c.comptes, c.derniere_synchro, c.curseur, c.id);
+/** Starts an extra connection; returns the bank's login URL. The state starts with « s. » so the callback finds it. */
+export async function ebConnecterSup(db, client, hid, aspsp, usage) {
+    ensureConnexionsSchema(db);
+    const state = `s.${newState()}`;
+    db.raw.prepare("INSERT INTO bank_connexions (id, household_id, usage, fournisseur, banque, pays, user_uuid, statut, cree_le) VALUES (?, ?, ?, 'enablebanking', ?, ?, ?, 'en_attente', ?)")
+        .run(randomUUID(), hid, usage, aspsp.name, aspsp.country, `attente:${state}`, new Date().toISOString());
+    const { url } = await client.startAuth({ name: aspsp.name, country: aspsp.country }, state, aspsp.maximum_consent_validity, usage === "pro" ? "business" : "personal");
+    return { url };
+}
+/** The bank sent the person back: opens the session and records the accounts. Returns the household. */
+export async function ebTerminerSup(db, client, state, code) {
+    ensureConnexionsSchema(db);
+    const c = db.raw.prepare("SELECT * FROM bank_connexions WHERE user_uuid = ?").get(`attente:${state}`);
+    if (!c)
+        return null;
+    const s = await client.createSession(code);
+    const comptes = JSON.stringify((s.accounts ?? []).map((a) => ({ uid: a.uid, name: a.name ?? null, iban: a.account_id?.iban ?? null })));
+    const fait = { ...c, user_uuid: s.session_id, statut: "connecte", expire_le: s.access?.valid_until ?? null, comptes };
+    maj(db, fait);
+    return fait;
+}
+const nomCompte = (c, a) => {
+    const base = a.name || (a.iban ? `Compte ••${a.iban.slice(-4)}` : "Compte");
+    return c.usage === "pro" ? `Pro · ${base} (${c.banque})` : `${base} (${c.banque})`;
+};
+/** Balances and new booked transactions of one extra connection. */
+export async function ebSynchroSup(db, client, c) {
+    if (c.statut === "en_attente" || c.user_uuid.startsWith("attente:"))
+        return { comptes: 0, lues: 0, ajoutees: 0 };
+    if (c.expire_le && new Date(c.expire_le).getTime() < Date.now()) {
+        maj(db, { ...c, statut: "erreur" });
+        throw new Error(`L'autorisation de ${c.banque} a expiré : reconnectez cette banque.`);
+    }
+    const comptes = JSON.parse(c.comptes ?? "[]");
+    const from = (c.curseur ?? new Date(Date.now() - 90 * 864e5).toISOString()).slice(0, 10);
+    let lues = 0, ajoutees = 0;
+    for (const a of comptes) {
+        const nom = nomCompte(c, a);
+        const bal = await client.balances(a.uid).catch(() => []);
+        const solde = bal.find((b) => ["CLBD", "ITAV", "XPCD", "ITBD"].includes(b.balance_type ?? "")) ?? bal[0];
+        db.upsertBankAccount({ id: `eb:${a.uid}`, household_id: c.household_id, item_id: c.user_uuid, nom, banque: c.banque, type: c.usage === "pro" ? "pro" : null, solde: solde ? Number(solde.balance_amount.amount) : null, devise: solde?.balance_amount.currency ?? "EUR", maj_le: new Date().toISOString() });
+        const parsed = mapEbTransactions(await client.transactions(a.uid, from), nom);
+        lues += parsed.length;
+        const cats = await categorise(parsed, budgetIa(db, c.household_id));
+        ajoutees += db.insertTransactions(parsed.map((t, i) => ({
+            household_id: c.household_id, compte: t.compte, date: t.date, libelle: t.libelle, marchand: merchantOf(t.libelle), montant: t.montant, categorie: cats[i],
+            empreinte: t.ref ? `eb:${a.uid}:${t.ref}` : fingerprint(c.household_id, t),
+        })));
+    }
+    const now = new Date().toISOString();
+    maj(db, { ...c, statut: "connecte", derniere_synchro: now, curseur: new Date(Date.now() - 3 * 864e5).toISOString() });
+    return { comptes: comptes.length, lues, ajoutees };
+}
+/** Ends one extra connection: access revoked at the bank, its accounts removed; past transactions stay in the history. */
+export async function supprimerConnexion(db, client, hid, id) {
+    ensureConnexionsSchema(db);
+    const c = parId(db, id);
+    if (!c || c.household_id !== hid)
+        return false;
+    if (client && c.fournisseur === "enablebanking" && !c.user_uuid.startsWith("attente:"))
+        await client.deleteSession(c.user_uuid).catch((e) => console.error("[banque] session non révoquée :", e.message));
+    db.raw.prepare("DELETE FROM bank_accounts WHERE household_id = ? AND item_id = ?").run(hid, c.user_uuid);
+    db.raw.prepare("DELETE FROM bank_connexions WHERE id = ?").run(id);
+    return true;
+}
+/** Revokes every extra connection of a household (account deletion). */
+export async function couperConnexions(db, client, hid) {
+    for (const c of listConnexions(db, hid))
+        await supprimerConnexion(db, client, hid, c.id);
+}
+// ---------- simulated mode (no keys): a fictional professional account so the flow can be tried ----------
+const RELEVE_PRO_DEMO = (y, m) => {
+    const mois = (k) => { const d = new Date(Date.UTC(y, m - 1 - k, 1)); return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`; };
+    const lignes = ["date;libelle;montant"];
+    for (let k = 0; k < 3; k++) {
+        const p = mois(k);
+        lignes.push(`${p}-03;VIR HONORAIRES PATIENTS SEMAINE 1;1240,00`, `${p}-10;VIR HONORAIRES PATIENTS SEMAINE 2;1180,00`, `${p}-17;VIR CPAM REMBOURSEMENTS TIERS PAYANT;960,00`, `${p}-05;PRLV URSSAF COTISATIONS;-612,00`, `${p}-06;PRLV LOYER CABINET;-450,00`, `${p}-12;CB FOURNITURES MEDICALES;-86,40`, `${p}-20;PRLV ASSURANCE RCP;-48,00`);
+    }
+    return lignes.join("\n");
+};
+export function simulerConnexionSup(db, hid, usage, banque = usage === "pro" ? "Banque pro de démonstration" : "Deuxième banque de démonstration") {
+    ensureConnexionsSchema(db);
+    const id = randomUUID(), session = `sim:${id}`;
+    const now = new Date();
+    db.raw.prepare("INSERT INTO bank_connexions (id, household_id, usage, fournisseur, banque, pays, user_uuid, statut, derniere_synchro, cree_le) VALUES (?, ?, ?, 'simule', ?, 'FR', ?, 'connecte', ?, ?)")
+        .run(id, hid, usage, banque, session, now.toISOString(), now.toISOString());
+    const nom = nomCompte({ usage, banque }, { name: usage === "pro" ? "Compte professionnel" : "Compte courant", iban: null });
+    db.upsertBankAccount({ id: `sim:${id}`, household_id: hid, item_id: session, nom, banque, type: usage === "pro" ? "pro" : null, solde: usage === "pro" ? 6420.5 : 1310.2, devise: "EUR", maj_le: now.toISOString() });
+    if (usage === "pro") {
+        const parsed = parseStatement(RELEVE_PRO_DEMO(now.getUTCFullYear(), now.getUTCMonth() + 1), nom);
+        db.insertTransactions(parsed.map((t) => ({ household_id: hid, compte: nom, date: t.date, libelle: t.libelle, marchand: merchantOf(t.libelle), montant: t.montant, categorie: t.montant > 0 ? "revenus" : "autre", empreinte: fingerprint(hid, t) })));
+    }
+    return { id, compte: nom };
+}

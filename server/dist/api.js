@@ -1,9 +1,14 @@
+import { langueNavigateur } from "./traduire.js";
 import { Hono } from "hono";
 import { z } from "zod";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { createHash, randomBytes } from "node:crypto";
 import { exporterFoyer } from "./export.js";
+import { prevoirFinDeMois } from "./prevision.js";
+import { annulerSuivi, demarrerSuivi, economieAnnuelle, nomMarchand, ensureResiliationsSchema, lettreRemboursement, lettreResiliation, marcheASuivre, suivis } from "./resiliations.js";
+import { estMedical, MESSAGE_MEDICAL } from "./extract.js";
 import { budgetIa, coutAppel } from "./iaBudget.js";
+import { ensureRetractationSchema, etatRetractation, marquerDebutAbonnement, seRetracter } from "./retractation.js";
 import { annulerSuppression, arreterALEcheance, demanderSuppression, ensureSuppressionSchema, etatFin, quitterFoyer, reprendreAbonnement } from "./suppression.js";
 import { basename, extname, join } from "node:path";
 import { extractDocument, heuristicExtract } from "./extract.js";
@@ -12,15 +17,17 @@ import { chargesReport, lignesFamille } from "./charges.js";
 import { generateLetter, templateLetter } from "./letters.js";
 import { rappelsEssai, rappelsEcheances } from "./rappels.js";
 import * as V from "./veille.js";
-import { ajouterVeillePayante, basculerAssistant, PaiementIndisponible, simulationPaiement } from "./abonnement.js";
+import { ajouterVeillePayante, basculerAssistant, PaiementIndisponible, simulationPaiement, ConsentementRequis } from "./abonnement.js";
 import { AssistantErreur, ensureAssistantSchema, etatAssistant, repondre } from "./assistant.js";
 import { bridge, eb, fournisseur, notifierAlertes, synchroniserFoyer, synchroniserVeille } from "./banques.js";
-import { banquesFR, BANQUES_DEMO, ebConnectHousehold, ebFinishHousehold, ensureEbSchema, linkExtra, newState } from "./enablebanking.js";
+import { ebConnecterSup, ebSynchroSup, ebTerminerSup, listConnexions, simulerConnexionSup, supprimerConnexion } from "./connexions.js";
+import { banquesFR, BANQUES_DEMO, BANQUES_PRO_DEMO, ebConnectHousehold, ebFinishHousehold, ensureEbSchema, linkExtra, newState } from "./enablebanking.js";
 import { envoyerPush, pushOn } from "./push.js";
 import { appliquerAbonnement, capaciteComptes, creerCheckout, FORMULES, portail, resumeAbonnement, traiterWebhook } from "./abonnement.js";
 import { pointDuFoyer } from "./hebdo.js";
 import { monterEspaces } from "./espaces.js";
 import { adminOk, monterPartenaires } from "./partenaires.js";
+import { monterPartages } from "./partages.js";
 import { bordereau, etatDossiers, etatKit, KITS } from "./dossiers.js";
 import { zip } from "./zip.js";
 import { agendaIcs } from "./ics.js";
@@ -28,7 +35,7 @@ import { AUTH_ON, consommerLien, cookieHeader, demandeAutorisee, demanderLien, e
 import { agendaSemaine, familleReport, echeancesFamille, coutsParMembre } from "./famille.js";
 import { boiteAddress, fromBrevo, processInboundEmail } from "./inbox.js";
 import { parseStatement, merchantOf, categorise, ruleCategory, fingerprint, TX_CATEGORIES, TX_LABEL } from "./transactions.js";
-import { budgetReport } from "./budget.js";
+import { budgetReport, findRecurrences } from "./budget.js";
 import { demoStatement } from "./seed-statement.js";
 import Anthropic from "@anthropic-ai/sdk";
 import { simulatedConnect, simulatedSync, verifyBridgeSignature } from "./bridge.js";
@@ -80,17 +87,19 @@ export function createApi(db, opts) {
     ensureAssistantSchema(db);
     ensureEbSchema(db);
     ensureSuppressionSchema(db);
+    ensureRetractationSchema(db);
+    ensureResiliationsSchema(db);
     const secure = () => (process.env.LUCIEN_PUBLIC_URL ?? "").startsWith("https://");
     // ---------- auth (magic link) ----------
     api.post("/auth/demander", async (c) => {
-        const body = z.object({ email: z.string() }).parse(await c.req.json());
+        const body = z.object({ email: z.string(), langue: z.enum(["fr", "en"]).optional() }).parse(await c.req.json());
         const email = body.email.trim().toLowerCase();
         if (!emailValide(email))
             return c.json({ error: "email", message: "Adresse email invalide." }, 400);
         const ip = (c.req.header("x-forwarded-for") ?? "").split(",")[0].trim() || c.req.header("x-real-ip") || "inconnue";
         if (!demandeAutorisee(`ip:${ip}`, 10) || !demandeAutorisee(`email:${email}`, 3))
             return c.json({ error: "trop_de_demandes", message: "Trop de demandes de lien. Réessayez dans 15 minutes." }, 429);
-        const r = await demanderLien(db, email);
+        const r = await demanderLien(db, email, { langue: body.langue ?? (db.userByEmail(email)?.langue === "en" ? "en" : langueNavigateur(c.req.header("accept-language"))) });
         if (!r.envoye && !r.lien)
             return c.json({ error: "email_non_envoye", message: "L'email de connexion n'a pas pu partir. Réessayez dans quelques minutes." }, 503);
         return c.json({ ok: true, envoye: r.envoye, lien: r.lien });
@@ -212,6 +221,18 @@ export function createApi(db, opts) {
         await annulerSuppression(db, household(c).id);
         return c.json({ ok: true });
     });
+    /** « Me rétracter » : within 14 days of a new subscription, stopped at once and refunded minus the days used. */
+    api.post("/abonnement/retractation", async (c) => {
+        if (!isOwner(c))
+            return c.json({ error: "proprietaire", message: "Seul le propriétaire du foyer gère l'abonnement." }, 403);
+        try {
+            return c.json({ ok: true, ...(await seRetracter(db, household(c).id)) });
+        }
+        catch (e) {
+            console.error("[rétractation]", e);
+            return c.json({ error: "retractation", message: e.message.startsWith("Le délai") ? e.message : "La rétractation n'a pas abouti. Réessayez dans quelques minutes, ou écrivez à bonjour@monlucien.fr." }, 400);
+        }
+    });
     /** « Résilier l'abonnement » : no renewal, it runs to the end of the period already paid (no refund). */
     api.post("/abonnement/resilier", async (c) => {
         if (!isOwner(c))
@@ -287,22 +308,25 @@ export function createApi(db, opts) {
         return c.json({ ok: true });
     });
     // ---------- offre et espaces payants (modules) ----------
-    monterEspaces(api, db, { household, isOwner, email: (c) => currentUser(c)?.email ?? null });
+    monterEspaces(api, db, { household, isOwner, email: (c) => currentUser(c)?.email ?? null, uploadDir: opts.uploadDir });
     monterPartenaires(api, db, { household });
+    monterPartages(api, db, { household });
     // ---------- abonnement (Stripe) ----------
     api.post("/abonnement/checkout", async (c) => {
         const h = household(c);
-        const body = z.object({ formule: z.enum(["solo", "duo", "tribu"]).default("duo"), periode: z.enum(["mensuel", "annuel"]) }).parse(await c.req.json());
+        const body = z.object({ formule: z.enum(["solo", "duo", "tribu"]).default("duo"), periode: z.enum(["mensuel", "annuel"]), demarrage_immediat: z.boolean().optional() }).parse(await c.req.json());
         const comptes = db.usersOfHousehold(h.id).length;
         if (comptes > FORMULES[body.formule].comptes) {
             return c.json({ error: "formule_trop_petite", message: `${comptes} personnes se connectent à ce foyer : la formule ${FORMULES[body.formule].nom} en accepte ${FORMULES[body.formule].comptes}. Choisissez une formule plus grande ou retirez un compte.` }, 400);
         }
         try {
-            return c.json(await creerCheckout(db, db.getHousehold(h.id), body.formule, body.periode, currentUser(c)?.email ?? null));
+            return c.json(await creerCheckout(db, db.getHousehold(h.id), body.formule, body.periode, currentUser(c)?.email ?? null, undefined, body.demarrage_immediat === true));
         }
         catch (e) {
             if (e instanceof PaiementIndisponible)
                 return c.json({ error: "paiement_indisponible", message: e.message }, 503);
+            if (e instanceof ConsentementRequis)
+                return c.json({ error: "demarrage_immediat", message: e.message }, 400);
             throw e;
         }
     });
@@ -322,6 +346,7 @@ export function createApi(db, opts) {
         if (!h)
             return c.json({ error: "introuvable" }, 404);
         appliquerAbonnement(db, h, { statut: "simule", formule, periode, fin: new Date(Date.now() + (periode === "annuel" ? 365 : 30) * 864e5).toISOString().slice(0, 10) });
+        marquerDebutAbonnement(db, h.id);
         return c.redirect("/#/settings?paiement=ok");
     });
     api.post("/stripe/webhook", async (c) => {
@@ -355,7 +380,7 @@ export function createApi(db, opts) {
             mcp_token: h.plan === "famille" ? db.getHousehold(h.id).mcp_token : null,
             utilisateur: currentUser(c),
             titulaire: isOwner(c),
-            abonnement: { ...resumeAbonnement(db.getHousehold(h.id)), ...etatFin(db, h.id) },
+            abonnement: { ...resumeAbonnement(db.getHousehold(h.id)), ...etatFin(db, h.id), retractation: etatRetractation(db, h.id) },
             modules: db.getModules(h.id),
             comptes: db.usersOfHousehold(h.id).length,
             capacite_comptes: capaciteComptes(db, db.getHousehold(h.id)),
@@ -657,6 +682,11 @@ export function createApi(db, opts) {
                     ? "Les lectures par l'IA du plan gratuit sont en pause jusqu'au mois prochain : vérifiez les champs lus localement. La formule complète n'a pas cette limite."
                     : "Quota mensuel de lectures IA du plan gratuit atteint : vérifiez les champs lus localement. La formule complète lit chaque document avec l'IA.";
         }
+        if (estMedical(ex)) {
+            if (fichier)
+                await unlink(join(opts.uploadDir, basename(fichier))).catch(() => { });
+            return c.json({ error: "document_medical", message: MESSAGE_MEDICAL }, 422);
+        }
         const doc = db.insertDocument({
             household_id: h.id,
             member_id: null,
@@ -774,6 +804,11 @@ export function createApi(db, opts) {
         const h = household(c);
         const txs = db.transactionsFoyer(h.id);
         const report = budgetReport(txs, db.listDocuments(h.id), db.listDecisions(h.id));
+        const { liste: resiliations } = suivis(db, h.id, txs);
+        const economies_prouvees = Math.round(resiliations.filter((s) => s.statut === "confirmee").reduce((t, s) => t + s.economie_annuelle, 0) * 100) / 100;
+        const solde = db.soldeFoyer(h.id);
+        const prevision = solde !== null && txs.length ? prevoirFinDeMois(solde, txs, new Date().toISOString().slice(0, 10)) : null;
+        Object.assign(report, { resiliations, economies_prouvees, prevision });
         if (h.plan === "gratuit") {
             // Free plan: the headline numbers and the two best actions.
             return c.json({ ...report, actions: report.actions.slice(0, 2), actions_total: report.actions.length, apercu: true });
@@ -837,6 +872,42 @@ export function createApi(db, opts) {
         db.setDecision(h.id, body.cle, body.decision);
         return c.json({ ok: true });
     });
+    // ---------- la boucle des abonnements : résilier, puis vérifier en banque ----------
+    const expediteur = (c) => { const u = currentUser(c); return u?.prenom ? `${u.prenom}` : household(c).nom.replace(/\s*\(démo\)$/, ""); };
+    const recurrence = (hid, cle) => findRecurrences(db.transactionsFoyer(hid)).find((r) => r.cle === cle);
+    /** How to cancel, and the letter, before the person does it. */
+    api.get("/resiliations/aide", (c) => {
+        const h = household(c);
+        const r = recurrence(h.id, c.req.query("cle") ?? "");
+        if (!r)
+            return c.json({ error: "introuvable", message: "Ce prélèvement n'apparaît plus dans vos relevés." }, 404);
+        const nom = nomMarchand(r.marchand);
+        return c.json({ marchand: nom, montant: r.dernier_montant, frequence: r.frequence, economie_annuelle: economieAnnuelle(r.dernier_montant, r.frequence),
+            etapes: marcheASuivre(nom, r.frequence), lettre: lettreResiliation({ marchand: nom, montant: r.dernier_montant, expediteur: expediteur(c) }) });
+    });
+    /** « C'est fait, j'ai résilié » : Lucien watches the next statements. */
+    api.post("/resiliations", async (c) => {
+        const h = household(c);
+        const { cle } = z.object({ cle: z.string().min(1).max(200) }).parse(await c.req.json());
+        const r = recurrence(h.id, cle);
+        if (!r)
+            return c.json({ error: "introuvable", message: "Ce prélèvement n'apparaît plus dans vos relevés." }, 404);
+        demarrerSuivi(db, h.id, { cle: r.cle, marchand: nomMarchand(r.marchand), montant: r.dernier_montant, frequence: r.frequence });
+        return c.json({ ok: true, ...suivis(db, h.id, db.transactionsFoyer(h.id)).liste.find((s) => s.cle === cle) }, 201);
+    });
+    api.delete("/resiliations/:cle", (c) => {
+        annulerSuivi(db, household(c).id, c.req.param("cle"));
+        return c.json({ ok: true });
+    });
+    /** Refund request when a debit came back after the cancellation. */
+    api.get("/resiliations/:cle/remboursement", (c) => {
+        const h = household(c);
+        const s = suivis(db, h.id, db.transactionsFoyer(h.id)).liste.find((x) => x.cle === c.req.param("cle"));
+        if (!s)
+            return c.json({ error: "introuvable" }, 404);
+        const tardifs = s.apres_demande.filter((t) => t.date > s.demande_le);
+        return c.json({ lettre: lettreRemboursement({ marchand: s.marchand, demande_le: s.demande_le, prelevements: tardifs, expediteur: expediteur(c) }) });
+    });
     api.get("/budget/categories", (c) => c.json(TX_CATEGORIES.map((k) => ({ cle: k, libelle: TX_LABEL[k] }))));
     // ---------- connexion bancaire (Bridge) ----------
     api.get("/bank/status", (c) => {
@@ -848,7 +919,8 @@ export function createApi(db, opts) {
             expire_le: link ? linkExtra(db, h.id)?.expire_le ?? null : null,
             statut: link?.statut ?? "aucune",
             derniere_synchro: link?.derniere_synchro ?? null,
-            comptes: db.listBankAccounts(h.id).map((a) => ({ id: a.id, nom: a.nom, banque: a.banque, solde: a.solde, devise: a.devise, maj_le: a.maj_le })),
+            comptes: db.listBankAccounts(h.id).map((a) => ({ id: a.id, nom: a.nom, banque: a.banque, solde: a.solde, devise: a.devise, maj_le: a.maj_le, pro: a.type === "pro" })),
+            connexions: listConnexions(db, h.id).map((x) => ({ id: x.id, usage: x.usage, banque: x.banque, statut: x.statut, expire_le: x.expire_le, derniere_synchro: x.derniere_synchro })),
         });
     });
     /** Starts the Connect flow: returns the URL where the family picks its bank. */
@@ -857,14 +929,25 @@ export function createApi(db, opts) {
         if (h.plan === "gratuit")
             return c.json({ error: "limite_plan", message: "La connexion bancaire automatique fait partie de la formule complète." }, 402);
         const f = fournisseur();
-        if (f === "simule")
+        const corps = await c.req.json().catch(() => ({}));
+        // « pro » (business login) or a further personal bank go to the extra connections; the first personal bank stays the main link
+        const usage = z.enum(["perso", "pro"]).catch("perso").parse(corps.usage);
+        const principal = db.getBankLink(h.id);
+        const supplementaire = usage === "pro" || (!!principal && principal.statut === "connecte");
+        if (f === "simule") {
+            if (supplementaire) {
+                const nom = z.object({ aspsp: z.object({ name: z.string().max(120) }).optional() }).catch({}).parse(corps).aspsp?.name;
+                simulerConnexionSup(db, h.id, usage, nom);
+                return c.json({ url: null, ajoute: true });
+            }
             return c.json(await simulatedConnect(db, h.id));
+        }
         if (f === "enablebanking") {
-            const body = z.object({ aspsp: z.object({ name: z.string(), country: z.string().length(2), maximum_consent_validity: z.number().optional() }) }).parse(await c.req.json());
-            return c.json(await ebConnectHousehold(db, eb(), h.id, body.aspsp));
+            const body = z.object({ aspsp: z.object({ name: z.string(), country: z.string().length(2), maximum_consent_validity: z.number().optional() }) }).parse(corps);
+            return c.json(supplementaire ? await ebConnecterSup(db, eb(), h.id, body.aspsp, usage) : await ebConnectHousehold(db, eb(), h.id, body.aspsp));
         }
         const b = bridge();
-        const body = z.object({ email: z.string().email() }).parse(await c.req.json().catch(() => ({})));
+        const body = z.object({ email: z.string().email() }).parse(corps);
         let userUuid = db.getBankLink(h.id)?.user_uuid;
         if (!userUuid) {
             const externalId = `lucien-${h.id}`;
@@ -899,7 +982,9 @@ export function createApi(db, opts) {
         const h = household(c);
         try {
             const link = db.getBankLink(h.id);
-            return c.json(!link || link.fournisseur === "simule" || fournisseur() === "simule" ? await simulatedSync(db, h.id) : await synchroniserFoyer(db, h.id));
+            if (link?.fournisseur === "simule" || fournisseur() === "simule")
+                return c.json(link ? await simulatedSync(db, h.id) : { comptes: 0, lues: 0, ajoutees: 0, derniere_synchro: new Date().toISOString() });
+            return c.json(await synchroniserFoyer(db, h.id));
         }
         catch (e) {
             return c.json({ error: "synchro", message: e instanceof Error ? e.message : "Synchronisation impossible" }, 502);
@@ -908,7 +993,8 @@ export function createApi(db, opts) {
     /** Banks the family can pick (Enable Banking needs Lucien to show the list; Bridge shows its own). */
     api.get("/bank/banques", async (c) => {
         const c2 = eb();
-        return c.json({ fournisseur: fournisseur(), banques: c2 ? await banquesFR(c2) : BANQUES_DEMO });
+        const pro = c.req.query("usage") === "pro";
+        return c.json({ fournisseur: fournisseur(), banques: c2 ? await banquesFR(c2, pro ? "business" : "personal") : pro ? BANQUES_PRO_DEMO : BANQUES_DEMO });
     });
     /** Enable Banking sends the person back here, for the household (state "h.") or a protected relative (state "v."). */
     api.get("/bank/eb/callback", async (c) => {
@@ -934,6 +1020,19 @@ export function createApi(db, opts) {
         }
         if (!client || !code || err)
             return c.redirect("/#budget?bank=abandon");
+        if (state.startsWith("s.")) {
+            try {
+                const cx = await ebTerminerSup(db, client, state, code);
+                if (!cx)
+                    return c.redirect("/#budget?bank=abandon");
+                await ebSynchroSup(db, client, cx).catch((e) => console.error("sync après connexion :", e));
+                return c.redirect(cx.usage === "pro" ? "/#module/pro" : "/#budget");
+            }
+            catch (e) {
+                console.error("eb callback (banque supplémentaire) :", e);
+                return c.redirect("/#budget?bank=abandon");
+            }
+        }
         try {
             const hid = await ebFinishHousehold(db, client, state, code);
             if (!hid)
@@ -945,6 +1044,11 @@ export function createApi(db, opts) {
             console.error("eb callback :", e);
             return c.redirect("/#budget?bank=abandon");
         }
+    });
+    /** Disconnects one extra bank (another personal bank or a professional account). */
+    api.delete("/bank/connexions/:id", async (c) => {
+        const ok = await supprimerConnexion(db, eb(), household(c).id, c.req.param("id"));
+        return ok ? c.json({ ok: true }) : c.json({ error: "introuvable" }, 404);
     });
     api.delete("/bank", async (c) => {
         const link = db.getBankLink(household(c).id);
@@ -1040,12 +1144,12 @@ export function createApi(db, opts) {
     api.get("/assistant", (c) => c.json(etatAssistant(db, db.getHousehold(household(c).id))));
     api.post("/assistant", async (c) => {
         const h = db.getHousehold(household(c).id);
-        const body = z.object({ messages: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(4000) })).min(1).max(40) }).safeParse(await c.req.json().catch(() => null));
+        const body = z.object({ messages: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(4000) })).min(1).max(40), langue: z.enum(["fr", "en"]).optional() }).safeParse(await c.req.json().catch(() => null));
         if (!body.success)
             return c.json({ error: "requete", message: "Question illisible." }, 400);
         try {
             const u = currentUser(c);
-            return c.json(await repondre(db, h, body.data.messages, { nom: u?.prenom ?? null }));
+            return c.json(await repondre(db, h, body.data.messages, { nom: u?.prenom ?? null, langue: body.data.langue ?? "fr" }));
         }
         catch (e) {
             if (e instanceof AssistantErreur)
@@ -1202,6 +1306,15 @@ export function createApi(db, opts) {
     });
     // ---------- push (Web Push / VAPID) ----------
     api.get("/push/cle", (c) => c.json({ actif: pushOn(), cle: process.env.VAPID_PUBLIC_KEY ?? null, appareils: db.listPushSubscriptions(household(c).id).length }));
+    /** The language chosen in the app: emails and notifications follow it. */
+    api.post("/moi/langue", async (c) => {
+        const u = currentUser(c);
+        if (!u)
+            return c.json({ error: "connexion" }, 401);
+        const b = z.object({ langue: z.enum(["fr", "en"]) }).parse(await c.req.json());
+        db.setLangue(u.id, b.langue);
+        return c.json({ ok: true });
+    });
     api.post("/push/abonner", async (c) => {
         const h = household(c);
         const body = z.object({ endpoint: z.string().url(), keys: z.object({ p256dh: z.string(), auth: z.string() }), appareil: z.string().nullable().default(null) }).parse(await c.req.json());

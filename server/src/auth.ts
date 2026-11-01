@@ -33,7 +33,7 @@ export const oublierDemandes = () => demandes.clear();
 export const emailValide = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
 
 /** Login link. Returns the link itself only in local development (see lienVisibleEnDev), so the UI can show it. */
-export async function demanderLien(db: Db, email: string, opts: { household_id?: string; prenom?: string | null; invite_par?: string | null } = {}): Promise<{ envoye: boolean; lien: string | null }> {
+export async function demanderLien(db: Db, email: string, opts: { household_id?: string; prenom?: string | null; invite_par?: string | null; langue?: "fr" | "en" } = {}): Promise<{ envoye: boolean; lien: string | null }> {
   const token = db.createAuthLink(email, { household_id: opts.household_id ?? null, prenom: opts.prenom ?? null, invite_par: opts.invite_par ?? null, ttlMinutes: opts.household_id ? 7 * 24 * 60 : 30 });
   const lien = `${publicUrl()}/api/auth/lien?token=${token}`;
   const invitation = Boolean(opts.household_id);
@@ -44,6 +44,7 @@ export async function demanderLien(db: Db, email: string, opts: { household_id?:
     text: invitation
       ? `${opts.invite_par ?? "Un proche"} partage avec vous les papiers, les échéances et le budget de « ${h?.nom}» sur Lucien.\n\nRejoindre le foyer : ${lien}\n\nCe lien est valable 7 jours.`
       : `Bonjour,\n\nVoici votre lien pour ouvrir Lucien : ${lien}\n\nIl est valable 30 minutes et ne sert qu'une fois. Si vous n'avez rien demandé, ignorez cet email.`,
+    langue: opts.langue ?? (db.userByEmail(email)?.langue === "en" ? "en" : "fr"),
   });
   return { envoye, lien: !envoye && lienVisibleEnDev() ? lien : null };
 }

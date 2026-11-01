@@ -2,9 +2,14 @@
  * Outbound email: Brevo transactional API when BREVO_API_KEY is set, otherwise the console (development).
  * Returns true when a real email left; false when it was only logged, so callers can show the link in dev.
  */
-export interface Mail { to: string; subject: string; text: string; html?: string }
+import { traduire, type Langue } from "./traduire.js";
 
-export async function envoyerEmail(m: Mail): Promise<boolean> {
+/** `langue: "en"` translates subject and text for someone who uses Lucien in English (html is then built by the caller). */
+export interface Mail { to: string; subject: string; text: string; html?: string; langue?: Langue | string | null }
+
+export async function envoyerEmail(mail: Mail): Promise<boolean> {
+  const l = mail.langue === "en" ? "en" : "fr";
+  const m = l === "en" ? { ...mail, subject: traduire(mail.subject, l), text: traduire(mail.text, l) } : mail;
   const key = process.env.BREVO_API_KEY;
   const from = process.env.LUCIEN_EMAIL_FROM ?? "Lucien <bonjour@monlucien.fr>";
   if (!key) {

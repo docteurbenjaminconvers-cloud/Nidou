@@ -4,7 +4,11 @@ import { DONNEES_BUDGET_VIDES, grandLivre, rapportBudget } from "./budgetExpert.
 import { livreCsv, rapportIndependant, rapportPro } from "./viePro.js";
 import { randomBytes } from "node:crypto";
 import { rapportLocatif } from "./locatif.js";
-import { changerModules, paiementDisponible, PaiementIndisponible } from "./abonnement.js";
+import { appliquerBail, appliquerBulletin, lire } from "./lecture.js";
+import { budgetIa, coutAppel } from "./iaBudget.js";
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { changerModules, paiementDisponible, PaiementIndisponible, ConsentementRequis } from "./abonnement.js";
 const MODULE_IDS = Object.keys(MODULES);
 const num = z.number().finite();
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -64,6 +68,7 @@ export function monterEspaces(api, db, ctx) {
             modules: z.array(z.enum(MODULE_IDS)).max(10), pack: z.string().max(30).nullable().optional(),
             formule: z.enum(["solo", "duo", "tribu"]).optional(), periode: z.enum(["mensuel", "annuel"]).optional(),
             biens: z.number().int().min(0).max(200).optional(), proches: z.number().int().min(0).max(10).optional(),
+            demarrage_immediat: z.boolean().optional(),
         }).parse(await c.req.json());
         const h = db.getHousehold(ctx.household(c).id);
         const formule = b.formule ?? h.formule ?? "duo";
@@ -71,12 +76,14 @@ export function monterEspaces(api, db, ctx) {
         if (b.pack && !PACKS.some((p) => p.id === b.pack))
             return c.json({ error: "saisie_invalide" }, 400);
         try {
-            const r = await changerModules(db, h, { formule, periode, modules: b.modules, pack: b.pack ?? null, biens: b.biens, proches: b.proches }, ctx.email(c));
+            const r = await changerModules(db, h, { formule, periode, modules: b.modules, pack: b.pack ?? null, biens: b.biens, proches: b.proches }, ctx.email(c), b.demarrage_immediat === true);
             return c.json({ ...r, souscrits: r.modules, actifs: [...actifs(c)] });
         }
         catch (e) {
             if (e instanceof PaiementIndisponible)
                 return c.json({ error: "paiement_indisponible", message: e.message }, 503);
+            if (e instanceof ConsentementRequis)
+                return c.json({ error: "demarrage_immediat", message: e.message }, 400);
             return c.json({ error: "paiement", message: e.message }, 400);
         }
     });
@@ -102,7 +109,7 @@ export function monterEspaces(api, db, ctx) {
         const h = ctx.household(c);
         const d = donnees(h.id, e, h.nom);
         const txs = transactions(h.id);
-        const rapport = e === "budget" ? rapportBudget(txs, d)
+        const rapport = e === "budget" ? rapportBudget(txs, { ...d, comptes_exclus: [...db.comptesPro(h.id)] })
             : e === "pro" ? rapportPro(d, txs, db.listDocuments(h.id).map((x) => ({ id: x.id, title: x.title, category: x.category })))
                 : rapportLocatif(d, txs);
         if (e === "pro") {
@@ -130,12 +137,71 @@ export function monterEspaces(api, db, ctx) {
         db.setModuleData(ctx.household(c).id, e, d);
         return c.json({ ok: true });
     });
+    /**
+     * « Remplir tout seul » : a payslip (Vie pro) or a lease (Patrimoine locatif) is read and added to the space;
+     * the original is kept in Papiers. Form fields: file, and member_id (payslip) or bien_id (lease, optional).
+     */
+    api.post("/espaces/:espace/lire", async (c) => {
+        const e = c.req.param("espace");
+        if (e !== "pro" && e !== "locatif")
+            return c.json({ error: "introuvable" }, 404);
+        if (!verifier(c, e))
+            return refus(c, e);
+        const h = ctx.household(c);
+        const form = await c.req.formData();
+        const f = form.get("file");
+        if (!(f instanceof File))
+            return c.json({ error: "fichier", message: "Ajoutez une photo ou un PDF." }, 400);
+        const mime = f.type || "application/octet-stream";
+        if (!/^(application\/pdf|image\/(jpeg|png|webp|heic|heif)|text\/plain)$/.test(mime))
+            return c.json({ error: "type_fichier", message: "Une photo ou un PDF, s'il vous plaît." }, 415);
+        const buf = Buffer.from(await f.arrayBuffer());
+        const entree = mime.startsWith("text/") ? { texte: buf.toString("utf8") } : { base64: buf.toString("base64"), mime };
+        const budget = budgetIa(db, h.id);
+        const quoi = e === "pro" ? "bulletin" : "bail";
+        const { lu, ia } = await lire(quoi, entree, budget.ok(coutAppel("precis")));
+        if (ia)
+            budget.compter(coutAppel("precis"), true);
+        try {
+            let resume, titre;
+            if (e === "pro") {
+                const mid = String(form.get("member_id") ?? "") || null;
+                const m = mid ? db.getMember(mid) : undefined;
+                if (mid && (!m || m.household_id !== h.id))
+                    return c.json({ error: "introuvable" }, 404);
+                const r = appliquerBulletin(donnees(h.id, "pro", h.nom), { member_id: mid, prenom: m?.prenom ?? "Moi" }, lu);
+                db.setModuleData(h.id, "pro", r.donnees);
+                resume = r.resume;
+                const l = lu;
+                titre = `Bulletin de salaire ${l.mois ? new Date(`${l.mois}-15`).toLocaleDateString("fr-FR", { month: "long", year: "numeric" }) : ""}${l.employeur ? ` — ${l.employeur}` : ""}`.trim();
+            }
+            else {
+                const r = appliquerBail(donnees(h.id, "locatif", h.nom), lu, String(form.get("bien_id") ?? "") || null);
+                db.setModuleData(h.id, "locatif", r.donnees);
+                resume = r.resume;
+                const l = lu;
+                titre = `Bail${l.locataire ? ` de ${l.locataire}` : ""}${l.adresse ? ` — ${l.adresse.split(",")[0]}` : ""}`;
+            }
+            // the original goes to Papiers (a payslip is kept until retirement)
+            if (ctx.uploadDir) {
+                await mkdir(ctx.uploadDir, { recursive: true });
+                const fichier = `${Date.now()}-${f.name.replace(/[^\w.\-]+/g, "_")}`;
+                await writeFile(join(ctx.uploadDir, fichier), buf);
+                db.insertDocument({ household_id: h.id, member_id: null, title: titre.slice(0, 120), category: e === "pro" ? "autre" : "logement", organisme: null, numero_contrat: null,
+                    montant: null, periodicite: null, date_document: null, date_debut: null, date_fin: null, preavis_jours: null, resume, texte: entree.texte ?? null, fichier, mime, confiance: lu.confiance });
+            }
+            return c.json({ ok: true, resume, ia, lu });
+        }
+        catch (err) {
+            return c.json({ error: "lecture_incomplete", message: err.message, ia, lu }, 422);
+        }
+    });
     api.get("/espaces/budget/grand-livre.csv", (c) => {
         if (!verifier(c, "budget"))
             return refus(c, "budget");
         const h = ctx.household(c);
         const d = donnees(h.id, "budget", h.nom);
-        return new Response(grandLivre(transactions(h.id), d), { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="grand-livre-lucien.csv"`, "x-content-type-options": "nosniff" } });
+        return new Response(grandLivre(transactions(h.id), { comptes_exclus: [...db.comptesPro(h.id)] }), { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="grand-livre-lucien.csv"`, "x-content-type-options": "nosniff" } });
     });
     // ---------- accès comptable (lecture seule, révocable, un an) ----------
     api.get("/espaces/pro/partages", (c) => {

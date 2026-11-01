@@ -1,3 +1,4 @@
+import { langueChoisie } from "./i18n/traduction";
 import { PageComptable } from "./screens/Comptable";
 import { Offre } from "./screens/Offre";
 import { EspaceBudget } from "./screens/EspaceBudget";
@@ -37,6 +38,9 @@ const TabIcon = ({ d }: { d: string }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d={d} /></svg>
 );
 
+/** The app's language is sent once per launch: emails and notifications follow it. */
+let langueEnvoyee = false;
+
 export default function App() {
   const [api, setApi] = useState<Api | null>(null);
   const [route, setRoute] = useState<Route>(() => parseHash());
@@ -59,6 +63,7 @@ export default function App() {
     try {
     const [h, d, dl, c, b, f] = await Promise.all([a.household(), a.documents(), a.deadlines(), a.charges(), a.budget().catch(() => null), a.famille().catch(() => null)]);
     setHousehold(h); setDocs(d); setDeadlines(dl); setCharges(c); setBudget(b); setFamille(f);
+    if (!langueEnvoyee) { langueEnvoyee = true; a.enregistrerLangue(langueChoisie()); }
     // First time real spending data arrives (bank connected or statement imported): the savings reveal, once.
     // Demo: the reveal plays once per visit (not on every reload of the data); for real accounts, once ever.
     let seen = revealShown; try { seen = seen || (a.mode !== "demo" && localStorage.getItem(REVEAL_KEY) === "1"); } catch {}

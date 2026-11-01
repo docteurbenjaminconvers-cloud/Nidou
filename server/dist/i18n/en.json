@@ -2032,7 +2032,23 @@
   "Indépendant ou micro-entrepreneur ? Votre compte pro se connecte à part, il ne se mélange pas au budget du foyer.": "Self-employed or micro-entrepreneur? Your business account connects separately and never mixes with the household budget.",
   "Connecter un compte professionnel": "Connect a business account",
   "Le compte pro est tenu à part du budget du foyer. Connectez-le avec vos identifiants « pro », ou importez un relevé :": "The business account is kept apart from the household budget. Connect it with your business credentials, or import a statement:",
-  "la banque": "the bank"
+  "la banque": "the bank",
+  "Bonjour,": "Hello,",
+  "Bonsoir,": "Good evening,",
+  "Votre lien de connexion Lucien": "Your Lucien login link",
+  "Il est valable 30 minutes et ne sert qu'une fois. Si vous n'avez rien demandé, ignorez cet email.": "It is valid for 30 minutes and works only once. If you did not ask for it, just ignore this email.",
+  "Ce lien est valable 7 jours.": "This link is valid for 7 days.",
+  "Votre formule complète offerte se termine dans 2 jours": "Your free full plan ends in 2 days",
+  "Gardez la lecture IA, la banque et les économies à partir de 6,90 € par mois.": "Keep AI reading, your bank connection and your savings from €6.90 a month.",
+  "Votre essai est terminé, vos papiers restent": "Your trial has ended, your papers stay",
+  "Ouvrez Lucien pour voir le détail.": "Open Lucien to see the details.",
+  "dans 2 jours": "in 2 days",
+  "Vous l'utilisez encore ? Si non, Lucien prépare la résiliation en une minute.": "Still using it? If not, Lucien prepares the cancellation in a minute.",
+  "D'ici là, tout reste accessible : pensez à exporter ce dont vous avez besoin (Réglages, Exporter tout).": "Until then, everything stays available: remember to export what you need (Settings, Export everything).",
+  "Pour toute question : bonjour@monlucien.fr.": "Any question: bonjour@monlucien.fr.",
+  "Pour ne plus recevoir ce point du dimanche : Réglages, « Le point du dimanche ».": "To stop receiving this Sunday summary: Settings, “The Sunday summary”.",
+  "Vous recevez ce point chaque dimanche soir. Pour l'arrêter : Réglages, « Le point du dimanche ».": "You receive this summary every Sunday evening. To stop it: Settings, “The Sunday summary”.",
+  "Ouvrir ma semaine": "Open my week"
  },
  "motifs": [
   [
@@ -2050,6 +2066,10 @@
   [
    "Les prélèvements URSSAF ({0} €) mêlent cotisations, CSG et CRDS : sur la 2035, la CSG déductible a sa propre ligne et la part non déductible (CSG non déductible, CRDS) ne se déduit pas. Reprenez le détail de votre attestation annuelle URSSAF : le bénéfice réel sera un peu plus élevé que cette estimation.",
    "URSSAF debits ({0} €) combine contributions, CSG and CRDS: on the 2035, deductible CSG has its own line and the non-deductible part (non-deductible CSG, CRDS) is not deducted. Use the detail from your annual URSSAF statement: the actual profit will be slightly higher than this estimate."
+  ],
+  [
+   "Votre abonnement annuel se renouvellera automatiquement le {0}, pour un an, au tarif de votre formule. Si vous ne souhaitez pas le renouveler, vous pouvez le résilier d'ici là en un geste, dans Réglages, Votre formule, « Résilier l'abonnement » : il restera actif jusqu'au {1}, sans autre prélèvement.",
+   "Your annual subscription will renew automatically on {0}, for one year, at your plan's price. If you do not wish to renew it, you can cancel it before then in one tap, in Settings, Your plan, “Cancel the subscription”: it will stay active until {1}, with no further payment."
   ],
   [
    "Moi\n[votre adresse]\n\n{0}\nService client\n\nObjet : Résiliation de mon abonnement\n\nMadame, Monsieur,\n\nJe vous informe de ma décision de résilier mon abonnement, pour lequel vous prélevez {1} € sur mon compte. Merci de cesser tout prélèvement et de me confirmer la date de fin.\n\nSalutations distinguées.",
@@ -2084,6 +2104,14 @@
    "\"{0}\" on {1}. This is the payment method most used by scammers (fake bank adviser, fake grandchild, fake tech support). Call your relative before anything else."
   ],
   [
+   "{0} a demandé la suppression du foyer « {1} » sur Lucien. L'abonnement ne sera pas renouvelé et tout sera effacé le {2}, à la fin de la période déjà payée.",
+   "{0} asked for the household “{1}” to be deleted from Lucien. The subscription will not be renewed and everything will be erased on {2}, at the end of the period already paid."
+  ],
+  [
+   "Avec les prélèvements prévus et vos dépenses habituelles, votre solde passerait à {0} €. Un virement d'épargne ou un report de dépense l'évite.",
+   "With the planned direct debits and your usual spending, your balance would fall to {0} €. A transfer from savings or postponing a purchase avoids it."
+  ],
+  [
    "À faire au plus tard ce jour-là : prendre rendez-vous quelques semaines avant.{0} Rouler sans contrôle technique valide expose à une amende.",
    "To be done by that day at the latest: book an appointment a few weeks ahead.{0} Driving without a valid roadworthiness inspection risks a fine."
   ],
@@ -2102,6 +2130,10 @@
   [
    "Le foyer « {0} » est en formule {1}. {2} peut passer à une formule plus grande pour vous rendre l'accès ; vos papiers vous attendent.",
    "The household “{0}” is on the {1} plan. {2} can switch to a larger plan to give you back access; your papers are waiting for you."
+  ],
+  [
+   "{0} a supprimé le foyer « {1} » de Lucien. Ses papiers, échéances et données ont été effacés, et votre accès à ce foyer est fermé.",
+   "{0} deleted the household “{1}” from Lucien. Its papers, deadlines and data have been erased, and your access to this household is closed."
   ],
   [
    "Connectez-vous à votre espace client {0} : un bouton « Résilier » doit y être visible si le contrat a été souscrit en ligne.",
@@ -2204,6 +2236,10 @@
    "Furnished tourist let {0}: under micro-BIC, {1}% of receipts are taxed ({2}% allowance, ceiling {3} €).{4}"
   ],
   [
+   "{0} par an d'économies sont prêtes à être décidées. Gardez tout Lucien à partir de 6,90 € par mois.",
+   "{0} a year in savings are ready for your decision. Keep all of Lucien from €6.90 a month."
+  ],
+  [
    "Le foyer reste accessible jusqu'au {0}, puis il est effacé ; vous pouvez changer d'avis d'ici là.",
    "The household stays accessible until {0}, then it's erased; you can change your mind until then."
   ],
@@ -2274,6 +2310,14 @@
   [
    "{0} : {1} pièce{2} sur {3} prête{4}.{5}\nDans Dossiers prêts, je prépare le .zip avec le bordereau.",
    "{0}: {1} item{2} ready out of {3} required item{4}.{5}\nIn Ready files, I will prepare the .zip with the cover sheet."
+  ],
+  [
+   "Compte en lecture seule : en pause, {0}. Un abonnement reprend là où vous en étiez.",
+   "Read-only account: paused, {0}. A subscription picks up right where you left off."
+  ],
+  [
+   "{0} partage avec vous les papiers, les échéances et le budget de « {1}» sur Lucien.",
+   "{0} shares the papers, deadlines and budget of “{1}” with you on Lucien."
   ],
   [
    "Votre formule accepte {0} personne{1} connectée{2}. Passez à {3} pour en inviter plus.",
@@ -2432,6 +2476,10 @@
    "This summary also reaches you every Sunday evening{0}."
   ],
   [
+   "Votre abonnement annuel Lucien se renouvelle le {0}",
+   "Your annual Lucien subscription renews on {0}"
+  ],
+  [
    "Dépenses courantes ({0} jours, environ {1} par jour)",
    "Everyday spending ({0} days, about {1} a day)"
   ],
@@ -2494,6 +2542,10 @@
   [
    "Le foyer « {0} » a été supprimé de Lucien",
    "The household \"{0}\" has been deleted from Lucien"
+  ],
+  [
+   "Voici votre lien pour ouvrir Lucien : {0}",
+   "Here is your link to open Lucien: {0}"
   ],
   [
    "Extrait par l'IA avec {0} % de confiance",
@@ -2600,6 +2652,10 @@
    "The household \"{0}\" will be deleted on {1}"
   ],
   [
+   "{0} vous invite dans le foyer « {1} »",
+   "{0} invites you to the household “{1}”"
+  ],
+  [
    ": {0} par an d'économies repérées",
    ": {0} a year in savings spotted"
   ],
@@ -2610,6 +2666,10 @@
   [
    "Bourse et logement CROUS pour {0}",
    "CROUS grant and housing for {0}"
+  ],
+  [
+   "{0} a encore prélevé votre compte",
+   "{0} charged your account again"
   ],
   [
    "Une veille existe déjà pour {0}.",
@@ -2682,6 +2742,10 @@
   [
    "J'en ai {0} sur {1} assez récent{2}.",
    "I have {0} of {1} recent enough paper{2}."
+  ],
+  [
+   "Découvert probable vers le {0}",
+   "Likely overdraft around {0}"
   ],
   [
    "Le foyer sera supprimé le {0}",
@@ -2864,6 +2928,14 @@
    "{0} transaction{1} added: {3}"
   ],
   [
+   "Rejoindre le foyer : {0}",
+   "Join the household: {0}"
+  ],
+  [
+   "{0} ne prélève plus rien",
+   "{0} no longer charges anything"
+  ],
+  [
    "Lucien - export {0}.zip",
    "Lucien - export {0}.zip"
   ],
@@ -2968,6 +3040,10 @@
    "Your references: {0}."
   ],
   [
+   "{0} sur le compte de {1}",
+   "{0} on {1}'s account"
+  ],
+  [
    "payé par {0} · pour {1}",
    "paid by {0} · for {1}"
   ],
@@ -2994,6 +3070,14 @@
   [
    "{0} : {1} en retard ({2}).",
    "{0}: {1} overdue ({2})."
+  ],
+  [
+   "Tout le détail : {0}",
+   "All the details: {0}"
+  ],
+  [
+   "{0} Jusqu'à {1} par an.",
+   "{0} Up to {1} a year."
   ],
   [
    "Fin du mois, le {0}",
@@ -3026,6 +3110,14 @@
   [
    " · à reconnecter",
    " · to reconnect"
+  ],
+  [
+   "Ouvrir Lucien : {0}",
+   "Open Lucien: {0}"
+  ],
+  [
+   "Jusqu'à {0} par an.",
+   "Up to {0} a year."
   ],
   [
    "· impôt estimé {0}",
@@ -3074,6 +3166,14 @@
   [
    "La semaine de {0}",
    "{0}'s week"
+  ],
+  [
+   "Aujourd'hui : {0}",
+   "Today: {0}"
+  ],
+  [
+   "Dans {0} jours : {1}",
+   "In {0} days: {1}"
   ],
   [
    "À vérifier : {0}",
@@ -3152,6 +3252,10 @@
    "Disconnect {0}"
   ],
   [
+   "{0} prélève {1} € {2}",
+   "{0} will charge {1} € {2}"
+  ],
+  [
    "· {0} à charge",
    "· {0} dependant(s)"
   ],
@@ -3186,6 +3290,10 @@
   [
    "Compte pro {0}",
    "Business account {0}"
+  ],
+  [
+   "Dans {0} jours",
+   "In {0} days"
   ],
   [
    "Dans {0} j : {1}",
@@ -3386,6 +3494,18 @@
   [
    "dimanche {0}",
    "Sunday {0}"
+  ],
+  [
+   "Bonjour {0},",
+   "Hello {0},"
+  ],
+  [
+   "Bonsoir {0},",
+   "Good evening {0},"
+  ],
+  [
+   "Demain : {0}",
+   "Tomorrow: {0}"
   ],
   [
    "Dans {0} : {1}",

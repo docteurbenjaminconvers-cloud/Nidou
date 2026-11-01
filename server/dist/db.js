@@ -232,6 +232,9 @@ export class Db {
         this.hacherJetonsExistants();
         this.raw.exec(SCHEMA);
         // Light migrations for databases created by earlier prototypes.
+        const colsUsers = this.raw.prepare("PRAGMA table_info(users)").all().map((c) => c.name);
+        if (!colsUsers.includes("langue"))
+            this.raw.exec("ALTER TABLE users ADD COLUMN langue TEXT"); // « en » : emails and notifications in English
         const cols = this.raw.prepare("PRAGMA table_info(households)").all().map((c) => c.name);
         if (!cols.includes("essai_fin"))
             this.raw.exec("ALTER TABLE households ADD COLUMN essai_fin TEXT");
@@ -439,9 +442,26 @@ export class Db {
     setModules(id, modules) {
         this.raw.prepare("UPDATE households SET modules = ? WHERE id = ?").run(JSON.stringify(modules), id);
     }
-    /** Household operations without professional accounts (declared in the budget space): the family budget is not the practice's. */
+    /**
+     * Professional accounts, left out of the family budget: those set aside in Budget expert, and the account each
+     * self-employed member uses in Vie pro (declaring it there is enough).
+     */
+    comptesPro(household_id) {
+        const budget = this.getModuleData(household_id, "budget")?.comptes_exclus ?? [];
+        const pro = (this.getModuleData(household_id, "pro")?.personnes ?? [])
+            .map((p) => p.independant?.compte_pro).filter((c) => !!c);
+        const typesPro = this.listBankAccounts(household_id).filter((a) => a.type === "pro").map((a) => a.nom);
+        return new Set([...budget, ...pro, ...typesPro]);
+    }
+    /** Household operations without professional accounts: the family budget is not the practice's. */
+    /** Today's balance of the household accounts (professional accounts left out), or null without a bank connection. */
+    soldeFoyer(household_id) {
+        const exclus = this.comptesPro(household_id);
+        const comptes = this.listBankAccounts(household_id).filter((a) => a.solde !== null && a.solde !== undefined && !exclus.has(a.nom));
+        return comptes.length ? Math.round(comptes.reduce((s, a) => s + Number(a.solde), 0) * 100) / 100 : null;
+    }
     transactionsFoyer(household_id) {
-        const exclus = new Set(this.getModuleData(household_id, "budget")?.comptes_exclus ?? []);
+        const exclus = this.comptesPro(household_id);
         return this.listTransactions(household_id).filter((t) => !t.compte || !exclus.has(t.compte));
     }
     /** Read-only links a self-employed member gives to an accountant or approved management association. */
@@ -533,6 +553,12 @@ export class Db {
         return this.raw.prepare("SELECT * FROM activites WHERE household_id = ? ORDER BY jour, heure_debut, titre").all(household_id);
     }
     // ---------- push subscriptions ----------
+    setLangue(user_id, langue) { this.raw.prepare("UPDATE users SET langue = ? WHERE id = ?").run(langue, user_id); }
+    langueUtilisateur(user_id) {
+        if (!user_id)
+            return "fr";
+        return this.raw.prepare("SELECT langue FROM users WHERE id = ?").get(user_id)?.langue === "en" ? "en" : "fr";
+    }
     savePushSubscription(s) {
         this.raw.prepare("INSERT INTO push_subscriptions (id, household_id, user_id, endpoint, p256dh, auth, appareil, cree_le) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(endpoint) DO UPDATE SET household_id = excluded.household_id, user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth, appareil = excluded.appareil")
             .run(randomUUID(), s.household_id, s.user_id, s.endpoint, s.p256dh, s.auth, s.appareil, this.now());

@@ -74,6 +74,8 @@ export interface Api {
   // accounts & shared household
   moi(): Promise<{ user: { id: string; email: string; prenom: string | null } | null; auth: boolean; foyers: { id: string; nom: string; role: string }[] }>;
   demanderLien(email: string): Promise<{ ok: boolean; envoye: boolean; lien: string | null }>;
+  /** Tells the server the app's language, so emails and notifications follow it. */
+  enregistrerLangue(langue: "fr" | "en"): Promise<void>;
   deconnexion(): Promise<void>;
   comptes(): Promise<{ comptes: { id: string; email: string; prenom: string | null; role: string; rejoint_le: string }[]; invitations: { id: string; email: string; prenom: string | null; expire_le: string }[] }>;
   inviter(email: string, prenom: string | null): Promise<{ ok: boolean; envoye: boolean; lien: string | null }>;
@@ -217,7 +219,8 @@ const serverApi: Api = {
   updateActivite: (id, patch) => call(`/activites/${id}`, json(patch, "PATCH")),
   deleteActivite: async (id) => { await call(`/activites/${id}`, { method: "DELETE" }); },
   moi: () => call("/auth/moi"),
-  demanderLien: (email) => call("/auth/demander", json({ email })),
+  demanderLien: (email) => call("/auth/demander", json({ email, langue: langueChoisie() })),
+  enregistrerLangue: async (langue) => { await call("/moi/langue", json({ langue })).catch(() => {}); },
   deconnexion: async () => { await call("/auth/deconnexion", { method: "POST" }); await viderCacheLocal(); },
   comptes: () => call("/foyer/comptes"),
   inviter: (email, prenom) => call("/invitations", json({ email, prenom })),
@@ -431,6 +434,7 @@ function makeDemoApi(): Api {
     deleteActivite: async (id) => { state.famille.activites = state.famille.activites.filter((x) => x.id !== id); },
     moi: async () => ({ user: { id: "u1", email: "demo@monlucien.fr", prenom: "Moi" }, auth: false, foyers: [{ id: state.household.id, nom: state.household.nom, role: "proprietaire" }] }),
     demanderLien: async () => ({ ok: true, envoye: false, lien: null }),
+    enregistrerLangue: async () => {},
     deconnexion: async () => {},
     comptes: async () => ({ comptes: state.comptes, invitations: state.invitations }),
     inviter: async (email, prenom) => {

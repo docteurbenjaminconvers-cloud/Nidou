@@ -2,15 +2,15 @@ import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 import { demandeAutorisee } from "./auth.js";
 const CSP_APPLI = [
-    "default-src 'self'", "script-src 'self'", "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com data:", "img-src 'self' data: blob:", "media-src 'self' blob:",
-    "connect-src 'self'", "worker-src 'self'", "manifest-src 'self'", "frame-ancestors 'none'", "base-uri 'self'",
+    "default-src 'self'", "script-src 'self'", "style-src 'self' 'unsafe-inline'",
+    "font-src 'self' data:", "img-src 'self' data: blob:", "media-src 'self' blob:",
+    "connect-src 'self'", "frame-src 'self' blob:", "worker-src 'self'", "manifest-src 'self'", "frame-ancestors 'none'", "base-uri 'self'",
     "form-action 'self' https://checkout.stripe.com https://billing.stripe.com", "object-src 'none'",
 ].join("; ");
 /** The marketing site has small inline scripts (forms, languages) and its video. */
 const CSP_SITE = [
-    "default-src 'self'", "script-src 'self' 'unsafe-inline'", "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com", "img-src 'self' data:", "media-src 'self'", "connect-src 'self'",
+    "default-src 'self'", "script-src 'self' 'unsafe-inline'", "style-src 'self' 'unsafe-inline'",
+    "font-src 'self'", "img-src 'self' data:", "media-src 'self'", "connect-src 'self'",
     "frame-ancestors 'none'", "base-uri 'self'", "form-action 'self'", "object-src 'none'",
 ].join("; ");
 export const entetesSecurite = async (c, next) => {
@@ -53,7 +53,7 @@ export function securiser(app) {
     // papers, photos and statements: 15 MB; any other request: 1 MB (refused before reading the body)
     app.use("/api/*", async (c, next) => {
         const p = new URL(c.req.url).pathname;
-        const lourd = (c.req.method === "POST" || c.req.method === "PUT") && /^\/api\/(documents|transactions\/import|members\/[^/]+\/photo|inbox|veilles)$/.test(p);
+        const lourd = (c.req.method === "POST" || c.req.method === "PUT") && /^\/api\/(documents|transactions\/import|members\/[^/]+\/photo|inbox|veilles|espaces\/(?:pro|locatif)\/lire)$/.test(p);
         return bodyLimit({ maxSize: lourd ? 15 * 1024 * 1024 + 64 * 1024 : 1024 * 1024, onError: trop })(c, next);
     });
 }

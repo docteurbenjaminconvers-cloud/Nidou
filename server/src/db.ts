@@ -121,7 +121,7 @@ export interface BankAccountRow {
 }
 
 export interface PushSubscriptionRow { id: string; household_id: string; user_id: string | null; endpoint: string; p256dh: string; auth: string; appareil: string | null; cree_le: string }
-export interface UserRow { id: string; email: string; prenom: string | null; cree_le: string }
+export interface UserRow { id: string; email: string; prenom: string | null; cree_le: string; langue?: string | null }
 export interface AuthLinkRow { token: string; email: string; household_id: string | null; prenom: string | null; invite_par: string | null; expire_le: string; utilise_le: string | null }
 
 export interface HouseholdRow {
@@ -378,6 +378,8 @@ export class Db {
     this.hacherJetonsExistants();
     this.raw.exec(SCHEMA);
     // Light migrations for databases created by earlier prototypes.
+    const colsUsers = (this.raw.prepare("PRAGMA table_info(users)").all() as unknown as { name: string }[]).map((c) => c.name);
+    if (!colsUsers.includes("langue")) this.raw.exec("ALTER TABLE users ADD COLUMN langue TEXT"); // « en » : emails and notifications in English
     const cols = (this.raw.prepare("PRAGMA table_info(households)").all() as unknown as { name: string }[]).map((c) => c.name);
     if (!cols.includes("essai_fin")) this.raw.exec("ALTER TABLE households ADD COLUMN essai_fin TEXT");
     if (!cols.includes("boite_code")) this.raw.exec("ALTER TABLE households ADD COLUMN boite_code TEXT");
@@ -727,6 +729,12 @@ export class Db {
   }
 
   // ---------- push subscriptions ----------
+  setLangue(user_id: string, langue: "fr" | "en") { this.raw.prepare("UPDATE users SET langue = ? WHERE id = ?").run(langue, user_id); }
+  langueUtilisateur(user_id: string | null): "fr" | "en" {
+    if (!user_id) return "fr";
+    return (this.raw.prepare("SELECT langue FROM users WHERE id = ?").get(user_id) as { langue: string | null } | undefined)?.langue === "en" ? "en" : "fr";
+  }
+
   savePushSubscription(s: { household_id: string; user_id: string | null; endpoint: string; p256dh: string; auth: string; appareil: string | null }) {
     this.raw.prepare("INSERT INTO push_subscriptions (id, household_id, user_id, endpoint, p256dh, auth, appareil, cree_le) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(endpoint) DO UPDATE SET household_id = excluded.household_id, user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth, appareil = excluded.appareil")
       .run(randomUUID(), s.household_id, s.user_id, s.endpoint, s.p256dh, s.auth, s.appareil, this.now());
