@@ -158,7 +158,7 @@ export function PageAdmin({ api }: { api: Api }) {
                 <div><b>{x.prenom ?? x.email}</b><span>{x.email} · invité(e) le {dateFr(x.cree_le)}</span></div>
                 <span className={`statut-cab ${x.inscrit ? "valide" : "en_attente"}`}>{x.inscrit ? "Inscrit(e)" : "Pas encore venu(e)"}</span>
               </div>
-              <div className="admin-carte-actions"><button className="link" onClick={async () => { await client.retirerAcces(x.email); setAcces(await client.acces()); info("Retiré(e) de la liste"); }}>Retirer de la liste/button></div>
+              <div className="admin-carte-actions"><button className="link" onClick={async () => { await client.retirerAcces(x.email); setAcces(await client.acces()); info("Retiré(e) de la liste"); }}>Retirer de la liste</button></div>
             </div>
           ))}
         </div>
