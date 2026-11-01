@@ -908,3 +908,10 @@ b, strong { font-weight: 800; }
 .partage-pour { border: 0; padding: 0; margin: 10px 0 0; display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 14px; }
 .partage-pour legend { font-size: 13px; font-weight: 700; color: var(--ink-2, #5b5060); margin-bottom: 6px; }
 .langue-choix { width: auto; min-width: 120px; }
+
+/* iPhone zooms the whole page on a field written smaller than 16px, and stays zoomed: the bottom bar then floats in the
+   middle and menus leave the screen. On touch screens every field is written at 16px at least. */
+@media (pointer: coarse) {
+  input, select, textarea, input.in, .in.mini, .field input, .field select, .search input { font-size: max(16px, 1em) !important; }
+}
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
