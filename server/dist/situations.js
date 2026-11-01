@@ -123,6 +123,23 @@ export const SITUATIONS = [
         ],
     },
     {
+        cle: "pret", titre: "Obtenir un prêt immobilier", accroche: "Capacité d'emprunt, comptes, dossier, assurance, offre : le prêt au meilleur prix.", question: "Date à laquelle il vous faut les fonds", teinte: "moss",
+        icone: "M3 10l9-6 9 6M5 10v9h14v-9M9 19v-5h6v5M12 7.5h.01",
+        etapes: [
+            { cle: "capacite", titre: "Calculer votre capacité d'emprunt", j: -120, ecran: "espace/budget", detail: "Les banques limitent les mensualités de crédit à 35 % des revenus, assurance comprise, sur 25 ans au plus. Lucien calcule votre taux d'endettement actuel et votre reste à vivre dans le Budget expert." },
+            { cle: "comptes", titre: "Soigner vos comptes", j: -110, ecran: "budget", detail: "La banque lit vos 3 derniers relevés : pas de découvert, épargne régulière, pas d'abonnements inutiles ni de crédits renouvelables. Lucien repère ce qui peut faire mauvaise impression." },
+            { cle: "dossier", titre: "Constituer le dossier", j: -100, dossier: "pret", detail: "Pièces d'identité, bulletins de salaire, avis d'impôt, relevés, justificatif d'apport : Lucien rassemble tout et signale ce qui manque ou est trop ancien." },
+            { cle: "comparer", titre: "Comparer les banques, ou passer par un courtier", j: -90, detail: "Taux, frais de dossier, garantie, assurance, conditions de remboursement anticipé : comparez au moins trois offres. Un courtier doit être immatriculé à l'ORIAS.", lien: { libelle: "Vérifier un courtier (ORIAS)", url: "https://www.orias.fr" } },
+            { cle: "assurance", titre: "Comparer l'assurance emprunteur", j: -75, detail: "Vous pouvez choisir une autre assurance que celle de la banque, à garanties équivalentes. Pas de questionnaire de santé si la part assurée est inférieure à 200 000 € par personne et que le prêt se termine avant vos 60 ans." },
+            { cle: "garantie", titre: "Choisir la garantie", j: -60, detail: "Caution d'un organisme spécialisé ou hypothèque : le coût et les frais de sortie diffèrent, demandez le détail." },
+            { cle: "offre", titre: "Recevoir et accepter l'offre de prêt", j: -40, detail: "L'offre est envoyée par écrit et reste valable 30 jours. Vous ne pouvez l'accepter qu'après un délai de réflexion de 10 jours pleins, par écrit." },
+            { cle: "condition", titre: "Respecter la date de la condition suspensive", j: -30, papiers: { categories: ["logement"], motif: "compromis|promesse|vente" }, detail: "Si l'achat est sous condition d'obtention du prêt, prévenez le notaire avant la date fixée au compromis, avec l'offre ou les refus de banque." },
+            { cle: "deblocage", titre: "Signature et déblocage des fonds", j: 0, detail: "Les fonds sont versés au notaire (achat) ou sur présentation des factures (travaux)." },
+            { cle: "ranger", titre: "Ranger l'offre et le tableau d'amortissement", j: 15, ecran: "add", detail: "Lucien suit alors les mensualités dans le budget, le capital restant dû dans le bilan, et la date anniversaire de l'assurance." },
+            { cle: "renegocier", titre: "Revoir l'assurance du prêt", j: 365, detail: "L'assurance emprunteur peut être changée à tout moment, sans frais : faites jouer la concurrence chaque année." },
+        ],
+    },
+    {
         cle: "etudes", titre: "Un enfant part étudier", accroche: "Bourse, logement, APL, assurance, impôts : la rentrée sans oubli.", question: "Date de rentrée", teinte: "lilac",
         icone: "M2 9l10-5 10 5-10 5zM6 11v5c3 2 9 2 12 0v-5",
         etapes: [

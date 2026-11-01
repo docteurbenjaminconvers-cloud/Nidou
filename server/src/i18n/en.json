@@ -2397,7 +2397,33 @@
   "Situation close": "Situation closed",
   "Confirmer": "Confirm",
   "Clore cette situation": "Close this situation",
-  "Situation de vie": "Life situation"
+  "Situation de vie": "Life situation",
+  "Obtenir un prêt immobilier": "Getting a mortgage",
+  "Capacité d'emprunt, comptes, dossier, assurance, offre : le prêt au meilleur prix.": "Borrowing capacity, accounts, file, insurance, offer: the loan at the best price.",
+  "Date à laquelle il vous faut les fonds": "Date you need the funds",
+  "Calculer votre capacité d'emprunt": "Work out how much you can borrow",
+  "Les banques limitent les mensualités de crédit à 35 % des revenus, assurance comprise, sur 25 ans au plus. Lucien calcule votre taux d'endettement actuel et votre reste à vivre dans le Budget expert.": "Banks cap loan repayments at 35% of income, insurance included, over 25 years at most. Lucien works out your current debt ratio and what you have left to live on in Expert budget.",
+  "Soigner vos comptes": "Keep your accounts tidy",
+  "La banque lit vos 3 derniers relevés : pas de découvert, épargne régulière, pas d'abonnements inutiles ni de crédits renouvelables. Lucien repère ce qui peut faire mauvaise impression.": "The bank reads your last 3 statements: no overdraft, regular saving, no needless subscriptions or revolving credit. Lucien spots what could make a bad impression.",
+  "Constituer le dossier": "Put the file together",
+  "Pièces d'identité, bulletins de salaire, avis d'impôt, relevés, justificatif d'apport : Lucien rassemble tout et signale ce qui manque ou est trop ancien.": "ID, payslips, tax notice, statements, proof of deposit: Lucien gathers everything and flags what is missing or too old.",
+  "Comparer les banques, ou passer par un courtier": "Compare banks, or use a broker",
+  "Taux, frais de dossier, garantie, assurance, conditions de remboursement anticipé : comparez au moins trois offres. Un courtier doit être immatriculé à l'ORIAS.": "Rate, arrangement fees, guarantee, insurance, early repayment terms: compare at least three offers. A broker must be registered with ORIAS.",
+  "Vérifier un courtier (ORIAS)": "Check a broker (ORIAS)",
+  "Comparer l'assurance emprunteur": "Compare loan insurance",
+  "Vous pouvez choisir une autre assurance que celle de la banque, à garanties équivalentes. Pas de questionnaire de santé si la part assurée est inférieure à 200 000 € par personne et que le prêt se termine avant vos 60 ans.": "You can choose another insurer than the bank's, with equivalent cover. No health questionnaire if the insured share is under €200,000 per person and the loan ends before your 60th birthday.",
+  "Choisir la garantie": "Choose the guarantee",
+  "Caution d'un organisme spécialisé ou hypothèque : le coût et les frais de sortie diffèrent, demandez le détail.": "Surety from a specialist body or mortgage charge: costs and exit fees differ, ask for the details.",
+  "Recevoir et accepter l'offre de prêt": "Receive and accept the loan offer",
+  "L'offre est envoyée par écrit et reste valable 30 jours. Vous ne pouvez l'accepter qu'après un délai de réflexion de 10 jours pleins, par écrit.": "The offer is sent in writing and stays valid for 30 days. You can only accept it in writing after a full 10-day cooling-off period.",
+  "Respecter la date de la condition suspensive": "Meet the loan condition deadline",
+  "Si l'achat est sous condition d'obtention du prêt, prévenez le notaire avant la date fixée au compromis, avec l'offre ou les refus de banque.": "If the purchase depends on getting the loan, tell the notary before the date set in the preliminary contract, with the offer or the banks' refusals.",
+  "Signature et déblocage des fonds": "Signing and release of funds",
+  "Les fonds sont versés au notaire (achat) ou sur présentation des factures (travaux).": "Funds are paid to the notary (purchase) or against invoices (works).",
+  "Ranger l'offre et le tableau d'amortissement": "File the offer and the repayment schedule",
+  "Lucien suit alors les mensualités dans le budget, le capital restant dû dans le bilan, et la date anniversaire de l'assurance.": "Lucien then follows the repayments in the budget, the outstanding capital in the balance sheet, and the insurance anniversary.",
+  "Revoir l'assurance du prêt": "Review the loan insurance",
+  "L'assurance emprunteur peut être changée à tout moment, sans frais : faites jouer la concurrence chaque année.": "Loan insurance can be switched at any time, free of charge: shop around every year."
  },
  "motifs": [
   [
@@ -3067,6 +3093,10 @@
   [
    "Déclaration 2035 des revenus {0}",
    "2035 return for {0} income"
+  ],
+  [
+   "Obtenir un prêt immobilier : {0}",
+   "Getting a mortgage: {0}"
   ],
   [
    "{0} par an d'économies repérées",
