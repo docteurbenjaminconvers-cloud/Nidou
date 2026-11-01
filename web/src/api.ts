@@ -660,16 +660,22 @@ function makeVeilleDemo(state: VeilleDemoState, household: () => Household, memb
 
 let instance: Api | null = null;
 
-/** Picks the server when /api answers, the demo adapter otherwise. */
+/**
+ * The demo runs only where there is no Lucien server: the published site (github.io) and a local preview without API.
+ * Anywhere else the app IS served by the Lucien server, so it never falls back to the demo, even when the server is slow
+ * to answer (cold start, weak phone network): it waits for it instead of showing a fictitious family.
+ */
 export async function getApi(): Promise<Api> {
   if (instance) return instance;
-  try {
-    const r = await fetch("/api/household", { signal: AbortSignal.timeout(2500) });
-    // 200: a server with a session; 401: a server that wants a login (the app shows the login screen).
-    if ((r.ok || r.status === 401) && (r.headers.get("content-type") ?? "").includes("json")) { instance = serverApi; return instance; }
-  } catch {}
-  instance = makeDemoApi();
-  return instance;
+  if (/\.github\.io$/.test(location.hostname)) return (instance = makeDemoApi());
+  const local = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+  for (const delai of local ? [2500] : [4000, 30000]) {
+    try {
+      const r = await fetch("/api/household", { signal: AbortSignal.timeout(delai) });
+      if ((r.headers.get("content-type") ?? "").includes("json")) return (instance = serverApi);
+    } catch { /* slow or unreachable: try again with more patience */ }
+  }
+  return (instance = local ? makeDemoApi() : serverApi);
 }
 
 export { ApiError };
