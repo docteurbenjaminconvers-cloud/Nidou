@@ -72,14 +72,14 @@ export class EbClient {
     return (res.status === 204 ? {} : await res.json()) as T;
   }
 
-  aspsps(country = "FR") { return this.call<{ aspsps: EbAspsp[] }>("GET", `/aspsps?country=${country}&psu_type=personal`).then((r) => r.aspsps ?? []); }
+  aspsps(country = "FR", psuType: "personal" | "business" = "personal") { return this.call<{ aspsps: EbAspsp[] }>("GET", `/aspsps?country=${country}&psu_type=${psuType}`).then((r) => r.aspsps ?? []); }
 
   /** Returns the bank's login URL. `state` comes back on the callback and tells us whose connection it is. */
-  startAuth(aspsp: { name: string; country: string }, state: string, maxDays?: number) {
+  startAuth(aspsp: { name: string; country: string }, state: string, maxDays?: number, psuType: "personal" | "business" = "personal") {
     const days = Math.min(this.cfg.consentDays, maxDays ? Math.floor(maxDays / 86400) || this.cfg.consentDays : this.cfg.consentDays);
     return this.call<{ url: string; authorization_id?: string }>("POST", "/auth", {
       access: { valid_until: new Date(Date.now() + days * 864e5).toISOString() },
-      aspsp, state, redirect_url: `${this.cfg.publicUrl}/api/bank/eb/callback`, psu_type: "personal",
+      aspsp, state, redirect_url: `${this.cfg.publicUrl}/api/bank/eb/callback`, psu_type: psuType,
     });
   }
 
@@ -181,14 +181,18 @@ export async function ebSyncHousehold(db: Db, client: EbClient, householdId: str
   return { comptes: comptes.length, lues, ajoutees, derniere_synchro: now };
 }
 
-/** Bank list for the picker, cached a day (it barely changes). */
-let cacheBanques: { at: number; list: EbAspsp[] } | null = null;
-export async function banquesFR(client: EbClient): Promise<EbAspsp[]> {
-  if (cacheBanques && Date.now() - cacheBanques.at < 864e5) return cacheBanques.list;
-  const list = (await client.aspsps("FR")).filter((a) => !a.psu_types || a.psu_types.includes("personal")).sort((x, y) => x.name.localeCompare(y.name, "fr"));
-  cacheBanques = { at: Date.now(), list };
+/** Bank list for the picker, personal or business logins, cached a day (it barely changes). */
+const cacheBanques = new Map<string, { at: number; list: EbAspsp[] }>();
+export async function banquesFR(client: EbClient, psuType: "personal" | "business" = "personal"): Promise<EbAspsp[]> {
+  const c = cacheBanques.get(psuType);
+  if (c && Date.now() - c.at < 864e5) return c.list;
+  const list = (await client.aspsps("FR", psuType)).filter((a) => !a.psu_types || a.psu_types.includes(psuType)).sort((x, y) => x.name.localeCompare(y.name, "fr"));
+  cacheBanques.set(psuType, { at: Date.now(), list });
   return list;
 }
+
+/** Simulated mode: banks offering a professional login. */
+export const BANQUES_PRO_DEMO: EbAspsp[] = ["Qonto", "Shine", "BNP Paribas Pro", "Crédit Agricole Pro", "LCL Professionnels", "Société Générale Pro"].map((name) => ({ name, country: "FR" }));
 
 /** Simulated mode (no keys): a short list so the picker can be tried. */
 export const BANQUES_DEMO: EbAspsp[] = ["BNP Paribas", "Boursorama", "Caisse d'Épargne", "Crédit Agricole", "Crédit Mutuel", "La Banque Postale", "LCL", "Société Générale"].map((name) => ({ name, country: "FR" }));

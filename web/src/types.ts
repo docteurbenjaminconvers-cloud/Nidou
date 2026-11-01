@@ -186,7 +186,9 @@ export interface BankStatus {
   expire_le?: string | null;
   statut: "aucune" | "en_attente" | "connecte" | "erreur";
   derniere_synchro: string | null;
-  comptes: { id: string; nom: string; banque: string | null; solde: number | null; devise: string | null; maj_le: string | null }[];
+  comptes: { id: string; nom: string; banque: string | null; solde: number | null; devise: string | null; maj_le: string | null; pro?: boolean }[];
+  /** Further banks: another personal bank, or professional accounts (business login). */
+  connexions?: { id: string; usage: "perso" | "pro"; banque: string; statut: "en_attente" | "connecte" | "erreur"; expire_le: string | null; derniere_synchro: string | null }[];
 }
 
 export interface Banque { name: string; country: string; logo?: string; maximum_consent_validity?: number }

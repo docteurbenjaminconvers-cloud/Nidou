@@ -2018,7 +2018,21 @@
   "Importer un relevé du compte pro": "Import a business account statement",
   "Ajouter un relevé": "Add a statement",
   "Aucun compte pour l'instant": "No account yet",
-  "Le compte pro est tenu à part du budget du foyer. Connectez-le depuis Budget (choix « Compte professionnel »), ou importez un relevé :": "The business account is kept apart from the household budget. Connect it from Budget (choose “Business account”), or import a statement:"
+  "Le compte pro est tenu à part du budget du foyer. Connectez-le depuis Budget (choix « Compte professionnel »), ou importez un relevé :": "The business account is kept apart from the household budget. Connect it from Budget (choose “Business account”), or import a statement:",
+  "Choisissez la banque du compte professionnel : vous vous connecterez avec vos identifiants « pro ».": "Choose the bank of the business account: you will log in with your business credentials.",
+  "La liste des banques n'a pas pu être chargée.": "The list of banks could not be loaded.",
+  "Connecter le compte pro": "Connect the business account",
+  "Deuxième banque connectée": "Second bank connected",
+  "à part du budget du foyer": "kept apart from the household budget",
+  "compte professionnel": "business account",
+  "compte personnel": "personal account",
+  "Un autre compte personnel": "Another personal account",
+  "Un compte professionnel": "A business account",
+  "+ Ajouter une banque": "+ Add a bank",
+  "Indépendant ou micro-entrepreneur ? Votre compte pro se connecte à part, il ne se mélange pas au budget du foyer.": "Self-employed or micro-entrepreneur? Your business account connects separately and never mixes with the household budget.",
+  "Connecter un compte professionnel": "Connect a business account",
+  "Le compte pro est tenu à part du budget du foyer. Connectez-le avec vos identifiants « pro », ou importez un relevé :": "The business account is kept apart from the household budget. Connect it with your business credentials, or import a statement:",
+  "la banque": "the bank"
  },
  "motifs": [
   [
@@ -2360,6 +2374,10 @@
   [
    "Le préavis de {0} jours est dépassé pour cette échéance{1}.",
    "The {0}-day notice period has passed for this deadline{1}."
+  ],
+  [
+   "{0} connecté : compte pro tenu à part du budget du foyer",
+   "{0} connected: business account kept apart from the household budget"
   ],
   [
    "Cantine de {0} : vérifier le tarif au quotient familial",
@@ -3006,6 +3024,10 @@
    "Pass'Sport for {0}"
   ],
   [
+   " · à reconnecter",
+   " · to reconnect"
+  ],
+  [
    "· impôt estimé {0}",
    "· estimated tax {0}"
   ],
@@ -3122,6 +3144,14 @@
    "Q{0} {1}"
   ],
   [
+   "{0} déconnectée",
+   "{0} disconnected"
+  ],
+  [
+   "Déconnecter {0}",
+   "Disconnect {0}"
+  ],
+  [
    "· {0} à charge",
    "· {0} dependant(s)"
   ],
@@ -3224,6 +3254,10 @@
   [
    "Supprimer {0}",
    "Delete {0}"
+  ],
+  [
+   "{0} connectée",
+   "{0} connected"
   ],
   [
    "remis à {0},",

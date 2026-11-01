@@ -4,6 +4,7 @@ import { envoyerEmail } from "./mail.js";
 import { envoyerPush } from "./push.js";
 import { bridgeConfig, BridgeClient, mapTransactions, syncHousehold } from "./bridge.js";
 import { ebConfig, EbClient, ebSyncHousehold, mapEbTransactions } from "./enablebanking.js";
+import { ebSynchroSup, ensureConnexionsSchema, listConnexions } from "./connexions.js";
 
 /**
  * Which bank connector runs: Enable Banking when its keys are set (billed per connected account, calls included),
@@ -61,12 +62,28 @@ export async function synchroniserVeille(db: Db, v: V.VeilleRow) {
 }
 
 /** Household sync with whichever connector holds the link. */
-export async function synchroniserFoyer(db: Db, householdId: string) {
+async function synchroniserLienPrincipal(db: Db, householdId: string) {
   const link = db.getBankLink(householdId);
-  if (!link) throw new Error("Aucune connexion bancaire pour ce foyer");
+  if (!link) return null;
   if (link.fournisseur === "enablebanking") { const c = eb(); if (!c) throw new Error("Enable Banking n'est pas configuré"); return ebSyncHousehold(db, c, householdId); }
   const b = bridge(); if (!b) throw new Error("Bridge n'est pas configuré");
   return syncHousehold(db, b.client, householdId);
+}
+
+/** Household sync: the main link, then every extra bank (another personal bank, professional accounts). */
+export async function synchroniserFoyer(db: Db, householdId: string) {
+  const sups = listConnexions(db, householdId).filter((c) => c.fournisseur === "enablebanking" && c.statut !== "en_attente");
+  if (!db.getBankLink(householdId) && !sups.length) throw new Error("Aucune connexion bancaire pour ce foyer");
+  const r = (await synchroniserLienPrincipal(db, householdId)) ?? { comptes: 0, lues: 0, ajoutees: 0, derniere_synchro: new Date().toISOString() };
+  const client = eb();
+  const erreurs: string[] = [];
+  for (const c of sups) {
+    if (!client) break;
+    try { const x = await ebSynchroSup(db, client, c); r.comptes += x.comptes; r.lues += x.lues; r.ajoutees += x.ajoutees; }
+    catch (e) { erreurs.push((e as Error).message); console.error("[banque]", c.banque, (e as Error).message); }
+  }
+  if (erreurs.length && !r.comptes) throw new Error(erreurs[0]);
+  return r;
 }
 
 /**
@@ -76,7 +93,8 @@ export async function synchroniserFoyer(db: Db, householdId: string) {
 export async function tacheBanques(db: Db): Promise<{ foyers: number; veilles: number; erreurs: number }> {
   if (!ebConfig()) return { foyers: 0, veilles: 0, erreurs: 0 };
   let foyers = 0, veilles = 0, erreurs = 0;
-  const links = db.raw.prepare("SELECT household_id FROM bank_links WHERE fournisseur = 'enablebanking' AND statut = 'connecte'").all() as { household_id: string }[];
+  ensureConnexionsSchema(db);
+  const links = db.raw.prepare("SELECT household_id FROM bank_links WHERE fournisseur = 'enablebanking' AND statut = 'connecte' UNION SELECT household_id FROM bank_connexions WHERE fournisseur = 'enablebanking' AND statut = 'connecte'").all() as { household_id: string }[];
   for (const l of links) { try { await synchroniserFoyer(db, l.household_id); foyers++; } catch (e) { erreurs++; console.error("[banque]", l.household_id, (e as Error).message); } }
   const vs = db.raw.prepare("SELECT * FROM veilles WHERE statut = 'active' AND bridge_user_uuid LIKE 'eb:%'").all() as unknown as V.VeilleRow[];
   for (const v of vs) { try { await synchroniserVeille(db, v); veilles++; } catch (e) { erreurs++; console.error("[veille banque]", v.id, (e as Error).message); } }

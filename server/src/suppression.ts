@@ -16,6 +16,7 @@ import type { Db } from "./db.js";
 import { BridgeClient, bridgeConfig } from "./bridge.js";
 import { EbClient, ebConfig } from "./enablebanking.js";
 import { envoyerEmail } from "./mail.js";
+import { couperConnexions } from "./connexions.js";
 
 export function ensureSuppressionSchema(db: Db) {
   const cols = (db.raw.prepare("PRAGMA table_info(households)").all() as unknown as { name: string }[]).map((c) => c.name);
@@ -78,6 +79,7 @@ async function arreterMaintenant(db: Db, householdId: string, client?: Stripe) {
 
 /** Revokes the bank access at the aggregator; failures are logged, never block the deletion. */
 async function couperBanque(db: Db, householdId: string) {
+  { const cfg = ebConfig(); await couperConnexions(db, cfg ? new EbClient(cfg) : null, householdId).catch((e) => console.error("[suppression] banques supplémentaires :", (e as Error).message)); }
   const link = db.getBankLink(householdId);
   if (!link || link.user_uuid.startsWith("attente:")) return;
   try {

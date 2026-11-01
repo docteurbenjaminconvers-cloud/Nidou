@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Api } from "../api";
 import { livreCsv, MICRO, RUBRIQUES, cleLibelle, type PersonnePro, type RapportMicro, type Rubrique, type TypeMicro } from "../../../server/src/viePro";
 import { PartageComptablePanneau } from "./Comptable";
+import { ConnecterPro } from "./BankLink";
 import { Alertes, Champ, Chiffres, dateFr, EnTete, eur, moisCourt, telecharger, useEspace, Verrou, LireDocument } from "./espacesCommun";
 
 /** A statement of the professional account (CSV or PDF), for a bank that cannot be connected, or to add earlier months. */
@@ -177,7 +178,7 @@ export function EspacePro({ api, go, onBack, toast }: { api: Api; go: (s: string
             <div className="pills">
               {!p.salarie && <LireDocument api={api} espace="pro" libelle="Lire un bulletin de salaire" opts={{ member_id: p.member_id }} toast={toast} onFait={charger} primaire />}
               {!p.salarie && <button className="pill" onClick={() => setNouveau("salarie")}>+ {p.prenom === "Moi" ? "Je suis salarié·e" : `${p.prenom} est salarié·e`}</button>}
-              {!p.independant && <button className="pill" onClick={() => { setNouveau("independant"); setForm({ ...form, compte_pro: data.comptes[0] ?? "" }); }}>+ {p.prenom === "Moi" ? "J'ai une activité d'indépendant" : `${p.prenom} a une activité d'indépendant`}</button>}
+              {!p.independant && <button className="pill" onClick={() => { setNouveau("independant"); setForm({ ...form, compte_pro: data.comptes.find((c) => c.startsWith("Pro ")) ?? data.comptes[0] ?? "" }); }}>+ {p.prenom === "Moi" ? "J'ai une activité d'indépendant" : `${p.prenom} a une activité d'indépendant`}</button>}
             </div>
           ) : (
             <div className="lock form-espace">
@@ -198,8 +199,9 @@ export function EspacePro({ api, go, onBack, toast }: { api: Api; go: (s: string
                     <Champ label="Versement libératoire de l'impôt"><input type="checkbox" checked={form.vl} onChange={(e) => setForm({ ...form, vl: e.target.checked })} /></Champ>
                   </>}
                   <Champ label="Compte professionnel"><select className="in" value={form.compte_pro} onChange={(e) => setForm({ ...form, compte_pro: e.target.value })}>{[...new Set([...data.comptes, ...(form.compte_pro ? [form.compte_pro] : [])])].length ? [...new Set([...data.comptes, ...(form.compte_pro ? [form.compte_pro] : [])])].map((c) => <option key={c}>{c}</option>) : <option value="">Aucun compte pour l'instant</option>}</select></Champ>
-                  <p className="note" style={{ margin: "4px 0 8px" }}>Le compte pro est tenu à part du budget du foyer. Connectez-le depuis Budget (choix « Compte professionnel »), ou importez un relevé :</p>
-                  <ImportReleve api={api} compte={`Compte pro ${p.prenom === "Moi" ? "" : p.prenom}`.trim()} libelle="Importer un relevé du compte pro" toast={toast} onFait={(c) => { setForm({ ...form, compte_pro: c }); charger(); }} />
+                  <p className="note" style={{ margin: "4px 0 8px" }}>Le compte pro est tenu à part du budget du foyer. Connectez-le avec vos identifiants « pro », ou importez un relevé :</p>
+                  <div className="pills"><ConnecterPro api={api} toast={toast} onFait={async () => { await charger(); }} />
+                  <ImportReleve api={api} compte={`Compte pro ${p.prenom === "Moi" ? "" : p.prenom}`.trim()} libelle="Importer un relevé du compte pro" toast={toast} onFait={(c) => { setForm({ ...form, compte_pro: c }); charger(); }} /></div>
                 </>
               )}
               <div style={{ display: "flex", gap: 10, marginTop: 10 }}><button className="btn" onClick={creer}>Enregistrer</button><button className="btn ghost" onClick={() => setNouveau(null)}>Annuler</button></div>

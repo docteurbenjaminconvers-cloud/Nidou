@@ -935,3 +935,8 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .import-releve { cursor: pointer; display: inline-flex; margin-top: 6px; }
 .import-releve.occupe { opacity: .6; }
 .carte-pro .import-releve { align-self: flex-start; font-size: 13px; }
+.badge-pro { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: var(--lilac-soft, #ece3f3); color: var(--lilac-ink, #5b4372); font-size: 11px; font-weight: 800; vertical-align: 2px; }
+.connexions-sup { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 6px; }
+.connexion-sup { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13.5px; color: var(--mist); padding: 4px 0; }
+.ajout-banque { margin-top: 8px; }
+.connecter-pro { margin-top: 8px; }

@@ -611,7 +611,8 @@ export class Db {
     const budget = this.getModuleData<{ comptes_exclus?: string[] }>(household_id, "budget")?.comptes_exclus ?? [];
     const pro = (this.getModuleData<{ personnes?: { independant?: { compte_pro?: string } | null }[] }>(household_id, "pro")?.personnes ?? [])
       .map((p) => p.independant?.compte_pro).filter((c): c is string => !!c);
-    return new Set([...budget, ...pro]);
+    const typesPro = this.listBankAccounts(household_id).filter((a) => a.type === "pro").map((a) => a.nom);
+    return new Set([...budget, ...pro, ...typesPro]);
   }
   /** Household operations without professional accounts: the family budget is not the practice's. */
   /** Today's balance of the household accounts (professional accounts left out), or null without a bank connection. */

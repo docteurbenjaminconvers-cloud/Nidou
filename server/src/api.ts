@@ -20,7 +20,8 @@ import * as V from "./veille.js";
 import { ajouterVeillePayante, basculerAssistant, PaiementIndisponible, simulationPaiement, ConsentementRequis } from "./abonnement.js";
 import { AssistantErreur, ensureAssistantSchema, etatAssistant, repondre } from "./assistant.js";
 import { bridge, eb, fournisseur, notifierAlertes, synchroniserFoyer, synchroniserVeille } from "./banques.js";
-import { banquesFR, BANQUES_DEMO, ebConnectHousehold, ebFinishHousehold, ensureEbSchema, linkExtra, newState } from "./enablebanking.js";
+import { ebConnecterSup, ebSynchroSup, ebTerminerSup, listConnexions, simulerConnexionSup, supprimerConnexion } from "./connexions.js";
+import { banquesFR, BANQUES_DEMO, BANQUES_PRO_DEMO, ebConnectHousehold, ebFinishHousehold, ensureEbSchema, linkExtra, newState } from "./enablebanking.js";
 import { envoyerEmail } from "./mail.js";
 import { envoyerPush, pushOn } from "./push.js";
 import { appliquerAbonnement, capaciteComptes, creerCheckout, FORMULES, portail, resumeAbonnement, traiterWebhook, type Formule } from "./abonnement.js";
@@ -890,7 +891,8 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
       expire_le: link ? linkExtra(db, h.id)?.expire_le ?? null : null,
       statut: link?.statut ?? "aucune",
       derniere_synchro: link?.derniere_synchro ?? null,
-      comptes: db.listBankAccounts(h.id).map((a) => ({ id: a.id, nom: a.nom, banque: a.banque, solde: a.solde, devise: a.devise, maj_le: a.maj_le })),
+      comptes: db.listBankAccounts(h.id).map((a) => ({ id: a.id, nom: a.nom, banque: a.banque, solde: a.solde, devise: a.devise, maj_le: a.maj_le, pro: a.type === "pro" })),
+      connexions: listConnexions(db, h.id).map((x) => ({ id: x.id, usage: x.usage, banque: x.banque, statut: x.statut, expire_le: x.expire_le, derniere_synchro: x.derniere_synchro })),
     });
   });
 
@@ -899,13 +901,21 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     const h = household(c);
     if (h.plan === "gratuit") return c.json({ error: "limite_plan", message: "La connexion bancaire automatique fait partie de la formule complète." }, 402);
     const f = fournisseur();
-    if (f === "simule") return c.json(await simulatedConnect(db, h.id));
+    const corps = await c.req.json().catch(() => ({}));
+    // « pro » (business login) or a further personal bank go to the extra connections; the first personal bank stays the main link
+    const usage = z.enum(["perso", "pro"]).catch("perso").parse((corps as { usage?: unknown }).usage);
+    const principal = db.getBankLink(h.id);
+    const supplementaire = usage === "pro" || (!!principal && principal.statut === "connecte");
+    if (f === "simule") {
+      if (supplementaire) { const nom = z.object({ aspsp: z.object({ name: z.string().max(120) }).optional() }).catch({}).parse(corps).aspsp?.name; simulerConnexionSup(db, h.id, usage, nom); return c.json({ url: null, ajoute: true }); }
+      return c.json(await simulatedConnect(db, h.id));
+    }
     if (f === "enablebanking") {
-      const body = z.object({ aspsp: z.object({ name: z.string(), country: z.string().length(2), maximum_consent_validity: z.number().optional() }) }).parse(await c.req.json());
-      return c.json(await ebConnectHousehold(db, eb()!, h.id, body.aspsp));
+      const body = z.object({ aspsp: z.object({ name: z.string(), country: z.string().length(2), maximum_consent_validity: z.number().optional() }) }).parse(corps);
+      return c.json(supplementaire ? await ebConnecterSup(db, eb()!, h.id, body.aspsp, usage) : await ebConnectHousehold(db, eb()!, h.id, body.aspsp));
     }
     const b = bridge()!;
-    const body = z.object({ email: z.string().email() }).parse(await c.req.json().catch(() => ({})));
+    const body = z.object({ email: z.string().email() }).parse(corps);
     let userUuid = db.getBankLink(h.id)?.user_uuid;
     if (!userUuid) {
       const externalId = `lucien-${h.id}`;
@@ -938,7 +948,8 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     const h = household(c);
     try {
       const link = db.getBankLink(h.id);
-      return c.json(!link || link.fournisseur === "simule" || fournisseur() === "simule" ? await simulatedSync(db, h.id) : await synchroniserFoyer(db, h.id));
+      if (link?.fournisseur === "simule" || fournisseur() === "simule") return c.json(link ? await simulatedSync(db, h.id) : { comptes: 0, lues: 0, ajoutees: 0, derniere_synchro: new Date().toISOString() });
+      return c.json(await synchroniserFoyer(db, h.id));
     } catch (e) {
       return c.json({ error: "synchro", message: e instanceof Error ? e.message : "Synchronisation impossible" }, 502);
     }
@@ -947,7 +958,8 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
   /** Banks the family can pick (Enable Banking needs Lucien to show the list; Bridge shows its own). */
   api.get("/bank/banques", async (c) => {
     const c2 = eb();
-    return c.json({ fournisseur: fournisseur(), banques: c2 ? await banquesFR(c2) : BANQUES_DEMO });
+    const pro = c.req.query("usage") === "pro";
+    return c.json({ fournisseur: fournisseur(), banques: c2 ? await banquesFR(c2, pro ? "business" : "personal") : pro ? BANQUES_PRO_DEMO : BANQUES_DEMO });
   });
 
   /** Enable Banking sends the person back here, for the household (state "h.") or a protected relative (state "v."). */
@@ -969,6 +981,14 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
       return c.redirect(`/#/consentement/${v.jeton}?banque=abandon`);
     }
     if (!client || !code || err) return c.redirect("/#budget?bank=abandon");
+    if (state.startsWith("s.")) {
+      try {
+        const cx = await ebTerminerSup(db, client, state, code);
+        if (!cx) return c.redirect("/#budget?bank=abandon");
+        await ebSynchroSup(db, client, cx).catch((e) => console.error("sync après connexion :", e));
+        return c.redirect(cx.usage === "pro" ? "/#module/pro" : "/#budget");
+      } catch (e) { console.error("eb callback (banque supplémentaire) :", e); return c.redirect("/#budget?bank=abandon"); }
+    }
     try {
       const hid = await ebFinishHousehold(db, client, state, code);
       if (!hid) return c.redirect("/#budget?bank=abandon");
@@ -978,6 +998,12 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
       console.error("eb callback :", e);
       return c.redirect("/#budget?bank=abandon");
     }
+  });
+
+  /** Disconnects one extra bank (another personal bank or a professional account). */
+  api.delete("/bank/connexions/:id", async (c) => {
+    const ok = await supprimerConnexion(db, eb(), household(c).id, c.req.param("id"));
+    return ok ? c.json({ ok: true }) : c.json({ error: "introuvable" }, 404);
   });
 
   api.delete("/bank", async (c) => {

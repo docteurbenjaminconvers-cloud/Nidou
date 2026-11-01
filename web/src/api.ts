@@ -53,8 +53,10 @@ export interface Api {
   annulerResiliation(cle: string): Promise<void>;
   lettreRemboursement(cle: string): Promise<{ lettre: string }>;
   bankStatus(): Promise<BankStatus>;
-  bankConnect(email: string, aspsp?: Banque): Promise<{ url: string }>;
-  banques(): Promise<BanquesReport>;
+  bankConnect(email: string, aspsp?: Banque, usage?: "perso" | "pro"): Promise<{ url: string | null; ajoute?: boolean }>;
+  banques(usage?: "perso" | "pro"): Promise<BanquesReport>;
+  /** Disconnects one further bank (personal or professional). */
+  supprimerConnexion(id: string): Promise<void>;
   bankSync(): Promise<{ comptes: number; lues: number; ajoutees: number }>;
   bankDisconnect(): Promise<void>;
   famille(): Promise<FamilleReport>;
@@ -198,8 +200,9 @@ const serverApi: Api = {
   annulerResiliation: async (cle) => { await call(`/resiliations/${encodeURIComponent(cle)}`, { method: "DELETE" }); },
   lettreRemboursement: (cle) => call(`/resiliations/${encodeURIComponent(cle)}/remboursement`),
   bankStatus: () => call("/bank/status"),
-  bankConnect: (email, aspsp) => call("/bank/connect", json(aspsp ? { aspsp } : { email })),
-  banques: () => call("/bank/banques"),
+  bankConnect: (email, aspsp, usage) => call("/bank/connect", json({ ...(aspsp ? { aspsp } : { email }), ...(usage ? { usage } : {}) })),
+  banques: (usage) => call(`/bank/banques${usage === "pro" ? "?usage=pro" : ""}`),
+  supprimerConnexion: async (id) => { await call(`/bank/connexions/${encodeURIComponent(id)}`, { method: "DELETE" }); },
   bankSync: () => call("/bank/sync", { method: "POST" }),
   bankDisconnect: async () => { await call("/bank", { method: "DELETE" }); },
   famille: () => call("/famille"),
@@ -294,6 +297,7 @@ function makeDemoApi(): Api {
     deadlines: structuredClone(demoDeadlines) as Deadline[],
     imported: false,
     bank: false,
+    connexions: [] as { id: string; usage: "perso" | "pro"; banque: string; compte: string }[],
     decisions: {} as Record<string, string>,
     famille: structuredClone(demoFamille) as unknown as FamilleReport,
     comptes: [{ id: "u1", email: "demo@monlucien.fr", prenom: "Moi", role: "proprietaire", rejoint_le: "2026-10-01T09:00:00.000Z" }, { id: "u2", email: "camille@example.org", prenom: "Camille", role: "membre", rejoint_le: "2026-10-02T18:30:00.000Z" }],
@@ -385,10 +389,24 @@ function makeDemoApi(): Api {
     lettreRemboursement: async () => ({ lettre: "En démonstration, aucun prélèvement n'est revenu." }),
     bankStatus: async () => ({
       fournisseur: "simule", connecte: state.bank, statut: state.bank ? "connecte" : "aucune", derniere_synchro: state.bank ? new Date().toISOString() : null,
-      comptes: state.bank ? [{ id: "sim:1", nom: "Compte joint", banque: "Banque de démonstration", solde: 2487.91, devise: "EUR", maj_le: new Date().toISOString() }] : [],
+      comptes: [
+        ...(state.bank ? [{ id: "sim:1", nom: "Compte joint", banque: "Banque de démonstration", solde: 2487.91, devise: "EUR", maj_le: new Date().toISOString() }] : []),
+        ...state.connexions.map((c) => ({ id: `sim:${c.id}`, nom: c.compte, banque: c.banque, solde: c.usage === "pro" ? 6420.5 : 1310.2, devise: "EUR", maj_le: new Date().toISOString(), pro: c.usage === "pro" })),
+      ],
+      connexions: state.connexions.map((c) => ({ id: c.id, usage: c.usage, banque: c.banque, statut: "connecte" as const, expire_le: null, derniere_synchro: new Date().toISOString() })),
     }),
-    banques: async () => ({ fournisseur: "simule", banques: [] }),
-    bankConnect: async () => { await new Promise((r) => setTimeout(r, 900)); state.bank = true; state.imported = true; return { url: "" }; },
+    banques: async (usage) => ({ fournisseur: "simule", banques: usage === "pro" ? ["Qonto", "Shine", "BNP Paribas Pro", "Crédit Agricole Pro", "LCL Professionnels"].map((name) => ({ name, country: "FR" })) : [] }),
+    bankConnect: async (_email, aspsp, usage) => {
+      await new Promise((r) => setTimeout(r, 900));
+      if (usage === "pro" || (usage === "perso" && state.bank)) {
+        // the demo's professional statement is Camille's practice account: connecting a pro bank attaches it
+        const banque = aspsp?.name ?? (usage === "pro" ? "Banque pro" : "Deuxième banque");
+        state.connexions.push({ id: nouvelId(), usage: usage ?? "perso", banque, compte: usage === "pro" ? COMPTE_PRO_DEMO : `Compte courant (${banque})` });
+        return { url: null, ajoute: true };
+      }
+      state.bank = true; state.imported = true; return { url: "" };
+    },
+    supprimerConnexion: async (id) => { state.connexions = state.connexions.filter((c) => c.id !== id); },
     bankSync: async () => { await new Promise((r) => setTimeout(r, 700)); return { comptes: 1, lues: 127, ajoutees: 0 }; },
     bankDisconnect: async () => { state.bank = false; },
     // Family: demo state is edited in memory; computed parts (agenda, costs) are recomputed locally.
