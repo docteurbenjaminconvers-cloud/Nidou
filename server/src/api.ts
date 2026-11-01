@@ -29,6 +29,7 @@ import { pointDuFoyer } from "./hebdo.js";
 import { monterEspaces } from "./espaces.js";
 import { adminOk, monterPartenaires } from "./partenaires.js";
 import { monterSupport } from "./support.js";
+import { accesAutorise, MESSAGE_FERME, monterAcces } from "./acces.js";
 import { monterPartages } from "./partages.js";
 import { monterSituations } from "./situationsApi.js";
 import { bordereau, etatDossiers, etatKit, KITS } from "./dossiers.js";
@@ -103,6 +104,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     const body = z.object({ email: z.string(), langue: z.enum(["fr", "en"]).optional() }).parse(await c.req.json());
     const email = body.email.trim().toLowerCase();
     if (!emailValide(email)) return c.json({ error: "email", message: "Adresse email invalide." }, 400);
+    if (!accesAutorise(db, email)) return c.json({ error: "sur_invitation", message: MESSAGE_FERME }, 403);
     const ip = (c.req.header("x-forwarded-for") ?? "").split(",")[0].trim() || c.req.header("x-real-ip") || "inconnue";
     if (!demandeAutorisee(`ip:${ip}`, 10) || !demandeAutorisee(`email:${email}`, 3))
       return c.json({ error: "trop_de_demandes", message: "Trop de demandes de lien. Réessayez dans 15 minutes." }, 429);
@@ -296,6 +298,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
   monterEspaces(api, db, { household, isOwner, email: (c) => currentUser(c)?.email ?? null, uploadDir: opts.uploadDir });
   monterPartenaires(api, db, { household });
   monterSupport(api, db, { household, utilisateur: currentUser });
+  monterAcces(api, db);
   monterPartages(api, db, { household });
   monterSituations(api, db, { household, prenom: (c) => currentUser(c)?.prenom ?? null });
 

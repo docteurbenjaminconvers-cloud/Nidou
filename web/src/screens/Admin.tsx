@@ -5,6 +5,7 @@ import type { Api } from "../api";
 type Statut = "en_attente" | "valide" | "refuse";
 interface CabinetAdmin { code: string; nom: string; email: string; ville: string | null; statut: Statut; cree_le: string; clients: number; abonnes: number }
 interface MessageSupport { id: string; user_email: string | null; sujet: string; message: string; contexte: Record<string, string>; traite: boolean; cree_le: string }
+interface Invite { email: string; prenom: string | null; note: string | null; cree_le: string; inscrit: boolean }
 const SUJET: Record<string, string> = { question: "Question", probleme: "Problème", banque: "Banque", abonnement: "Abonnement", idee: "Idée" };
 interface Resume { cabinets: { en_attente: number; valides: number; refuses: number }; via_cabinets: { foyers: number; abonnes: number }; foyers: { total: number; abonnes: number }; ia: { gratuit_eur: number; payant_eur: number } }
 
@@ -22,6 +23,7 @@ function demo() {
     { code: "COMP-2HWN", nom: "Compta Sud Conseil", email: "bonjour@comptasud.fr", ville: "Uzès", statut: "valide", cree_le: j(65), clients: 6, abonnes: 5 },
     { code: "TEST-QQQQ", nom: "Test test", email: "test@test.com", ville: null, statut: "refuse", cree_le: j(20), clients: 0, abonnes: 0 },
   ];
+  let invites: Invite[] = [{ email: "christina@exemple.fr", prenom: "Christina", note: null, cree_le: j(1), inscrit: true }, { email: "anne@exemple.fr", prenom: "Anne", note: null, cree_le: j(0.5), inscrit: false }];
   let messages: MessageSupport[] = [
     { id: "m1", user_email: "camille@exemple.fr", sujet: "banque", message: "Bonjour, ma banque (Crédit Agricole) me demande de me reconnecter tous les 3 mois, c'est normal ?", contexte: { foyer: "Famille Martin", formule: "duo", abonnement: "active", appareil: "iPhone, Safari, appli installée", ecran: "390×844", page: "budget" }, traite: false, cree_le: j(0.2) },
     { id: "m2", user_email: "sophie.d@exemple.fr", sujet: "idee", message: "Ce serait génial de pouvoir ajouter les vaccins du chat dans les échéances !", contexte: { foyer: "Sophie", formule: "solo", abonnement: "essai" }, traite: true, cree_le: j(2) },
@@ -40,6 +42,9 @@ function demo() {
     async csv() { return null; },
     async messages() { return messages.map((m) => ({ ...m })); },
     async traiter(id: string, traite: boolean) { messages = messages.map((m) => (m.id === id ? { ...m, traite } : m)); },
+    async acces() { return { restreint: true, liste: invites.map((x) => ({ ...x })) }; },
+    async inviter(p: { email: string; prenom: string }) { invites = [{ email: p.email.toLowerCase(), prenom: p.prenom || null, note: null, cree_le: new Date().toISOString(), inscrit: false }, ...invites.filter((x) => x.email !== p.email.toLowerCase())]; return { envoye: true }; },
+    async retirerAcces(email: string) { invites = invites.filter((x) => x.email !== email); },
   };
 }
 
@@ -60,6 +65,9 @@ function serveur(jeton: string) {
     async csv() { const r = await fetch("/api/admin/partenaires.csv", { headers: h }); return r.ok ? r.blob() : null; },
     messages: () => appel<MessageSupport[]>("/admin/support"),
     traiter: (id: string, traite: boolean) => appel(`/admin/support/${id}`, { method: "POST", body: JSON.stringify({ traite }) }),
+    acces: () => appel<{ restreint: boolean; liste: Invite[] }>("/admin/acces"),
+    inviter: (p: { email: string; prenom: string }) => appel<{ envoye: boolean }>("/admin/acces", { method: "POST", body: JSON.stringify({ ...p, envoyer_email: true }) }),
+    retirerAcces: (email: string) => appel(`/admin/acces/${encodeURIComponent(email)}`, { method: "DELETE" }),
   };
 }
 
@@ -74,7 +82,9 @@ export function PageAdmin({ api }: { api: Api }) {
   const [msg, setMsg] = useState<string | null>(null);
   const [edition, setEdition] = useState<CabinetAdmin | null>(null);
   const [ajout, setAjout] = useState<{ nom: string; email: string; ville: string } | null>(null);
-  const [onglet, setOnglet] = useState<"cabinets" | "messages">("cabinets");
+  const [onglet, setOnglet] = useState<"cabinets" | "messages" | "acces">("cabinets");
+  const [acces, setAcces] = useState<{ restreint: boolean; liste: Invite[] } | null>(null);
+  const [nouvel, setNouvel] = useState({ email: "", prenom: "" });
   const [messages, setMessages] = useState<MessageSupport[] | null>(null);
   const client = useMemo(() => (enDemo ? demo() : jeton ? serveur(jeton) : null), [enDemo, jeton]);
   const recharger = async () => { if (!client) return; try { setData(await client.charger()); setErr(null); } catch (e) { setErr((e as Error).message); if (!enDemo) { setJeton(""); try { sessionStorage.removeItem(CLE); } catch { /* */ } } } };
@@ -107,7 +117,7 @@ export function PageAdmin({ api }: { api: Api }) {
   return (
     <div className="app admin"><div className="screen admin-page">
       <div className="admin-tete">
-        <div><p className="admin-marque">Lucien · administration</p><h1 className="detail-title">{onglet === "messages" ? "Messages des utilisateurs" : "Cabinets partenaires"}</h1></div>
+        <div><p className="admin-marque">Lucien · administration</p><h1 className="detail-title">{onglet === "messages" ? "Messages des utilisateurs" : onglet === "acces" ? "Avant-première" : "Cabinets partenaires"}</h1></div>
         <div className="admin-tete-actions">
           {!enDemo && <button className="btn ghost" onClick={async () => { const b = await client.csv(); if (!b) return; const u = URL.createObjectURL(b); const a = document.createElement("a"); a.href = u; a.download = "cabinets-partenaires.csv"; a.click(); setTimeout(() => URL.revokeObjectURL(u), 1000); }}>Exporter (CSV)</button>}
           <button className="btn" onClick={() => setAjout({ nom: "", email: "", ville: "" })}>+ Ajouter un cabinet</button>
@@ -129,10 +139,30 @@ export function PageAdmin({ api }: { api: Api }) {
 
       <div className="pills admin-onglets">
         <button className="pill" aria-pressed={onglet === "cabinets"} onClick={() => setOnglet("cabinets")}>Cabinets</button>
+        <button className="pill" aria-pressed={onglet === "acces"} onClick={async () => { setOnglet("acces"); setAcces(await client.acces().catch(() => null)); }}>Avant-première</button>
         <button className="pill" aria-pressed={onglet === "messages"} onClick={() => { setOnglet("messages"); chargerMessages(); }}>Messages des utilisateurs{messages ? ` (${messages.filter((m) => !m.traite).length} à traiter)` : ""}</button>
       </div>
 
-      {onglet === "messages" ? (
+      {onglet === "acces" ? (
+        <div className="admin-liste">
+          <p className="note">{acces?.restreint ? "Accès sur invitation : seules les personnes de cette liste (et celles déjà inscrites) peuvent se connecter." : "Accès ouvert à tous (LUCIEN_ACCES n'est pas réglé sur « restreint ») : cette liste n'est pas nécessaire."}</p>
+          <form className="admin-form" onSubmit={async (e) => { e.preventDefault(); try { const x = await client.inviter(nouvel); info(x.envoye ? `Invitation envoyée à ${nouvel.email}` : `${nouvel.email} ajouté(e) (email non envoyé : service d'email non configuré)`); setNouvel({ email: "", prenom: "" }); setAcces(await client.acces()); } catch (x) { info((x as Error).message); } }}>
+            <b>Inviter une personne</b>
+            <input className="in" placeholder="Prénom" value={nouvel.prenom} onChange={(e) => setNouvel({ ...nouvel, prenom: e.target.value })} />
+            <input className="in" required type="email" placeholder="Email" value={nouvel.email} onChange={(e) => setNouvel({ ...nouvel, email: e.target.value })} />
+            <div className="admin-form-actions"><button className="btn">Inviter et envoyer l'email</button></div>
+          </form>
+          {(acces?.liste ?? []).map((x) => (
+            <div key={x.email} className={`admin-carte ${x.inscrit ? "" : "en_attente"}`}>
+              <div className="admin-carte-tete">
+                <div><b>{x.prenom ?? x.email}</b><span>{x.email} · invité(e) le {dateFr(x.cree_le)}</span></div>
+                <span className={`statut-cab ${x.inscrit ? "valide" : "en_attente"}`}>{x.inscrit ? "Inscrit(e)" : "Pas encore venu(e)"}</span>
+              </div>
+              <div className="admin-carte-actions"><button className="link" onClick={async () => { await client.retirerAcces(x.email); setAcces(await client.acces()); info("Retiré(e) de la liste"); }}>Retirer de la liste/button></div>
+            </div>
+          ))}
+        </div>
+      ) : onglet === "messages" ? (
         !messages ? <p className="note">Chargement…</p> : messages.length === 0 ? <p className="note">Aucun message pour l'instant.</p> : (
           <div className="admin-liste">
             {messages.map((m) => (
