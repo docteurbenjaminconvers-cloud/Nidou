@@ -408,7 +408,7 @@ function makeDemoApi(): Api {
       state.deadlines = state.deadlines.filter((x) => x.document_id !== id);
     },
     deadlines: async () => state.deadlines.filter((d) => !d.fait).sort((a, b) => a.date.localeCompare(b.date)),
-    setDeadlineDone: async (id, fait) => { const d = state.deadlines.find((x) => x.id === id); if (d) d.fait = fait ? 1 : 0; },
+    setDeadlineDone: async (id, fait) => { const d = state.deadlines.find((x) => x.id === id); if (d) d.fait = fait ? 1 : 0; if (id.startsWith("sit-")) (state as { sauverSituations?: () => void }).sauverSituations?.(); },
     charges: async () => (state.household.plan === "famille" ? (demoChargesFamille as ChargesReport) : (demoCharges as ChargesReport)),
     budget: async () => {
       const base = structuredClone(state.household.plan === "famille" ? demoBudgetFamille : demoBudget) as BudgetReport;
@@ -915,7 +915,19 @@ function makeLocationDemo(): LocationApi {
 // ---------- situations de vie, demo: steps written into the demo Agenda ----------
 type SituationsApi = Pick<Api, "situations" | "ouvrirSituation" | "cocherEtape" | "fermerSituation" | "courrierSituation">;
 function makeSituationsDemo(state: { deadlines: Deadline[]; docs: Doc[]; household: Household }): SituationsApi {
-  const ouvertes: { id: string; cle: CleSituation; date: string; options: SituationVue["options"]; liens: Record<string, string> }[] = [];
+  // kept in the browser: the demo forgets everything else on reload, but a situation is planned over months
+  const CLE = "lucien.demo.situations";
+  type Ouverte = { id: string; cle: CleSituation; date: string; options: SituationVue["options"]; liens: Record<string, string> };
+  let ouvertes: Ouverte[] = [];
+  try {
+    const sauve = JSON.parse(localStorage.getItem(CLE) ?? "null") as { ouvertes: Ouverte[]; etapes: Deadline[] } | null;
+    if (sauve) { ouvertes = sauve.ouvertes; state.deadlines.push(...sauve.etapes.filter((d) => !state.deadlines.some((x) => x.id === d.id))); }
+  } catch { /* storage refused or damaged */ }
+  const sauver = (): void => {
+    const ids = new Set(ouvertes.flatMap((o) => Object.values(o.liens)));
+    try { localStorage.setItem(CLE, JSON.stringify({ ouvertes, etapes: state.deadlines.filter((d) => ids.has(d.id)) })); } catch { /* storage refused */ }
+  };
+  (state as { sauverSituations?: () => void }).sauverSituations = sauver;
   const vue = (s: (typeof ouvertes)[number]): SituationVue => {
     const def = situationParCle(s.cle)!;
     const etapes = etapesApplicables(def, { locataire: s.options.locataire }).map((e) => {
@@ -926,7 +938,7 @@ function makeSituationsDemo(state: { deadlines: Deadline[]; docs: Doc[]; househo
   };
   const trouver = (id: string) => { const s = ouvertes.find((x) => x.id === id); if (!s) throw new ApiError(404, "introuvable", "Situation introuvable."); return s; };
   return {
-    situations: async () => ({ catalogue: SITUATIONS.map((s) => ({ cle: s.cle, titre: s.titre, accroche: s.accroche, question: s.question, icone: s.icone, teinte: s.teinte, etapes: s.etapes.length, locataire: s.etapes.some((e) => e.si === "locataire") })), actives: ouvertes.map(vue) }),
+    situations: async () => ({ catalogue: SITUATIONS.map((s) => ({ cle: s.cle, titre: s.titre, accroche: s.accroche, question: s.question, icone: s.icone, teinte: s.teinte, etapes: s.etapes.length, locataire: s.etapes.some((e) => e.si === "locataire") })), actives: [...ouvertes].sort((x, y) => x.date.localeCompare(y.date)).map(vue) }),
     ouvrirSituation: async (x) => {
       const def = situationParCle(x.cle)!; const id = Math.random().toString(36).slice(2, 10);
       const { cle, date, ...options } = x;
@@ -935,10 +947,10 @@ function makeSituationsDemo(state: { deadlines: Deadline[]; docs: Doc[]; househo
         const d: Deadline = { id: `sit-${id}-${e.cle}`, document_id: null, titre: `${def.titre} : ${e.titre}`, type: "situation", date: dateEtape(date, e.j), rappel_jours: 5, fait: 0, note: null };
         state.deadlines.push(d); liens[e.cle] = d.id;
       }
-      const s = { id, cle, date, options, liens }; ouvertes.push(s); return vue(s);
+      const s = { id, cle, date, options, liens }; ouvertes.push(s); sauver(); return vue(s);
     },
-    cocherEtape: async (id, cle, fait) => { const s = trouver(id); const d = state.deadlines.find((x) => x.id === s.liens[cle]); if (d) d.fait = fait ? 1 : 0; return vue(s); },
-    fermerSituation: async (id) => { const s = trouver(id); const ids = new Set(Object.values(s.liens)); state.deadlines = state.deadlines.filter((d) => !ids.has(d.id) || d.fait); ouvertes.splice(ouvertes.indexOf(s), 1); },
+    cocherEtape: async (id, cle, fait) => { const s = trouver(id); const d = state.deadlines.find((x) => x.id === s.liens[cle]); if (d) d.fait = fait ? 1 : 0; sauver(); return vue(s); },
+    fermerSituation: async (id) => { const s = trouver(id); const ids = new Set(Object.values(s.liens)); state.deadlines = state.deadlines.filter((d) => !ids.has(d.id) || d.fait); ouvertes.splice(ouvertes.indexOf(s), 1); sauver(); },
     courrierSituation: async (id, etape, doc) => {
       const s = trouver(id); const e = situationParCle(s.cle)!.etapes.find((x) => x.cle === etape);
       const exp = state.household.nom.replace(/\s*\(démo\)$/, "");
