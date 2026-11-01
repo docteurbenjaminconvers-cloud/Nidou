@@ -2006,7 +2006,14 @@
   "et les": "and the",
   "conditions d'utilisation": "terms of use",
   "Copier mon adresse": "Copy my address",
-  "Date": "Date"
+  "Date": "Date",
+  "Voir le document original": "View the original document",
+  "Ouverture…": "Opening…",
+  "Document téléchargé": "Document downloaded",
+  "Ce format ne s'affiche pas ici : touchez « Enregistrer » pour l'ouvrir avec une autre appli.": "This format can't be shown here: tap “Save” to open it with another app.",
+  "L'original de ce papier n'est pas disponible.": "The original of this paper isn't available.",
+  "Annuelle": "Yearly",
+  "Paiement unique": "One-off payment"
  },
  "motifs": [
   [

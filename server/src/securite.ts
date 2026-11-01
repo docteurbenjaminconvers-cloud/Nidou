@@ -14,7 +14,7 @@ import { demandeAutorisee } from "./auth.js";
 const CSP_APPLI = [
   "default-src 'self'", "script-src 'self'", "style-src 'self' 'unsafe-inline'",
   "font-src 'self' data:", "img-src 'self' data: blob:", "media-src 'self' blob:",
-  "connect-src 'self'", "worker-src 'self'", "manifest-src 'self'", "frame-ancestors 'none'", "base-uri 'self'",
+  "connect-src 'self'", "frame-src 'self' blob:", "worker-src 'self'", "manifest-src 'self'", "frame-ancestors 'none'", "base-uri 'self'",
   "form-action 'self' https://checkout.stripe.com https://billing.stripe.com", "object-src 'none'",
 ].join("; ");
 /** The marketing site has small inline scripts (forms, languages) and its video. */

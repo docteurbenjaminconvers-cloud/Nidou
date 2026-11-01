@@ -6,6 +6,52 @@ import { Back, DateChip, fmtDate, fmtEuro, PERIOD_LABEL, relative } from "../ui"
 
 type Full = Doc & { echeances: Deadline[]; texte?: string | null };
 
+const PERIODICITE: Record<string, string> = { mensuel: "Mensuelle", trimestriel: "Trimestrielle", annuel: "Annuelle", unique: "Paiement unique" };
+
+/**
+ * The original photo or PDF, shown inside the app: a link opened outside would lose the session on an installed
+ * iPhone app. Shared or saved with the phone's own sheet when it can, downloaded otherwise.
+ */
+function Original({ api, doc, onClose, toast }: { api: Api; doc: Doc; onClose: () => void; toast: (m: string) => void }) {
+  const [fichier, setFichier] = useState<{ url: string; blob: Blob } | null>(null);
+  const [erreur, setErreur] = useState<string | null>(null);
+  useEffect(() => {
+    let url: string | null = null;
+    api.fichierDocument(doc.id).then((blob) => { url = URL.createObjectURL(blob); setFichier({ url, blob }); }).catch((e) => setErreur((e as Error).message));
+    const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    addEventListener("keydown", k);
+    return () => { removeEventListener("keydown", k); if (url) URL.revokeObjectURL(url); };
+  }, [doc.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const type = fichier?.blob.type ?? "";
+  const ext = type === "application/pdf" ? ".pdf" : type === "image/png" ? ".png" : type === "image/svg+xml" ? ".svg" : type.startsWith("image/") ? ".jpg" : "";
+  const nom = `${doc.title.replace(/[^\p{L}\p{N} ._-]+/gu, "").trim().slice(0, 80) || "document"}${ext}`;
+  const partager = async () => {
+    if (!fichier) return;
+    const f = new File([fichier.blob], nom, { type });
+    try {
+      if (navigator.canShare?.({ files: [f] })) { await navigator.share({ files: [f], title: doc.title }); return; }
+    } catch (e) { if ((e as Error).name === "AbortError") return; }
+    const a = document.createElement("a"); a.href = fichier.url; a.download = nom; a.click();
+    toast("Document téléchargé");
+  };
+  return (
+    <div className="original-fond" role="dialog" aria-label={`Original : ${doc.title}`}>
+      <div className="original-tete">
+        <button className="link" onClick={onClose}>Fermer</button>
+        <b>{doc.title}</b>
+        <button className="link" onClick={partager} disabled={!fichier}>Enregistrer</button>
+      </div>
+      <div className="original-corps">
+        {erreur ? <p className="note">{erreur}</p>
+          : !fichier ? <p className="note">Ouverture…</p>
+            : type === "application/pdf" ? <iframe title={doc.title} src={fichier.url} />
+              : type.startsWith("image/") ? <img src={fichier.url} alt={doc.title} />
+                : <p className="note">Ce format ne s'affiche pas ici : touchez « Enregistrer » pour l'ouvrir avec une autre appli.</p>}
+      </div>
+    </div>
+  );
+}
+
 export function DocumentDetail({ api, id, onBack, onChanged, toast }: { api: Api; id: string; onBack: () => void; onChanged: () => void; toast: (m: string) => void }) {
   const [doc, setDoc] = useState<Full | null>(null);
   const [edit, setEdit] = useState(false);
@@ -15,6 +61,7 @@ export function DocumentDetail({ api, id, onBack, onChanged, toast }: { api: Api
   const [nom, setNom] = useState(() => localStorage.getItem("lucien.nom") ?? "");
   const [motif, setMotif] = useState("");
   const [busy, setBusy] = useState(false);
+  const [original, setOriginal] = useState(false);
 
   useEffect(() => { api.document(id).then(setDoc); }, [api, id]);
 
@@ -70,7 +117,7 @@ export function DocumentDetail({ api, id, onBack, onChanged, toast }: { api: Api
       ) : (
         <b>{k === "montant" ? (doc.montant != null ? `${fmtEuro(doc.montant, 2)} ${doc.periodicite ? PERIOD_LABEL[doc.periodicite] : ""}` : "—")
           : k.startsWith("date") ? fmtDate(doc[k] as string | null)
-            : k === "periodicite" ? (doc.periodicite ? PERIOD_LABEL[doc.periodicite] : "—")
+            : k === "periodicite" ? (doc.periodicite ? PERIODICITE[doc.periodicite] ?? doc.periodicite : "—")
               : k === "category" ? CATEGORY_LABEL[doc.category]
                 : k === "preavis_jours" ? (doc.preavis_jours != null ? `${doc.preavis_jours} jours` : "—")
                   : ((doc[k] as string | null) ?? "—")}</b>
@@ -84,9 +131,11 @@ export function DocumentDetail({ api, id, onBack, onChanged, toast }: { api: Api
     <div className="screen">
       <Back onClick={onBack} label="Papiers" />
       <h1 className="detail-title">{doc.title}</h1>
-      <p className="detail-sub">{[doc.organisme, CATEGORY_LABEL[doc.category]].filter(Boolean).join(" · ")}{doc.fichier && api.mode !== "demo" ? <> · <a href={`/api/documents/${doc.id}/fichier`} target="_blank" rel="noreferrer">Voir l'original</a></> : null}</p>
+      <p className="detail-sub">{[doc.organisme, CATEGORY_LABEL[doc.category]].filter(Boolean).join(" · ")}</p>
 
       {doc.resume && <p style={{ marginBottom: 16 }}>{doc.resume}</p>}
+      {(doc.fichier || api.mode === "demo") && <button className="btn ghost original-btn" onClick={() => setOriginal(true)}>Voir le document original</button>}
+      {original && <Original api={api} doc={doc} onClose={() => setOriginal(false)} toast={toast} />}
 
       {uncertain ? (
         <div className="confidence">Extraction incertaine ({Math.round((doc.confiance ?? 0) * 100)} %). Vérifiez puis <button className="link" onClick={confirm}>confirmez</button> ou <button className="link" onClick={() => setEdit(true)}>corrigez</button>.</div>

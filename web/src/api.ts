@@ -78,6 +78,8 @@ export interface Api {
   annulerInvitation(id: string): Promise<void>;
   /** « Exporter tout » : downloads the household's whole data (a .zip from the server; JSON in the demo). */
   exporter(): Promise<void>;
+  /** The original file of a paper (photo or PDF); in the demo, a sample page drawn from the paper's details. */
+  fichierDocument(id: string): Promise<Blob>;
   /** « Supprimer le compte » : the owner erases the household, a member only his own account. */
   supprimerCompte(confirmation: string, immediat?: boolean): Promise<{ ok: boolean; portee: "foyer" | "compte"; le: string | null }>;
   annulerSuppression(): Promise<void>;
@@ -221,6 +223,11 @@ const serverApi: Api = {
   annulerSuppression: async () => { await call("/compte/annuler-suppression", json({})); },
   resilier: () => call("/abonnement/resilier", json({})),
   reprendre: async () => { await call("/abonnement/reprendre", json({})); },
+  fichierDocument: async (id) => {
+    const r = await fetch(`/api/documents/${encodeURIComponent(id)}/fichier`);
+    if (!r.ok) throw new ApiError(r.status, "introuvable", "L'original de ce papier n'est pas disponible.");
+    return r.blob();
+  },
   exporter: async () => {
     const r = await fetch("/api/export.zip");
     if (!r.ok) throw new ApiError(r.status, "export", "L'export n'a pas pu être préparé. Réessayez dans un instant.");
@@ -416,6 +423,11 @@ function makeDemoApi(): Api {
     resilier: async () => { throw new ApiError(400, "demo", "En démonstration, il n'y a pas d'abonnement à résilier."); },
     reprendre: async () => {},
     supprimerCompte: async () => { throw new ApiError(403, "demo", "La suppression n'existe pas en démonstration : vos données de démo restent sur ce téléphone seulement."); },
+    fichierDocument: async (id) => {
+      const d = state.docs.find((x) => x.id === id);
+      if (!d) throw new ApiError(404, "introuvable", "Papier introuvable.");
+      return new Blob([pageExemple(d)], { type: "image/svg+xml" });
+    },
     exporter: async () => {
       const url = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], { type: "application/json" }));
       const a = document.createElement("a"); a.href = url; a.download = "Lucien - export (démo).json"; a.click();
@@ -750,4 +762,26 @@ function makeEspacesDemo(state: { household: Household; famille: FamilleReport; 
       return { prenom: pers.prenom, nom_comptable: p?.nom ?? "Cabinet Durand (démo)", expire_le: p?.expire_le ?? new Date(Date.now() + 365 * 864e5).toISOString(), independant: rapportIndependant(pers.independant, txs, today) };
     },
   };
+}
+
+/** Demo: the papers have no real file, so the viewer shows a sample page drawn from what Lucien extracted. */
+function pageExemple(d: Doc): string {
+  const e = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const lignes: string[] = [];
+  const couper = (t: string, n = 52) => { const mots = t.split(/\s+/); let l = ""; for (const m of mots) { if ((l + " " + m).trim().length > n) { lignes.push(l.trim()); l = m; } else l += " " + m; } if (l.trim()) lignes.push(l.trim()); };
+  if (d.resume) couper(d.resume);
+  const jj = (iso?: string | null) => (iso ? iso.slice(0, 10).split("-").reverse().join("/") : null);
+  const champs: [string, string | null][] = [["Référence", d.numero_contrat ?? null], ["Montant", d.montant != null ? `${d.montant.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} €` : null],
+    ["Date du document", jj(d.date_document)], ["Début", jj(d.date_debut)], ["Échéance", jj(d.date_fin)], ["Préavis", d.preavis_jours != null ? `${d.preavis_jours} jours` : null]];
+  const f = champs.filter(([, v]) => v).map(([k, v], i) => `<text x="60" y="${330 + i * 34}" font-size="17" fill="#8b6f84">${e(k)}</text><text x="260" y="${330 + i * 34}" font-size="17" fill="#3b2a3a" font-weight="600">${e(v!)}</text>`).join("");
+  const r = lignes.map((l, i) => `<text x="60" y="${560 + i * 26}" font-size="16" fill="#3b2a3a">${e(l)}</text>`).join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="595" height="842" viewBox="0 0 595 842" font-family="Helvetica, Arial, sans-serif">
+<rect width="595" height="842" fill="#fff"/><rect x="0" y="0" width="595" height="8" fill="#d95f45"/>
+<text x="60" y="90" font-size="26" font-weight="700" fill="#3b2a3a">${e(d.organisme ?? "Organisme")}</text>
+<text x="60" y="120" font-size="14" fill="#8b6f84">Document d'exemple · démo Lucien</text>
+<line x1="60" y1="150" x2="535" y2="150" stroke="#f0e3ec" stroke-width="2"/>
+<text x="60" y="220" font-size="22" font-weight="700" fill="#3b2a3a">${e(d.title)}</text>
+<text x="60" y="270" font-size="14" fill="#8b6f84" letter-spacing="1">INFORMATIONS DU CONTRAT</text>${f}${r}
+<text x="60" y="800" font-size="12" fill="#b9a3b3">Avec votre compte, c'est la photo ou le PDF d'origine qui s'affiche ici.</text>
+</svg>`;
 }

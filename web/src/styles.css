@@ -922,3 +922,13 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .consentement > span { flex: 1; min-width: 0; }
 .consentement-cgv { flex-basis: 100%; padding-left: 28px; color: var(--mist); font-size: 12.5px; }
 .consentement-cgv a { color: inherit; text-decoration: underline; }
+.original-btn { margin: 0 0 16px; }
+.original-fond { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; background: #2b2029; color: #fff; animation: mf-fondu .15s ease; }
+.original-tete { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: calc(env(safe-area-inset-top) + 10px) 16px 10px; }
+.original-tete b { text-align: center; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.original-tete .link { color: #fff; font-weight: 700; }
+.original-tete .link:disabled { opacity: .4; }
+.original-corps { flex: 1; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; display: flex; align-items: flex-start; justify-content: center; padding: 8px 12px calc(env(safe-area-inset-bottom) + 16px); }
+.original-corps img { max-width: 100%; height: auto; border-radius: 6px; background: #fff; box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+.original-corps iframe { width: 100%; height: 100%; min-height: 70vh; border: 0; border-radius: 6px; background: #fff; }
+.original-corps .note { color: #e8dbe4; text-align: center; margin-top: 30vh; }
