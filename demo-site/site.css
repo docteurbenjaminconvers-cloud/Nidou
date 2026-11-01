@@ -467,3 +467,4 @@ html[dir="rtl"] .legal .tableau th, html[dir="rtl"] .legal .tableau td { text-al
 .boucle b { display: block; font-size: 15px; }
 .boucle span { display: block; font-size: 13px; color: var(--mist); line-height: 1.4; margin-top: 2px; }
 .espaces-remplir { text-align: center; max-width: 620px; margin: 22px auto 0; color: var(--mist); }
+.hero .lead strong, .hero-text .lead strong { color: var(--ink); }
