@@ -2000,7 +2000,13 @@
   "Bail modifié": "Lease updated",
   "Bail terminé : le bien attend son prochain locataire": "Lease ended: the property is waiting for its next tenant",
   "Bien supprimé": "Property deleted",
-  "La fin du bail doit suivre son début": "The end of the lease must come after its start"
+  "La fin du bail doit suivre son début": "The end of the lease must come after its start",
+  "En payant, vous acceptez les": "By paying, you accept the",
+  "conditions générales de vente": "terms of sale",
+  "et les": "and the",
+  "conditions d'utilisation": "terms of use",
+  "Copier mon adresse": "Copy my address",
+  "Date": "Date"
  },
  "motifs": [
   [
@@ -2360,6 +2366,10 @@
    "File prepared by Lucien on {0}: {1} of {3} paper{2} ready{4}."
   ],
   [
+   "Le .zip contient le bordereau et {0} fichier{1} original{2}.",
+   "The .zip contains the cover sheet and {0} original file{1}."
+  ],
+  [
    "Option assistant · {0} questions restantes ce mois-ci",
    "Assistant add-on · {0} questions left this month"
   ],
@@ -2386,6 +2396,10 @@
   [
    "« {0} » le {1}. Premier virement vers ce destinataire.",
    "\"{0}\" on {1}. First transfer to this recipient."
+  ],
+  [
+   "Ce point vous arrive aussi chaque dimanche soir{0}.",
+   "This summary also reaches you every Sunday evening{0}."
   ],
   [
    "Dépenses courantes ({0} jours, environ {1} par jour)",
@@ -3184,6 +3198,14 @@
    "{0} activities"
   ],
   [
+   "{0} et {1#} autre{2}",
+   "{0} and {1} other{2}"
+  ],
+  [
+   "Supprimer {0}",
+   "Delete {0}"
+  ],
+  [
    "remis à {0},",
    "given to {0},"
   ],
@@ -3390,6 +3412,14 @@
   [
    "ignoré: {0}",
    "ignored: {0}"
+  ],
+  [
+   "dans {0} an{1}",
+   "in {0} year{1}"
+  ],
+  [
+   "{0} non lue{1}",
+   "{0} unread"
   ],
   [
    "dans {0} j",

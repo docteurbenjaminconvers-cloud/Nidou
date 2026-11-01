@@ -262,6 +262,7 @@ export function ConsentementDemarrage({ coche, onChange }: { coche: boolean; onC
     <label className="consentement">
       <input type="checkbox" checked={coche} onChange={(e) => onChange(e.target.checked)} />
       <span>Je demande que mon abonnement commence tout de suite. Je garde 14 jours pour me rétracter ; seuls les jours déjà utilisés seront alors retenus.</span>
+      <small className="consentement-cgv">En payant, vous acceptez les <a href="https://monlucien.fr/cgv.html" target="_blank" rel="noreferrer">conditions générales de vente</a> et les <a href="https://monlucien.fr/cgu.html" target="_blank" rel="noreferrer">conditions d'utilisation</a>.</small>
     </label>
   );
 }

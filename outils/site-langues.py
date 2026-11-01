@@ -53,7 +53,7 @@ def generer(dossier: Path):
     urls = [("", 1.0)] + [(f"{l}/", 0.9) for l in LANGUES]
     alt = "".join(f'\n    <xhtml:link rel="alternate" hreflang="{h}" href="{BASE}{p}"/>' for h, p in [("fr", "")] + [(l, f"{l}/") for l in LANGUES])
     corps = "".join(f"\n  <url><loc>{BASE}{u}</loc><priority>{p}</priority>{alt}\n  </url>" for u, p in urls)
-    corps += f"\n  <url><loc>{BASE}mentions-legales.html</loc><priority>0.2</priority></url>\n  <url><loc>{BASE}confidentialite.html</loc><priority>0.2</priority></url>"
+    corps += f"\n  <url><loc>{BASE}mentions-legales.html</loc><priority>0.2</priority></url>\n  <url><loc>{BASE}confidentialite.html</loc><priority>0.2</priority></url>\n  <url><loc>{BASE}cgu.html</loc><priority>0.2</priority></url>\n  <url><loc>{BASE}cgv.html</loc><priority>0.2</priority></url>"
     (dossier / "sitemap.xml").write_text(f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">{corps}\n</urlset>\n')
     print(f"{dossier} : pages {', '.join(LANGUES)} générées")
 

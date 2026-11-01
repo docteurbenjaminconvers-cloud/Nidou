@@ -454,3 +454,16 @@ html.intro-on { overflow: hidden; }
 /* menu : sur une ligne ; les liens secondaires disparaissent quand la place manque */
 .nav nav a, .nav .btn { white-space: nowrap; }
 @media (max-width: 1340px) { .nav nav a.nav-sec { display: none; } }
+.legal .tableau { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 15.5px; }
+.legal .tableau th, .legal .tableau td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.legal .tableau th { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--mist); }
+.legal .modele { background: var(--white); border-left: 3px solid var(--nest); border-radius: 0 14px 14px 0; padding: 14px 16px; font-style: italic; }
+html[dir="rtl"] .legal .tableau th, html[dir="rtl"] .legal .tableau td { text-align: right; }
+.boucle-titre { margin: 26px 0 10px; font-weight: 800; color: var(--plum); }
+.boucle { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; counter-reset: b; }
+.boucle li { position: relative; padding: 12px 12px 12px; border-radius: 16px; background: var(--white); box-shadow: var(--shadow); counter-increment: b; min-width: 0; }
+.boucle li::before { content: counter(b); display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--yolk); color: var(--plum); font-weight: 800; font-size: 13px; margin-bottom: 6px; }
+.boucle li:last-child::before { content: "✓"; background: var(--mint-ink); color: var(--paper); }
+.boucle b { display: block; font-size: 15px; }
+.boucle span { display: block; font-size: 13px; color: var(--mist); line-height: 1.4; margin-top: 2px; }
+.espaces-remplir { text-align: center; max-width: 620px; margin: 22px auto 0; color: var(--mist); }
