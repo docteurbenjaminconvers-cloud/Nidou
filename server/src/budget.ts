@@ -8,6 +8,8 @@ export interface Recurrence {
   montant_moyen: number;    // positif
   dernier_montant: number;
   premier_montant: number;
+  /** A lasting price increase (steady before, new level after), null for a one-off bill such as a « régularisation ». */
+  hausse?: { avant: number; apres: number } | null;
   occurrences: number;
   frequence: "mensuel" | "hebdomadaire" | "annuel" | "irregulier";
   derniere_date: string;
@@ -53,6 +55,43 @@ function monthsSpan(txs: TransactionRow[]): string[] {
 }
 
 /** Finds recurring charges: same merchant, similar amount, regular spacing. */
+const mediane = (xs: number[]) => { const s = [...xs].sort((a, b) => a - b); const m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+
+/** The payments of one company split in two steady groups (two contracts), or null when they form one series. */
+export function deuxContrats(list: TransactionRow[]): [TransactionRow[], TransactionRow[]] | null {
+  if (list.length < 4) return null;
+  const tri = [...list].sort((a, b) => a.montant - b.montant); // most negative (largest amount) first
+  let coupe = -1, ecart = 1;
+  for (let i = 1; i < tri.length; i++) {
+    const r = tri[i - 1].montant / tri[i].montant; // ratio of two neighbouring amounts (both negative)
+    if (r > ecart) { ecart = r; coupe = i; }
+  }
+  if (coupe < 2 || tri.length - coupe < 2 || ecart < 1.3) return null;
+  const a = tri.slice(0, coupe), b = tri.slice(coupe);
+  const stable = (g: TransactionRow[]) => Math.max(...g.map((t) => -t.montant)) / Math.min(...g.map((t) => -t.montant)) <= 1.2;
+  return stable(a) && stable(b) ? [a, b] : null;
+}
+
+/**
+ * A real price increase, not a one-off bill: the earlier payments were steady, and either the new amount is already
+ * repeated (two payments or more at the new level), or the single new payment is a modest step (≤ 40 %) like a tariff
+ * change. A single payment far above (an energy « régularisation », an exceptional bill) is not a price increase.
+ */
+export function hausseDurable(amounts: number[]): { avant: number; apres: number } | null {
+  if (amounts.length < 3) return null;
+  for (const recents of [3, 2, 1]) {
+    if (amounts.length - recents < 2) continue;
+    const avant = amounts.slice(0, -recents), apres = amounts.slice(-recents);
+    const base = mediane(avant);
+    if (base <= 0 || Math.max(...avant) / Math.min(...avant) > 1.15) continue;
+    if (Math.min(...apres) <= base * 1.05 || Math.max(...apres) / Math.min(...apres) > 1.1) continue;
+    const nouveau = apres.reduce((s, x) => s + x, 0) / apres.length;
+    if (recents === 1 && nouveau > base * 1.4) return null;
+    return { avant: round2(base), apres: round2(nouveau) };
+  }
+  return null;
+}
+
 export function findRecurrences(txs: TransactionRow[]): Recurrence[] {
   const byMerchant = new Map<string, TransactionRow[]>();
   for (const t of txs) {
@@ -61,7 +100,15 @@ export function findRecurrences(txs: TransactionRow[]): Recurrence[] {
     byMerchant.set(t.marchand, [...(byMerchant.get(t.marchand) ?? []), t]);
   }
   const out: Recurrence[] = [];
+  // Two contracts with the same company (gas and electricity at Engie, two cars at the same insurer) are two series:
+  // their amounts form two separate groups, each one steady. Mixing them would invent a « hausse » of 100 %.
+  const series: [string, string, TransactionRow[]][] = [];
   for (const [marchand, list] of byMerchant) {
+    const groupes = deuxContrats(list);
+    if (groupes) groupes.forEach((g, i) => series.push([`${marchand}#${i + 1}`, marchand, g]));
+    else series.push([marchand, marchand, list]);
+  }
+  for (const [cle, marchand, list] of series) {
     if (list.length < 2) continue;
     const sorted = [...list].sort((a, b) => a.date.localeCompare(b.date));
     const amounts = sorted.map((t) => -t.montant);
@@ -79,8 +126,9 @@ export function findRecurrences(txs: TransactionRow[]): Recurrence[] {
     const monthly = frequence === "mensuel" ? mean : frequence === "hebdomadaire" ? mean * 52 / 12 : mean / 12;
     const days = sorted.map((t) => Number(t.date.slice(8, 10)));
     out.push({
-      cle: marchand, marchand, categorie: sorted[sorted.length - 1].categorie,
+      cle, marchand, categorie: sorted[sorted.length - 1].categorie,
       montant_moyen: round2(mean), dernier_montant: round2(amounts[amounts.length - 1]), premier_montant: round2(amounts[0]),
+      hausse: hausseDurable(amounts),
       occurrences: sorted.length, frequence, derniere_date: sorted[sorted.length - 1].date,
       jour_du_mois: frequence === "mensuel" ? Math.round(days.reduce((s, d) => s + d, 0) / days.length) : null,
       mensuel_equivalent: round2(monthly), contrat_id: null,
@@ -146,13 +194,14 @@ export function budgetReport(txs: TransactionRow[], docs: DocumentRow[], decisio
 
   // 2. Silent increases on any recurring charge.
   for (const r of recs) {
-    if (r.occurrences >= 3 && r.premier_montant > 0 && r.dernier_montant > r.premier_montant * 1.05) {
-      const pct = Math.round(((r.dernier_montant - r.premier_montant) / r.premier_montant) * 100);
+    if (r.hausse) {
+      const { avant, apres } = r.hausse;
+      const pct = Math.round(((apres - avant) / avant) * 100);
       push({
         cle: `hausse:${r.cle}`, type: "hausse", priorite: ["assurance", "telecom", "energie"].includes(r.categorie) ? 1 : 2, effort: "15 min",
         titre: `${cap(r.marchand)} a augmenté de ${pct} %`,
-        detail: `${fmt(r.premier_montant)} → ${fmt(r.dernier_montant)}. Une hausse de tarif ouvre souvent un droit de résiliation sans frais ; demandez un devis concurrent.`,
-        economie_annuelle: round2((r.dernier_montant - r.premier_montant) * (r.frequence === "mensuel" ? 12 : r.frequence === "hebdomadaire" ? 52 : 1)),
+        detail: `${fmt(avant)} → ${fmt(apres)}. Une hausse de tarif ouvre souvent un droit de résiliation sans frais ; demandez un devis concurrent.`,
+        economie_annuelle: round2((apres - avant) * (r.frequence === "mensuel" ? 12 : r.frequence === "hebdomadaire" ? 52 : 1)),
         marchand: r.marchand, document_id: r.contrat_id,
       });
     }

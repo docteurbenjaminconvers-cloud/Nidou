@@ -85,3 +85,16 @@ test("les contrats Lucien sont rapprochés des prélèvements", async () => {
   assert.ok(orange?.contrat_id, "Orange doit être rapproché du contrat Fibre + mobile");
   assert.ok(!r.actions.some((a) => a.type === "sans_contrat" && a.marchand?.includes("orange")));
 });
+
+test("hausse : une vraie hausse de tarif, pas une facture de régularisation ni deux contrats mélangés", async () => {
+  const { hausseDurable, findRecurrences } = await import("./budget.js");
+  assert.deepEqual(hausseDurable([96, 96, 96, 117]), { avant: 96, apres: 117 }, "hausse de tarif modeste");
+  assert.equal(hausseDurable([250, 250, 252, 1015]), null, "régularisation : un seul paiement très au-dessus");
+  assert.deepEqual(hausseDurable([250, 250, 250, 330, 332]), { avant: 250, apres: 331 }, "nouvel échéancier déjà répété");
+  assert.equal(hausseDurable([250, 500, 250, 500]), null, "montants qui alternent");
+  // gas and electricity with the same supplier: two series, no « hausse de 107 % »
+  const tx = (date: string, montant: number) => ({ id: date + montant, household_id: "h", compte: "c", date, libelle: "PRLV ENGIE", marchand: "engie", montant, categorie: "energie", empreinte: date + montant, note: null, cree_le: date }) as never;
+  const recs = findRecurrences([tx("2026-07-05", -84), tx("2026-07-12", -176), tx("2026-08-05", -84), tx("2026-08-12", -176), tx("2026-09-05", -85), tx("2026-09-12", -175), tx("2026-10-05", -84), tx("2026-10-12", -177)]);
+  assert.equal(recs.filter((r) => r.marchand === "engie").length, 2, "deux contrats");
+  assert.ok(recs.every((r) => !r.hausse), "aucune hausse inventée");
+});
