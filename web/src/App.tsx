@@ -102,7 +102,7 @@ export default function App() {
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
-  const go = (s: string, id?: string) => { location.hash = id ? `${s}/${id}` : s; window.scrollTo({ top: 0 }); };
+  const go = (s: string, id?: string) => { location.hash = id ? `${s}/${id}` : s; document.getElementById("root")?.scrollTo({ top: 0 }); };
   const onDone = async (id: string) => { await api!.setDeadlineDone(id, true); toast("Marqué comme fait"); reload(); };
 
   // The protected person's own page: no account, no household loaded, just her link.

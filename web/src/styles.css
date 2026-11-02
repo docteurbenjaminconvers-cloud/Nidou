@@ -1100,3 +1100,10 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .remarque-texte p { margin: 0; font-size: 14px; line-height: 1.45; color: var(--ink); opacity: .85; }
 .remarque-texte .link { justify-self: start; font-size: 14px; }
 .remarque-fermer { border: 0; background: none; color: var(--mist); font-size: 22px; line-height: 1; padding: 0 4px; min-width: 32px; min-height: 32px; }
+
+/* The page never scrolls as a whole: the app scrolls inside #root, fixed to the screen. On iPhone, a scrolling page
+   moves the layout under Safari's bars and the keyboard, and the bottom bar ended up floating mid-screen. Here the
+   screen itself never moves, so the bar stays at the bottom. */
+html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+#root { position: fixed; inset: 0; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; }
+body.clavier .tabs { display: none; }

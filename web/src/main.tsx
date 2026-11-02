@@ -20,6 +20,14 @@ try {
   if (code && /^[A-Za-z0-9-]{4,20}$/.test(code)) localStorage.setItem("lucien.partenaire", code.toUpperCase());
 } catch {}
 
+// While a field is being typed in on a phone, the bottom bar steps aside: iPhone moves the screen for the keyboard and
+// a bar fixed at the bottom would otherwise float in the middle of the form.
+if (window.matchMedia("(pointer: coarse)").matches) {
+  const champ = (t: EventTarget | null) => t instanceof HTMLElement && t.matches("input:not([type=checkbox]):not([type=radio]):not([type=file]), textarea, select, [contenteditable]");
+  document.addEventListener("focusin", (e) => { if (champ(e.target)) document.body.classList.add("clavier"); });
+  document.addEventListener("focusout", () => setTimeout(() => { if (!champ(document.activeElement)) document.body.classList.remove("clavier"); }, 50));
+}
+
 // English: the interface is translated as it is displayed (i18n/traduction.ts); French needs nothing.
 const afficher = () => ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

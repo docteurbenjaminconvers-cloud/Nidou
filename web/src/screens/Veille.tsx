@@ -215,7 +215,7 @@ export function VeilleDetail({ api, id, onBack, toast }: { api: Api; id: string;
           <div className="fields"><div className="field"><span>Lien personnel</span><input readOnly value={v.lien_personne ?? ""} onFocus={(e) => e.target.select()} /></div></div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button className="btn" onClick={partager}>Envoyer le lien</button>
-            {api.mode === "demo" && v.lien_personne && <button className="btn ghost" onClick={() => { location.hash = `#/consentement/${v.lien_personne!.split("/consentement/")[1]}`; window.scrollTo({ top: 0 }); }}>Ouvrir sa page (démo)</button>}
+            {api.mode === "demo" && v.lien_personne && <button className="btn ghost" onClick={() => { location.hash = `#/consentement/${v.lien_personne!.split("/consentement/")[1]}`; document.getElementById("root")?.scrollTo({ top: 0 }); }}>Ouvrir sa page (démo)</button>}
             <button className="btn ghost" onClick={load}>Actualiser</button>
           </div>
         </section>
@@ -238,7 +238,7 @@ export function VeilleDetail({ api, id, onBack, toast }: { api: Api; id: string;
           )}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
             <button className="btn ghost" onClick={partager}>Renvoyer sa page à {v.prenom}</button>
-            {api.mode === "demo" && v.lien_personne && <button className="btn ghost" onClick={() => { location.hash = `#/consentement/${v.lien_personne!.split("/consentement/")[1]}`; window.scrollTo({ top: 0 }); }}>Ouvrir sa page (démo)</button>}
+            {api.mode === "demo" && v.lien_personne && <button className="btn ghost" onClick={() => { location.hash = `#/consentement/${v.lien_personne!.split("/consentement/")[1]}`; document.getElementById("root")?.scrollTo({ top: 0 }); }}>Ouvrir sa page (démo)</button>}
           </div>
         </section>
       )}
