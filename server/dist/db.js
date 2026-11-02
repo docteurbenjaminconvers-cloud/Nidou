@@ -1,3 +1,4 @@
+import { DESTINATIONS, suggererDestination } from "./destinations.js";
 import { DatabaseSync } from "node:sqlite";
 import { createHash, randomBytes, randomUUID, randomInt } from "node:crypto";
 const SCHEMA = `
@@ -235,6 +236,11 @@ export class Db {
         const colsUsers = this.raw.prepare("PRAGMA table_info(users)").all().map((c) => c.name);
         if (!colsUsers.includes("langue"))
             this.raw.exec("ALTER TABLE users ADD COLUMN langue TEXT"); // « en » : emails and notifications in English
+        const colsComptes = this.raw.prepare("PRAGMA table_info(bank_accounts)").all().map((c) => c.name);
+        if (!colsComptes.includes("destination"))
+            this.raw.exec("ALTER TABLE bank_accounts ADD COLUMN destination TEXT");
+        if (!colsComptes.includes("infos"))
+            this.raw.exec("ALTER TABLE bank_accounts ADD COLUMN infos TEXT");
         const cols = this.raw.prepare("PRAGMA table_info(households)").all().map((c) => c.name);
         if (!cols.includes("essai_fin"))
             this.raw.exec("ALTER TABLE households ADD COLUMN essai_fin TEXT");
@@ -450,8 +456,9 @@ export class Db {
         const budget = this.getModuleData(household_id, "budget")?.comptes_exclus ?? [];
         const pro = (this.getModuleData(household_id, "pro")?.personnes ?? [])
             .map((p) => p.independant?.compte_pro).filter((c) => !!c);
-        const typesPro = this.listBankAccounts(household_id).filter((a) => a.type === "pro").map((a) => a.nom);
-        return new Set([...budget, ...pro, ...typesPro]);
+        // every bank account whose destination is not the household budget (pro, rental, savings, not followed)
+        const horsFoyer = this.listBankAccounts(household_id).filter((a) => this.destinationCompte(a) !== "foyer").map((a) => a.nom);
+        return new Set([...budget, ...pro, ...horsFoyer]);
     }
     /** Household operations without professional accounts: the family budget is not the practice's. */
     /** Today's balance of the household accounts (professional accounts left out), or null without a bank connection. */
@@ -721,12 +728,42 @@ export class Db {
     }
     upsertBankAccount(a) {
         this.raw
-            .prepare(`INSERT INTO bank_accounts (id, household_id, item_id, nom, banque, type, solde, devise, maj_le) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(id) DO UPDATE SET item_id = excluded.item_id, nom = excluded.nom, banque = excluded.banque, type = excluded.type, solde = excluded.solde, devise = excluded.devise, maj_le = excluded.maj_le`)
-            .run(a.id, a.household_id, a.item_id, a.nom, a.banque, a.type, a.solde, a.devise, a.maj_le);
+            .prepare(`INSERT INTO bank_accounts (id, household_id, item_id, nom, banque, type, solde, devise, maj_le, infos) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET item_id = excluded.item_id, nom = excluded.nom, banque = excluded.banque, type = excluded.type, solde = excluded.solde, devise = excluded.devise, maj_le = excluded.maj_le, infos = COALESCE(excluded.infos, bank_accounts.infos)`)
+            .run(a.id, a.household_id, a.item_id, a.nom, a.banque, a.type, a.solde, a.devise, a.maj_le, a.infos ?? null);
     }
     listBankAccounts(household_id) {
         return this.raw.prepare("SELECT * FROM bank_accounts WHERE household_id = ? ORDER BY nom").all(household_id);
+    }
+    /** The destination in force: the person's choice, or Lucien's suggestion until it is confirmed. */
+    destinationCompte(a) {
+        if (a.destination && DESTINATIONS.includes(a.destination))
+            return a.destination;
+        let infos = { name: a.nom };
+        try {
+            if (a.infos)
+                infos = JSON.parse(a.infos);
+        }
+        catch { /* keep the name */ }
+        return suggererDestination(infos, a.type === "pro");
+    }
+    /** Destination of the account a bank operation belongs to (by the account's id), for the synchronisations. */
+    destinationParId(household_id, id) {
+        const a = this.raw.prepare("SELECT * FROM bank_accounts WHERE household_id = ? AND id = ?").get(household_id, id);
+        return a ? this.destinationCompte(a) : null;
+    }
+    /**
+     * The person sets an account's destination. « Ne pas suivre » removes the operations already imported from it:
+     * Lucien keeps nothing of an account the person does not want followed. Returns the number of operations removed.
+     */
+    setDestinationCompte(household_id, id, destination) {
+        const a = this.raw.prepare("SELECT * FROM bank_accounts WHERE household_id = ? AND id = ?").get(household_id, id);
+        if (!a)
+            return -1;
+        this.raw.prepare("UPDATE bank_accounts SET destination = ? WHERE household_id = ? AND id = ?").run(destination, household_id, id);
+        if (destination !== "ignore")
+            return 0;
+        return Number(this.raw.prepare("DELETE FROM transactions WHERE household_id = ? AND compte = ?").run(household_id, a.nom).changes);
     }
     // ---------- IA usage: per-household monthly quota + global monthly spend cap ----------
     month() { return this.now().slice(0, 7); }

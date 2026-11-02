@@ -1,3 +1,4 @@
+import { nomCompte, nomsUniques } from "./destinations.js";
 import { budgetIa } from "./iaBudget.js";
 import { createSign, randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -30,6 +31,8 @@ export function ebJwt(cfg, nowSec = Math.floor(Date.now() / 1000)) {
     const sig = createSign("RSA-SHA256").update(`${head}.${body}`).sign(cfg.privateKey);
     return `${head}.${body}.${b64url(sig)}`;
 }
+/** What is kept of each account of a session (enough to name it and suggest where it goes). */
+export const infosEb = (a) => ({ uid: a.uid, name: a.name ?? null, iban: a.account_id?.iban ?? null, usage: a.usage ?? null, cash_account_type: a.cash_account_type ?? null, product: a.product ?? null, details: a.details ?? null });
 export class EbClient {
     cfg;
     fetchImpl;
@@ -94,7 +97,7 @@ export function ensureEbSchema(db) {
     if (!cols.includes("comptes"))
         db.raw.exec("ALTER TABLE bank_links ADD COLUMN comptes TEXT");
 }
-const setLinkExtra = (db, household_id, expire_le, comptes) => db.raw.prepare("UPDATE bank_links SET expire_le = ?, comptes = ? WHERE household_id = ?").run(expire_le, JSON.stringify(comptes.map((a) => ({ uid: a.uid, name: a.name ?? null, iban: a.account_id?.iban ?? null }))), household_id);
+const setLinkExtra = (db, household_id, expire_le, comptes) => db.raw.prepare("UPDATE bank_links SET expire_le = ?, comptes = ? WHERE household_id = ?").run(expire_le, JSON.stringify(comptes.map(infosEb)), household_id);
 export const linkExtra = (db, household_id) => db.raw.prepare("SELECT expire_le, comptes FROM bank_links WHERE household_id = ?").get(household_id);
 export const newState = () => randomBytes(18).toString("base64url");
 /** Starts a household connection: remembers the pending state, returns the bank's URL. */
@@ -127,12 +130,15 @@ export async function ebSyncHousehold(db, client, householdId) {
     const banque = link.external_user_id.split("|")[0] || null;
     const comptes = JSON.parse(extra?.comptes ?? "[]");
     const from = (link.curseur ?? new Date(Date.now() - 90 * 864e5).toISOString()).slice(0, 10);
+    const noms = nomsUniques(comptes, (a) => nomCompte(a));
     let lues = 0, ajoutees = 0;
-    for (const a of comptes) {
-        const nom = a.name || (a.iban ? `Compte ••${a.iban.slice(-4)}` : "Compte");
+    for (const [i, a] of comptes.entries()) {
+        const nom = noms[i];
         const bal = await client.balances(a.uid).catch(() => []);
         const solde = bal.find((b) => ["CLBD", "ITAV", "XPCD", "ITBD"].includes(b.balance_type ?? "")) ?? bal[0];
-        db.upsertBankAccount({ id: `eb:${a.uid}`, household_id: householdId, item_id: link.user_uuid, nom, banque, type: null, solde: solde ? Number(solde.balance_amount.amount) : null, devise: solde?.balance_amount.currency ?? "EUR", maj_le: new Date().toISOString() });
+        db.upsertBankAccount({ id: `eb:${a.uid}`, household_id: householdId, item_id: link.user_uuid, nom, banque, type: null, solde: solde ? Number(solde.balance_amount.amount) : null, devise: solde?.balance_amount.currency ?? "EUR", maj_le: new Date().toISOString(), infos: JSON.stringify(a) });
+        if (db.destinationParId(householdId, `eb:${a.uid}`) === "ignore")
+            continue; // not followed: no operation imported
         const parsed = mapEbTransactions(await client.transactions(a.uid, from), nom);
         lues += parsed.length;
         const cats = await categorise(parsed, budgetIa(db, householdId));

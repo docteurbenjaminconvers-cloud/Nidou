@@ -123,7 +123,11 @@ export function monterEspaces(api: Hono<any>, db: Db, ctx: Ctx) {
     const h = ctx.household(c);
     const d = donnees(h.id, e, h.nom);
     const txs = transactions(h.id);
-    const rapport = e === "budget" ? rapportBudget(txs, { ...(d as DonneesBudget), comptes_exclus: [...db.comptesPro(h.id)] })
+    // the balances of the household's and savings accounts join the balance sheet by themselves (read from the bank)
+    const comptesBanque = db.listBankAccounts(h.id).map((a) => ({ a, dest: db.destinationCompte(a) })).filter((x) => (x.dest === "foyer" || x.dest === "epargne") && (x.a.solde ?? 0) > 0)
+      .map(({ a, dest }) => ({ id: `banque:${a.id}`, libelle: `${a.nom}${a.banque ? ` (${a.banque})` : ""}`, type: dest === "epargne" ? "epargne" as const : "compte" as const, valeur: Number(a.solde) }));
+    const db0 = d as DonneesBudget;
+    const rapport = e === "budget" ? rapportBudget(txs, { ...db0, patrimoine: { ...db0.patrimoine, actifs: [...comptesBanque, ...(db0.patrimoine?.actifs ?? [])] }, comptes_exclus: [...db.comptesPro(h.id)] })
       : e === "pro" ? rapportPro(d as DonneesPro, txs, db.listDocuments(h.id).map((x) => ({ id: x.id, title: x.title, category: x.category })))
       : rapportLocatif(d as DonneesLocatif, txs);
     if (e === "pro") {

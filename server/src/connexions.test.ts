@@ -36,6 +36,6 @@ test("banque supplémentaire Enable Banking : session ouverte, comptes lus, conn
   const r = await ebSynchroSup(db, client, cx as ConnexionRow);
   assert.deepEqual([r.comptes, r.ajoutees], [1, 1]);
   const compte = db.listBankAccounts(h.id)[0];
-  assert.equal(compte.type, "pro"); assert.equal(compte.nom, "Pro · Compte principal (Qonto)"); assert.equal(compte.solde, 4200);
+  assert.equal(compte.type, "pro"); assert.equal(compte.nom, "Pro · Compte principal ••0123 (Qonto)"); assert.equal(compte.solde, 4200);
   assert.equal(db.soldeFoyer(h.id), null, "the professional balance is not the household's");
 });

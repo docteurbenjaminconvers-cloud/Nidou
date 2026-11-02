@@ -1,6 +1,6 @@
 import { langueChoisie } from "./i18n/traduction";
 import type { AssistantEtat, AssistantMessage, AssistantReponse, AideResiliation, Resiliation, Prevision, DepensePartagee, EtatPartages, ReglementPartage } from "./types";
-import type { Activite, BankStatus, BudgetAction, BudgetReport, ChargesReport, Deadline, Doc, FamilleReport, Household, ImportResult, Member, Mesure, Temoin, Banque, BanquesReport, Veille, VeillesReport, VuePersonne } from "./types";
+import type { Activite, BankStatus, DestinationCompte, BudgetAction, BudgetReport, ChargesReport, Deadline, Doc, FamilleReport, Household, ImportResult, Member, Mesure, Temoin, Banque, BanquesReport, Veille, VeillesReport, VuePersonne } from "./types";
 import demoFamille from "./demo/famille.json";
 import { MODULES, PACKS, SOCLE, SOCLE_INCLUT, droits, normaliser, type Espace, type ModuleId } from "../../server/src/offre";
 import { DEMO_BUDGET, grandLivre, rapportBudget, type DonneesBudget, type RapportBudget, type TxB } from "../../server/src/budgetExpert";
@@ -80,6 +80,8 @@ export interface Api {
   annulerResiliation(cle: string): Promise<void>;
   lettreRemboursement(cle: string): Promise<{ lettre: string }>;
   bankStatus(): Promise<BankStatus>;
+  /** Confirms or changes where each account goes; « ignore » removes its imported operations. */
+  destinationsComptes(comptes: { id: string; destination: DestinationCompte }[]): Promise<{ ok: boolean; operations_retirees: number }>;
   bankConnect(email: string, aspsp?: Banque, usage?: "perso" | "pro"): Promise<{ url: string | null; ajoute?: boolean }>;
   banques(usage?: "perso" | "pro"): Promise<BanquesReport>;
   /** Disconnects one further bank (personal or professional). */
@@ -247,6 +249,7 @@ const serverApi: Api = {
   annulerResiliation: async (cle) => { await call(`/resiliations/${encodeURIComponent(cle)}`, { method: "DELETE" }); },
   lettreRemboursement: (cle) => call(`/resiliations/${encodeURIComponent(cle)}/remboursement`),
   bankStatus: () => call("/bank/status"),
+  destinationsComptes: (comptes) => call("/bank/comptes", json({ comptes }, "PUT")),
   bankConnect: (email, aspsp, usage) => call("/bank/connect", json({ ...(aspsp ? { aspsp } : { email }), ...(usage ? { usage } : {}) })),
   banques: (usage) => call(`/bank/banques${usage === "pro" ? "?usage=pro" : ""}`),
   supprimerConnexion: async (id) => { await call(`/bank/connexions/${encodeURIComponent(id)}`, { method: "DELETE" }); },
@@ -361,6 +364,7 @@ function makeDemoApi(): Api {
     deadlines: structuredClone(demoDeadlines) as Deadline[],
     imported: false,
     bank: false,
+    destinations: {} as Record<string, DestinationCompte>,
     connexions: [] as { id: string; usage: "perso" | "pro"; banque: string; compte: string }[],
     decisions: {} as Record<string, string>,
     famille: structuredClone(demoFamille) as unknown as FamilleReport,
@@ -454,8 +458,11 @@ function makeDemoApi(): Api {
     bankStatus: async () => ({
       fournisseur: "simule", connecte: state.bank, statut: state.bank ? "connecte" : "aucune", derniere_synchro: state.bank ? new Date().toISOString() : null,
       comptes: [
-        ...(state.bank ? [{ id: "sim:1", nom: "Compte joint", banque: "Banque de démonstration", solde: 2487.91, devise: "EUR", maj_le: new Date().toISOString() }] : []),
-        ...state.connexions.map((c) => ({ id: `sim:${c.id}`, nom: c.compte, banque: c.banque, solde: c.usage === "pro" ? 6420.5 : 1310.2, devise: "EUR", maj_le: new Date().toISOString(), pro: c.usage === "pro" })),
+        ...(state.bank ? [
+          { id: "sim:1", nom: "Compte joint", banque: "Banque de démonstration", solde: 2487.91, devise: "EUR", maj_le: new Date().toISOString(), destination: state.destinations["sim:1"] ?? "foyer" as DestinationCompte, confirme: !!state.destinations["sim:1"] },
+          { id: "sim:livret", nom: "Livret A ••4412", banque: "Banque de démonstration", solde: 8450, devise: "EUR", maj_le: new Date().toISOString(), destination: state.destinations["sim:livret"] ?? "epargne" as DestinationCompte, confirme: !!state.destinations["sim:livret"] },
+        ] : []),
+        ...state.connexions.map((c) => ({ id: `sim:${c.id}`, nom: c.compte, banque: c.banque, solde: c.usage === "pro" ? 6420.5 : 1310.2, devise: "EUR", maj_le: new Date().toISOString(), pro: c.usage === "pro", destination: state.destinations[`sim:${c.id}`] ?? (c.usage === "pro" ? "pro" : "foyer") as DestinationCompte, confirme: !!state.destinations[`sim:${c.id}`] })),
       ],
       connexions: state.connexions.map((c) => ({ id: c.id, usage: c.usage, banque: c.banque, statut: "connecte" as const, expire_le: null, derniere_synchro: new Date().toISOString() })),
     }),
@@ -473,6 +480,7 @@ function makeDemoApi(): Api {
     supprimerConnexion: async (id) => { state.connexions = state.connexions.filter((c) => c.id !== id); },
     bankSync: async () => { await new Promise((r) => setTimeout(r, 700)); return { comptes: 1, lues: 127, ajoutees: 0 }; },
     bankDisconnect: async () => { state.bank = false; },
+    destinationsComptes: async (comptes) => { for (const c of comptes) state.destinations[c.id] = c.destination; return { ok: true, operations_retirees: 0 }; },
     // Family: demo state is edited in memory; computed parts (agenda, costs) are recomputed locally.
     famille: async () => recomputeFamille(state.famille, state.household),
     setSituation: async (situation) => { state.famille.situation = situation; state.household.situation = situation; },

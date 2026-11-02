@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Api } from "../api";
 import { ApiError } from "../api";
-import type { Banque, BankStatus, Household } from "../types";
+import type { Banque, BankStatus, DestinationCompte, Household } from "../types";
 import { BankPicker } from "../BankPicker";
 import { fmtEuro } from "../ui";
 
@@ -102,12 +102,7 @@ export function BankLink({ api, household, onChanged, onUpgrade, toast, compact 
     const last = status.derniere_synchro ? new Date(status.derniere_synchro).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
     return (
       <div className={compact ? "" : "lock"} style={compact ? { marginBottom: 14 } : { marginTop: 0, marginBottom: 14 }}>
-        {status.comptes.map((a) => (
-          <div className="settings-row" key={a.id} style={{ borderBottom: 0, padding: "6px 0" }}>
-            <div><div className="t">{a.nom}{a.pro && <span className="badge-pro">Pro</span>}</div><div className="s">{a.banque ?? "Banque"} · {a.pro ? "à part du budget du foyer" : `mis à jour le ${last}`}</div></div>
-            {a.solde != null && <b>{fmtEuro(a.solde, 2)}</b>}
-          </div>
-        ))}
+        <ComptesDestinations api={api} comptes={status.comptes} derniere={last} toast={toast} onFait={() => { load(); onChanged(); }} />
         {(status.connexions ?? []).length > 0 && (
           <div className="connexions-sup">
             {(status.connexions ?? []).map((c) => (
@@ -166,6 +161,71 @@ export function BankLink({ api, household, onChanged, onUpgrade, toast, compact 
           <ConnecterPro api={api} toast={toast} libelle="Connecter un compte professionnel" onFait={() => { load(); onChanged(); }} />
           {err && <p className="note" style={{ color: "var(--ember)", marginTop: 8 }}>{err}</p>}
           {status.statut === "erreur" && <p className="note" style={{ color: "var(--ember)", marginTop: 8 }}>La dernière synchronisation a échoué. Réessayez, ou reconnectez la banque.</p>}
+        </>
+      )}
+    </div>
+  );
+}
+
+const DEST: [DestinationCompte, string, string][] = [
+  ["foyer", "Budget du foyer", "dépenses, économies, fin de mois"],
+  ["pro", "Professionnel", "va dans Vie pro, à part du budget"],
+  ["locatif", "Location / SCI", "loyers et charges, à part du budget"],
+  ["epargne", "Épargne", "seul le solde compte, dans le bilan"],
+  ["ignore", "Ne pas suivre", "aucune opération importée"],
+];
+const dest = (d: DestinationCompte | undefined) => DEST.find((x) => x[0] === (d ?? "foyer"))!;
+
+/**
+ * Each bank account and where it goes. Right after a connection the accounts are « à confirmer »: Lucien has
+ * suggested a destination (a company's account to Pro or Location, a savings book to Épargne), the person checks
+ * and validates. Later, a change applies at once (« Ne pas suivre » asks first: it removes the imported operations).
+ */
+function ComptesDestinations({ api, comptes, derniere, toast, onFait }: { api: Api; comptes: BankStatus["comptes"]; derniere: string; toast: (m: string) => void; onFait: () => void }) {
+  const [choix, setChoix] = useState<Record<string, DestinationCompte>>({});
+  const [busy, setBusy] = useState(false);
+  const aConfirmer = comptes.filter((a) => !a.confirme);
+  const valeur = (a: BankStatus["comptes"][number]) => choix[a.id] ?? a.destination ?? "foyer";
+  const envoyer = async (liste: { id: string; destination: DestinationCompte }[]) => {
+    setBusy(true);
+    try {
+      const r = await api.destinationsComptes(liste);
+      toast(r.operations_retirees ? `Enregistré : ${r.operations_retirees} opérations retirées` : "Enregistré");
+      setChoix({}); onFait();
+    } catch (e) { toast(e instanceof ApiError ? e.message : "Enregistrement impossible, réessayez"); }
+    finally { setBusy(false); }
+  };
+  const changer = (a: BankStatus["comptes"][number], d: DestinationCompte) => {
+    if (!a.confirme) { setChoix({ ...choix, [a.id]: d }); return; }
+    if (d === "ignore" && !confirm(`Ne plus suivre « ${a.nom} » ? Ses opérations déjà importées seront effacées de Lucien (rien ne change à la banque).`)) return;
+    envoyer([{ id: a.id, destination: d }]);
+  };
+  return (
+    <div className="comptes-dest">
+      {aConfirmer.length > 0 && (
+        <div className="comptes-dest-tete">
+          <b>{aConfirmer.length > 1 ? `Où vont vos ${aConfirmer.length} comptes ?` : "Où va ce compte ?"}</b>
+          <span>Lucien a fait une proposition pour chacun : vérifiez, corrigez si besoin, puis validez. Seul le « Budget du foyer » compte dans vos dépenses.</span>
+        </div>
+      )}
+      {comptes.map((a) => (
+        <div className={`compte-dest ${a.confirme ? "" : "a-confirmer"} ${valeur(a) === "ignore" ? "ignore" : ""}`} key={a.id}>
+          <div className="compte-dest-haut">
+            <div><div className="t">{a.nom}</div><div className="s">{a.banque ?? "Banque"}{a.confirme ? ` · mis à jour le ${derniere}` : " · à confirmer"}</div></div>
+            {a.solde != null && valeur(a) !== "ignore" && <b>{fmtEuro(a.solde, 2)}</b>}
+          </div>
+          <label className="compte-dest-choix">
+            <select className="in" value={valeur(a)} disabled={busy} onChange={(e) => changer(a, e.target.value as DestinationCompte)} aria-label={`Destination de ${a.nom}`}>
+              {DEST.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+            </select>
+            <span className="note">{dest(valeur(a))[2]}</span>
+          </label>
+        </div>
+      ))}
+      {aConfirmer.length > 0 && (
+        <>
+          {aConfirmer.some((a) => valeur(a) === "ignore") && <p className="note">Les comptes « Ne pas suivre » : leurs opérations déjà importées seront effacées de Lucien (rien ne change à la banque).</p>}
+          <button className="btn block" disabled={busy} onClick={() => envoyer(aConfirmer.map((a) => ({ id: a.id, destination: valeur(a) })))}>{busy ? "Enregistrement…" : "Valider"}</button>
         </>
       )}
     </div>

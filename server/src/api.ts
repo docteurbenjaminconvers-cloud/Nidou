@@ -29,6 +29,7 @@ import { pointDuFoyer } from "./hebdo.js";
 import { monterEspaces } from "./espaces.js";
 import { adminOk, monterPartenaires } from "./partenaires.js";
 import { monterSupport } from "./support.js";
+import { DESTINATIONS } from "./destinations.js";
 import { accesAutorise, MESSAGE_FERME, monterAcces } from "./acces.js";
 import { monterPartages } from "./partages.js";
 import { monterSituations } from "./situationsApi.js";
@@ -885,6 +886,19 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     return c.json({ lettre: lettreRemboursement({ marchand: s.marchand, demande_le: s.demande_le, prelevements: tardifs, expediteur: expediteur(c) }) });
   });
 
+  /** Where an account goes (household budget, pro, rental, savings, not followed). Several at once after a connection. */
+  api.put("/bank/comptes", async (c) => {
+    const h = household(c);
+    const b = z.object({ comptes: z.array(z.object({ id: z.string().max(200), destination: z.enum(DESTINATIONS) })).min(1).max(50) }).parse(await c.req.json());
+    let retirees = 0;
+    for (const x of b.comptes) {
+      const n = db.setDestinationCompte(h.id, x.id, x.destination);
+      if (n < 0) return c.json({ error: "introuvable", message: "Compte introuvable." }, 404);
+      retirees += n;
+    }
+    return c.json({ ok: true, operations_retirees: retirees });
+  });
+
   api.get("/budget/categories", (c) => c.json(TX_CATEGORIES.map((k) => ({ cle: k, libelle: TX_LABEL[k] }))));
 
   // ---------- connexion bancaire (Bridge) ----------
@@ -898,7 +912,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
       expire_le: link ? linkExtra(db, h.id)?.expire_le ?? null : null,
       statut: link?.statut ?? "aucune",
       derniere_synchro: link?.derniere_synchro ?? null,
-      comptes: db.listBankAccounts(h.id).map((a) => ({ id: a.id, nom: a.nom, banque: a.banque, solde: a.solde, devise: a.devise, maj_le: a.maj_le, pro: a.type === "pro" })),
+      comptes: db.listBankAccounts(h.id).map((a) => ({ id: a.id, nom: a.nom, banque: a.banque, solde: a.solde, devise: a.devise, maj_le: a.maj_le, pro: a.type === "pro", destination: db.destinationCompte(a), confirme: !!a.destination })),
       connexions: listConnexions(db, h.id).map((x) => ({ id: x.id, usage: x.usage, banque: x.banque, statut: x.statut, expire_le: x.expire_le, derniere_synchro: x.derniere_synchro })),
     });
   });

@@ -180,13 +180,15 @@ export interface AideResiliation { marchand: string; montant: number; frequence:
 
 export interface ImportResult { lues: number; ajoutees: number; doublons: number; de?: string; a?: string }
 
+/** Where a bank account goes: household budget, Vie pro, rental/SCI, savings (balance only), or not followed. */
+export type DestinationCompte = "foyer" | "pro" | "locatif" | "epargne" | "ignore";
 export interface BankStatus {
   fournisseur: "enablebanking" | "bridge" | "simule";
   connecte: boolean;
   expire_le?: string | null;
   statut: "aucune" | "en_attente" | "connecte" | "erreur";
   derniere_synchro: string | null;
-  comptes: { id: string; nom: string; banque: string | null; solde: number | null; devise: string | null; maj_le: string | null; pro?: boolean }[];
+  comptes: { id: string; nom: string; banque: string | null; solde: number | null; devise: string | null; maj_le: string | null; pro?: boolean; destination?: DestinationCompte; confirme?: boolean }[];
   /** Further banks: another personal bank, or professional accounts (business login). */
   connexions?: { id: string; usage: "perso" | "pro"; banque: string; statut: "en_attente" | "connecte" | "erreur"; expire_le: string | null; derniere_synchro: string | null }[];
 }

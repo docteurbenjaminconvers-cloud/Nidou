@@ -1047,3 +1047,16 @@ select.in { width: 100%; border: 2px solid var(--line); background: var(--white)
 .aide-fait { display: grid; gap: 6px; }
 .aide-infos { background: var(--line); border-radius: 10px; padding: 8px 10px; }
 .admin-lien { word-break: break-all; font-size: 13px; }
+
+/* bank accounts and where each one goes */
+.comptes-dest { display: grid; gap: 10px; margin-bottom: 10px; }
+.comptes-dest-tete { display: grid; gap: 4px; background: var(--yolk-soft, #fff4d6); border-radius: 14px; padding: 12px 14px; }
+.comptes-dest-tete span { font-size: 14px; color: var(--ink); opacity: .85; }
+.compte-dest { display: grid; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.compte-dest.a-confirmer { border: 1.5px solid var(--ember); border-radius: 14px; padding: 10px 12px; }
+.compte-dest.ignore .t { text-decoration: line-through; opacity: .6; }
+.compte-dest-haut { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.compte-dest-haut .t { font-weight: 700; word-break: break-word; }
+.compte-dest-haut .s { font-size: 13px; color: var(--mist); }
+.compte-dest-choix { display: grid; gap: 2px; }
+.compte-dest-choix select { max-width: 280px; }

@@ -5,10 +5,11 @@
  * business login. Accounts of a professional connection are typed « pro »: they stay out of the family budget and
  * are offered to Vie pro. Read-only, like every bank access in Lucien.
  */
+import { nomCompte, nomsUniques } from "./destinations.js";
 import { randomUUID } from "node:crypto";
 import { budgetIa } from "./iaBudget.js";
 import { categorise, fingerprint, merchantOf, parseStatement } from "./transactions.js";
-import { mapEbTransactions, newState } from "./enablebanking.js";
+import { infosEb, mapEbTransactions, newState } from "./enablebanking.js";
 export function ensureConnexionsSchema(db) {
     db.raw.exec(`CREATE TABLE IF NOT EXISTS bank_connexions (
     id TEXT PRIMARY KEY, household_id TEXT NOT NULL, usage TEXT NOT NULL, fournisseur TEXT NOT NULL, banque TEXT NOT NULL, pays TEXT NOT NULL,
@@ -39,15 +40,12 @@ export async function ebTerminerSup(db, client, state, code) {
     if (!c)
         return null;
     const s = await client.createSession(code);
-    const comptes = JSON.stringify((s.accounts ?? []).map((a) => ({ uid: a.uid, name: a.name ?? null, iban: a.account_id?.iban ?? null })));
+    const comptes = JSON.stringify((s.accounts ?? []).map((a) => infosEb(a)));
     const fait = { ...c, user_uuid: s.session_id, statut: "connecte", expire_le: s.access?.valid_until ?? null, comptes };
     maj(db, fait);
     return fait;
 }
-const nomCompte = (c, a) => {
-    const base = a.name || (a.iban ? `Compte ••${a.iban.slice(-4)}` : "Compte");
-    return c.usage === "pro" ? `Pro · ${base} (${c.banque})` : `${base} (${c.banque})`;
-};
+const nomSup = (c, a) => `${nomCompte(a, c.usage === "pro" ? "Pro · " : "")} (${c.banque})`;
 /** Balances and new booked transactions of one extra connection. */
 export async function ebSynchroSup(db, client, c) {
     if (c.statut === "en_attente" || c.user_uuid.startsWith("attente:"))
@@ -58,12 +56,15 @@ export async function ebSynchroSup(db, client, c) {
     }
     const comptes = JSON.parse(c.comptes ?? "[]");
     const from = (c.curseur ?? new Date(Date.now() - 90 * 864e5).toISOString()).slice(0, 10);
+    const noms = nomsUniques(comptes, (a) => nomSup(c, a));
     let lues = 0, ajoutees = 0;
-    for (const a of comptes) {
-        const nom = nomCompte(c, a);
+    for (const [i, a] of comptes.entries()) {
+        const nom = noms[i];
         const bal = await client.balances(a.uid).catch(() => []);
         const solde = bal.find((b) => ["CLBD", "ITAV", "XPCD", "ITBD"].includes(b.balance_type ?? "")) ?? bal[0];
-        db.upsertBankAccount({ id: `eb:${a.uid}`, household_id: c.household_id, item_id: c.user_uuid, nom, banque: c.banque, type: c.usage === "pro" ? "pro" : null, solde: solde ? Number(solde.balance_amount.amount) : null, devise: solde?.balance_amount.currency ?? "EUR", maj_le: new Date().toISOString() });
+        db.upsertBankAccount({ id: `eb:${a.uid}`, household_id: c.household_id, item_id: c.user_uuid, nom, banque: c.banque, type: c.usage === "pro" ? "pro" : null, solde: solde ? Number(solde.balance_amount.amount) : null, devise: solde?.balance_amount.currency ?? "EUR", maj_le: new Date().toISOString(), infos: JSON.stringify(a) });
+        if (db.destinationParId(c.household_id, `eb:${a.uid}`) === "ignore")
+            continue; // not followed: no operation imported
         const parsed = mapEbTransactions(await client.transactions(a.uid, from), nom);
         lues += parsed.length;
         const cats = await categorise(parsed, budgetIa(db, c.household_id));
@@ -109,7 +110,7 @@ export function simulerConnexionSup(db, hid, usage, banque = usage === "pro" ? "
     const now = new Date();
     db.raw.prepare("INSERT INTO bank_connexions (id, household_id, usage, fournisseur, banque, pays, user_uuid, statut, derniere_synchro, cree_le) VALUES (?, ?, ?, 'simule', ?, 'FR', ?, 'connecte', ?, ?)")
         .run(id, hid, usage, banque, session, now.toISOString(), now.toISOString());
-    const nom = nomCompte({ usage, banque }, { name: usage === "pro" ? "Compte professionnel" : "Compte courant", iban: null });
+    const nom = nomSup({ usage, banque }, { name: usage === "pro" ? "Compte professionnel" : "Compte courant", iban: null });
     db.upsertBankAccount({ id: `sim:${id}`, household_id: hid, item_id: session, nom, banque, type: usage === "pro" ? "pro" : null, solde: usage === "pro" ? 6420.5 : 1310.2, devise: "EUR", maj_le: now.toISOString() });
     if (usage === "pro") {
         const parsed = parseStatement(RELEVE_PRO_DEMO(now.getUTCFullYear(), now.getUTCMonth() + 1), nom);

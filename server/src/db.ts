@@ -1,3 +1,4 @@
+import { DESTINATIONS, suggererDestination, type Destination, type InfosCompte } from "./destinations.js";
 import { DatabaseSync } from "node:sqlite";
 import { createHash, randomBytes, randomUUID, randomInt } from "node:crypto";
 
@@ -118,6 +119,10 @@ export interface BankAccountRow {
   solde: number | null;
   devise: string | null;
   maj_le: string | null;
+  /** Chosen by the person (null: not confirmed yet, Lucien's suggestion applies). */
+  destination?: string | null;
+  /** What the bank says about the account (JSON of InfosCompte), to suggest a destination. */
+  infos?: string | null;
 }
 
 export interface PushSubscriptionRow { id: string; household_id: string; user_id: string | null; endpoint: string; p256dh: string; auth: string; appareil: string | null; cree_le: string }
@@ -380,6 +385,9 @@ export class Db {
     // Light migrations for databases created by earlier prototypes.
     const colsUsers = (this.raw.prepare("PRAGMA table_info(users)").all() as unknown as { name: string }[]).map((c) => c.name);
     if (!colsUsers.includes("langue")) this.raw.exec("ALTER TABLE users ADD COLUMN langue TEXT"); // « en » : emails and notifications in English
+    const colsComptes = (this.raw.prepare("PRAGMA table_info(bank_accounts)").all() as unknown as { name: string }[]).map((c) => c.name);
+    if (!colsComptes.includes("destination")) this.raw.exec("ALTER TABLE bank_accounts ADD COLUMN destination TEXT");
+    if (!colsComptes.includes("infos")) this.raw.exec("ALTER TABLE bank_accounts ADD COLUMN infos TEXT");
     const cols = (this.raw.prepare("PRAGMA table_info(households)").all() as unknown as { name: string }[]).map((c) => c.name);
     if (!cols.includes("essai_fin")) this.raw.exec("ALTER TABLE households ADD COLUMN essai_fin TEXT");
     if (!cols.includes("boite_code")) this.raw.exec("ALTER TABLE households ADD COLUMN boite_code TEXT");
@@ -613,8 +621,9 @@ export class Db {
     const budget = this.getModuleData<{ comptes_exclus?: string[] }>(household_id, "budget")?.comptes_exclus ?? [];
     const pro = (this.getModuleData<{ personnes?: { independant?: { compte_pro?: string } | null }[] }>(household_id, "pro")?.personnes ?? [])
       .map((p) => p.independant?.compte_pro).filter((c): c is string => !!c);
-    const typesPro = this.listBankAccounts(household_id).filter((a) => a.type === "pro").map((a) => a.nom);
-    return new Set([...budget, ...pro, ...typesPro]);
+    // every bank account whose destination is not the household budget (pro, rental, savings, not followed)
+    const horsFoyer = this.listBankAccounts(household_id).filter((a) => this.destinationCompte(a) !== "foyer").map((a) => a.nom);
+    return new Set([...budget, ...pro, ...horsFoyer]);
   }
   /** Household operations without professional accounts: the family budget is not the practice's. */
   /** Today's balance of the household accounts (professional accounts left out), or null without a bank connection. */
@@ -915,14 +924,40 @@ export class Db {
   upsertBankAccount(a: BankAccountRow) {
     this.raw
       .prepare(
-        `INSERT INTO bank_accounts (id, household_id, item_id, nom, banque, type, solde, devise, maj_le) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(id) DO UPDATE SET item_id = excluded.item_id, nom = excluded.nom, banque = excluded.banque, type = excluded.type, solde = excluded.solde, devise = excluded.devise, maj_le = excluded.maj_le`
+        `INSERT INTO bank_accounts (id, household_id, item_id, nom, banque, type, solde, devise, maj_le, infos) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET item_id = excluded.item_id, nom = excluded.nom, banque = excluded.banque, type = excluded.type, solde = excluded.solde, devise = excluded.devise, maj_le = excluded.maj_le, infos = COALESCE(excluded.infos, bank_accounts.infos)`
       )
-      .run(a.id, a.household_id, a.item_id, a.nom, a.banque, a.type, a.solde, a.devise, a.maj_le);
+      .run(a.id, a.household_id, a.item_id, a.nom, a.banque, a.type, a.solde, a.devise, a.maj_le, a.infos ?? null);
   }
 
   listBankAccounts(household_id: string): BankAccountRow[] {
     return this.raw.prepare("SELECT * FROM bank_accounts WHERE household_id = ? ORDER BY nom").all(household_id) as unknown as BankAccountRow[];
+  }
+
+  /** The destination in force: the person's choice, or Lucien's suggestion until it is confirmed. */
+  destinationCompte(a: BankAccountRow): Destination {
+    if (a.destination && (DESTINATIONS as readonly string[]).includes(a.destination)) return a.destination as Destination;
+    let infos: InfosCompte = { name: a.nom };
+    try { if (a.infos) infos = JSON.parse(a.infos) as InfosCompte; } catch { /* keep the name */ }
+    return suggererDestination(infos, a.type === "pro");
+  }
+
+  /** Destination of the account a bank operation belongs to (by the account's id), for the synchronisations. */
+  destinationParId(household_id: string, id: string): Destination | null {
+    const a = this.raw.prepare("SELECT * FROM bank_accounts WHERE household_id = ? AND id = ?").get(household_id, id) as unknown as BankAccountRow | undefined;
+    return a ? this.destinationCompte(a) : null;
+  }
+
+  /**
+   * The person sets an account's destination. « Ne pas suivre » removes the operations already imported from it:
+   * Lucien keeps nothing of an account the person does not want followed. Returns the number of operations removed.
+   */
+  setDestinationCompte(household_id: string, id: string, destination: Destination): number {
+    const a = this.raw.prepare("SELECT * FROM bank_accounts WHERE household_id = ? AND id = ?").get(household_id, id) as unknown as BankAccountRow | undefined;
+    if (!a) return -1;
+    this.raw.prepare("UPDATE bank_accounts SET destination = ? WHERE household_id = ? AND id = ?").run(destination, household_id, id);
+    if (destination !== "ignore") return 0;
+    return Number(this.raw.prepare("DELETE FROM transactions WHERE household_id = ? AND compte = ?").run(household_id, a.nom).changes);
   }
 
   // ---------- IA usage: per-household monthly quota + global monthly spend cap ----------
