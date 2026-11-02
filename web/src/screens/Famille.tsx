@@ -74,7 +74,13 @@ export function Famille({ api, household, go, unread, onChanged, toast, sel, doc
   const strip = useRef<HTMLDivElement>(null);
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // keep the selected face visible in the strip
-  useEffect(() => { strip.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" }); }, [sel, f]);
+  // (the strip alone scrolls: scrollIntoView would also move the page on iPhone and leave the bottom bar floating mid-screen)
+  useEffect(() => {
+    const row = strip.current, el = row?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (!row || !el || row.scrollWidth <= row.clientWidth) return;
+    const cible = el.offsetLeft - row.offsetLeft - (row.clientWidth - el.offsetWidth) / 2;
+    row.scrollTo({ left: Math.max(0, cible), behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }, [sel, f]);
 
   if (!f) return <div className="screen"><div className="top"><h1>Famille</h1></div><p className="note">Chargement…</p></div>;
 
