@@ -216,3 +216,8 @@ export interface VuePersonne {
   consentement_le: string | null; consentement_expire: string | null; temoins: Temoin[]; banque_connectee: boolean;
   acces: { nom: string; role: string }[]; engagements: string[]; derniers_acces: { quand: string; qui: string }[];
 }
+
+/** « Dépenses à vérifier » on the professional accounts (read-only analysis). */
+export interface PrelevementPro { cle: string; marchand: string; frequence: string; montant: number; annuel: number; depuis: string; derniere_date: string; occurrences: number; compte: string | null; signaux: ("nouveau" | "suspect" | "hausse")[]; hausse: { avant: number; apres: number } | null; decision: "ok" | "resilier" | null }
+export interface AlertePro { cle: string; type: "suspect" | "doublon" | "micro" | "frais"; titre: string; detail: string; montant: number; date: string | null; marchand: string | null; decision: "ok" | "resilier" | null }
+export interface AnalysePro { comptes: string[]; mois: number; prelevements: PrelevementPro[]; alertes: AlertePro[]; total_annuel: number; a_verifier: number }

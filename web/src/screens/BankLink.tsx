@@ -4,6 +4,7 @@ import { ApiError } from "../api";
 import type { Banque, BankStatus, DestinationCompte, Household } from "../types";
 import { BankPicker } from "../BankPicker";
 import { fmtEuro } from "../ui";
+import { VerifProCarte } from "./VerifPro";
 
 /**
  * « Connecter un compte professionnel » : the bank's business login (Qonto, Shine, offre pro d'une banque).
@@ -103,6 +104,7 @@ export function BankLink({ api, household, onChanged, onUpgrade, toast, compact 
     return (
       <div className={compact ? "" : "lock"} style={compact ? { marginBottom: 14 } : { marginTop: 0, marginBottom: 14 }}>
         <ComptesDestinations api={api} comptes={status.comptes} derniere={last} toast={toast} onFait={() => { load(); onChanged(); }} />
+        {status.comptes.some((a) => a.destination === "pro" && a.confirme) && <VerifProCarte api={api} go={(s) => { location.hash = s; }} />}
         {(status.connexions ?? []).length > 0 && (
           <div className="connexions-sup">
             {(status.connexions ?? []).map((c) => (

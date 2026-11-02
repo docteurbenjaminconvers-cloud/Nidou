@@ -3,6 +3,7 @@ import type { Api } from "../api";
 import { livreCsv, MICRO, RUBRIQUES, cleLibelle, type PersonnePro, type RapportMicro, type Rubrique, type TypeMicro } from "../../../server/src/viePro";
 import { PartageComptablePanneau } from "./Comptable";
 import { ConnecterPro } from "./BankLink";
+import { VerifProCarte } from "./VerifPro";
 import { Alertes, Champ, Chiffres, dateFr, EnTete, eur, moisCourt, telecharger, useEspace, Verrou, LireDocument } from "./espacesCommun";
 
 /** A statement of the professional account (CSV or PDF), for a bank that cannot be connected, or to add earlier months. */
@@ -82,6 +83,7 @@ export function EspacePro({ api, go, onBack, toast }: { api: Api; go: (s: string
         {d.personnes.map((x, k) => <button key={k} role="tab" className="pill" aria-pressed={k === idx} onClick={() => { setI(k); setNouveau(null); setBul(null); }}>{x.prenom}{x.salarie && x.independant ? " · salarié·e et indépendant·e" : x.independant ? " · indépendant·e" : x.salarie ? " · salarié·e" : ""}</button>)}
       </div>
       <Alertes alertes={alertes} />
+      <VerifProCarte api={api} go={go} />
 
       {sal && (
         <section className="section">

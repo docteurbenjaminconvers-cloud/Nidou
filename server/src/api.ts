@@ -30,6 +30,7 @@ import { monterEspaces } from "./espaces.js";
 import { adminOk, monterPartenaires } from "./partenaires.js";
 import { monterSupport } from "./support.js";
 import { DESTINATIONS } from "./destinations.js";
+import { analyseProFoyer, deciderPro } from "./analysePro.js";
 import { accesAutorise, MESSAGE_FERME, monterAcces } from "./acces.js";
 import { monterPartages } from "./partages.js";
 import { monterSituations } from "./situationsApi.js";
@@ -897,6 +898,14 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
       retirees += n;
     }
     return c.json({ ok: true, operations_retirees: retirees });
+  });
+
+  /** Professional accounts: every recurring debit with its yearly cost, and what deserves a look (read-only). */
+  api.get("/pro/verification", (c) => c.json(analyseProFoyer(db, household(c).id)));
+  api.post("/pro/verification/decision", async (c) => {
+    const b = z.object({ cle: z.string().min(1).max(200), decision: z.enum(["ok", "resilier"]).nullable() }).parse(await c.req.json());
+    deciderPro(db, household(c).id, b.cle, b.decision);
+    return c.json(analyseProFoyer(db, household(c).id));
   });
 
   api.get("/budget/categories", (c) => c.json(TX_CATEGORIES.map((k) => ({ cle: k, libelle: TX_LABEL[k] }))));

@@ -1,6 +1,6 @@
 import { langueChoisie } from "./i18n/traduction";
 import type { AssistantEtat, AssistantMessage, AssistantReponse, AideResiliation, Resiliation, Prevision, DepensePartagee, EtatPartages, ReglementPartage } from "./types";
-import type { Activite, BankStatus, DestinationCompte, BudgetAction, BudgetReport, ChargesReport, Deadline, Doc, FamilleReport, Household, ImportResult, Member, Mesure, Temoin, Banque, BanquesReport, Veille, VeillesReport, VuePersonne } from "./types";
+import type { Activite, AnalysePro, BankStatus, DestinationCompte, BudgetAction, BudgetReport, ChargesReport, Deadline, Doc, FamilleReport, Household, ImportResult, Member, Mesure, Temoin, Banque, BanquesReport, Veille, VeillesReport, VuePersonne } from "./types";
 import demoFamille from "./demo/famille.json";
 import { MODULES, PACKS, SOCLE, SOCLE_INCLUT, droits, normaliser, type Espace, type ModuleId } from "../../server/src/offre";
 import { DEMO_BUDGET, grandLivre, rapportBudget, type DonneesBudget, type RapportBudget, type TxB } from "../../server/src/budgetExpert";
@@ -80,6 +80,8 @@ export interface Api {
   annulerResiliation(cle: string): Promise<void>;
   lettreRemboursement(cle: string): Promise<{ lettre: string }>;
   bankStatus(): Promise<BankStatus>;
+  verificationPro(): Promise<AnalysePro>;
+  deciderPro(cle: string, decision: "ok" | "resilier" | null): Promise<AnalysePro>;
   /** Confirms or changes where each account goes; « ignore » removes its imported operations. */
   destinationsComptes(comptes: { id: string; destination: DestinationCompte }[]): Promise<{ ok: boolean; operations_retirees: number }>;
   bankConnect(email: string, aspsp?: Banque, usage?: "perso" | "pro"): Promise<{ url: string | null; ajoute?: boolean }>;
@@ -249,6 +251,8 @@ const serverApi: Api = {
   annulerResiliation: async (cle) => { await call(`/resiliations/${encodeURIComponent(cle)}`, { method: "DELETE" }); },
   lettreRemboursement: (cle) => call(`/resiliations/${encodeURIComponent(cle)}/remboursement`),
   bankStatus: () => call("/bank/status"),
+  verificationPro: () => call("/pro/verification"),
+  deciderPro: (cle, decision) => call("/pro/verification/decision", json({ cle, decision })),
   destinationsComptes: (comptes) => call("/bank/comptes", json({ comptes }, "PUT")),
   bankConnect: (email, aspsp, usage) => call("/bank/connect", json({ ...(aspsp ? { aspsp } : { email }), ...(usage ? { usage } : {}) })),
   banques: (usage) => call(`/bank/banques${usage === "pro" ? "?usage=pro" : ""}`),
@@ -365,6 +369,7 @@ function makeDemoApi(): Api {
     imported: false,
     bank: false,
     destinations: {} as Record<string, DestinationCompte>,
+    verifPro: {} as Record<string, "ok" | "resilier">,
     connexions: [] as { id: string; usage: "perso" | "pro"; banque: string; compte: string }[],
     decisions: {} as Record<string, string>,
     famille: structuredClone(demoFamille) as unknown as FamilleReport,
@@ -480,6 +485,8 @@ function makeDemoApi(): Api {
     supprimerConnexion: async (id) => { state.connexions = state.connexions.filter((c) => c.id !== id); },
     bankSync: async () => { await new Promise((r) => setTimeout(r, 700)); return { comptes: 1, lues: 127, ajoutees: 0 }; },
     bankDisconnect: async () => { state.bank = false; },
+    verificationPro: async () => analyseProDemo(state.verifPro),
+    deciderPro: async (cle, decision) => { if (decision) state.verifPro[cle] = decision; else delete state.verifPro[cle]; return analyseProDemo(state.verifPro); },
     destinationsComptes: async (comptes) => { for (const c of comptes) state.destinations[c.id] = c.destination; return { ok: true, operations_retirees: 0 }; },
     // Family: demo state is edited in memory; computed parts (agenda, costs) are recomputed locally.
     famille: async () => recomputeFamille(state.famille, state.household),
@@ -978,4 +985,25 @@ function makeSituationsDemo(state: { deadlines: Deadline[]; docs: Doc[]; househo
       return lettreAdresse({ expediteur: exp, organisme: d?.organisme ?? "[organisme]", contrat: d?.numero_contrat ?? null, ancienne: s.options.ancienne_adresse ?? "", nouvelle: s.options.nouvelle_adresse ?? "", date: s.date });
     },
   };
+}
+
+/** Demo: Camille's practice account, with the kind of lines that hide on a business account. */
+function analyseProDemo(dec: Record<string, "ok" | "resilier">): AnalysePro {
+  const j = (n: number) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
+  const p = (cle: string, marchand: string, montant: number, depuis: number, signaux: AnalysePro["prelevements"][number]["signaux"], hausse: { avant: number; apres: number } | null = null) =>
+    ({ cle, marchand, frequence: "mensuel", montant, annuel: Math.round(montant * 12 * 100) / 100, depuis: j(depuis), derniere_date: j(6), occurrences: Math.max(2, Math.round(depuis / 30)), compte: "Pro Camille", signaux, hausse, decision: dec[cle] ?? null });
+  const prelevements = [
+    p("rec:annuaire", "Annuaire Pro Santé Référencement", 89, 50, ["nouveau", "suspect"]),
+    p("rec:doctolib", "Doctolib", 139, 400, ["hausse"], { avant: 129, apres: 139 }),
+    p("rec:adobe", "Adobe", 23.99, 300, []),
+    p("rec:dropbox", "Dropbox", 11.99, 700, []),
+    p("rec:orange", "Orange Pro", 52, 500, []),
+  ];
+  const alertes: AnalysePro["alertes"] = [
+    { cle: "suspect:kbis", type: "suspect", titre: "Kbis Express Service : 79 € à vérifier", detail: "Ce libellé ressemble aux fausses offres d'annuaire, de registre ou de mise en conformité qui visent les professionnels. Si vous n'avez rien commandé, contestez le prélèvement auprès de votre banque.", montant: 79, date: j(40), marchand: "Kbis Express Service", decision: dec["suspect:kbis"] ?? null },
+    { cle: "doublon:ovh", type: "doublon", titre: "Ovh prélevé deux fois : 54,60 €", detail: "Même montant à un jour d'écart. Si vous n'avez payé qu'une fois, demandez le remboursement du doublon au fournisseur ou à la banque.", montant: 54.6, date: j(18), marchand: "Ovh", decision: dec["doublon:ovh"] ?? null },
+    { cle: "frais:pro", type: "frais", titre: "96 € de frais bancaires pro sur 6 mois", detail: "Soit environ 192 € par an. Les banques en ligne pour professionnels facturent souvent bien moins : comparez, ou négociez avec votre conseiller.", montant: 192, date: null, marchand: null, decision: null },
+  ];
+  const a_verifier = prelevements.filter((x) => x.signaux.length && !x.decision).length + alertes.filter((a) => a.type !== "frais" && !a.decision).length;
+  return { comptes: ["Pro Camille"], mois: 6, prelevements, alertes, total_annuel: Math.round(prelevements.reduce((s, x) => s + x.annuel, 0) * 100) / 100, a_verifier };
 }

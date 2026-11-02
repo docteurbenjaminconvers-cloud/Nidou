@@ -1064,3 +1064,29 @@ select.in { width: 100%; border: 2px solid var(--line); background: var(--white)
 /* iPhone (full screen or Safari without toolbar): the page scrolls under the status bar (clock, battery).
    A strip of the page colour covers that area so the text never runs under the clock. */
 body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); background: var(--paper); z-index: 35; pointer-events: none; }
+
+/* « Dépenses du compte pro » */
+.verif-carte { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; text-align: left; background: var(--white); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; margin: 8px 0 12px; color: var(--ink); font: inherit; }
+.verif-carte.alerte { border: 1.5px solid var(--ember); }
+.verif-carte > span:first-child { display: grid; gap: 2px; }
+.verif-carte span span { font-size: 13px; color: var(--mist); }
+.verif-ligne { background: var(--white); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; margin-bottom: 10px; display: grid; gap: 6px; }
+.verif-ligne.suspect, .verif-ligne.doublon { border-left: 4px solid var(--ember); }
+.verif-ligne.micro { border-left: 4px solid var(--yolk); }
+.verif-ligne.faite { opacity: .65; }
+.verif-ligne p { margin: 0; font-size: 14px; line-height: 1.45; }
+.verif-ligne small { color: var(--mist); font-size: 12.5px; }
+.verif-tete { display: flex; justify-content: space-between; gap: 10px; width: 100%; background: none; border: 0; padding: 0; text-align: left; font: inherit; color: inherit; }
+.verif-tete > span:first-child { display: grid; gap: 2px; }
+.verif-annuel { font-weight: 800; white-space: nowrap; text-align: right; }
+.verif-annuel small { display: block; font-weight: 500; }
+.verif-signaux { display: flex; flex-wrap: wrap; gap: 6px; }
+.verif-signal { font-size: 12px; font-weight: 800; border-radius: 999px; padding: 3px 10px; background: var(--line); }
+.verif-signal.suspect { background: var(--ember); color: var(--white); }
+.verif-signal.nouveau { background: var(--yolk-soft); color: var(--ink); }
+.verif-signal.hausse { background: var(--lilac-soft, #ece4f3); color: var(--ink); }
+.verif-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.verif-decision { font-size: 13px; font-weight: 800; }
+.verif-decision.resilier { color: var(--ember); }
+.verif-aide { background: var(--white); border-radius: 16px; padding: 12px 14px; font-size: 14px; }
+.verif-aide ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 6px; }
