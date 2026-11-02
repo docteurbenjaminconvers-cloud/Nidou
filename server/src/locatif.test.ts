@@ -57,3 +57,21 @@ test("locatif : SCI à l'IS (amortissement, impôt) et meublé de tourisme non c
   assert.ok(!r.alertes.some((a) => a.titre.includes("Palavas sans locataire")), "a tourist rental has no lease");
   assert.ok(r.echeances.some((e) => e.titre.includes("liasse 2065")) || r.fiscal.sci[0].echeance < "2026-10-20");
 });
+
+test("bail commercial : ILC, périodes triennales, TVA sur le loyer", async () => {
+  const { revisionIrl, triennales, loyerDu, encaissements, quittance } = await import("./locatif.js");
+  const bien = { id: "b", nom: "Local Skopelos", adresse: "Montpellier", type: "local" as const, meuble: false, prix_achat: 200000, taxe_fonciere: 1200, assurance_pno: 300, charges_non_recuperables: 0, dpe: null };
+  const bail = { id: "c", bien_id: "b", locataire: "Charles Tattoo", loyer_hc: 1000, charges: 50, debut: "2021-07-01", irl_trimestre: 1 as const, irl_base: "2025T1", depot_garantie: 3000, jour_paiement: 1, type: "commercial" as const, indice: "ilc" as const, tva: true };
+  const r = revisionIrl(bail, bien, "2026-06-30")!;
+  assert.equal(r.indice, "ilc");
+  assert.equal(r.indice_nouveau, "2026T1", "T1 published late June: in force on 1 July");
+  assert.equal(r.nouveau_loyer, Math.round(1000 * 135.26 / 135.87 * 100) / 100, "ILC, not IRL (a slight decrease)");
+  assert.equal(r.gel, false);
+  const t = triennales(bail, "2026-11-02")!;
+  assert.deepEqual(t, { fin_9_ans: "2030-07-01", prochaine: "2027-07-01", conge_avant: "2027-01-01", prolongation: false });
+  assert.equal(triennales({ ...bail, type: "habitation" }, "2026-11-02"), null);
+  assert.equal(loyerDu(bail), 1260);
+  const enc = encaissements(bail, [{ date: "2026-10-01", libelle: "VIR CHARLES TATTOO", montant: 1260, categorie: "revenus", compte: "SCI" }], "2026-10-20", 1);
+  assert.equal(enc[0].statut, "paye");
+  assert.match(quittance({ bailleur: "SCI Skopelos", biens: [], baux: [] }, bail, bien, enc[0]), /Total TTC : 1\s?260\s€/);
+});

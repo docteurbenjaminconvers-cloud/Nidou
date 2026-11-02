@@ -55,7 +55,8 @@ export const schemas = {
       structure_id: txt(40).nullable().optional(), tourisme: z.enum(["classe", "non_classe"]).nullable().optional(), part_terrain: num.min(0).max(0.9).nullable().optional(),
     })).max(200),
     structures: z.array(z.object({ id: txt(40), nom: txt(), regime: z.enum(["ir", "is"]), parts_foyer: num.min(0).max(100) })).max(20).optional(),
-    baux: z.array(z.object({ id: txt(40), bien_id: txt(40), locataire: txt(), loyer_hc: num.min(0).max(1e6), charges: num.min(0).max(1e6), debut: date, fin: date.nullable().optional(), irl_trimestre: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]), irl_base: z.string().regex(/^\d{4}T[1-4]$/).nullable().optional(), depot_garantie: num.min(0).max(1e6), jour_paiement: z.number().int().min(1).max(31) })).max(400),
+    baux: z.array(z.object({ id: txt(40), bien_id: txt(40), locataire: txt(), loyer_hc: num.min(0).max(1e6), charges: num.min(0).max(1e6), debut: date, fin: date.nullable().optional(), irl_trimestre: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]), irl_base: z.string().regex(/^\d{4}T[1-4]$/).nullable().optional(), depot_garantie: num.min(0).max(1e6), jour_paiement: z.number().int().min(1).max(31),
+      type: z.enum(["habitation", "commercial"]).nullable().optional(), indice: z.enum(["irl", "ilc", "ilat"]).nullable().optional(), tva: z.boolean().nullable().optional() })).max(400),
     encaissements_manuels: z.array(z.object({ bail_id: txt(40), mois: z.string().regex(/^\d{4}-\d{2}$/), montant: num.min(0).max(1e6), date })).max(5000).optional(),
   }),
 };

@@ -6,6 +6,34 @@ export const IRL = {
     "2025T3": 145.77, "2025T4": 145.78, "2026T1": 146.60, "2026T2": 148.37, "2026T3": 148.06,
 };
 export const SOURCE_IRL = "https://www.insee.fr/fr/statistiques/serie/001515333";
+/** Indice des loyers commerciaux (Insee, base 100 au T1 2008). Mettre à jour à chaque publication trimestrielle. */
+export const ILC = {
+    "2023T1": 128.68, "2023T2": 131.81, "2023T3": 133.66, "2023T4": 132.63, "2024T1": 134.58, "2024T2": 136.72, "2024T3": 137.71,
+    "2024T4": 135.30, "2025T1": 135.87, "2025T2": 136.81, "2025T3": 137.09, "2025T4": 134.62, "2026T1": 135.26, "2026T2": 137.16,
+};
+/** Indice des loyers des activités tertiaires (Insee, base 100 au T1 2010). */
+export const ILAT = {
+    "2023T1": 128.59, "2023T2": 130.64, "2023T3": 132.15, "2023T4": 133.69, "2024T1": 135.13, "2024T2": 136.45, "2024T3": 137.12,
+    "2024T4": 137.29, "2025T1": 137.29, "2025T2": 137.15, "2025T3": 137.07, "2025T4": 137.21, "2026T1": 137.42, "2026T2": 138.01,
+};
+export const SOURCE_INDICE = { irl: SOURCE_IRL, ilc: "https://www.insee.fr/fr/statistiques/9053531", ilat: "https://www.insee.fr/fr/statistiques/9053539" };
+export const NOM_INDICE = { irl: "IRL", ilc: "ILC", ilat: "ILAT" };
+const INDICES = { irl: IRL, ilc: ILC, ilat: ILAT };
+/** Rent due each month, charges and VAT included. */
+export const loyerDu = (b) => Math.round((b.loyer_hc + b.charges) * (b.tva ? 1.2 : 1) * 100) / 100;
+/**
+ * Commercial lease (3-6-9): the tenant may leave at the end of each 3-year period, with 6 months' notice; the lease ends
+ * after 9 years and, without notice, carries on (tacite prolongation). Dates of the next period end and of the notice.
+ */
+export function triennales(b, today) {
+    if (b.type !== "commercial")
+        return null;
+    const plus = (ans) => `${Number(b.debut.slice(0, 4)) + ans}${b.debut.slice(4)}`;
+    const fin9 = plus(9);
+    const prochaine = [plus(3), plus(6), fin9].find((x) => x > today) ?? null;
+    const conge = (d) => { const [y, m, j] = d.split("-").map(Number); return new Date(Date.UTC(y, m - 1 - 6, j)).toISOString().slice(0, 10); };
+    return { fin_9_ans: fin9, prochaine, conge_avant: prochaine ? conge(prochaine) : null, prolongation: today >= fin9 };
+}
 const r2 = (n) => Math.round(n * 100) / 100;
 const jour = (d) => new Date(d + "T12:00:00Z");
 const ecart = (a, b) => Math.round((jour(b).getTime() - jour(a).getTime()) / 864e5);
@@ -14,7 +42,7 @@ const finMois = (m) => { const [y, mo] = m.split("-").map(Number); return new Da
 const eur = (n) => `${n.toLocaleString("fr-FR", { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 })} €`;
 /** Rent payments of one lease, month by month, matched on the bank: amount close to the rent, or the tenant's name. */
 export function encaissements(b, txs, today, n = 6, manuels = []) {
-    const cc = r2(b.loyer_hc + b.charges);
+    const cc = loyerDu(b);
     const nom = b.locataire.toUpperCase().split(/\s+/).filter((w) => w.length > 2);
     const pris = new Set();
     const out = [];
@@ -47,13 +75,15 @@ export function revisionIrl(b, bien, today) {
         return null;
     // The index used is the last one published for the lease's quarter on the revision date (T1 mid-April, T2 mid-July, T3 mid-October, T4 mid-January).
     const t = b.irl_trimestre;
-    const publie = (y) => (t < 4 ? `${y}-${String(3 * t + 1).padStart(2, "0")}-15` : `${y + 1}-01-15`);
+    const ind = b.indice ?? "irl";
+    // IRL : mid-month after the quarter ; ILC / ILAT : about 80 days after the quarter (T1 late June … T4 late March).
+    const publie = (y) => ind === "irl" ? (t < 4 ? `${y}-${String(3 * t + 1).padStart(2, "0")}-15` : `${y + 1}-01-15`) : (t < 4 ? `${y}-${String(3 * t + 3).padStart(2, "0")}-25` : `${y + 1}-03-25`);
     const anneeIndice = publie(annee) <= date ? annee : annee - 1;
     const nouveau = `${anneeIndice}T${t}`, ancien = b.irl_base ?? `${anneeIndice - 1}T${t}`;
-    const gel = bien.dpe === "F" || bien.dpe === "G";
-    const iN = IRL[nouveau], iA = IRL[ancien];
+    const gel = b.type !== "commercial" && bien.type !== "local" && (bien.dpe === "F" || bien.dpe === "G");
+    const iN = INDICES[ind][nouveau], iA = INDICES[ind][ancien];
     const loyer = iN && iA && !gel ? r2((b.loyer_hc * iN) / iA) : null;
-    return { date, dans_jours: ecart(today, date), indice_ancien: ancien, indice_nouveau: nouveau, valeur_ancienne: iA ?? null, valeur_nouvelle: iN ?? null, nouveau_loyer: loyer, hausse: loyer ? r2(loyer - b.loyer_hc) : null, gel };
+    return { indice: ind, date, dans_jours: ecart(today, date), indice_ancien: ancien, indice_nouveau: nouveau, valeur_ancienne: iA ?? null, valeur_nouvelle: iN ?? null, nouveau_loyer: loyer, hausse: loyer ? r2(loyer - b.loyer_hc) : null, gel };
 }
 export function alerteDpe(bien, today) {
     if (!bien.dpe)
@@ -88,7 +118,7 @@ export function rapportLocatif(d, txs, today = new Date().toISOString().slice(0,
         const charges_annuelles = r2(bien.taxe_fonciere + bien.assurance_pno + bien.charges_non_recuperables);
         const loyerAnnuel = bien.tourisme ? r2(tour.reduce((a, t) => a + t.montant, 0)) : bail ? bail.loyer_hc * 12 : 0;
         return {
-            bien, bail, loyer_cc: bail ? r2(bail.loyer_hc + bail.charges) : 0, encaissements: enc,
+            bien, bail, loyer_cc: bail ? loyerDu(bail) : 0, triennales: bail ? triennales(bail, today) : null, encaissements: enc,
             impayes: r2(enc.filter((e) => e.statut === "impaye" || e.statut === "partiel").reduce((s, e) => s + e.attendu - e.recu, 0)),
             revision: bail ? revisionIrl(bail, bien, today) : null, dpe: alerteDpe(bien, today),
             rentabilite_brute: bien.prix_achat > 0 && loyerAnnuel > 0 ? Math.round((loyerAnnuel / bien.prix_achat) * 1000) / 10 : null,
@@ -153,7 +183,10 @@ export function rapportLocatif(d, txs, today = new Date().toISOString().slice(0,
     const annee = Number(today.slice(0, 4));
     for (const b of biens) {
         if (b.revision && !b.revision.gel && b.revision.dans_jours <= 60)
-            echeances.push({ date: b.revision.date, titre: `Révision du loyer : ${b.bien.nom}`, detail: b.revision.nouveau_loyer ? `IRL ${b.revision.indice_nouveau} : ${eur(b.bail.loyer_hc)} → ${eur(b.revision.nouveau_loyer)} hors charges.` : `En attente de la publication de l'IRL ${b.revision.indice_nouveau}.`, bien_id: b.bien.id });
+            echeances.push({ date: b.revision.date, titre: `Révision du loyer : ${b.bien.nom}`, detail: b.revision.nouveau_loyer ? `${NOM_INDICE[b.revision.indice]} ${b.revision.indice_nouveau} : ${eur(b.bail.loyer_hc)} → ${eur(b.revision.nouveau_loyer)} hors charges.` : `En attente de la publication de l'${NOM_INDICE[b.revision.indice]} ${b.revision.indice_nouveau}.`, bien_id: b.bien.id });
+        const tr = b.triennales;
+        if (tr?.conge_avant && ecart(today, tr.conge_avant) >= 0 && ecart(today, tr.conge_avant) <= 120)
+            echeances.push({ date: tr.conge_avant, titre: `Bail commercial : ${b.bien.nom}`, detail: `Fin de période triennale le ${tr.prochaine.split("-").reverse().join("/")} : le locataire peut partir s'il donne congé au moins 6 mois avant, donc d'ici le ${tr.conge_avant.split("-").reverse().join("/")}.`, bien_id: b.bien.id });
         if (b.bail) {
             const reg = `${annee}-${b.bail.debut.slice(5)}`;
             if (reg >= today && ecart(today, reg) <= 60)
@@ -189,9 +222,12 @@ export function quittance(d, bail, bien, e) {
         `QUITTANCE DE LOYER — ${nomMois(e.mois).toUpperCase()}`, "",
         `Bailleur : ${d.bailleur}${d.adresse_bailleur ? `, ${d.adresse_bailleur}` : ""}`,
         `Locataire : ${bail.locataire}`,
-        `Logement : ${bien.nom}, ${bien.adresse}`, "",
-        `Je soussigné(e) ${d.bailleur}, bailleur du logement désigné ci-dessus, déclare avoir reçu de ${bail.locataire} la somme de ${eur(e.recu)} au titre du loyer et des charges de ${nomMois(e.mois)}, et lui en donne quittance, sous réserve de tous mes droits.`, "",
-        `Détail :`, `  Loyer hors charges : ${eur(bail.loyer_hc)}`, `  Provision pour charges : ${eur(bail.charges)}`, `  Total : ${eur(r2(bail.loyer_hc + bail.charges))}`, "",
+        `${bien.type === "local" ? "Local" : "Logement"} : ${bien.nom}, ${bien.adresse}`, "",
+        `Je soussigné(e) ${d.bailleur}, bailleur du ${bien.type === "local" ? "local" : "logement"} désigné ci-dessus, déclare avoir reçu de ${bail.locataire} la somme de ${eur(e.recu)} au titre du loyer et des charges de ${nomMois(e.mois)}, et lui en donne quittance, sous réserve de tous mes droits.`, "",
+        `Détail :`,
+        ...(bail.tva
+            ? [`  Loyer HT : ${eur(bail.loyer_hc)}`, `  Charges HT : ${eur(bail.charges)}`, `  TVA 20 % : ${eur(r2((bail.loyer_hc + bail.charges) * 0.2))}`, `  Total TTC : ${eur(loyerDu(bail))}`]
+            : [`  Loyer hors charges : ${eur(bail.loyer_hc)}`, `  Provision pour charges : ${eur(bail.charges)}`, `  Total : ${eur(r2(bail.loyer_hc + bail.charges))}`]), "",
         `Paiement reçu le ${e.date ? e.date.split("-").reverse().join("/") : "—"}.`, "",
         `Fait le ${new Date().toLocaleDateString("fr-FR")}`, d.bailleur,
     ].join("\n");

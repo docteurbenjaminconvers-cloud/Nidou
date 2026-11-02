@@ -23,6 +23,7 @@ export const BailLu = z.object({
   meuble: z.boolean().nullable(), surface: z.number().nullable(), loyer_hc: z.number().nullable(), charges: z.number().nullable(),
   depot_garantie: z.number().nullable(), debut: z.string().nullable(), jour_paiement: z.number().int().min(1).max(31).nullable(),
   irl_trimestre: z.number().int().min(1).max(4).nullable(), dpe: z.enum(["A", "B", "C", "D", "E", "F", "G"]).nullable(),
+  bail_commercial: z.boolean().nullable(), indice: z.enum(["irl", "ilc", "ilat"]).nullable(), tva: z.boolean().nullable(),
   confiance: z.number().min(0).max(1),
 });
 export type BailLu = z.infer<typeof BailLu>;
@@ -32,7 +33,10 @@ le salaire brut, le net payé (« net à payer », après impôt), le net imposa
 la date d'entrée (AAAA-MM-JJ) et la convention collective. Montants en euros, nombres décimaux. Si une information manque, null. N'invente rien.`;
 const SYSTEME_BAIL = `Tu lis un contrat de location (bail d'habitation ou commercial) français. Extrais : le nom du ou des locataires, l'adresse du logement,
 le type de bien, s'il est meublé, la surface en m², le loyer mensuel hors charges, la provision ou le forfait de charges mensuel, le dépôt de garantie,
-la date de prise d'effet (AAAA-MM-JJ), le jour de paiement du loyer, le trimestre de l'IRL de référence (1 à 4) et la classe du DPE.
+la date de prise d'effet (AAAA-MM-JJ), le jour de paiement du loyer, le trimestre de l'indice de référence (1 à 4) et la classe du DPE.
+Indique aussi s'il s'agit d'un bail commercial (articles L.145-1 et suivants du code de commerce, durée de 9 ans, périodes triennales),
+l'indice de révision (irl pour l'indice de référence des loyers, ilc pour l'indice des loyers commerciaux, ilat pour l'indice des loyers des activités tertiaires)
+et si le loyer est soumis à la TVA.
 Montants en euros. Si une information manque, null. N'invente rien.`;
 
 const schemaOutil = (s: z.ZodObject<z.ZodRawShape>) => {
@@ -83,7 +87,11 @@ export function lireBailLocal(texte: string): BailLu {
     locataire: null, adresse: null, type: /\bstudio\b/i.test(t) ? "studio" : /\bmaison\b/i.test(t) ? "maison" : /appartement/i.test(t) ? "appartement" : null,
     meuble: /meubl[ée]/i.test(t) ? true : /non meubl|vide/i.test(t) ? false : null, surface: montant(t, new RegExp(`${NB}\\s*m(?:²|2)`, "i")),
     loyer_hc: loyer, charges, depot_garantie: depot, debut: debut ? `${debut[3]}-${debut[2]}-${debut[1]}` : null,
-    jour_paiement: null, irl_trimestre: null, dpe: (dpe?.[1]?.toUpperCase() as BailLu["dpe"]) ?? null, confiance: Math.min(0.6, found * 0.15),
+    jour_paiement: null, irl_trimestre: null, dpe: (dpe?.[1]?.toUpperCase() as BailLu["dpe"]) ?? null,
+    bail_commercial: /bail commercial|L\.?\s?145-|3[ -/]6[ -/]9|trois[- ]six[- ]neuf/i.test(t) ? true : null,
+    indice: /loyers? des activit[ée]s tertiaires|\bILAT\b/i.test(t) ? "ilat" : /loyers? commerciaux|\bILC\b/i.test(t) ? "ilc" : /r[ée]f[ée]rence des loyers|\bIRL\b/i.test(t) ? "irl" : null,
+    tva: /assujetti[e]? [àa] la TVA|soumis à la TVA|\bHT\b.{0,40}TVA/i.test(t) ? true : null,
+    confiance: Math.min(0.6, found * 0.15),
   };
 }
 
@@ -148,7 +156,8 @@ export function appliquerBail(d: DonneesLocatif, lu: BailLu, bienId?: string | n
   }
   const debut = lu.debut;
   const bail: Bail = { id: nouvelId(), bien_id: bien.id, locataire: lu.locataire ?? "Locataire", loyer_hc: lu.loyer_hc, charges: lu.charges ?? 0, debut,
-    irl_trimestre: (lu.irl_trimestre ?? (Math.floor((Number(debut.slice(5, 7)) - 1) / 3) + 1)) as Bail["irl_trimestre"], depot_garantie: lu.depot_garantie ?? 0, jour_paiement: lu.jour_paiement ?? 5 };
+    irl_trimestre: (lu.irl_trimestre ?? (Math.floor((Number(debut.slice(5, 7)) - 1) / 3) + 1)) as Bail["irl_trimestre"], depot_garantie: lu.depot_garantie ?? 0, jour_paiement: lu.jour_paiement ?? 5,
+    ...(lu.bail_commercial || lu.indice === "ilc" || lu.indice === "ilat" ? { type: "commercial" as const, indice: lu.indice && lu.indice !== "irl" ? lu.indice : "ilc" as const, tva: lu.tva ?? false } : {}) };
   // a new lease on the same property ends the previous one
   const baux = d.baux.map((x) => (x.bien_id === bien!.id && !x.fin && x.debut < debut ? { ...x, fin: debut } : x));
   return { donnees: { ...d, biens, baux: [...baux, bail] }, bien_id: bien.id,

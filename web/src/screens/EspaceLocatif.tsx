@@ -1,11 +1,11 @@
 import { useState } from "react";
 import type { Api } from "../api";
-import { quittance, relance, SOURCE_IRL, type Bail, type Bien, type Encaissement } from "../../../server/src/locatif";
+import { NOM_INDICE, quittance, relance, SOURCE_INDICE, SOURCE_IRL, type Bail, type Bien, type Encaissement } from "../../../server/src/locatif";
 import { Alertes, Champ, Chiffres, dateFr, EnTete, eur, Feuille, moisCourt, nouvelId, pct, useEspace, Verrou, LireDocument } from "./espacesCommun";
 
 const STATUT: Record<Encaissement["statut"], string> = { paye: "payé", partiel: "partiel", impaye: "impayé", a_venir: "à venir" };
 const BIEN_VIDE = { surface: "", tourisme: "", structure_id: "", sci_nom: "", sci_regime: "ir", sci_parts: "100", nom: "", adresse: "", type: "appartement", meuble: false, prix_achat: "", taxe_fonciere: "", assurance_pno: "", charges_non_recuperables: "", credit_mensualite: "", interets_annuels: "", dpe: "D", dpe_date: "" };
-const BAIL_VIDE = { fin: "", locataire: "", loyer_hc: "", charges: "", debut: "", irl_trimestre: "1", depot_garantie: "", jour_paiement: "5" };
+const BAIL_VIDE = { type: "habitation", indice: "irl", tva: false, fin: "", locataire: "", loyer_hc: "", charges: "", debut: "", irl_trimestre: "1", depot_garantie: "", jour_paiement: "5" };
 
 /** Patrimoine locatif : biens, loyers rapprochés de la banque, quittances, relances, IRL, DPE, fiscalité. */
 export function EspaceLocatif({ api, go, onBack, toast }: { api: Api; go: (s: string, id?: string) => void; onBack: () => void; toast: (m: string) => void }) {
@@ -45,7 +45,8 @@ export function EspaceLocatif({ api, go, onBack, toast }: { api: Api; go: (s: st
     if (!bailPour || !bailF.locataire.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(bailF.debut) || n(bailF.loyer_hc) <= 0) return toast("Locataire, loyer et date de début, s'il vous plaît");
     if (bailF.fin && (!/^\d{4}-\d{2}-\d{2}$/.test(bailF.fin) || bailF.fin < bailF.debut)) return toast("La fin du bail doit suivre son début");
     const avant = bailEdite ? d.baux.find((x) => x.id === bailEdite) : undefined;
-    const b: Bail = { ...avant, fin: bailF.fin || null, id: avant?.id ?? nouvelId(), bien_id: bailPour, locataire: bailF.locataire.trim(), loyer_hc: n(bailF.loyer_hc), charges: n(bailF.charges), debut: bailF.debut, irl_trimestre: Number(bailF.irl_trimestre) as 1, depot_garantie: n(bailF.depot_garantie), jour_paiement: Math.min(31, Math.max(1, n(bailF.jour_paiement) || 5)) };
+    const b: Bail = { ...avant, fin: bailF.fin || null, id: avant?.id ?? nouvelId(), bien_id: bailPour, locataire: bailF.locataire.trim(), loyer_hc: n(bailF.loyer_hc), charges: n(bailF.charges), debut: bailF.debut, irl_trimestre: Number(bailF.irl_trimestre) as 1, depot_garantie: n(bailF.depot_garantie), jour_paiement: Math.min(31, Math.max(1, n(bailF.jour_paiement) || 5)),
+      type: bailF.type === "commercial" ? "commercial" : null, indice: bailF.type === "commercial" ? (bailF.indice === "irl" ? "ilc" : bailF.indice) as Bail["indice"] : null, tva: bailF.type === "commercial" ? bailF.tva : null };
     if (avant) await sauver({ ...d, baux: d.baux.map((x) => (x.id === avant.id ? b : x)) });
     else await sauver({ ...d, baux: [...d.baux.filter((x) => x.bien_id !== bailPour || (x.fin && x.fin < b.debut)), b] });
     setBailPour(null); setBailEdite(null); setBailF(BAIL_VIDE);
@@ -60,7 +61,7 @@ export function EspaceLocatif({ api, go, onBack, toast }: { api: Api; go: (s: st
   };
   const modifierBail = (b: Bail) => {
     setBienEdite(null); setASupprimer(null); setBailPour(b.bien_id); setBailEdite(b.id);
-    setBailF({ locataire: b.locataire, loyer_hc: s(b.loyer_hc), charges: s(b.charges), debut: b.debut, fin: b.fin ?? "", irl_trimestre: String(b.irl_trimestre), depot_garantie: s(b.depot_garantie), jour_paiement: String(b.jour_paiement) });
+    setBailF({ type: b.type === "commercial" ? "commercial" : "habitation", indice: b.indice ?? "irl", tva: !!b.tva, locataire: b.locataire, loyer_hc: s(b.loyer_hc), charges: s(b.charges), debut: b.debut, fin: b.fin ?? "", irl_trimestre: String(b.irl_trimestre), depot_garantie: s(b.depot_garantie), jour_paiement: String(b.jour_paiement) });
   };
   /** Removes the property with its leases and the rents noted by hand for them; the bank transactions stay untouched. */
   const supprimerBien = async (id: string) => {
@@ -151,9 +152,17 @@ export function EspaceLocatif({ api, go, onBack, toast }: { api: Api; go: (s: st
                   <div className={`revision ${b.revision.gel ? "gel" : ""}`}>
                     <b>{b.revision.gel ? "Loyer gelé (DPE F ou G)" : `Révision du loyer le ${dateFr(b.revision.date)}`}</b>
                     {!b.revision.gel && (b.revision.nouveau_loyer
-                      ? <span>IRL {b.revision.indice_nouveau.replace("T", " T")} ({b.revision.valeur_nouvelle?.toLocaleString("fr-FR")}) contre {b.revision.indice_ancien.replace("T", " T")} ({b.revision.valeur_ancienne?.toLocaleString("fr-FR")}) : {eur(b.bail.loyer_hc, true)} → <b>{eur(b.revision.nouveau_loyer, true)}</b> hors charges (+{eur(b.revision.hausse, true)}).</span>
-                      : <span>En attente de la publication de l'IRL {b.revision.indice_nouveau.replace("T", " T")} par l'Insee.</span>)}
+                      ? <span>{NOM_INDICE[b.revision.indice]} {b.revision.indice_nouveau.replace("T", " T")} ({b.revision.valeur_nouvelle?.toLocaleString("fr-FR")}) contre {b.revision.indice_ancien.replace("T", " T")} ({b.revision.valeur_ancienne?.toLocaleString("fr-FR")}) : {eur(b.bail.loyer_hc, true)} → <b>{eur(b.revision.nouveau_loyer, true)}</b> hors charges ({(b.revision.hausse ?? 0) >= 0 ? "+" : "−"}{eur(Math.abs(b.revision.hausse ?? 0), true)}).{b.bail.type === "commercial" ? " Si votre bail n'a pas de clause d'indexation annuelle, la révision ne se fait que tous les trois ans, à la demande d'une des parties." : ""}</span>
+                      : <span>En attente de la publication de l'{NOM_INDICE[b.revision.indice]} {b.revision.indice_nouveau.replace("T", " T")} par l'Insee.</span>)}
                     {!b.revision.gel && b.revision.nouveau_loyer && b.revision.dans_jours <= 0 && <button className="link" onClick={() => appliquerRevision(b.bail!, b.revision!.nouveau_loyer!, b.revision!.indice_nouveau)}>Appliquer le nouveau loyer</button>}
+                  </div>
+                )}
+                {b.triennales && (
+                  <div className="revision">
+                    <b>Bail commercial : {b.triennales.prolongation ? `prolongé au-delà des 9 ans (depuis le ${dateFr(b.triennales.fin_9_ans)})` : `9 ans jusqu'au ${dateFr(b.triennales.fin_9_ans)}`}</b>
+                    {b.triennales.prochaine && <span>Prochaine échéance triennale le {dateFr(b.triennales.prochaine)} : le locataire peut partir à cette date s'il donne congé au moins 6 mois avant, soit au plus tard le {dateFr(b.triennales.conge_avant!)}.</span>}
+                    {b.triennales.prolongation && <span>Sans congé ni renouvellement, le bail continue aux mêmes conditions ; chacun peut y mettre fin avec 6 mois de préavis, pour la fin d'un trimestre civil. Pensez au renouvellement.</span>}
+                    {b.bail.tva && <span>Loyer avec TVA : {eur(b.loyer_cc, true)} TTC par mois, charges comprises.</span>}
                   </div>
                 )}
                 <div className="bien-actions">
@@ -163,16 +172,21 @@ export function EspaceLocatif({ api, go, onBack, toast }: { api: Api; go: (s: st
                 </div>
               </>
             ) : (
-              <button className="btn ghost" onClick={() => { setBailEdite(null); setBailF(BAIL_VIDE); setBailPour(b.bien.id); }}>Ajouter le bail</button>
+              <button className="btn ghost" onClick={() => { setBailEdite(null); setBailF(b.bien.type === "local" ? { ...BAIL_VIDE, type: "commercial", indice: "ilc" } : BAIL_VIDE); setBailPour(b.bien.id); }}>Ajouter le bail</button>
             )}
             {b.dpe && <p className={`note dpe-note ${b.dpe.niveau}`}>{b.dpe.texte}</p>}
             {bailPour === b.bien.id && (
               <div className="lock form-espace">
+                <Champ label="Type de bail"><select className="in" value={bailF.type} onChange={(e) => setBailF({ ...bailF, type: e.target.value, indice: e.target.value === "commercial" ? (bailF.indice === "irl" ? "ilc" : bailF.indice) : "irl" })}><option value="habitation">Habitation (loi de 1989)</option><option value="commercial">Commercial (3-6-9)</option></select></Champ>
+                {bailF.type === "commercial" && <>
+                  <Champ label="Indice de révision"><select className="in" value={bailF.indice} onChange={(e) => setBailF({ ...bailF, indice: e.target.value })}><option value="ilc">ILC (commerce, artisanat)</option><option value="ilat">ILAT (bureaux, professions libérales)</option></select></Champ>
+                  <label className="case"><input type="checkbox" checked={bailF.tva} onChange={(e) => setBailF({ ...bailF, tva: e.target.checked })} /> Loyer soumis à la TVA (option de la SCI)</label>
+                </>}
                 <Champ label="Locataire"><input className="in" value={bailF.locataire} onChange={(e) => setBailF({ ...bailF, locataire: e.target.value })} /></Champ>
-                <Champ label="Loyer hors charges (€)"><input className="in" inputMode="decimal" value={bailF.loyer_hc} onChange={(e) => setBailF({ ...bailF, loyer_hc: e.target.value })} /></Champ>
+                <Champ label={bailF.type === "commercial" && bailF.tva ? "Loyer HT (€)" : "Loyer hors charges (€)"}><input className="in" inputMode="decimal" value={bailF.loyer_hc} onChange={(e) => setBailF({ ...bailF, loyer_hc: e.target.value })} /></Champ>
                 <Champ label="Provision pour charges (€)"><input className="in" inputMode="decimal" value={bailF.charges} onChange={(e) => setBailF({ ...bailF, charges: e.target.value })} /></Champ>
                 <Champ label="Début du bail"><input className="in" type="date" value={bailF.debut} onChange={(e) => setBailF({ ...bailF, debut: e.target.value })} /></Champ>
-                <Champ label="Trimestre IRL du bail"><select className="in" value={bailF.irl_trimestre} onChange={(e) => setBailF({ ...bailF, irl_trimestre: e.target.value })}>{[1, 2, 3, 4].map((t) => <option key={t} value={t}>{t}e trimestre</option>)}</select></Champ>
+                <Champ label={`Trimestre de l'indice (${bailF.type === "commercial" ? NOM_INDICE[bailF.indice as "ilc"] ?? "ILC" : "IRL"})`}><select className="in" value={bailF.irl_trimestre} onChange={(e) => setBailF({ ...bailF, irl_trimestre: e.target.value })}>{[1, 2, 3, 4].map((t) => <option key={t} value={t}>{t}e trimestre</option>)}</select></Champ>
                 <Champ label="Dépôt de garantie (€)"><input className="in" inputMode="decimal" value={bailF.depot_garantie} onChange={(e) => setBailF({ ...bailF, depot_garantie: e.target.value })} /></Champ>
                 {bailEdite && <Champ label="Fin du bail (départ du locataire)"><input className="in" type="date" value={bailF.fin} onChange={(e) => setBailF({ ...bailF, fin: e.target.value })} /></Champ>}
                 <Champ label="Jour de paiement"><input className="in" inputMode="numeric" value={bailF.jour_paiement} onChange={(e) => setBailF({ ...bailF, jour_paiement: e.target.value })} /></Champ>
@@ -221,7 +235,7 @@ export function EspaceLocatif({ api, go, onBack, toast }: { api: Api; go: (s: st
           <ul className="list">{r.echeances.map((e) => <li key={e.titre}><div className="row-item" style={{ gridTemplateColumns: "auto 1fr" }}><div className="date-chip"><b>{Number(e.date.slice(8, 10))}</b><span>{moisCourt(e.date.slice(0, 7))}</span></div><div><div className="t">{e.titre}</div><div className="s">{e.detail}</div></div></div></li>)}</ul>
         </section>
       )}
-      <p className="note">Indices IRL : <a href={SOURCE_IRL} target="_blank" rel="noreferrer">Insee</a>. Quittance gratuite et due à la demande du locataire (loi du 6 juillet 1989, art. 21).</p>
+      <p className="note">Indices Insee : <a href={SOURCE_IRL} target="_blank" rel="noreferrer">IRL</a>, <a href={SOURCE_INDICE.ilc} target="_blank" rel="noreferrer">ILC</a>, <a href={SOURCE_INDICE.ilat} target="_blank" rel="noreferrer">ILAT</a>. Habitation : quittance gratuite et due à la demande du locataire (loi du 6 juillet 1989, art. 21).</p>
       {doc && <Feuille titre={doc.titre} texte={doc.texte} fichier={doc.fichier} onClose={() => setDoc(null)} />}
     </div>
   );
