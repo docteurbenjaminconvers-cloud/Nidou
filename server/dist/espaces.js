@@ -6,6 +6,7 @@ import { randomBytes } from "node:crypto";
 import { rapportLocatif } from "./locatif.js";
 import { monterSignatures } from "./signatures.js";
 import { appliquerBail, appliquerBulletin, lire } from "./lecture.js";
+import { provider } from "./ia.js";
 import { budgetIa, coutAppel } from "./iaBudget.js";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -204,7 +205,12 @@ export function monterEspaces(api, db, ctx) {
             return c.json({ ok: true, resume, ia, lu });
         }
         catch (err) {
-            return c.json({ error: "lecture_incomplete", message: err.message, ia, lu }, 422);
+            // a photo or a scanned PDF can only be read by the AI: say so plainly when it is not switched on (or out of budget)
+            const sansIa = !ia && !entree.texte;
+            const message = sansIa
+                ? (provider() ? "Lucien n'a pas pu lire ce document (limite de lectures du mois atteinte ou lecture interrompue). Réessayez plus tard, ou saisissez-le à la main." : "La lecture automatique des photos et des PDF n'est pas encore activée sur ce serveur. Saisissez ce document à la main en attendant.")
+                : err.message;
+            return c.json({ error: "lecture_incomplete", message, ia, lu }, 422);
         }
     });
     api.get("/espaces/budget/grand-livre.csv", (c) => {
