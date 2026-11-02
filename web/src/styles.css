@@ -1090,3 +1090,13 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
 .verif-decision.resilier { color: var(--ember); }
 .verif-aide { background: var(--white); border-radius: 16px; padding: 12px 14px; font-size: 14px; }
 .verif-aide ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 6px; }
+
+/* « Lucien a remarqué » */
+.remarque { display: flex; gap: 10px; align-items: flex-start; background: var(--white); border-radius: 16px; padding: 12px 10px 12px 14px; margin-bottom: 8px; border-left: 4px solid var(--line); }
+.remarque.alerte { border-left-color: var(--ember); }
+.remarque.conseil { border-left-color: var(--yolk); }
+.remarque.info { border-left-color: var(--lilac, #b9a5d6); }
+.remarque-texte { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.remarque-texte p { margin: 0; font-size: 14px; line-height: 1.45; color: var(--ink); opacity: .85; }
+.remarque-texte .link { justify-self: start; font-size: 14px; }
+.remarque-fermer { border: 0; background: none; color: var(--mist); font-size: 22px; line-height: 1; padding: 0 4px; min-width: 32px; min-height: 32px; }

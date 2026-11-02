@@ -221,3 +221,6 @@ export interface VuePersonne {
 export interface PrelevementPro { cle: string; marchand: string; frequence: string; montant: number; annuel: number; depuis: string; derniere_date: string; occurrences: number; compte: string | null; signaux: ("nouveau" | "suspect" | "hausse")[]; hausse: { avant: number; apres: number } | null; decision: "ok" | "resilier" | null }
 export interface AlertePro { cle: string; type: "suspect" | "doublon" | "micro" | "frais"; titre: string; detail: string; montant: number; date: string | null; marchand: string | null; decision: "ok" | "resilier" | null }
 export interface AnalysePro { comptes: string[]; mois: number; prelevements: PrelevementPro[]; alertes: AlertePro[]; total_annuel: number; a_verifier: number }
+
+/** « Lucien a remarqué » : a remark computed from what Lucien knows of the household. */
+export interface Remarque { cle: string; niveau: "alerte" | "conseil" | "info"; titre: string; detail: string; action: { libelle: string; route: string } | null }

@@ -4,6 +4,7 @@ import { DateChip, daysUntil, fmtDate, fmtEuro, Logo, relative } from "../ui";
 import { SemaineCarte, calculerSemaine } from "./Semaine";
 import { UrgenceCarte } from "./Urgence";
 import { SituationsCarte } from "./Situations";
+import { RemarquesCarte } from "./Remarques";
 import { Portrait } from "./Famille";
 import { EspacesCarte } from "./espacesCommun";
 import type { Api } from "../api";
@@ -127,6 +128,8 @@ export function Today({ api, household, deadlines, docs, charges, budget, go, on
         <button onClick={() => go("budget")}><b>{charges ? fmtEuro(charges.total_mensuel) : "—"}</b><span>charges fixes par mois</span></button>
         <button onClick={() => go("budget")}><b>{savings ? fmtEuro(savings) : "—"}</b><span>économies par an</span></button>
       </div>
+
+      <RemarquesCarte api={api} go={go} />
 
       {toVerify.length > 0 && (
         <section className="section">

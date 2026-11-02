@@ -29,6 +29,8 @@ import { adminOk, monterPartenaires } from "./partenaires.js";
 import { monterSupport } from "./support.js";
 import { DESTINATIONS } from "./destinations.js";
 import { analyseProFoyer, deciderPro } from "./analysePro.js";
+import { remarquer } from "./remarques.js";
+import { vueSituation } from "./situationsApi.js";
 import { accesAutorise, MESSAGE_FERME, monterAcces } from "./acces.js";
 import { monterPartages } from "./partages.js";
 import { monterSituations } from "./situationsApi.js";
@@ -929,6 +931,35 @@ export function createApi(db, opts) {
             retirees += n;
         }
         return c.json({ ok: true, operations_retirees: retirees });
+    });
+    /** « Lucien a remarqué » : remarks computed from what Lucien knows of the household; each one can be set aside. */
+    const remarquesFoyer = (hid) => {
+        const txs = db.transactionsFoyer(hid);
+        const docs = db.listDocuments(hid);
+        const today = new Date().toISOString().slice(0, 10);
+        const solde = db.soldeFoyer(hid);
+        let etapes = [];
+        try {
+            const sits = db.raw.prepare("SELECT * FROM situations WHERE household_id = ?").all(hid);
+            etapes = sits.flatMap((s) => { const v = vueSituation(db, s); return v.etapes.map((e) => ({ situation: v.titre, titre: e.titre, date: e.date, fait: e.fait, situation_id: v.id })); });
+        }
+        catch { /* no situation yet */ }
+        const toutes = remarquer({
+            aujourdhui: today, membres: db.listMembers(hid), documents: docs, echeances: db.listDeadlines(hid),
+            budget: txs.length ? budgetReport(txs, docs, db.listDecisions(hid)) : null,
+            prevision: solde !== null && txs.length ? prevoirFinDeMois(solde, txs, today) : null,
+            etapes, pro_a_verifier: analyseProFoyer(db, hid).a_verifier, aSituation: etapes.length > 0,
+        });
+        const masquees = new Set(db.getModuleData(hid, "remarques")?.masquees ?? []);
+        return toutes.filter((r) => !masquees.has(r.cle));
+    };
+    api.get("/remarques", (c) => c.json({ remarques: remarquesFoyer(household(c).id) }));
+    api.post("/remarques/masquer", async (c) => {
+        const hid = household(c).id;
+        const b = z.object({ cle: z.string().min(1).max(200) }).parse(await c.req.json());
+        const m = db.getModuleData(hid, "remarques")?.masquees ?? [];
+        db.setModuleData(hid, "remarques", { masquees: [...m.filter((x) => x !== b.cle), b.cle].slice(-300) });
+        return c.json({ remarques: remarquesFoyer(hid) });
     });
     /** Professional accounts: every recurring debit with its yearly cost, and what deserves a look (read-only). */
     api.get("/pro/verification", (c) => c.json(analyseProFoyer(db, household(c).id)));
