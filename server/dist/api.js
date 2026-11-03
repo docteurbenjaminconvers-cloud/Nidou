@@ -1,3 +1,4 @@
+import { anthropicCreate } from "./ia.js";
 import { Hono } from "hono";
 import { z } from "zod";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
@@ -43,7 +44,6 @@ import { boiteAddress, fromBrevo, processInboundEmail } from "./inbox.js";
 import { parseStatement, merchantOf, categorise, ruleCategory, fingerprint, TX_CATEGORIES, TX_LABEL } from "./transactions.js";
 import { budgetReport, findRecurrences } from "./budget.js";
 import { demoStatement } from "./seed-statement.js";
-import Anthropic from "@anthropic-ai/sdk";
 import { simulatedConnect, simulatedSync, verifyBridgeSignature } from "./bridge.js";
 /**
  * Plans. Every household starts with a 15-day reverse trial of the full Famille plan, then falls back to a bare free plan:
@@ -1404,13 +1404,12 @@ export function publicDoc(d) {
 }
 /** Reads a PDF bank statement with Claude and returns it as CSV lines (date;libellé;montant). */
 async function pdfStatementToCsv(buf) {
-    const client = new Anthropic();
-    const res = await client.messages.create({
+    const res = await anthropicCreate({
         model: process.env.LUCIEN_MODEL ?? "claude-sonnet-5-5",
         max_tokens: 8000,
         system: "Tu convertis un relevé bancaire en CSV. Une ligne par opération : date au format JJ/MM/AAAA;libellé complet;montant signé (négatif pour un débit, virgule décimale). Première ligne : Date;Libellé;Montant. Aucun autre texte.",
         messages: [{ role: "user", content: [{ type: "document", source: { type: "base64", media_type: "application/pdf", data: buf.toString("base64") } }, { type: "text", text: "Convertis ce relevé." }] }],
-    });
+    }, "extraction");
     const t = res.content.find((b) => b.type === "text");
     return t && t.type === "text" ? t.text : "";
 }

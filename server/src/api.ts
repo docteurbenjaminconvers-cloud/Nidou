@@ -1,3 +1,4 @@
+import { anthropicCreate } from "./ia.js";
 import { Hono } from "hono";
 import { z } from "zod";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
@@ -1342,13 +1343,12 @@ export function publicDoc(d: DocumentRow) {
 
 /** Reads a PDF bank statement with Claude and returns it as CSV lines (date;libellé;montant). */
 async function pdfStatementToCsv(buf: Buffer): Promise<string> {
-  const client = new Anthropic();
-  const res = await client.messages.create({
+  const res = await anthropicCreate({
     model: process.env.LUCIEN_MODEL ?? "claude-sonnet-5-5",
     max_tokens: 8000,
     system: "Tu convertis un relevé bancaire en CSV. Une ligne par opération : date au format JJ/MM/AAAA;libellé complet;montant signé (négatif pour un débit, virgule décimale). Première ligne : Date;Libellé;Montant. Aucun autre texte.",
     messages: [{ role: "user", content: [{ type: "document", source: { type: "base64", media_type: "application/pdf", data: buf.toString("base64") } }, { type: "text", text: "Convertis ce relevé." }] }],
-  });
+  }, "extraction");
   const t = res.content.find((b) => b.type === "text");
   return t && t.type === "text" ? t.text : "";
 }

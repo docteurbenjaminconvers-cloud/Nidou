@@ -35,8 +35,7 @@ export async function text(call) {
     if (!m)
         throw new Error("Aucun fournisseur d'IA configuré");
     if (m.provider === "anthropic") {
-        const client = new Anthropic();
-        const res = await client.messages.create({ model: m.model, max_tokens: call.maxTokens ?? 1200, system: call.system, messages: [{ role: "user", content: call.prompt }] });
+        const res = await anthropicCreate({ model: m.model, max_tokens: call.maxTokens ?? 1200, system: call.system, messages: [{ role: "user", content: call.prompt }] });
         const t = res.content.find((b) => b.type === "text");
         return t && t.type === "text" ? t.text : "";
     }
@@ -44,32 +43,60 @@ export async function text(call) {
     return r;
 }
 // ---------- Anthropic ----------
-/** Models that refused a forced tool_choice: asked directly in the instructions from then on. */
-const sansChoixForce = new Set();
-async function anthropicStructured(model, call) {
+/**
+ * Claude 5.5 models (Sonnet 5.5, Haiku 5.5) — documented in their migration guides:
+ *  - a forced tool_choice (« tool » / « any ») returns a 400 → tool_choice « auto », the tool asked for in the instructions;
+ *  - thinking is on by default and draws on max_tokens → light thinking for extraction (effort « low »;
+ *    on Sonnet 5.5 « between_tools » removes the up-front thinking) and room left in max_tokens;
+ *  - temperature, top_p, top_k must be left out (Lucien never sends them to Anthropic).
+ * A model that still refuses one of these settings is remembered, and the call is made again without it.
+ */
+const generation55 = (model) => /-5-5\b|5\.5/.test(model);
+const refus = new Map();
+const refuse = (model, quoi) => refus.get(model)?.has(quoi) ?? false;
+const noter = (model, quoi) => refus.set(model, new Set([...(refus.get(model) ?? []), quoi]));
+export function reglagesAnthropic(model, usage) {
+    if (!generation55(model) || refuse(model, "reglages"))
+        return {};
+    return { ...(usage === "extraction" && /sonnet/.test(model) ? { thinking: { type: "between_tools" } } : {}), output_config: { effort: "low" } };
+}
+/** One call, with the 5.5 settings; a 400 about one of them is remembered and the call retried without it. */
+export async function anthropicCreate(params, usage = "redaction") {
     const client = new Anthropic();
+    const model = String(params.model);
+    const avec = () => ({ ...params, ...reglagesAnthropic(model, usage), max_tokens: Math.max(Number(params.max_tokens ?? 1024), generation55(model) ? 4096 : 0) });
+    try {
+        return await client.messages.create(avec());
+    }
+    catch (e) {
+        const msg = String(e.message);
+        if (!/thinking|output_config|effort|between_tools/.test(msg) || refuse(model, "reglages"))
+            throw e;
+        noter(model, "reglages");
+        return client.messages.create(avec());
+    }
+}
+async function anthropicStructured(model, call) {
     const content = call.content.map((p) => p.type === "text" ? { type: "text", text: p.text }
         : p.type === "image" ? { type: "image", source: { type: "base64", media_type: p.mime, data: p.base64 } }
             : { type: "document", source: { type: "base64", media_type: "application/pdf", data: p.base64 } });
     const base = {
         model, max_tokens: call.maxTokens ?? 1024, system: call.system,
         tools: [{ name: call.tool.name, description: call.tool.description, input_schema: call.tool.schema }],
-        tool_choice: { type: "tool", name: call.tool.name },
         messages: [{ role: "user", content }],
     };
-    // Recent models refuse a forced tool_choice: ask for the tool in the instructions, and let the model call it.
-    const libre = () => client.messages.create({ ...base, tool_choice: { type: "auto" }, system: `${call.system}\n\nRéponds uniquement en appelant l'outil « ${call.tool.name} », sans texte autour.` });
+    const libre = () => anthropicCreate({ ...base, tool_choice: { type: "auto" }, system: `${call.system}\n\nRéponds uniquement en appelant l'outil « ${call.tool.name} », sans texte autour.` }, "extraction");
     let res;
-    if (sansChoixForce.has(model))
+    if (generation55(model) || refuse(model, "choix_force"))
         res = await libre();
     else
         try {
-            res = await client.messages.create(base);
+            res = await anthropicCreate({ ...base, tool_choice: { type: "tool", name: call.tool.name } }, "extraction");
         }
         catch (e) {
             if (!/tool_choice/.test(String(e.message)))
                 throw e;
-            sansChoixForce.add(model);
+            noter(model, "choix_force");
             res = await libre();
         }
     const tool = res.content.find((b) => b.type === "tool_use");
@@ -84,7 +111,7 @@ async function anthropicStructured(model, call) {
         }
         catch { /* fall through */ }
     }
-    throw new Error("Pas de réponse structurée");
+    throw new Error(res.stop_reason === "max_tokens" ? "Réponse coupée (max_tokens)" : "Pas de réponse structurée");
 }
 // ---------- Mistral (OpenAI-compatible chat API, JSON mode, vision through image_url) ----------
 async function mistralChat(model, messages, jsonMode, maxTokens) {

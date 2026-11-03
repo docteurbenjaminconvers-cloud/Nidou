@@ -1,3 +1,4 @@
+import { anthropicCreate } from "./ia.js";
 import Anthropic from "@anthropic-ai/sdk";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
@@ -207,7 +208,9 @@ export async function repondre(db: Db, h: HouseholdRow, historique: Message[], u
     const system: Anthropic.TextBlockParam[] = [{ type: "text", text: systeme(h, utilisateur.nom, utilisateur.langue), cache_control: { type: "ephemeral" } }];
 
     for (let tour = 0; tour < MAX_TOURS; tour++) {
-      const res = await ai.messages.create({ model: MODELE(), max_tokens: 1000, system, tools: outils, messages });
+      const params = { model: MODELE(), max_tokens: 1000, system, tools: outils, messages };
+      // without an injected client (tests), the 5.5 settings apply: light thinking, room in max_tokens
+      const res = client ? await ai.messages.create(params) : await anthropicCreate(params as unknown as Record<string, unknown>);
       centimes += coutCentimes(res.usage);
       const appels = res.content.filter((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");
       if (res.stop_reason !== "tool_use" || !appels.length) {
