@@ -1,3 +1,4 @@
+import { lireLibelle, merchantOf } from "./libelles.js";
 /**
  * Micro-entrepreneur (régime micro-social), 2026: contributions on turnover, optional income-tax prepayment (versement
  * libératoire), training contribution (CFP), ceilings, VAT exemption thresholds. Sources: service-public F37353,
@@ -85,32 +86,53 @@ const REGLES = [
     [/salaire|paie\b/i, "salaires"],
     [/madelin|prevoyance|retraite complementaire facultative/i, "sociales_facultatives"],
     [/\bcfe\b|cotisation fonciere/i, "cet"],
+    [/leasing|credit.?bail|location (de )?materiel|\blld\b|\bloa\b|grenke|locam/i, "location_materiel"],
+    [/legalstart|infogreffe|captain contrat|legalplace|greffe/i, "actes"],
     [/scm|loyer|bail|cabinet/i, "loyers"],
     [/macsf|hiscox|rcp|responsabilite civile|assurance/i, "assurances"],
-    [/edf|engie|total ?energies? (gaz|elec)|veolia|eau\b/i, "energie"],
+    [/edf|engie|total ?energies? (gaz|elec)|veolia|\bsaur\b|eau\b/i, "energie"],
     [/total|esso|shell|bp\b|carburant|peage|vinci|aprr|garage|norauto|midas|parking/i, "vehicule"],
     [/sncf|air france|easyjet|hotel|ibis|uber\b|taxi/i, "deplacements"],
     [/ordre des|syndicat|urps|fnmk|csmf|cotisation (ordinale|professionnelle)/i, "cotisations_pro"],
     [/comptable|expert.?comptable|\baga\b|\boga\b|association de gestion/i, "honoraires"],
     [/frais|commission|tenue de compte|cotisation carte|agios|interets/i, "frais_financiers"],
     [/orange|sfr|bouygues|free\b|sosh|la poste|bureau vallee|fournitures|papeterie|amazon|fnac/i, "fournitures"],
-    [/doctolib|logiciel|abonnement|microsoft|google workspace|ovh|stripe fee|sumup fee/i, "divers_gestion"],
+    [/doctolib|logiciel|abonnement|microsoft|google workspace|ovh|stripe fee|sumup fee|apple ?com|icloud|adobe|dropbox|canva/i, "divers_gestion"],
     [/restaurant|brasserie|traiteur|congres|seminaire/i, "reception"],
     [/huissier|avocat|greffe|notaire/i, "actes"],
 ];
 /** Class of a professional bank line, for the 2035. Manual choices (by label) win. */
 export function rubriqueDe(t, forcees = {}) {
-    const k = cleLibelle(t.libelle);
-    if (forcees[k])
-        return forcees[k];
+    const forcee = forcees[cleLibelle(t.libelle)] ?? forcees[ancienneCle(t.libelle)];
+    if (forcee)
+        return forcee;
+    // the rules read what the label says (creditor, beneficiary, purpose), not the bank's reference codes
+    const l = lireLibelle(t.libelle);
+    const texte = `${l.nom} ${l.motif ?? ""}`;
     if (t.montant > 0)
         return /vir(ement)? (de|depuis) (compte joint|perso)/i.test(t.libelle) ? "a_classer" : "recettes";
+    if (l.genre === "pret")
+        return "a_classer"; // capital is not deductible, interest is: the loan table tells them apart
+    if (l.genre === "virement_emis") {
+        if (/priv[eé]|perso|vers compte|compte de cheques|compte joint/i.test(texte))
+            return "prelevements";
+        for (const [re, r] of REGLES)
+            if (re.test(texte) && r !== "fournitures")
+                return r;
+        return "a_classer"; // a transfer is never an asset bought
+    }
+    if (/dgfip|impot|tresor public/i.test(texte))
+        return /\btva\b/i.test(texte) ? "tva" : /\bcfe\b/i.test(texte) ? "cet" : "a_classer";
     for (const [re, r] of REGLES)
-        if (re.test(t.libelle))
-            return r === "fournitures" && t.montant <= -500 ? "immobilisation" : r;
-    return t.montant <= -500 ? "immobilisation" : "a_classer";
+        if (re.test(texte))
+            return r === "fournitures" && t.montant <= -500 && l.genre === "carte" ? "immobilisation" : r;
+    // only a purchase paid by card can be equipment to depreciate; a large unknown debit is to be classed
+    return t.montant <= -500 && l.genre === "carte" ? "immobilisation" : "a_classer";
 }
-export const cleLibelle = (l) => l.toUpperCase().replace(/\d{2}\/\d{2}|\d{4,}/g, "").replace(/\s+/g, " ").trim();
+/** Key of a manual choice: the same creditor or shop, whatever the month's references and amount. */
+export const cleLibelle = (l) => `${lireLibelle(l).genre}:${merchantOf(l)}`;
+/** Keys saved before 03/11/2026, still honoured. */
+const ancienneCle = (l) => l.toUpperCase().replace(/\d{2}\/\d{2}|\d{4,}/g, "").replace(/\s+/g, " ").trim();
 const r2 = (n) => Math.round(n * 100) / 100;
 /** Micro-BNC: ceiling by year of income, 34 % allowance (305 € minimum). Revenus 2023-2025: 77 700 €; 2026-2028: 83 600 €. */
 export const seuilMicroBnc = (annee) => (annee >= 2026 ? 83600 : 77700);

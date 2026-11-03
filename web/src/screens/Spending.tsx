@@ -195,7 +195,7 @@ function ImportBox({ busy, err, texte, setTexte, pick, onFile, onText, onDemo }:
 const CHIP: Record<Resiliation["statut"], string> = { en_cours: "Vérification en cours", confirmee: "Prouvé par la banque", encore_prelevee: "Encore prélevé" };
 
 /** « Je résilie » : how to cancel, the letter, then « C'est fait » so Lucien watches the next statements. */
-function SheetResiliation({ api, cle, onClose, onLettre, onFait, toast }: { api: Api; cle: string; onClose: () => void; onLettre: (l: { titre: string; texte: string }) => void; onFait: () => void; toast: (m: string) => void }) {
+export function SheetResiliation({ api, cle, onClose, onLettre, onFait, toast }: { api: Api; cle: string; onClose: () => void; onLettre: (l: { titre: string; texte: string }) => void; onFait: () => void; toast: (m: string) => void }) {
   const [aide, setAide] = useState<AideResiliation | null>(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => { api.aideResiliation(cle).then(setAide).catch((e) => { toast((e as Error).message); onClose(); }); }, [cle]); // eslint-disable-line react-hooks/exhaustive-deps

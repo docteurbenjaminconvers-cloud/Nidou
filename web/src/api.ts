@@ -453,7 +453,8 @@ function makeDemoApi(): Api {
     supprimerReglement: async (id) => { state.reglementsPartages = state.reglementsPartages.filter((x) => x.id !== id); return etatPartagesDemo(state.famille.membres, state.depensesPartagees, state.reglementsPartages); },
     aideResiliation: async (cle: string) => {
       const a = (structuredClone(state.household.plan === "famille" ? demoBudgetFamille : demoBudget) as BudgetReport).actions.find((x) => x.marchand === cle);
-      const marchand = (a?.marchand ?? cle).replace(/(^|[\s-])(\p{L})/gu, (_, x: string, y: string) => x + y.toUpperCase()), eco = a?.economie_annuelle ?? 0, montant = Math.round((eco / 12) * 100) / 100;
+      const pro = a ? null : analyseProDemo(state.verifPro).prelevements.find((x) => x.cle === `rec:${cle}`); // a business-account debit
+      const marchand = pro?.marchand ?? (a?.marchand ?? cle).replace(/(^|[\s-])(\p{L})/gu, (_, x: string, y: string) => x + y.toUpperCase()), eco = pro?.annuel ?? a?.economie_annuelle ?? 0, montant = pro?.montant ?? Math.round((eco / 12) * 100) / 100;
       return { marchand, montant, frequence: "mensuel", economie_annuelle: eco,
         etapes: [`Connectez-vous à votre espace client ${marchand} : un bouton « Résilier » doit y être visible si le contrat a été souscrit en ligne.`, "Sinon, envoyez la lettre ci-dessous par email ou par courrier recommandé.", "Un dernier prélèvement peut encore passer pour le mois commencé : c'est normal.", "Touchez « C'est fait, j'ai résilié » : Lucien vérifiera vos prochains relevés."],
         lettre: `Moi\n[votre adresse]\n\n${marchand}\nService client\n\nObjet : Résiliation de mon abonnement\n\nMadame, Monsieur,\n\nJe vous informe de ma décision de résilier mon abonnement, pour lequel vous prélevez ${montant.toLocaleString("fr-FR")} € sur mon compte. Merci de cesser tout prélèvement et de me confirmer la date de fin.\n\nSalutations distinguées.` };

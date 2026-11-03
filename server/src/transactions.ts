@@ -103,14 +103,7 @@ export function parseStatement(text: string, compte: string | null = null): Pars
 
 // ---------- merchant normalisation ----------
 
-const NOISE = /\b(CB|CARTE|PAIEMENT|PRLV|PRELEVEMENT|PRELEVT|SEPA|VIR|VIREMENT|INST|FACTURE|ECHEANCE|DU|LE|REF|FR\d{2}[A-Z0-9]*|\d{2}\/\d{2}(?:\/\d{2,4})?|\d{6,}|X{3,}\d*|N°?\d+)\b/gi;
-
-/** "CB CARREFOUR MARKET 11/10 MONTPELLIER" → "carrefour market" */
-export function merchantOf(libelle: string): string {
-  let s = libelle.toUpperCase().replace(/[*#_.:,'"]/g, " ").replace(NOISE, " ").replace(/\s+/g, " ").trim();
-  s = s.replace(/\b(SAS|SARL|SA|SASU|EURL|FRANCE|FR|PARIS|LYON|MONTPELLIER|MARSEILLE|TOULOUSE|NANTES|BORDEAUX|LILLE|UZES|NIMES)\b/g, " ").replace(/\s+/g, " ").trim();
-  return (s.split(" ").slice(0, 3).join(" ") || libelle).toLowerCase();
-}
+export { lireLibelle, libelleLisible, merchantOf, type GenreOperation, type LectureLibelle } from "./libelles.js";
 
 // ---------- categorisation ----------
 

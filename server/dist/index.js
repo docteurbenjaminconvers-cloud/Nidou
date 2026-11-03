@@ -6,6 +6,7 @@ import { existsSync, mkdirSync, renameSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Db } from "./db.js";
+import { migrerMarchands } from "./marchands.js";
 import { AUTH_ON } from "./auth.js";
 import { createApi } from "./api.js";
 import { securiser } from "./securite.js";
@@ -34,6 +35,13 @@ if (process.env.LUCIEN_SEED === "1" && !db.firstHousehold()) {
     const parsed = parseStatement(demoStatement(), "Compte joint (démo)");
     const cats = await categorise(parsed);
     db.insertTransactions(parsed.map((t, i) => ({ household_id: h.id, compte: t.compte, date: t.date, libelle: t.libelle, marchand: merchantOf(t.libelle), montant: t.montant, categorie: cats[i], empreinte: fingerprint(h.id, t) })));
+}
+// merchant names of operations already imported, recomputed once when the reading of bank labels improves
+try {
+    migrerMarchands(db);
+}
+catch (e) {
+    console.error("[marchands]", e.message);
 }
 const app = new Hono();
 securiser(app);

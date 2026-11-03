@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { libelleLisible } from "../../../server/src/libelles";
 import type { Api } from "../api";
 import { CHARGES, nomMois, POSTES, PRODUITS, type Actif, type Passif, type Poste } from "../../../server/src/budgetExpert";
 import { Alertes, Champ, Chiffres, EnTete, eur, moisCourt, nouvelId, pct, telecharger, useEspace, Verrou } from "./espacesCommun";
@@ -133,7 +134,7 @@ export function EspaceBudget({ api, go, onBack, toast }: { api: Api; go: (s: str
           <li className={r.cloture.a_classer === 0 ? "fait" : ""}>{r.cloture.a_classer === 0 ? "Toutes les opérations sont classées" : `${r.cloture.a_classer} opération${r.cloture.a_classer > 1 ? "s" : ""} à classer`}</li>
           <li className={r.cloture.a_justifier.length === 0 ? "fait" : ""}>{r.cloture.a_justifier.length === 0 ? "Grosses dépenses justifiées" : `${r.cloture.a_justifier.length} grosse${r.cloture.a_justifier.length > 1 ? "s" : ""} dépense${r.cloture.a_justifier.length > 1 ? "s" : ""} sans justificatif`}</li>
         </ul>
-        {r.cloture.a_justifier.map((t) => <div className="op" key={t.date + t.libelle}><span>{t.libelle}<small>{t.date.split("-").reverse().join("/")}</small></span><b>{eur(t.montant, true)}</b><button className="link" onClick={() => go("add")}>Joindre</button></div>)}
+        {r.cloture.a_justifier.map((t) => <div className="op" key={t.date + t.libelle}><span title={t.libelle}>{libelleLisible(t.libelle)}<small>{t.date.split("-").reverse().join("/")}</small></span><b>{eur(t.montant, true)}</b><button className="link" onClick={() => go("add")}>Joindre</button></div>)}
         <button className="btn ghost block" style={{ marginTop: 12 }} onClick={async () => { try { telecharger(await api.grandLivre(), "grand-livre-lucien.csv"); } catch (e) { toast((e as Error).message); } }}>Exporter le grand livre (tableur)</button>
       </section>
 

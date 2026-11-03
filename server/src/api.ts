@@ -32,7 +32,7 @@ import { adminOk, monterPartenaires } from "./partenaires.js";
 import { monterSupport } from "./support.js";
 import { DESTINATIONS } from "./destinations.js";
 import { connexionEnDouble } from "./doublons.js";
-import { analyseProFoyer, deciderPro } from "./analysePro.js";
+import { analyseProFoyer, deciderPro, recurrencesPro } from "./analysePro.js";
 import { remarquer, type EtapeSituation } from "./remarques.js";
 import { vueSituation, type SituationRow } from "./situationsApi.js";
 import { accesAutorise, MESSAGE_FERME, monterAcces } from "./acces.js";
@@ -789,7 +789,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     const h = household(c);
     const txs = db.transactionsFoyer(h.id);
     const report = budgetReport(txs, db.listDocuments(h.id), db.listDecisions(h.id));
-    const { liste: resiliations } = suivis(db, h.id, txs);
+    const { liste: resiliations } = suivis(db, h.id, db.listTransactions(h.id)); // cancellations of the business account too
     const economies_prouvees = Math.round(resiliations.filter((s) => s.statut === "confirmee").reduce((t, s) => t + s.economie_annuelle, 0) * 100) / 100;
     const solde = db.soldeFoyer(h.id);
     const prevision = solde !== null && txs.length ? prevoirFinDeMois(solde, txs, new Date().toISOString().slice(0, 10)) : null;
@@ -869,7 +869,8 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
 
   // ---------- la boucle des abonnements : résilier, puis vérifier en banque ----------
   const expediteur = (c: any) => { const u = currentUser(c); return u?.prenom ? `${u.prenom}` : household(c).nom.replace(/\s*\(démo\)$/, ""); };
-  const recurrence = (hid: string, cle: string) => findRecurrences(db.transactionsFoyer(hid)).find((r) => r.cle === cle);
+  // a subscription of the household budget, or of a business account (« Dépenses du compte pro »)
+  const recurrence = (hid: string, cle: string) => findRecurrences(db.transactionsFoyer(hid)).find((r) => r.cle === cle) ?? recurrencesPro(db, hid).find((r) => r.cle === cle);
 
   /** How to cancel, and the letter, before the person does it. */
   api.get("/resiliations/aide", (c) => {
@@ -888,7 +889,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     const r = recurrence(h.id, cle);
     if (!r) return c.json({ error: "introuvable", message: "Ce prélèvement n'apparaît plus dans vos relevés." }, 404);
     demarrerSuivi(db, h.id, { cle: r.cle, marchand: nomMarchand(r.marchand), montant: r.dernier_montant, frequence: r.frequence });
-    return c.json({ ok: true, ...suivis(db, h.id, db.transactionsFoyer(h.id)).liste.find((s) => s.cle === cle) }, 201);
+    return c.json({ ok: true, ...suivis(db, h.id, db.listTransactions(h.id)).liste.find((s) => s.cle === cle) }, 201);
   });
 
   api.delete("/resiliations/:cle", (c) => {
@@ -899,7 +900,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
   /** Refund request when a debit came back after the cancellation. */
   api.get("/resiliations/:cle/remboursement", (c) => {
     const h = household(c);
-    const s = suivis(db, h.id, db.transactionsFoyer(h.id)).liste.find((x) => x.cle === c.req.param("cle"));
+    const s = suivis(db, h.id, db.listTransactions(h.id)).liste.find((x) => x.cle === c.req.param("cle"));
     if (!s) return c.json({ error: "introuvable" }, 404);
     const tardifs = s.apres_demande.filter((t) => t.date > s.demande_le);
     return c.json({ lettre: lettreRemboursement({ marchand: s.marchand, demande_le: s.demande_le, prelevements: tardifs, expediteur: expediteur(c) }) });

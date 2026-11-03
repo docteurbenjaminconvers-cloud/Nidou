@@ -786,6 +786,10 @@ b, strong { font-weight: 800; }
 .cloture li.fait::before { border-color: var(--mint-ink); background: var(--mint-ink); }
 .op { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
 .op small { display: block; color: var(--mist); font-size: 12px; }
+.op-classer { grid-template-columns: 1fr auto; }
+.op-classer span { overflow-wrap: anywhere; }
+.op-classer select.in.mini { grid-column: 1 / -1; max-width: none; width: 100%; }
+.livre span { overflow-wrap: anywhere; }
 .in.mini { padding: 6px 8px; font-size: 12.5px; max-width: 150px; }
 .carte-pro { padding: 12px 14px; border-radius: 16px; background: var(--white); box-shadow: var(--shadow); margin-bottom: 8px; }
 .carte-pro b { display: block; font-size: 16px; } .carte-pro span { display: block; font-size: 13.5px; } .carte-pro small { color: var(--mist); }
@@ -839,8 +843,8 @@ b, strong { font-weight: 800; }
 .feuille { width: min(560px, 100%); max-height: 85dvh; display: flex; flex-direction: column; background: var(--white); border-radius: 24px 24px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); }
 .feuille-tete { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .feuille pre { flex: 1; overflow: auto; white-space: pre-wrap; font-family: var(--font); font-size: 13.5px; line-height: 1.5; background: var(--paper); border-radius: 14px; padding: 12px; margin: 0; }
-.feuille-actions { display: flex; gap: 10px; margin-top: 12px; }
-.feuille-actions .btn { flex: 1; }
+.feuille-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.feuille-actions .btn { flex: 1 1 40%; text-align: center; text-decoration: none; }
 
 .rubriques li b, .op b, .cr-ligne b, .bilan-ligne b { white-space: nowrap; }
 .partage-comptable { margin-top: 16px; padding: 14px; border-radius: 16px; background: var(--moss-soft); }

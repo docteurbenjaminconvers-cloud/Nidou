@@ -86,6 +86,11 @@ export function analyserPro(txs, decisions, today = new Date().toISOString().sli
     const a_verifier = prelevements.filter((p) => p.signaux.length && !p.decision).length + alertes.filter((a) => a.type !== "frais" && !a.decision).length;
     return { mois, prelevements, alertes, total_annuel: r2(prelevements.reduce((s, p) => s + p.annuel, 0)), a_verifier };
 }
+/** The recurring debits of the business accounts (same reading as the analysis), to cancel one of them. */
+export function recurrencesPro(db, hid) {
+    const set = new Set(comptesProfessionnels(db, hid));
+    return findRecurrences(db.listTransactions(hid).filter((t) => t.compte && set.has(t.compte) && t.montant < 0 && !["virements", "epargne", "impots"].includes(t.categorie)));
+}
 export function analyseProFoyer(db, hid) {
     const comptes = comptesProfessionnels(db, hid);
     const set = new Set(comptes);

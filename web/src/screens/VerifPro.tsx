@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import type { Api } from "../api";
 import type { AlertePro, AnalysePro, PrelevementPro } from "../types";
 import { Back, fmtEuro } from "../ui";
+import { SheetResiliation } from "./Spending";
+import { Feuille } from "./espacesCommun";
 
 const dateFr = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
 const SIGNAL: Record<PrelevementPro["signaux"][number], string> = { nouveau: "Nouveau", suspect: "À vérifier", hausse: "En hausse" };
@@ -24,13 +26,21 @@ export function VerifProCarte({ api, go }: { api: Api; go: (s: string) => void }
 export function VerifPro({ api, onBack, toast }: { api: Api; onBack: () => void; toast: (m: string) => void }) {
   const [a, setA] = useState<AnalysePro | null>(null);
   const [ouvert, setOuvert] = useState<string | null>(null);
+  const [resil, setResil] = useState<string | null>(null);   // the recurring debit being cancelled (its « rec:… » key)
+  const [lettre, setLettre] = useState<{ titre: string; texte: string } | null>(null);
   useEffect(() => { api.verificationPro().then(setA).catch((e) => toast((e as Error).message)); }, [api]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!a) return <div className="screen"><Back onClick={onBack} /><p className="note">Chargement…</p></div>;
   const decider = async (cle: string, d: "ok" | "resilier" | null) => { setA(await api.deciderPro(cle, d)); toast(d === "ok" ? "Noté : vous l'utilisez" : d === "resilier" ? "Noté : à résilier" : "Remis à vérifier"); };
+  // « À résilier » on a recurring debit opens the cancellation: steps, the letter, then « C'est fait » and the bank check
+  const recurrent = (cle: string) => cle.startsWith("rec:");
   const boutons = (cle: string, decision: "ok" | "resilier" | null, resiliable = true) => decision ? (
-    <div className="verif-actions"><span className={`verif-decision ${decision}`}>{decision === "ok" ? "Je l'utilise" : "À résilier"}</span><button className="link" onClick={() => decider(cle, null)}>Changer</button></div>
+    <div className="verif-actions">
+      <span className={`verif-decision ${decision}`}>{decision === "ok" ? "Je l'utilise" : "À résilier"}</span>
+      {decision === "resilier" && recurrent(cle) && <button className="pill" onClick={() => setResil(cle)}>Lettre et marche à suivre</button>}
+      <button className="link" onClick={() => decider(cle, null)}>Changer</button>
+    </div>
   ) : (
-    <div className="verif-actions"><button className="pill" onClick={() => decider(cle, "ok")}>Je l'utilise / c'est normal</button>{resiliable && <button className="pill" onClick={() => decider(cle, "resilier")}>À résilier</button>}</div>
+    <div className="verif-actions"><button className="pill" onClick={() => decider(cle, "ok")}>Je l'utilise / c'est normal</button>{resiliable && <button className="pill" onClick={async () => { await decider(cle, "resilier"); if (recurrent(cle)) setResil(cle); }}>À résilier</button>}</div>
   );
   const aide = (
     <div className="verif-aide">
@@ -82,7 +92,9 @@ export function VerifPro({ api, onBack, toast }: { api: Api; onBack: () => void;
         </section>
       )}
       {(a.prelevements.length > 0 || a.alertes.length > 0) && aide}
-      <p className="note" style={{ margin: "16px 0 30px" }}>Lucien ne résilie et ne conteste rien à votre place : il vous montre où regarder. L'analyse se refait à chaque mise à jour de la banque.</p>
+      <p className="note" style={{ margin: "16px 0 30px" }}>Lucien ne résilie et ne conteste rien à votre place : il prépare la lettre et vous montre où regarder, puis vérifie sur vos relevés que le prélèvement s'est arrêté. L'analyse se refait à chaque mise à jour de la banque.</p>
+      {resil && <SheetResiliation api={api} cle={resil.slice(4)} onClose={() => setResil(null)} onLettre={setLettre} onFait={() => setResil(null)} toast={toast} />}
+      {lettre && <Feuille titre={lettre.titre} texte={lettre.texte} fichier={`${lettre.titre.replace(/[^\p{L}\p{N} -]+/gu, "")}.txt`} onClose={() => setLettre(null)} />}
     </div>
   );
 }

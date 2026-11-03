@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { libelleLisible } from "../../../server/src/libelles";
 import type { Api, PartageComptable, VueComptable } from "../api";
 import { livreCsv, RUBRIQUES } from "../../../server/src/viePro";
 import { Logo } from "../ui";
@@ -64,11 +65,11 @@ export function PageComptable({ api, token }: { api: Api; token: string }) {
         <div className="conseil-fiscal"><b>Micro ou réel</b><p>{i.micro.conseil}</p></div>
         <h3 className="sous-titre">Rubriques de la 2035</h3>
         <ul className="rubriques">{i.par_rubrique.map((x) => <li key={x.rubrique}><span>{x.libelle}<small>{x.nb} opération{x.nb > 1 ? "s" : ""}</small></span><b>{eur(x.montant)}</b></li>)}</ul>
-        {i.immobilisations.length > 0 && <><h3 className="sous-titre">À immobiliser</h3><ul className="rubriques">{i.immobilisations.map((x) => <li key={x.date + x.libelle}><span>{x.libelle}<small>{dateFr(x.date)}</small></span><b>{eur(x.montant, true)}</b></li>)}</ul></>}
-        {i.a_classer.length > 0 && <><h3 className="sous-titre">Non classées par le client</h3><ul className="rubriques">{i.a_classer.map((x) => <li key={x.date + x.libelle}><span>{x.libelle}<small>{dateFr(x.date)}</small></span><b>{eur(x.montant, true)}</b></li>)}</ul></>}
+        {i.immobilisations.length > 0 && <><h3 className="sous-titre">À immobiliser</h3><ul className="rubriques">{i.immobilisations.map((x) => <li key={x.date + x.libelle}><span title={x.libelle}>{libelleLisible(x.libelle)}<small>{dateFr(x.date)}</small></span><b>{eur(x.montant, true)}</b></li>)}</ul></>}
+        {i.a_classer.length > 0 && <><h3 className="sous-titre">Non classées par le client</h3><ul className="rubriques">{i.a_classer.map((x) => <li key={x.date + x.libelle}><span title={x.libelle}>{libelleLisible(x.libelle)}<small>{dateFr(x.date)}</small></span><b>{eur(x.montant, true)}</b></li>)}</ul></>}
         <button className="btn block" style={{ marginTop: 16 }} onClick={() => telecharger(livreCsv(i), `livre-recettes-depenses-${i.annee}.csv`)}>Télécharger le livre des recettes et des dépenses</button>
         <h3 className="sous-titre">Livre ({i.livre.length} opérations)</h3>
-        <div className="livre">{i.livre.slice().reverse().map((l, k) => <div key={k} className={l.montant > 0 ? "rec" : ""}><span>{dateFr(l.date)}</span><span>{l.libelle}<small>{RUBRIQUES[l.rubrique]}</small></span><b>{l.montant > 0 ? "+" : ""}{eur(l.montant, true)}</b></div>)}</div>
+        <div className="livre">{i.livre.slice().reverse().map((l, k) => <div key={k} className={l.montant > 0 ? "rec" : ""}><span>{dateFr(l.date)}</span><span title={l.libelle}>{libelleLisible(l.libelle)}<small>{RUBRIQUES[l.rubrique]}</small></span><b>{l.montant > 0 ? "+" : ""}{eur(l.montant, true)}</b></div>)}</div>
         <p className="note">Données tirées du compte professionnel du client par Lucien. Lien {v.nom_comptable ? `remis à ${v.nom_comptable}, ` : ""}valable jusqu'au {dateFr(v.expire_le.slice(0, 10))}, révocable par le client.</p>
       </div>
     </div>

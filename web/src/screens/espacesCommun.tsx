@@ -101,6 +101,7 @@ export function Feuille({ titre, texte, fichier, onClose }: { titre: string; tex
         <div className="feuille-actions">
           <button className="btn" onClick={async () => { try { await navigator.clipboard.writeText(texte); setCopie(true); } catch { /* clipboard refused */ } }}>{copie ? "Copié" : "Copier"}</button>
           <button className="btn ghost" onClick={telecharger}>Télécharger</button>
+          {fichier.endsWith(".txt") && <a className="btn ghost" href={`mailto:?subject=${encodeURIComponent(titre)}&body=${encodeURIComponent(texte)}`}>Envoyer par email</a>}
         </div>
       </div>
     </div>

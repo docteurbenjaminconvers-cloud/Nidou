@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Api } from "../api";
+import { libelleLisible } from "../../../server/src/libelles";
 import { livreCsv, MICRO, RUBRIQUES, cleLibelle, type PersonnePro, type RapportMicro, type Rubrique, type TypeMicro } from "../../../server/src/viePro";
 import { PartageComptablePanneau } from "./Comptable";
 import { ConnecterPro } from "./BankLink";
@@ -22,6 +23,18 @@ function ImportReleve({ api, compte, libelle, onFait, toast }: { api: Api; compt
       }} />
     </label>
   );
+}
+
+/** Lines to class, one per supplier: the choice is remembered for all its operations. */
+function groupesAClasser(l: { date: string; libelle: string; montant: number }[]) {
+  const g = new Map<string, { cle: string; nom: string; exemple: string; nb: number; total: number; derniere: string }>();
+  for (const t of l) {
+    const cle = cleLibelle(t.libelle);
+    const x = g.get(cle) ?? { cle, nom: libelleLisible(t.libelle), exemple: t.libelle, nb: 0, total: 0, derniere: t.date };
+    x.nb++; x.total = Math.round((x.total + t.montant) * 100) / 100; if (t.date > x.derniere) x.derniere = t.date;
+    g.set(cle, x);
+  }
+  return [...g.values()].sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
 }
 
 const RUBRIQUES_CHOIX = (Object.keys(RUBRIQUES) as Rubrique[]).filter((r) => r !== "a_classer");
@@ -143,15 +156,17 @@ export function EspacePro({ api, go, onBack, toast }: { api: Api; go: (s: string
               <li key={x.rubrique} className={x.rubrique === "recettes" ? "recettes" : x.rubrique === "immobilisation" ? "immo" : ""}><span>{x.libelle}<small>{x.nb} opération{x.nb > 1 ? "s" : ""}</small></span><b>{eur(x.montant)}</b></li>
             ))}
           </ul>
-          {ind.immobilisations.length > 0 && <p className="note">Achat de plus de 500 € HT ({ind.immobilisations.map((x) => x.libelle.replace(/^CB /, "")).join(", ")}) : il s'amortit sur sa durée d'usage, il ne se déduit pas en une fois. Votre comptable ou votre association de gestion agréée calcule la dotation.</p>}
+          {ind.immobilisations.length > 0 && <p className="note">Achat de plus de 500 € HT ({[...new Set(ind.immobilisations.map((x) => libelleLisible(x.libelle)))].slice(0, 5).join(", ")}{ind.immobilisations.length > 5 ? "…" : ""}) : il s'amortit sur sa durée d'usage, il ne se déduit pas en une fois. Votre comptable ou votre association de gestion agréée calcule la dotation.</p>}
           </>}
 
           {ind.a_classer.length > 0 && !ind.micro_entreprise && (
             <>
               <h3 className="sous-titre">À classer</h3>
-              {ind.a_classer.map((t) => (
-                <div className="op" key={t.date + t.libelle}><span>{t.libelle}<small>{dateFr(t.date)}</small></span><b>{eur(t.montant, true)}</b>
-                  <select className="in mini" defaultValue="" onChange={(e) => e.target.value && classer(t.libelle, e.target.value as Rubrique)} aria-label={`Rubrique pour ${t.libelle}`}><option value="" disabled>Rubrique…</option>{RUBRIQUES_CHOIX.map((k) => <option key={k} value={k}>{RUBRIQUES[k]}</option>)}</select>
+              <p className="note" style={{ marginTop: 0 }}>Une fois par fournisseur : le choix vaut pour toutes ses opérations, passées et à venir.</p>
+              {groupesAClasser(ind.a_classer).map((g) => (
+                <div className="op op-classer" key={g.cle}>
+                  <span title={g.exemple}>{g.nom}<small>{g.nb > 1 ? `${g.nb} opérations, la dernière le ${dateFr(g.derniere)}` : dateFr(g.derniere)}</small></span><b>{eur(g.total, true)}</b>
+                  <select className="in mini" defaultValue="" onChange={(e) => e.target.value && classer(g.exemple, e.target.value as Rubrique)} aria-label={`Rubrique pour ${g.nom}`}><option value="" disabled>Choisir la rubrique…</option>{RUBRIQUES_CHOIX.map((k) => <option key={k} value={k}>{RUBRIQUES[k]}</option>)}</select>
                 </div>
               ))}
             </>
@@ -166,7 +181,7 @@ export function EspacePro({ api, go, onBack, toast }: { api: Api; go: (s: string
           </div>
           {voirLivre && (
             <div className="livre">
-              {ind.livre.slice().reverse().slice(0, 60).map((l, k) => <div key={k} className={l.montant > 0 ? "rec" : ""}><span>{dateFr(l.date)}</span><span>{l.libelle}<small>{RUBRIQUES[l.rubrique]}</small></span><b>{l.montant > 0 ? "+" : ""}{eur(l.montant, true)}</b></div>)}
+              {ind.livre.slice().reverse().slice(0, 60).map((l, k) => <div key={k} className={l.montant > 0 ? "rec" : ""}><span>{dateFr(l.date)}</span><span title={l.libelle}>{libelleLisible(l.libelle)}<small>{RUBRIQUES[l.rubrique]}</small></span><b>{l.montant > 0 ? "+" : ""}{eur(l.montant, true)}</b></div>)}
             </div>
           )}
           <PartageComptablePanneau api={api} memberId={p.member_id} prenom={p.prenom} toast={toast} />
