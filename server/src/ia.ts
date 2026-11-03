@@ -69,6 +69,9 @@ export async function text(call: { tier: Tier; system: string; prompt: string; m
 
 // ---------- Anthropic ----------
 
+/** Models that refused a forced tool_choice: asked directly in the instructions from then on. */
+const sansChoixForce = new Set<string>();
+
 async function anthropicStructured(model: string, call: StructuredCall): Promise<unknown> {
   const client = new Anthropic();
   const content: Anthropic.ContentBlockParam[] = call.content.map((p) =>
@@ -76,15 +79,29 @@ async function anthropicStructured(model: string, call: StructuredCall): Promise
       : p.type === "image" ? { type: "image", source: { type: "base64", media_type: p.mime as any, data: p.base64 } }
         : { type: "document", source: { type: "base64", media_type: "application/pdf", data: p.base64 } }
   );
-  const res = await client.messages.create({
+  const base = {
     model, max_tokens: call.maxTokens ?? 1024, system: call.system,
     tools: [{ name: call.tool.name, description: call.tool.description, input_schema: call.tool.schema as any }],
     tool_choice: { type: "tool", name: call.tool.name },
     messages: [{ role: "user", content }],
-  });
+  };
+  // Recent models refuse a forced tool_choice: ask for the tool in the instructions, and let the model call it.
+  const libre = () => client.messages.create({ ...base, tool_choice: { type: "auto" }, system: `${call.system}\n\nRéponds uniquement en appelant l'outil « ${call.tool.name} », sans texte autour.` } as Anthropic.MessageCreateParamsNonStreaming);
+  let res: Anthropic.Message;
+  if (sansChoixForce.has(model)) res = await libre();
+  else try { res = await client.messages.create(base as Anthropic.MessageCreateParamsNonStreaming); }
+  catch (e) {
+    if (!/tool_choice/.test(String((e as Error).message))) throw e;
+    sansChoixForce.add(model);
+    res = await libre();
+  }
   const tool = res.content.find((b) => b.type === "tool_use");
-  if (!tool || tool.type !== "tool_use") throw new Error("Pas de réponse structurée");
-  return tool.input;
+  if (tool && tool.type === "tool_use") return tool.input;
+  // last resort: a JSON object written as text
+  const t = res.content.find((b) => b.type === "text");
+  const json = t && t.type === "text" ? t.text.match(/\{[\s\S]*\}/)?.[0] : null;
+  if (json) { try { return JSON.parse(json); } catch { /* fall through */ } }
+  throw new Error("Pas de réponse structurée");
 }
 
 // ---------- Mistral (OpenAI-compatible chat API, JSON mode, vision through image_url) ----------
