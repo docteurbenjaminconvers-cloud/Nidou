@@ -66,7 +66,7 @@ export interface Api {
   charges(): Promise<ChargesReport>;
   letter(input: { document_id: string; kind: "resiliation" | "reclamation" | "remboursement"; nom: string; adresse?: string; motif?: string }): Promise<string>;
   budget(): Promise<BudgetReport>;
-  importStatement(input: { file?: File; texte?: string; demo?: boolean; compte?: string }): Promise<ImportResult>;
+  importStatement(input: { file?: File; texte?: string; demo?: boolean; compte?: string; destination?: "locatif" | "pro" }): Promise<ImportResult>;
   decide(cle: string, decision: "garde" | "resilie" | "a_faire"): Promise<void>;
   /** The subscription loop. */
   aideResiliation(cle: string): Promise<AideResiliation>;
@@ -233,11 +233,12 @@ const serverApi: Api = {
   charges: () => call("/charges"),
   letter: async (input) => (await call<{ texte: string }>("/letters", json(input))).texte,
   budget: () => call("/budget"),
-  importStatement: async ({ file, texte, demo, compte }) => {
+  importStatement: async ({ file, texte, demo, compte, destination }) => {
     if (file) {
       const fd = new FormData();
       fd.append("file", file);
       if (compte) fd.append("compte", compte);
+      if (destination) fd.append("destination", destination);
       return call("/transactions/import", { method: "POST", body: fd });
     }
     return call("/transactions/import", json({ texte, demo, compte }));

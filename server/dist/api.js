@@ -842,12 +842,13 @@ export function createApi(db, opts) {
         if (h.plan === "gratuit" && !FREE_LIMITS.importReleves) {
             return c.json({ error: "limite_plan", message: "L'import de relevés et l'analyse des dépenses font partie de la formule complète. Vos opérations déjà importées restent consultables." }, 402);
         }
-        let text = "", compte = null;
+        let text = "", compte = null, destination = null;
         const ct = c.req.header("content-type") ?? "";
         if (ct.includes("multipart/form-data")) {
             const form = await c.req.formData();
             const f = form.get("file");
-            compte = form.get("compte") || null;
+            compte = (form.get("compte") || "").trim().slice(0, 120) || null;
+            destination = z.enum(["locatif", "pro"]).nullable().catch(null).parse(form.get("destination") || null);
             if (f instanceof File) {
                 const buf = Buffer.from(await f.arrayBuffer());
                 if (f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf")) {
@@ -856,8 +857,9 @@ export function createApi(db, opts) {
                     const budget = budgetIa(db, h.id);
                     if (!budget.ok(coutAppel("precis", 3)))
                         return c.json({ error: "budget_ia", message: "Votre foyer a atteint ce mois-ci la limite de lectures par l'IA. Exportez le relevé en CSV depuis votre banque : il s'importe sans IA." }, 429);
+                    const pages = Math.max(1, (buf.toString("latin1").match(/\/Type\s*\/Page(?!s)/g) ?? []).length);
                     text = await pdfStatementToCsv(buf);
-                    budget.compter(coutAppel("precis", 3));
+                    budget.compter(coutAppel("precis", Math.max(3, 0.5 + pages / 2)));
                 }
                 else
                     text = buf.toString("utf8");
@@ -871,8 +873,18 @@ export function createApi(db, opts) {
         const parsed = parseStatement(text, compte);
         if (parsed.length === 0)
             return c.json({ error: "format", message: "Aucune ligne reconnue. Format attendu : une ligne par opération avec date, libellé et montant (CSV de votre banque)." }, 400);
-        const cats = h.plan === "gratuit" ? parsed.map((t) => ruleCategory(t.libelle, t.montant) ?? "autre") : await categorise(parsed, budgetIa(db, h.id));
-        const added = db.insertTransactions(parsed.map((t, i) => ({
+        // A statement of an account kept apart (the SCI's, the business's): the account is created in Lucien with its
+        // destination, so its operations never enter the household budget.
+        if (compte && destination && !db.listBankAccounts(h.id).some((a) => a.nom === compte)) {
+            const id = `releve:${createHash("sha1").update(compte).digest("hex").slice(0, 16)}`;
+            db.upsertBankAccount({ id, household_id: h.id, item_id: null, nom: compte, banque: "Relevés importés", type: destination === "pro" ? "pro" : null, solde: null, devise: "EUR", maj_le: new Date().toISOString() });
+            db.setDestinationCompte(h.id, id, destination);
+        }
+        // The same operation may already have come from the bank connection: same account, day and amount → skipped.
+        const deja = new Set(compte ? db.listTransactions(h.id).filter((t) => t.compte === compte).map((t) => `${t.date}|${t.montant.toFixed(2)}`) : []);
+        const nouvelles = parsed.filter((t) => !deja.has(`${t.date}|${t.montant.toFixed(2)}`));
+        const cats = h.plan === "gratuit" ? nouvelles.map((t) => ruleCategory(t.libelle, t.montant) ?? "autre") : await categorise(nouvelles, budgetIa(db, h.id));
+        const added = db.insertTransactions(nouvelles.map((t, i) => ({
             household_id: h.id, compte: t.compte, date: t.date, libelle: t.libelle, marchand: merchantOf(t.libelle), montant: t.montant, categorie: cats[i], empreinte: fingerprint(h.id, t),
         })));
         return c.json({ lues: parsed.length, ajoutees: added, doublons: parsed.length - added, de: parsed.map((t) => t.date).sort()[0], a: parsed.map((t) => t.date).sort().at(-1) }, 201);

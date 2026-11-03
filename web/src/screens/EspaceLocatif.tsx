@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Api } from "../api";
 import { NOM_INDICE, quittance, relance, SOURCE_INDICE, SOURCE_IRL, type Bail, type Bien, type Encaissement } from "../../../server/src/locatif";
 import { Alertes, Champ, Chiffres, dateFr, EnTete, eur, Feuille, moisCourt, nouvelId, pct, useEspace, Verrou, LireDocument } from "./espacesCommun";
@@ -218,6 +218,8 @@ export function EspaceLocatif({ api, go, onBack, toast }: { api: Api; go: (s: st
         </div>
       )}
 
+      {(d.structures ?? []).length > 0 && <RelevesSci api={api} structures={d.structures ?? []} toast={toast} onFait={charger} />}
+
       {(r.fiscal.nu || r.fiscal.meuble || r.fiscal.tourisme.length > 0 || r.fiscal.sci.length > 0) && (
         <section className="section">
           <div className="section-head"><h2>Déclaration des loyers</h2></div>
@@ -238,5 +240,36 @@ export function EspaceLocatif({ api, go, onBack, toast }: { api: Api; go: (s: st
       <p className="note">Indices Insee : <a href={SOURCE_IRL} target="_blank" rel="noreferrer">IRL</a>, <a href={SOURCE_INDICE.ilc} target="_blank" rel="noreferrer">ILC</a>, <a href={SOURCE_INDICE.ilat} target="_blank" rel="noreferrer">ILAT</a>. Habitation : quittance gratuite et due à la demande du locataire (loi du 6 juillet 1989, art. 21).</p>
       {doc && <Feuille titre={doc.titre} texte={doc.texte} fichier={doc.fichier} onClose={() => setDoc(null)} />}
     </div>
+  );
+}
+
+/**
+ * Statements of a SCI's bank account (CSV or PDF), e.g. to go further back than the bank connection. The account is
+ * kept apart from the household budget (« Location / SCI »); operations already received from the bank are skipped.
+ */
+function RelevesSci({ api, structures, toast, onFait }: { api: Api; structures: { id: string; nom: string }[]; toast: (m: string) => void; onFait: () => void }) {
+  const [comptes, setComptes] = useState<string[]>([]);
+  const [choix, setChoix] = useState("");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { api.bankStatus().then((s) => setComptes(s.comptes.filter((a) => a.destination === "locatif").map((a) => a.nom))).catch(() => setComptes([])); }, [api]);
+  const options = [...comptes, ...structures.map((s) => `Compte ${s.nom}`).filter((n) => !comptes.some((c) => c.toLowerCase().includes(n.slice(7).toLowerCase())))];
+  const compte = choix || options[0] || "";
+  return (
+    <section className="section">
+      <div className="section-head"><h2>Relevés de la SCI</h2></div>
+      <p className="note" style={{ marginTop: 0 }}>Un relevé CSV ou PDF de la banque de la SCI, par exemple pour remonter plus loin que la connexion bancaire. Il reste à part de votre budget, et les opérations déjà reçues de la banque ne sont pas comptées deux fois.</p>
+      {options.length > 1 && <label className="champ"><span>Compte</span><select className="in" value={compte} onChange={(e) => setChoix(e.target.value)}>{options.map((o) => <option key={o} value={o}>{o}</option>)}</select></label>}
+      <label className={`btn ghost import-releve${busy ? " occupe" : ""}`} style={{ marginTop: 8 }}>
+        {busy ? "Lecture du relevé…" : `Importer un relevé${options.length === 1 ? ` : ${compte}` : ""}`}
+        <input type="file" accept=".csv,.pdf,text/csv,application/pdf" hidden disabled={busy || !compte} onChange={async (e) => {
+          const file = e.target.files?.[0]; e.target.value = "";
+          if (!file) return;
+          setBusy(true);
+          try { const x = await api.importStatement({ file, compte, destination: "locatif" }); toast(`${x.ajoutees} opération${x.ajoutees > 1 ? "s" : ""} ajoutée${x.ajoutees > 1 ? "s" : ""}${x.doublons ? `, ${x.doublons} déjà connue${x.doublons > 1 ? "s" : ""}` : ""}`); onFait(); }
+          catch (err) { toast((err as Error).message); }
+          finally { setBusy(false); }
+        }} />
+      </label>
+    </section>
   );
 }
