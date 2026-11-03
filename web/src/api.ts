@@ -40,6 +40,7 @@ export interface SignaturePublique {
 import { scenarios } from "../../server/src/urgence";
 import { soldes as soldesPartages, suggestions as suggestionsPartages } from "../../server/src/partagesCalcul";
 import { pointSemaine } from "../../server/src/semaine";
+import { remarquer } from "../../server/src/remarques";
 import demoBudget from "./demo/budget.json";
 import demoBudgetFamille from "./demo/budget-famille.json";
 import demoHousehold from "./demo/household.json";
@@ -492,8 +493,8 @@ function makeDemoApi(): Api {
     bankSync: async () => { await new Promise((r) => setTimeout(r, 700)); return { comptes: 1, lues: 127, ajoutees: 0 }; },
     bankDisconnect: async () => { state.bank = false; },
     verificationPro: async () => analyseProDemo(state.verifPro),
-    remarques: async () => remarquesDemo().filter((r) => !state.remarquesMasquees.includes(r.cle)),
-    masquerRemarque: async (cle) => { state.remarquesMasquees.push(cle); return remarquesDemo().filter((r) => !state.remarquesMasquees.includes(r.cle)); },
+    remarques: async () => remarquesDemo(state).filter((r) => !state.remarquesMasquees.includes(r.cle)),
+    masquerRemarque: async (cle) => { state.remarquesMasquees.push(cle); return remarquesDemo(state).filter((r) => !state.remarquesMasquees.includes(r.cle)); },
     deciderPro: async (cle, decision) => { if (decision) state.verifPro[cle] = decision; else delete state.verifPro[cle]; return analyseProDemo(state.verifPro); },
     destinationsComptes: async (comptes) => { for (const c of comptes) state.destinations[c.id] = c.destination; return { ok: true, operations_retirees: 0 }; },
     // Family: demo state is edited in memory; computed parts (agenda, costs) are recomputed locally.
@@ -1016,14 +1017,12 @@ function analyseProDemo(dec: Record<string, "ok" | "resilier">): AnalysePro {
   return { comptes: ["Pro Camille"], mois: 6, prelevements, alertes, total_annuel: Math.round(prelevements.reduce((s, x) => s + x.annuel, 0) * 100) / 100, a_verifier };
 }
 
-/** Demo: what Lucien would notice for the Martin family. */
-function remarquesDemo(): Remarque[] {
-  const d = (n: number) => new Date(Date.now() + n * 864e5).toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
-  return [
-    { cle: "decouvert", niveau: "alerte", titre: "Le compte joint risque de passer à −140 € vers le 26", detail: "Avec les prélèvements prévus et vos dépenses habituelles. Décaler une dépense ou virer depuis le livret évite les frais de découvert.", action: { libelle: "Voir la fin de mois", route: "budget" } },
-    { cle: "recensement", niveau: "alerte", titre: "Léa doit se faire recenser", detail: "Le recensement citoyen est obligatoire dans les 3 mois qui suivent les 16 ans, en ligne ou en mairie. L'attestation est demandée pour le bac, le permis et les concours.", action: null },
-    { cle: "preavis", niveau: "conseil", titre: `Assurance auto : dernier jour pour changer le ${d(24)}`, detail: "Après cette date, le contrat est reconduit pour un an. C'est le bon moment pour demander un devis concurrent (vous payez 640 € par an). Bon à savoir : après un an de contrat, une assurance auto se résilie aussi à tout moment (loi Hamon).", action: { libelle: "Voir le contrat", route: "docs" } },
-    { cle: "identite", niveau: "conseil", titre: `Le passeport de Camille expire le ${d(120)}`, detail: "Les rendez-vous en mairie prennent souvent plusieurs semaines : prenez-le maintenant, avec la pré-demande en ligne sur ants.gouv.fr.", action: { libelle: "Voir le papier", route: "docs" } },
-    { cle: "anniv", niveau: "info", titre: "Anniversaire de Jean dans 6 jours", detail: "Un cadeau à prévoir, une réservation à faire ?", action: null },
-  ];
+/** Demo: what Lucien would notice for the Martin family, by the same rules as the real app (so dates and names agree with the rest of the demo). */
+function remarquesDemo(state: { famille: FamilleReport; docs: Doc[]; verifPro: Record<string, "ok" | "resilier"> }): Remarque[] {
+  const decouvert: Remarque = { cle: "decouvert", niveau: "alerte", titre: "Le compte joint risque de passer à −140 € vers le 26", detail: "Avec les prélèvements prévus et vos dépenses habituelles. Décaler une dépense ou virer depuis le livret évite les frais de découvert.", action: { libelle: "Voir la fin de mois", route: "budget" } };
+  const regles = remarquer({
+    aujourdhui: new Date().toISOString().slice(0, 10), membres: state.famille.membres as never, documents: state.docs as never, echeances: [],
+    budget: null, prevision: null, etapes: [], pro_a_verifier: analyseProDemo(state.verifPro).a_verifier, aSituation: false,
+  }) as Remarque[];
+  return [decouvert, ...regles];
 }

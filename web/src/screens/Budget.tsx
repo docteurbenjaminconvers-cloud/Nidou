@@ -46,8 +46,8 @@ export function Budget({ api, charges, budget, household, go, onUpgrade, onChang
                 <div>
                   <div className="t">{a.titre}</div>
                   <div className="d">{a.detail}</div>
-                  <div style={{ display: "flex", gap: 14, marginTop: 6 }}>
-                    {a.document_ids.slice(0, 2).map((id) => <button key={id} className="link" onClick={() => go("doc", id)}>Voir le contrat</button>)}
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 14px", marginTop: 6 }}>
+                    {a.document_ids.slice(0, 2).map((id, k, l) => <button key={id} className="link" style={{ whiteSpace: "nowrap" }} onClick={() => go("doc", id)}>{l.length > 1 ? (k === 0 ? "Voir le papier" : "Voir le second papier") : "Voir le contrat"}</button>)}
                   </div>
                 </div>
                 {a.economie_estimee ? <div className="save">{fmtEuro(a.economie_estimee)}<small>/ an</small></div> : <span />}

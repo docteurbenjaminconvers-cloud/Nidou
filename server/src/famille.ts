@@ -106,7 +106,7 @@ export function echeancesFamille(h: HouseholdRow, members: MemberRow[], activite
     if (Number.isNaN(d.getTime())) continue;
     const date = nextOccurrence(d.getMonth() + 1, d.getDate(), today);
     const a = new Date(date).getFullYear() - d.getFullYear();
-    push({ cle: `anniv:${m.id}:${date}`, titre: `Anniversaire de ${m.prenom} (${a} ans)`, date, rappel_jours: 10, note: null, member_id: m.id });
+    push({ cle: `anniv:${m.id}:${date}`, titre: `${/^moi$/i.test(m.prenom.trim()) ? "Votre anniversaire" : `Anniversaire de ${m.prenom}`} (${a} ans)`, date, rappel_jours: 10, note: null, member_id: m.id });
   }
   if (scolaires.some((m) => (age(m.date_naissance, today) ?? 10) >= 6)) {
     push({ cle: `ars:${yr}`, titre: "Allocation de rentrée scolaire : vérifier le versement CAF", date: nextOccurrence(8, 20, today), rappel_jours: 7, note: "Versée vers la mi-août aux familles sous conditions de ressources, pour chaque enfant de 6 à 18 ans scolarisé. Si rien n'arrive, vérifiez votre dossier CAF.", member_id: null });

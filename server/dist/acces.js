@@ -18,7 +18,7 @@ export function accesAutorise(db, email) {
         return true;
     return !!db.raw.prepare("SELECT 1 FROM acces_invites WHERE email = ?").get(e);
 }
-export const MESSAGE_FERME = "Lucien est en avant-première : l'accès se fait pour l'instant sur invitation. Laissez votre adresse sur monlucien.fr pour être prévenu(e) de l'ouverture.";
+export const MESSAGE_FERME = () => "Lucien est en avant-première : l'accès se fait pour l'instant sur invitation. Laissez votre adresse sur la liste d'attente pour être prévenu(e) de l'ouverture.";
 export function monterAcces(api, db) {
     ensureAccesSchema(db);
     const interdit = (c) => (adminOk(c.req.header("authorization")) ? null : c.json({ error: "interdit", message: "Code d'administration incorrect." }, 403));

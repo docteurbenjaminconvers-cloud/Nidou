@@ -45,3 +45,11 @@ test("Lucien a remarqué : une remarque mise de côté ne revient pas", async ()
   const r2 = await (await api.request("/remarques/masquer", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ cle: "manque:naissances" }) })).json();
   assert.ok(!r2.remarques.some((x: { cle: string }) => x.cle === "manque:naissances"));
 });
+
+test("la personne inscrite sans prénom (« Moi ») : « votre anniversaire », jamais « l'anniversaire de Moi »", async () => {
+  const r = remarquer({ aujourdhui: "2026-11-02", membres: [m("a", "Moi", "1984-11-05", "adulte")], documents: [], echeances: [], budget: null, prevision: null, etapes: [], pro_a_verifier: 0, aSituation: false });
+  assert.equal(r.find((x) => x.cle.startsWith("anniv"))?.titre, "Votre anniversaire dans 3 jours");
+  const { echeancesFamille } = await import("./famille.js");
+  const e = echeancesFamille({ situation: "couple" } as never, [m("a", "Moi", "1984-11-05", "adulte")] as never, [], new Date("2026-11-02T12:00:00Z"));
+  assert.ok(e.some((x) => x.titre === "Votre anniversaire (42 ans)"));
+});

@@ -27,7 +27,7 @@ export function accesAutorise(db: Db, email: string): boolean {
   return !!db.raw.prepare("SELECT 1 FROM acces_invites WHERE email = ?").get(e);
 }
 
-export const MESSAGE_FERME = "Lucien est en avant-première : l'accès se fait pour l'instant sur invitation. Laissez votre adresse sur monlucien.fr pour être prévenu(e) de l'ouverture.";
+export const MESSAGE_FERME = () => "Lucien est en avant-première : l'accès se fait pour l'instant sur invitation. Laissez votre adresse sur la liste d'attente pour être prévenu(e) de l'ouverture.";
 
 export function monterAcces(api: Hono<any>, db: Db) {
   ensureAccesSchema(db);

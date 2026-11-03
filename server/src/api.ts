@@ -110,7 +110,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     const body = z.object({ email: z.string(), langue: z.enum(["fr", "en"]).optional() }).parse(await c.req.json());
     const email = body.email.trim().toLowerCase();
     if (!emailValide(email)) return c.json({ error: "email", message: "Adresse email invalide." }, 400);
-    if (!accesAutorise(db, email)) return c.json({ error: "sur_invitation", message: MESSAGE_FERME }, 403);
+    if (!accesAutorise(db, email)) return c.json({ error: "sur_invitation", message: MESSAGE_FERME() }, 403);
     const ip = (c.req.header("x-forwarded-for") ?? "").split(",")[0].trim() || c.req.header("x-real-ip") || "inconnue";
     if (!demandeAutorisee(`ip:${ip}`, 10) || !demandeAutorisee(`email:${email}`, 3))
       return c.json({ error: "trop_de_demandes", message: "Trop de demandes de lien. Réessayez dans 15 minutes." }, 429);
@@ -369,7 +369,9 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
       ia_lectures_restantes: h.plan === "gratuit" ? Math.max(0, FREE_LIMITS.iaLecturesParMois - db.iaLecturesMois(h.id)) : null,
       ia_gratuit_en_pause: h.plan === "gratuit" && db.iaDepenseMois().gratuit_eur >= freeCapEur(),
       notifications: h.plan === "gratuit" ? "push" : "push+email",
-      boite_email: h.plan === "famille" ? boiteAddress(db.getHousehold(h.id)!.boite_code) : null,
+      // the forwarding address is only shown once its email domain really receives mail (LUCIEN_INBOX_DOMAIN set)
+      boite_email: h.plan === "famille" && process.env.LUCIEN_INBOX_DOMAIN ? boiteAddress(db.getHousehold(h.id)!.boite_code) : null,
+      boite_bientot: h.plan === "famille" && !process.env.LUCIEN_INBOX_DOMAIN,
       mcp_token: h.plan === "famille" ? db.getHousehold(h.id)!.mcp_token : null,
       utilisateur: currentUser(c),
       titulaire: isOwner(c),

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { Api, Partenaire, SujetSupport } from "../api";
 import { ApiError } from "../api";
 import type { Household } from "../types";
-import { Back } from "../ui";
+import { Back, SITE } from "../ui";
 import { choisirLangue, langueChoisie } from "../i18n/traduction";
 
 /** « Le point du dimanche » : la semaine de Lucien, chaque dimanche soir (notification, et email avec la formule complète). */
@@ -156,7 +156,7 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
       <PointDimanche api={api} household={household} onChanged={() => onPlan(household.plan)} toast={toast} go={go} />
 
       <section className="section">
-        <div className="section-head"><h2>Papiers par email</h2>{household.boite_email ? <span className="badge">active</span> : <span className="badge yolk">formule complète</span>}</div>
+        <div className="section-head"><h2>Papiers par email</h2>{household.boite_email ? <span className="badge">active</span> : household.boite_bientot ? <span className="badge yolk">bientôt</span> : <span className="badge yolk">formule complète</span>}</div>
         <p style={{ marginBottom: 10 }}>Transférez un email à votre adresse Lucien : la facture, le contrat ou l'avis d'échéance se range tout seul et crée ses rappels. Lucien ne lit jamais votre boîte mail, seulement ce que vous lui envoyez.</p>
         {household.boite_email ? (
           <>
@@ -169,7 +169,8 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
               </ul>
             )}
           </>
-        ) : <p className="note">Pendant l'essai et avec la formule complète, vous recevez une adresse personnelle du type foyer-xxxxxx@in.monlucien.fr.</p>}
+        ) : household.boite_bientot ? <p className="note">Votre adresse personnelle arrive bientôt : elle sera activée avec l'adresse email de Lucien. En attendant, ajoutez vos papiers avec le bouton +.</p>
+          : <p className="note">Pendant l'essai et avec la formule complète, vous recevez une adresse personnelle du type foyer-xxxxxx@in.monlucien.fr.</p>}
       </section>
 
       <section className="section">
@@ -270,7 +271,7 @@ export function ConsentementDemarrage({ coche, onChange }: { coche: boolean; onC
     <label className="consentement">
       <input type="checkbox" checked={coche} onChange={(e) => onChange(e.target.checked)} />
       <span>Je demande que mon abonnement commence tout de suite. Je garde 14 jours pour me rétracter ; seuls les jours déjà utilisés seront alors retenus.</span>
-      <small className="consentement-cgv">En payant, vous acceptez les <a href="https://monlucien.fr/cgv.html" target="_blank" rel="noreferrer">conditions générales de vente</a> et les <a href="https://monlucien.fr/cgu.html" target="_blank" rel="noreferrer">conditions d'utilisation</a>.</small>
+      <small className="consentement-cgv">En payant, vous acceptez les <a href={`${SITE}/cgv.html`} target="_blank" rel="noreferrer">conditions générales de vente</a> et les <a href={`${SITE}/cgu.html`} target="_blank" rel="noreferrer">conditions d'utilisation</a>.</small>
     </label>
   );
 }

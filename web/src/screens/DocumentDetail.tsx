@@ -192,10 +192,10 @@ export function DocumentDetail({ api, id, onBack, onChanged, toast }: { api: Api
         )}
       </section>
 
-      <section className="section">
+      {!["identite", "impots"].includes(doc.category) && <section className="section">
         <div className="section-head"><h2>Courrier prêt à envoyer</h2></div>
         <div className="pills">
-          {(["resiliation", "reclamation", "remboursement"] as const).map((k) => (
+          {(["resiliation", "reclamation", "remboursement"] as const).filter((k) => k !== "resiliation" || (doc.periodicite !== "unique" && !["garantie", "vehicule"].includes(doc.category))).map((k) => (
             <button key={k} className="pill" aria-pressed={letterKind === k} onClick={() => { setLetterKind(k); setLetter(null); }}>
               {k === "resiliation" ? "Résiliation" : k === "reclamation" ? "Réclamation" : "Remboursement"}
             </button>
@@ -221,7 +221,7 @@ export function DocumentDetail({ api, id, onBack, onChanged, toast }: { api: Api
             )}
           </>
         )}
-      </section>
+      </section>}
     </div>
   );
 }

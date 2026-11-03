@@ -515,6 +515,7 @@ b, strong { font-weight: 800; }
 .etapes li { display: grid; grid-template-columns: 34px 1fr; gap: 12px; background: var(--white); border-radius: 20px; box-shadow: var(--shadow); padding: 14px; }
 .etape-n { width: 34px; height: 34px; border-radius: 50%; background: var(--nest); color: #fff; display: grid; place-items: center; font-family: var(--display); font-weight: 600; font-size: 17px; }
 .etapes b { display: block; font-size: 15.5px; line-height: 1.3; }
+.etapes .s b { display: inline; font-size: inherit; line-height: inherit; }
 .etape-delai { display: inline-block; margin-top: 5px; font-size: 12px; font-weight: 800; color: var(--ember); background: var(--ember-soft); border-radius: 999px; padding: 3px 9px; }
 .etapes p { font-size: 14px; color: var(--mist); margin-top: 6px; line-height: 1.45; }
 .etape-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }

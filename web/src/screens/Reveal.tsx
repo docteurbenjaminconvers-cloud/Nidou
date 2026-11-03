@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { BudgetReport } from "../types";
-import { fmtEuro } from "../ui";
+import { fmtEuro, SITE } from "../ui";
 
 export const REVEAL_KEY = "lucien.revelation.vue";
 
@@ -36,7 +36,7 @@ export function Reveal({ budget, onClose, go, toast }: { budget: BudgetReport; o
   useEffect(() => { if (step === 2) { const t = setTimeout(() => setStep(3), 400 + top.length * 350); return () => clearTimeout(t); } }, [step, top.length]);
 
   const share = async () => {
-    const text = `Lucien vient de trouver ${fmtEuro(total)} par an d'économies cachées dans mes prélèvements, en 1 minute. Essai gratuit 15 jours : https://monlucien.fr`;
+    const text = `Lucien vient de trouver ${fmtEuro(total)} par an d'économies cachées dans mes prélèvements, en 1 minute. Essai gratuit 15 jours : ${SITE}`;
     try {
       if (navigator.share) await navigator.share({ title: "Lucien", text });
       else { await navigator.clipboard.writeText(text); toast("Message copié, à coller où vous voulez"); }

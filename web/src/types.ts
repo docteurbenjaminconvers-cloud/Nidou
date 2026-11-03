@@ -75,6 +75,7 @@ export interface Household {
   ia_lectures_restantes?: number | null;
   ia_gratuit_en_pause?: boolean;
   boite_email?: string | null;
+  boite_bientot?: boolean;
   mcp_token?: string | null;
   capacite_comptes?: number;
   abonnement?: { stripe: boolean; paiement?: boolean; statut: string | null; formule?: "solo" | "duo" | "tribu" | null; periode: "mensuel" | "annuel" | null; fin: string | null; prix: { mensuel: number; annuel: number }; gerable: boolean; abonnement_resilie?: boolean; suppression_le?: string | null; retractation?: { possible: boolean; jusquau: string | null } };

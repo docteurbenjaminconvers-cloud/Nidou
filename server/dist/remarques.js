@@ -69,7 +69,7 @@ export function remarquer(c) {
                 anniv = `${Number(t.slice(0, 4)) + 1}${anniv.slice(4)}`;
             const dans = jours(anniv, t);
             if (dans >= 0 && dans <= 10) {
-                out.push({ cle: `anniv:${m.id}:${anniv}`, niveau: "info", titre: dans === 0 ? `C'est l'anniversaire de ${m.prenom} aujourd'hui` : `Anniversaire de ${m.prenom} ${dans === 1 ? "demain" : `dans ${dans} jours`}`,
+                out.push({ cle: `anniv:${m.id}:${anniv}`, niveau: "info", titre: /^moi$/i.test(m.prenom.trim()) ? (dans === 0 ? "C'est votre anniversaire aujourd'hui" : `Votre anniversaire ${dans === 1 ? "demain" : `dans ${dans} jours`}`) : dans === 0 ? `C'est l'anniversaire de ${m.prenom} aujourd'hui` : `Anniversaire de ${m.prenom} ${dans === 1 ? "demain" : `dans ${dans} jours`}`,
                     detail: "Un cadeau à prévoir, une réservation à faire ?", action: null });
             }
         }
