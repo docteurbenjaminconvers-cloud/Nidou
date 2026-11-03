@@ -1,4 +1,5 @@
 import { findRecurrences } from "./budget.js";
+import { suivis } from "./resiliations.js";
 /**
  * Wording common to the « annuaire » and « registre » scams aimed at businesses (fake directories, fake official
  * registers, paid « mises en conformité »). A match is only « à vérifier », never an accusation.
@@ -96,7 +97,13 @@ export function analyseProFoyer(db, hid) {
     const set = new Set(comptes);
     const txs = comptes.length ? db.listTransactions(hid).filter((t) => t.compte && set.has(t.compte)) : [];
     const decisions = db.getModuleData(hid, "verif_pro")?.decisions ?? {};
-    return { comptes, ...analyserPro(txs, decisions) };
+    const r = analyserPro(txs, decisions);
+    const liste = suivis(db, hid, db.listTransactions(hid)).liste;
+    for (const p of r.prelevements) {
+        const s = liste.find((x) => `rec:${x.cle}` === p.cle);
+        p.suivi = s ? { statut: s.statut, message: s.message } : null;
+    }
+    return { comptes, ...r };
 }
 export function deciderPro(db, hid, cle, decision) {
     const d = db.getModuleData(hid, "verif_pro")?.decisions ?? {};

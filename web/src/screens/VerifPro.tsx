@@ -60,12 +60,29 @@ export function VerifPro({ api, onBack, toast }: { api: Api; onBack: () => void;
       {x.type !== "frais" && boutons(x.cle, x.decision, x.type !== "micro")}
     </div>
   );
+  const aResilier = a.prelevements.filter((p) => p.decision === "resilier");
   return (
     <div className="screen verif-pro">
       <Back onClick={onBack} />
       <h1 className="detail-title">Dépenses du compte pro</h1>
       <p className="detail-sub">{a.comptes.length ? `${a.comptes.join(", ")} · ${a.mois} mois analysés` : "Aucun compte classé « Professionnel »."}</p>
       {!a.comptes.length && <p className="note">Dans Budget, choisissez « Professionnel » pour le compte de votre activité : Lucien y cherchera les abonnements oubliés et les prélèvements douteux.</p>}
+
+      {aResilier.length > 0 && (
+        <section className="section">
+          <div className="section-head"><h2>Vos résiliations</h2><span className="badge">{fmtEuro(aResilier.reduce((t, p) => t + p.annuel, 0))} / an</span></div>
+          {aResilier.map((p) => (
+            <div key={p.cle} className={`resil-item ${p.suivi?.statut ?? ""}`}>
+              <div><b>{p.marchand}</b> <span className="resil-chip">{!p.suivi ? "À faire" : p.suivi.statut === "confirmee" ? "Prouvé par la banque" : p.suivi.statut === "encore_prelevee" ? "Encore prélevé" : "Envoyée, vérification en cours"}</span>
+                <p>{p.suivi ? p.suivi.message : `${fmtEuro(p.montant, 2)} ${p.frequence === "annuel" ? "par an" : "par mois"} : préparez la lettre, envoyez-la, puis touchez « C'est fait ».`}</p></div>
+              <div className="verif-actions">
+                {!p.suivi && <button className="pill" onClick={() => setResil(p.cle)}>Lettre et marche à suivre</button>}
+                {!p.suivi && <button className="link" onClick={() => decider(p.cle, null)}>Je garde finalement</button>}
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
 
       {a.alertes.length > 0 && (
         <section className="section">
@@ -78,7 +95,7 @@ export function VerifPro({ api, onBack, toast }: { api: Api; onBack: () => void;
         <section className="section">
           <div className="section-head"><h2>Prélèvements réguliers</h2><span className="badge">{fmtEuro(a.total_annuel)} / an</span></div>
           <p className="note" style={{ marginTop: 0 }}>Tout ce qui revient chaque mois ou chaque année. Pour chacun : l'utilisez-vous encore ?</p>
-          {a.prelevements.map((p) => (
+          {a.prelevements.filter((p) => p.decision !== "resilier").map((p) => (
             <div key={p.cle} className={`verif-ligne ${p.signaux.includes("suspect") ? "suspect" : ""} ${p.decision ? "faite" : ""}`}>
               <button className="verif-tete" onClick={() => setOuvert(ouvert === p.cle ? null : p.cle)} aria-expanded={ouvert === p.cle}>
                 <span><b>{p.marchand}</b><small>{fmtEuro(p.montant, 2)} {p.frequence === "annuel" ? "par an" : p.frequence === "hebdomadaire" ? "par semaine" : "par mois"} · depuis le {dateFr(p.depuis)}</small></span>
@@ -86,14 +103,14 @@ export function VerifPro({ api, onBack, toast }: { api: Api; onBack: () => void;
               </button>
               {p.signaux.length > 0 && <div className="verif-signaux">{p.signaux.map((s) => <span key={s} className={`verif-signal ${s}`}>{SIGNAL[s]}{s === "hausse" && p.hausse ? ` : ${fmtEuro(p.hausse.avant, 2)} → ${fmtEuro(p.hausse.apres, 2)}` : ""}</span>)}</div>}
               {p.signaux.includes("suspect") && <p>Ce libellé ressemble aux fausses offres d'annuaire ou de registre qui visent les professionnels. Vérifiez que vous l'avez bien commandé.</p>}
-              {(ouvert === p.cle || p.signaux.length > 0 || p.decision) && boutons(p.cle, p.decision)}
+              {boutons(p.cle, p.decision)}
             </div>
           ))}
         </section>
       )}
       {(a.prelevements.length > 0 || a.alertes.length > 0) && aide}
       <p className="note" style={{ margin: "16px 0 30px" }}>Lucien ne résilie et ne conteste rien à votre place : il prépare la lettre et vous montre où regarder, puis vérifie sur vos relevés que le prélèvement s'est arrêté. L'analyse se refait à chaque mise à jour de la banque.</p>
-      {resil && <SheetResiliation api={api} cle={resil.slice(4)} onClose={() => setResil(null)} onLettre={setLettre} onFait={() => setResil(null)} toast={toast} />}
+      {resil && <SheetResiliation api={api} cle={resil.slice(4)} onClose={() => setResil(null)} onLettre={setLettre} onFait={() => { setResil(null); api.verificationPro().then(setA).catch(() => {}); }} toast={toast} />}
       {lettre && <Feuille titre={lettre.titre} texte={lettre.texte} fichier={`${lettre.titre.replace(/[^\p{L}\p{N} -]+/gu, "")}.txt`} onClose={() => setLettre(null)} />}
     </div>
   );

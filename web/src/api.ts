@@ -453,7 +453,10 @@ function makeDemoApi(): Api {
     supprimerReglement: async (id) => { state.reglementsPartages = state.reglementsPartages.filter((x) => x.id !== id); return etatPartagesDemo(state.famille.membres, state.depensesPartagees, state.reglementsPartages); },
     aideResiliation: async (cle: string) => {
       const a = (structuredClone(state.household.plan === "famille" ? demoBudgetFamille : demoBudget) as BudgetReport).actions.find((x) => x.marchand === cle);
-      const pro = a ? null : analyseProDemo(state.verifPro).prelevements.find((x) => x.cle === `rec:${cle}`); // a business-account debit
+      const pro = a ? null : analyseProDemo(state.verifPro).prelevements.find((x) => x.cle === `rec:${cle}`) ?? (() => {
+        const r = (structuredClone(state.household.plan === "famille" ? demoBudgetFamille : demoBudget) as BudgetReport).recurrences.find((x) => x.cle === cle);
+        return r ? { marchand: r.marchand.replace(/(^|[\s-])(\p{L})/gu, (_: string, x: string, y: string) => x + y.toUpperCase()), annuel: Math.round(r.mensuel_equivalent * 12), montant: Math.round(r.mensuel_equivalent * 100) / 100 } : undefined;
+      })(); // a business-account debit, or any recurring debit of the household
       const marchand = pro?.marchand ?? (a?.marchand ?? cle).replace(/(^|[\s-])(\p{L})/gu, (_, x: string, y: string) => x + y.toUpperCase()), eco = pro?.annuel ?? a?.economie_annuelle ?? 0, montant = pro?.montant ?? Math.round((eco / 12) * 100) / 100;
       return { marchand, montant, frequence: "mensuel", economie_annuelle: eco,
         etapes: [`Connectez-vous à votre espace client ${marchand} : un bouton « Résilier » doit y être visible si le contrat a été souscrit en ligne.`, "Sinon, envoyez la lettre ci-dessous par email ou par courrier recommandé.", "Un dernier prélèvement peut encore passer pour le mois commencé : c'est normal.", "Touchez « C'est fait, j'ai résilié » : Lucien vérifiera vos prochains relevés."],
@@ -493,7 +496,7 @@ function makeDemoApi(): Api {
     supprimerConnexion: async (id) => { state.connexions = state.connexions.filter((c) => c.id !== id); },
     bankSync: async () => { await new Promise((r) => setTimeout(r, 700)); return { comptes: 1, lues: 127, ajoutees: 0 }; },
     bankDisconnect: async () => { state.bank = false; },
-    verificationPro: async () => analyseProDemo(state.verifPro),
+    verificationPro: async () => { const r = analyseProDemo(state.verifPro); r.prelevements.forEach((p) => { const s = state.resiliations.find((x) => `rec:${x.cle}` === p.cle); p.suivi = s ? { statut: s.statut, message: s.message } : null; }); return r; },
     remarques: async () => remarquesDemo(state).filter((r) => !state.remarquesMasquees.includes(r.cle)),
     masquerRemarque: async (cle) => { state.remarquesMasquees.push(cle); return remarquesDemo(state).filter((r) => !state.remarquesMasquees.includes(r.cle)); },
     deciderPro: async (cle, decision) => { if (decision) state.verifPro[cle] = decision; else delete state.verifPro[cle]; return analyseProDemo(state.verifPro); },

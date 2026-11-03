@@ -6,11 +6,14 @@
  */
 import type { Db, TransactionRow } from "./db.js";
 import { findRecurrences } from "./budget.js";
+import { suivis } from "./resiliations.js";
 
 export type Signal = "nouveau" | "suspect" | "hausse";
 export interface Prelevement {
   cle: string; marchand: string; frequence: string; montant: number; annuel: number; depuis: string; derniere_date: string;
   occurrences: number; compte: string | null; signaux: Signal[]; hausse: { avant: number; apres: number } | null; decision: "ok" | "resilier" | null;
+  /** once « C'est fait, j'ai résilié » is tapped: what the bank statements show since */
+  suivi?: { statut: "en_cours" | "confirmee" | "encore_prelevee"; message: string } | null;
 }
 export interface AlertePro { cle: string; type: "suspect" | "doublon" | "micro" | "frais"; titre: string; detail: string; montant: number; date: string | null; marchand: string | null; decision: "ok" | "resilier" | null }
 export interface AnalysePro { comptes: string[]; mois: number; prelevements: Prelevement[]; alertes: AlertePro[]; total_annuel: number; a_verifier: number }
@@ -110,7 +113,13 @@ export function analyseProFoyer(db: Db, hid: string): AnalysePro {
   const set = new Set(comptes);
   const txs = comptes.length ? db.listTransactions(hid).filter((t) => t.compte && set.has(t.compte)) : [];
   const decisions = db.getModuleData<{ decisions?: Record<string, "ok" | "resilier"> }>(hid, "verif_pro")?.decisions ?? {};
-  return { comptes, ...analyserPro(txs, decisions) };
+  const r = analyserPro(txs, decisions);
+  const liste = suivis(db, hid, db.listTransactions(hid)).liste;
+  for (const p of r.prelevements) {
+    const s = liste.find((x) => `rec:${x.cle}` === p.cle);
+    p.suivi = s ? { statut: s.statut as "en_cours" | "confirmee" | "encore_prelevee", message: s.message } : null;
+  }
+  return { comptes, ...r };
 }
 
 export function deciderPro(db: Db, hid: string, cle: string, decision: "ok" | "resilier" | null) {
