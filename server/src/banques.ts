@@ -5,6 +5,7 @@ import { envoyerPush } from "./push.js";
 import { bridgeConfig, BridgeClient, mapTransactions, syncHousehold } from "./bridge.js";
 import { ebConfig, EbClient, ebSyncHousehold, mapEbTransactions } from "./enablebanking.js";
 import { ebSynchroSup, ensureConnexionsSchema, listConnexions } from "./connexions.js";
+import { dedoublonnerComptes } from "./doublons.js";
 
 /**
  * Which bank connector runs: Enable Banking when its keys are set (billed per connected account, calls included),
@@ -74,6 +75,7 @@ async function synchroniserLienPrincipal(db: Db, householdId: string) {
 export async function synchroniserFoyer(db: Db, householdId: string) {
   const sups = listConnexions(db, householdId).filter((c) => c.fournisseur === "enablebanking" && c.statut !== "en_attente");
   if (!db.getBankLink(householdId) && !sups.length) throw new Error("Aucune connexion bancaire pour ce foyer");
+  await dedoublonnerComptes(db, eb(), householdId).catch((e) => console.error("[banque] doublons :", (e as Error).message));
   const r = (await synchroniserLienPrincipal(db, householdId)) ?? { comptes: 0, lues: 0, ajoutees: 0, derniere_synchro: new Date().toISOString() };
   const client = eb();
   const erreurs: string[] = [];

@@ -31,6 +31,7 @@ import { monterEspaces } from "./espaces.js";
 import { adminOk, monterPartenaires } from "./partenaires.js";
 import { monterSupport } from "./support.js";
 import { DESTINATIONS } from "./destinations.js";
+import { connexionEnDouble } from "./doublons.js";
 import { analyseProFoyer, deciderPro } from "./analysePro.js";
 import { remarquer, type EtapeSituation } from "./remarques.js";
 import { vueSituation, type SituationRow } from "./situationsApi.js";
@@ -1059,6 +1060,8 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
       try {
         const cx = await ebTerminerSup(db, client, state, code);
         if (!cx) return c.redirect("/#budget?bank=abandon");
+        // the same accounts as a connection already there (a second tap on « Choisir ma banque »): nothing new, closed at once
+        if (connexionEnDouble(db, cx)) { await supprimerConnexion(db, client, cx.household_id, cx.id); return c.redirect("/#budget?bank=deja"); }
         await ebSynchroSup(db, client, cx).catch((e) => console.error("sync après connexion :", e));
         return c.redirect(cx.usage === "pro" ? "/#module/pro" : "/#budget");
       } catch (e) { console.error("eb callback (banque supplémentaire) :", e); return c.redirect("/#budget?bank=abandon"); }

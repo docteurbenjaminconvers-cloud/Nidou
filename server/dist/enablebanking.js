@@ -3,6 +3,7 @@ import { budgetIa } from "./iaBudget.js";
 import { createSign, randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { categorise, merchantOf, fingerprint } from "./transactions.js";
+import { dedoublonnerOperations } from "./doublons.js";
 export function ebConfig() {
     const appId = process.env.ENABLEBANKING_APP_ID;
     let key = process.env.ENABLEBANKING_PRIVATE_KEY?.replace(/\\n/g, "\n");
@@ -150,6 +151,7 @@ export async function ebSyncHousehold(db, client, householdId) {
     const now = new Date().toISOString();
     // Overlap of 3 days: banks book some transactions late.
     db.upsertBankLink({ ...link, derniere_synchro: now, curseur: new Date(Date.now() - 3 * 864e5).toISOString(), statut: "connecte" });
+    ajoutees -= Math.min(ajoutees, dedoublonnerOperations(db, householdId)); // a renewed session re-reads 90 days under new account ids
     return { comptes: comptes.length, lues, ajoutees, derniere_synchro: now };
 }
 /** Bank list for the picker, personal or business logins, cached a day (it barely changes). */

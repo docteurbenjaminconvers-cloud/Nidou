@@ -10,6 +10,7 @@ import { randomUUID } from "node:crypto";
 import type { Db } from "./db.js";
 import { budgetIa } from "./iaBudget.js";
 import { categorise, fingerprint, merchantOf, parseStatement } from "./transactions.js";
+import { cleIban, dedoublonnerOperations, ibansDejaSuivis } from "./doublons.js";
 import { type CompteEb, type EbAccount, type EbAspsp, type EbClient, infosEb, mapEbTransactions, newState } from "./enablebanking.js";
 
 export type Usage = "perso" | "pro";
@@ -70,9 +71,13 @@ export async function ebSynchroSup(db: Db, client: EbClient, c: ConnexionRow) {
   const comptes = JSON.parse(c.comptes ?? "[]") as CompteEb[];
   const from = (c.curseur ?? new Date(Date.now() - 90 * 864e5).toISOString()).slice(0, 10);
   const noms = nomsUniques(comptes, (a) => nomSup(c, a));
-  let lues = 0, ajoutees = 0;
+  const dejaSuivis = ibansDejaSuivis(db, c.household_id, c); // same account already followed through another connection
+  let lues = 0, ajoutees = 0, suivis = 0;
   for (const [i, a] of comptes.entries()) {
     const nom = noms[i];
+    const iban = cleIban(a.iban);
+    if (iban && dejaSuivis.has(iban)) { db.raw.prepare("DELETE FROM bank_accounts WHERE id = ?").run(`eb:${a.uid}`); continue; }
+    suivis++;
     const bal = await client.balances(a.uid).catch(() => []);
     const solde = bal.find((b) => ["CLBD", "ITAV", "XPCD", "ITBD"].includes(b.balance_type ?? "")) ?? bal[0];
     db.upsertBankAccount({ id: `eb:${a.uid}`, household_id: c.household_id, item_id: c.user_uuid, nom, banque: c.banque, type: c.usage === "pro" ? "pro" : null, solde: solde ? Number(solde.balance_amount.amount) : null, devise: solde?.balance_amount.currency ?? "EUR", maj_le: new Date().toISOString(), infos: JSON.stringify(a) });
@@ -87,7 +92,8 @@ export async function ebSynchroSup(db: Db, client: EbClient, c: ConnexionRow) {
   }
   const now = new Date().toISOString();
   maj(db, { ...c, statut: "connecte", derniere_synchro: now, curseur: new Date(Date.now() - 3 * 864e5).toISOString() });
-  return { comptes: comptes.length, lues, ajoutees };
+  ajoutees -= Math.min(ajoutees, dedoublonnerOperations(db, c.household_id));
+  return { comptes: suivis, lues, ajoutees };
 }
 
 /** Ends one extra connection: access revoked at the bank, its accounts removed; past transactions stay in the history. */

@@ -94,6 +94,8 @@ export default function App() {
     const q = new URLSearchParams(location.hash.split("?")[1] ?? "");
     if (q.get("paiement") === "ok") { toast("Bienvenue dans la formule complète"); location.hash = "#/settings"; }
     if (q.get("paiement") === "annule") { toast("Paiement annulé, rien n'a été débité"); location.hash = "#/settings"; }
+    if (q.get("bank") === "deja") { toast("Cette banque est déjà connectée : rien n'a été ajouté en double"); location.hash = "#/budget"; }
+    if (q.get("bank") === "abandon") { toast("Connexion à la banque interrompue, rien n'a changé"); location.hash = "#/budget"; }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     // The screen seen just before (name only, never an id): attached to a message to the team when the person agrees.

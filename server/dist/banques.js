@@ -4,6 +4,7 @@ import { envoyerPush } from "./push.js";
 import { bridgeConfig, BridgeClient, mapTransactions, syncHousehold } from "./bridge.js";
 import { ebConfig, EbClient, ebSyncHousehold, mapEbTransactions } from "./enablebanking.js";
 import { ebSynchroSup, ensureConnexionsSchema, listConnexions } from "./connexions.js";
+import { dedoublonnerComptes } from "./doublons.js";
 export function fournisseur() {
     const force = process.env.LUCIEN_BANQUE;
     if (force === "bridge" && bridgeConfig())
@@ -84,6 +85,7 @@ export async function synchroniserFoyer(db, householdId) {
     const sups = listConnexions(db, householdId).filter((c) => c.fournisseur === "enablebanking" && c.statut !== "en_attente");
     if (!db.getBankLink(householdId) && !sups.length)
         throw new Error("Aucune connexion bancaire pour ce foyer");
+    await dedoublonnerComptes(db, eb(), householdId).catch((e) => console.error("[banque] doublons :", e.message));
     const r = (await synchroniserLienPrincipal(db, householdId)) ?? { comptes: 0, lues: 0, ajoutees: 0, derniere_synchro: new Date().toISOString() };
     const client = eb();
     const erreurs = [];

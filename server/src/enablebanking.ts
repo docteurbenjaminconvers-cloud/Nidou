@@ -4,6 +4,7 @@ import { createSign, randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import type { Db, BankLinkRow } from "./db.js";
 import { categorise, merchantOf, fingerprint, type ParsedTx } from "./transactions.js";
+import { dedoublonnerOperations } from "./doublons.js";
 
 /**
  * Enable Banking (enablebanking.com) — account information under PSD2, billed per connected account per month
@@ -184,6 +185,7 @@ export async function ebSyncHousehold(db: Db, client: EbClient, householdId: str
   const now = new Date().toISOString();
   // Overlap of 3 days: banks book some transactions late.
   db.upsertBankLink({ ...link, derniere_synchro: now, curseur: new Date(Date.now() - 3 * 864e5).toISOString(), statut: "connecte" });
+  ajoutees -= Math.min(ajoutees, dedoublonnerOperations(db, householdId)); // a renewed session re-reads 90 days under new account ids
   return { comptes: comptes.length, lues, ajoutees, derniere_synchro: now };
 }
 
