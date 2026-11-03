@@ -1106,4 +1106,10 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
    screen itself never moves, so the bar stays at the bottom. */
 html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
 #root { position: fixed; inset: 0; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; }
+/* iOS 26, app installed on the Home Screen: when the page is shorter than the screen, iOS gives it a viewport shorter
+   by the status bar height (WebKit bug 301108), and the bottom bar floated about 60 pt too high. A page at least as tall
+   as the screen gets the full viewport back. The min() cap keeps the page from scrolling when the status bar is opaque. */
+@media (display-mode: standalone) {
+  html { min-height: min(100lvh, calc(100% + env(safe-area-inset-top))); }
+}
 body.clavier .tabs { display: none; }
