@@ -171,9 +171,12 @@ export function monterEspaces(api, db, ctx) {
         const entree = mime.startsWith("text/") ? { texte: buf.toString("utf8") } : { base64: buf.toString("base64"), mime };
         const budget = budgetIa(db, h.id);
         const quoi = e === "pro" ? "bulletin" : "bail";
-        const { lu, ia } = await lire(quoi, entree, budget.ok(coutAppel("precis")));
+        // a long PDF costs more to read (about 0.5 cent per page with the precise model): the counter follows the pages
+        const pages = mime === "application/pdf" ? Math.max(1, (buf.toString("latin1").match(/\/Type\s*\/Page(?!s)/g) ?? []).length) : 1;
+        const cout = coutAppel("precis", Math.max(1, 0.5 + pages / 4));
+        const { lu, ia } = await lire(quoi, entree, budget.ok(cout));
         if (ia)
-            budget.compter(coutAppel("precis"), true);
+            budget.compter(cout, true);
         try {
             let resume, titre;
             if (e === "pro") {
