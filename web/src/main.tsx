@@ -28,10 +28,33 @@ if (window.matchMedia("(pointer: coarse)").matches) {
   document.addEventListener("focusout", () => setTimeout(() => { if (!champ(document.activeElement)) document.body.classList.remove("clavier"); }, 50));
 }
 
+/**
+ * Never a blank page: if the app crashes (on a browser we could not test, for instance), the person sees what happened
+ * and can reload; the message is also what they send us to fix it.
+ */
+function afficherErreur(err: unknown) {
+  const root = document.getElementById("root");
+  if (!root || root.querySelector(".erreur-fatale")) return;
+  const msg = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+  root.innerHTML = `<div class="erreur-fatale" style="max-width:440px;margin:18vh auto 0;padding:24px;font-family:system-ui,sans-serif;color:#3a2a33">
+    <h1 style="font-size:22px;margin:0 0 10px">Lucien n'a pas pu s'afficher</h1>
+    <p style="margin:0 0 14px;line-height:1.45">Rechargez la page. Si cela recommence, envoyez une capture de cet écran à l'équipe Lucien.</p>
+    <button onclick="location.reload()" style="padding:12px 18px;border-radius:999px;border:0;background:#d9644a;color:#fff;font-size:16px">Recharger</button>
+    <pre style="margin-top:18px;white-space:pre-wrap;font-size:12px;color:#7a6470">${msg.replace(/[<&]/g, (c) => (c === "<" ? "&lt;" : "&amp;"))}\n${navigator.userAgent}</pre></div>`;
+}
+class Garde extends React.Component<{ children: React.ReactNode }, { err: unknown }> {
+  state = { err: null as unknown };
+  static getDerivedStateFromError(err: unknown) { return { err }; }
+  componentDidCatch(err: unknown) { console.error("[lucien]", err); setTimeout(() => afficherErreur(err)); }
+  render() { return this.state.err ? null : this.props.children; }
+}
+window.addEventListener("error", (e) => { if (!document.getElementById("root")?.childElementCount) afficherErreur(e.error ?? e.message); });
+window.addEventListener("unhandledrejection", (e) => { if (!document.getElementById("root")?.childElementCount) afficherErreur(e.reason); });
+
 // English: the interface is translated as it is displayed (i18n/traduction.ts); French needs nothing.
 const afficher = () => ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App />
+    <Garde><App /></Garde>
   </React.StrictMode>
 );
 demarrerTraduction().catch((e) => console.error("[traduction]", e)).finally(afficher);
