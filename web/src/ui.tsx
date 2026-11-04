@@ -1,7 +1,7 @@
 import type { Category } from "./types";
 
 /** Lucien's public site (waiting list, terms): monlucien.fr once the domain is set up, GitHub Pages until then. */
-export const SITE = "https://docteurbenjaminconvers-cloud.github.io/Nidou";
+export const SITE = "https://monlucien.fr";
 
 export const fmtEuro = (n: number | null | undefined, digits = 0) =>
   n == null ? "—" : n.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: digits, minimumFractionDigits: digits });

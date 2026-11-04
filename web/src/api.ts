@@ -689,13 +689,14 @@ function makeVeilleDemo(state: VeilleDemoState, household: () => Household, memb
 let instance: Api | null = null;
 
 /**
- * The demo runs only where there is no Lucien server: the published site (github.io) and a local preview without API.
+ * The demo runs only where there is no Lucien server: the public site (monlucien.fr, and github.io before it) and a local
+ * preview without API. The real app lives on its own host (app.monlucien.fr, or the server's onrender.com address).
  * Anywhere else the app IS served by the Lucien server, so it never falls back to the demo, even when the server is slow
  * to answer (cold start, weak phone network): it waits for it instead of showing a fictitious family.
  */
 export async function getApi(): Promise<Api> {
   if (instance) return instance;
-  if (/\.github\.io$/.test(location.hostname)) return (instance = makeDemoApi());
+  if (/\.github\.io$/.test(location.hostname) || /^(www\.)?monlucien\.fr$/.test(location.hostname)) return (instance = makeDemoApi());
   const local = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
   for (const delai of local ? [2500] : [4000, 30000]) {
     try {
