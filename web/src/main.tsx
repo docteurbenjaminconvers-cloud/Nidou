@@ -48,6 +48,36 @@ class Garde extends React.Component<{ children: React.ReactNode }, { err: unknow
   componentDidCatch(err: unknown) { console.error("[lucien]", err); setTimeout(() => afficherErreur(err)); }
   render() { return this.state.err ? null : this.props.children; }
 }
+// Diagnostics: errors are kept (messages only), and if the current screen is still empty a few seconds after it
+// opens, its sizes and styles are sent to the server log, never its text.
+const erreursVues: string[] = [];
+const noter = (m: unknown) => { if (erreursVues.length < 15) erreursVues.push(String(m instanceof Error ? `${m.name}: ${m.message} @ ${(m.stack ?? "").split("\n").slice(0, 3).join(" | ")}` : m).slice(0, 400)); };
+const consoleErreur = console.error.bind(console);
+console.error = (...a: unknown[]) => { noter(a.map((x) => (x instanceof Error ? `${x.name}: ${x.message}` : typeof x === "string" ? x : "")).join(" ")); consoleErreur(...a); };
+window.addEventListener("error", (e) => noter(e.error ?? e.message));
+window.addEventListener("unhandledrejection", (e) => noter(e.reason));
+let diagEnvoyes = 0;
+const verifierEcran = () => setTimeout(() => {
+  const root = document.getElementById("root");
+  const ecran = root?.querySelector(".screen") as HTMLElement | null;
+  const lettres = (ecran?.innerText ?? root?.innerText ?? "").replace(/\s+/g, "").length;
+  if (lettres > 30 || diagEnvoyes >= 3 || /connexion/.test(location.hash) || !root?.querySelector(".tabs")) return;
+  diagEnvoyes++;
+  const st = ecran ? getComputedStyle(ecran) : null;
+  const r = ecran?.getBoundingClientRect();
+  const diag = {
+    route: location.hash.split("?")[0].slice(0, 40), lettres, ecran: !!ecran, enfants: ecran?.childElementCount ?? null,
+    rect: r ? [Math.round(r.top), Math.round(r.left), Math.round(r.width), Math.round(r.height)] : null,
+    style: st ? { display: st.display, visibility: st.visibility, opacity: st.opacity, transform: st.transform, animation: st.animationName } : null,
+    root: root ? { scrollTop: root.scrollTop, scrollHeight: root.scrollHeight, clientHeight: root.clientHeight, pos: getComputedStyle(root).position } : null,
+    vue: [innerWidth, innerHeight, Math.round(visualViewport?.height ?? 0), devicePixelRatio], standalone: matchMedia("(display-mode: standalone)").matches,
+    erreurs: erreursVues, ua: navigator.userAgent,
+  };
+  fetch("/api/diagnostic", { method: "POST", headers: { "content-type": "text/plain" }, body: JSON.stringify(diag), keepalive: true }).catch(() => {});
+}, 5000);
+window.addEventListener("hashchange", verifierEcran);
+window.addEventListener("load", verifierEcran);
+
 window.addEventListener("error", (e) => { if (!document.getElementById("root")?.childElementCount) afficherErreur(e.error ?? e.message); });
 window.addEventListener("unhandledrejection", (e) => { if (!document.getElementById("root")?.childElementCount) afficherErreur(e.reason); });
 

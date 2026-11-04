@@ -43,6 +43,16 @@ try { migrerMarchands(db); } catch (e) { console.error("[marchands]", (e as Erro
 
 const app = new Hono();
 securiser(app);
+/**
+ * Display diagnostics: when a screen stays empty on someone's device, the app sends what it sees (sizes, styles,
+ * error messages; never the page's text or any personal data) so the problem can be fixed without guessing.
+ */
+app.post("/api/diagnostic", async (c) => {
+  const brut = (await c.req.text().catch(() => "")).slice(0, 4000);
+  console.warn("[diagnostic]", brut.replace(/[\r\n]+/g, " "));
+  return c.json({ ok: true });
+});
+
 app.route("/api", createApi(db, { uploadDir: join(DATA_DIR, "uploads") }));
 
 // MCP endpoint (streamable HTTP). Claude Desktop / claude.ai: https://<host>/mcp
