@@ -714,7 +714,9 @@ window.LUCIEN_I18N = {
   try { initial = localStorage.getItem("lucien.lang.choix") || "fr"; } catch (e) {}
   if (!dict[initial]) initial = "fr";
   if (window.LUCIEN_LANG_PAGE) initial = window.LUCIEN_LANG_PAGE;
-  if (initial !== "fr") apply(initial);
+  // a language page is already written in its language: only the state is set (no rewrite, nothing moves on screen)
+  if (window.LUCIEN_PRERENDU) { window.LUCIEN_LANG = initial; }
+  else if (initial !== "fr") apply(initial);
   var sel = document.getElementById("lang");
   if (sel) { sel.value = initial; sel.addEventListener("change", function () {
     // on a language page, choosing another language opens that language's page (its own address for search engines)

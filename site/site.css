@@ -2,7 +2,7 @@
 :root {
   --paper: #fbf4f0; --ink: #3b2a3a; --nest: #d95f45; --nest-deep: #b84a33; --moss: #cdebdd; --moss-soft: #e4f3ea; --mint-ink: #1f6b4a;
   --lilac: #b89bd9; --lilac-soft: #ece3f6; --peach: #f6d5c8; --peach-soft: #fbe6dd; --plum: #3b2a3a;
-  --yolk: #e9b23a; --yolk-soft: #fbefd0; --ember: #c6452e; --mist: #8b6f84; --line: #f0e3ec; --white: #ffffff;
+  --yolk: #e9b23a; --yolk-soft: #fbefd0; --ember: #c6452e; --mist: #7d6377; --nest-btn: #c4513a; --line: #f0e3ec; --white: #ffffff;
   --band: #3b2a3a;
   --font: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif; --display: "Fraunces", Georgia, serif;
   --radius: 28px; --max: 1120px; --shadow: 0 14px 40px rgba(59, 42, 58, 0.10); --shadow-lg: 0 40px 80px rgba(59, 42, 58, 0.22);
@@ -60,7 +60,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 /* ---------- buttons ---------- */
 .nav .btn .short { display: none; }
 @media (max-width: 720px) { .nav .btn .long { display: none; } .nav .btn .short { display: inline; } }
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 12px 24px; border-radius: 999px; border: 0; background: var(--nest); color: #fff; font-weight: 800; font-size: 16px; text-decoration: none; cursor: pointer; font-family: inherit; box-shadow: 0 10px 24px rgba(217, 95, 69, 0.30); transition: transform .15s, box-shadow .15s; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 12px 24px; border-radius: 999px; border: 0; background: var(--nest-btn, var(--nest)); color: #fff; font-weight: 800; font-size: 16px; text-decoration: none; cursor: pointer; font-family: inherit; box-shadow: 0 10px 24px rgba(217, 95, 69, 0.30); transition: transform .15s, box-shadow .15s; }
 .btn:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(217, 95, 69, 0.36); }
 .btn:active { transform: scale(0.98); }
 .btn.ghost { background: var(--white); color: var(--ink); border: 2px solid var(--line); box-shadow: none; }
@@ -447,7 +447,7 @@ html.intro-on { overflow: hidden; }
 /* ---------- Bouton collant sur téléphone ---------- */
 .cta-colle { display: none; }
 @media (max-width: 720px) {
-  .cta-colle { display: block; position: fixed; left: 16px; right: 16px; bottom: calc(14px + env(safe-area-inset-bottom)); z-index: 40; text-align: center; padding: 15px 18px; border-radius: 16px; background: var(--nest); color: #fff; font-weight: 800; text-decoration: none; box-shadow: 0 10px 30px rgba(59, 42, 58, .25); transform: translateY(140%); transition: transform .3s; }
+  .cta-colle { display: block; position: fixed; left: 16px; right: 16px; bottom: calc(14px + env(safe-area-inset-bottom)); z-index: 40; text-align: center; padding: 15px 18px; border-radius: 16px; background: var(--nest-btn, var(--nest)); color: #fff; font-weight: 800; text-decoration: none; box-shadow: 0 10px 30px rgba(59, 42, 58, .25); transform: translateY(140%); transition: transform .3s; }
   .cta-colle.on { transform: none; }
 }
 
@@ -468,3 +468,4 @@ html[dir="rtl"] .legal .tableau th, html[dir="rtl"] .legal .tableau td { text-al
 .boucle span { display: block; font-size: 13px; color: var(--mist); line-height: 1.4; margin-top: 2px; }
 .espaces-remplir { text-align: center; max-width: 620px; margin: 22px auto 0; color: var(--mist); }
 .hero .lead strong, .hero-text .lead strong { color: var(--ink); }
+.guides-lien { margin-top: 22px; font-weight: 800; } .guides-lien a { color: var(--nest-deep); }

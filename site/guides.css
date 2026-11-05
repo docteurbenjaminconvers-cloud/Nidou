@@ -1,0 +1,37 @@
+/* Lucien — pages « Guides » (articles pratiques), sur la base de site.css */
+.guide { padding: 28px 0 72px; }
+.guide .wrap { max-width: 800px; }
+.fil { font-size: 14px; color: var(--mist); margin-bottom: 18px; }
+.fil a { color: var(--mist); }
+.guide h1 { font-size: clamp(32px, 5vw, 50px); margin-bottom: 18px; }
+.guide h2 { font-size: clamp(25px, 3.4vw, 32px); margin: 44px 0 14px; }
+.guide h3 { font-size: 19px; margin: 26px 0 8px; }
+.guide p, .guide li { font-weight: 600; }
+.guide a { color: var(--nest-deep); }
+.guide .fil a { color: var(--mist); }
+.chapo { font-size: 19px; line-height: 1.55; }
+.verif { font-size: 14px; color: var(--mist); margin: 6px 0 26px; }
+.sommaire { background: var(--white); border: 1px solid var(--line); border-radius: 18px; padding: 16px 22px; margin: 22px 0; }
+.sommaire b { display: block; margin-bottom: 6px; }
+.sommaire ol { margin: 0; padding-left: 20px; }
+.tableau { width: 100%; border-collapse: collapse; margin: 10px 0 8px; font-size: 15.5px; background: var(--white); border-radius: 14px; overflow: hidden; }
+.tableau th, .tableau td { text-align: left; vertical-align: top; padding: 11px 14px; border-bottom: 1px solid var(--line); }
+.tableau th { font-weight: 800; background: var(--moss-soft); }
+.tableau tr:last-child td { border-bottom: 0; }
+.tableau td:last-child { font-weight: 800; }
+.defile { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.note { border-left: 4px solid var(--yolk); background: var(--yolk-soft); padding: 14px 18px; border-radius: 0 14px 14px 0; margin: 20px 0; }
+.lettre { white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; font-weight: 500; line-height: 1.6; background: var(--white); border: 1px dashed var(--line); border-radius: 14px; padding: 18px; overflow-x: auto; }
+.encart { margin: 40px 0; padding: 26px; border-radius: 22px; background: var(--lilac-soft, #efe7f6); }
+.encart h2 { margin-top: 0; font-size: 26px; }
+.encart .btn { margin-top: 10px; }
+.guide details { border-bottom: 1px solid var(--line); padding: 14px 0; }
+.guide summary { cursor: pointer; font-weight: 800; }
+.cartes { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); margin: 18px 0; padding: 0; list-style: none; }
+.cartes a { display: block; height: 100%; box-sizing: border-box; padding: 20px; border-radius: 18px; background: var(--white); border: 1px solid var(--line); text-decoration: none; color: var(--ink); }
+.cartes a:hover { border-color: var(--peach, #f3c9bb); }
+.cartes b { display: block; font-size: 18px; margin-bottom: 6px; }
+.cartes span { color: var(--mist); font-size: 15px; }
+.sources { font-size: 14.5px; }
+.sources li { margin: 4px 0; }
+@media (max-width: 560px) { .nav .nav-g { display: none; } .tableau { font-size: 14.5px; } .tableau th, .tableau td { padding: 9px 10px; } }
