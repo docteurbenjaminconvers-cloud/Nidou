@@ -61,12 +61,15 @@ const verifierEcran = () => setTimeout(() => {
   const root = document.getElementById("root");
   const ecran = root?.querySelector(".screen") as HTMLElement | null;
   const lettres = (ecran?.innerText ?? root?.innerText ?? "").replace(/\s+/g, "").length;
-  if (lettres > 30 || diagEnvoyes >= 3 || /connexion/.test(location.hash) || !root?.querySelector(".tabs")) return;
-  diagEnvoyes++;
-  const st = ecran ? getComputedStyle(ecran) : null;
   const r = ecran?.getBoundingClientRect();
+  // visible part of the screen in the window: content present but scrolled or pushed out of view counts as empty
+  const visible = r ? Math.max(0, Math.min(r.bottom, innerHeight) - Math.max(r.top, 0)) : 0;
+  const st = ecran ? getComputedStyle(ecran) : null;
+  const cache = st ? st.visibility === "hidden" || Number(st.opacity) < 0.1 || st.display === "none" : true;
+  if ((lettres > 30 && visible > 120 && !cache) || diagEnvoyes >= 5 || /connexion/.test(location.hash) || !root?.querySelector(".tabs")) return;
+  diagEnvoyes++;
   const diag = {
-    route: location.hash.split("?")[0].slice(0, 40), lettres, ecran: !!ecran, enfants: ecran?.childElementCount ?? null,
+    route: location.hash.split("?")[0].slice(0, 40), lettres, visible: Math.round(visible), ecran: !!ecran, version: document.querySelector('script[type="module"][src*="index-"]')?.getAttribute("src") ?? null, enfants: ecran?.childElementCount ?? null,
     rect: r ? [Math.round(r.top), Math.round(r.left), Math.round(r.width), Math.round(r.height)] : null,
     style: st ? { display: st.display, visibility: st.visibility, opacity: st.opacity, transform: st.transform, animation: st.animationName } : null,
     root: root ? { scrollTop: root.scrollTop, scrollHeight: root.scrollHeight, clientHeight: root.clientHeight, pos: getComputedStyle(root).position } : null,
@@ -77,6 +80,7 @@ const verifierEcran = () => setTimeout(() => {
 }, 5000);
 window.addEventListener("hashchange", verifierEcran);
 window.addEventListener("load", verifierEcran);
+document.addEventListener("click", (e) => { if ((e.target as HTMLElement | null)?.closest?.(".tabs")) verifierEcran(); });
 
 window.addEventListener("error", (e) => { if (!document.getElementById("root")?.childElementCount) afficherErreur(e.error ?? e.message); });
 window.addEventListener("unhandledrejection", (e) => { if (!document.getElementById("root")?.childElementCount) afficherErreur(e.reason); });
