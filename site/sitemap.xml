@@ -5,6 +5,7 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://monlucien.fr/en/"/>
     <xhtml:link rel="alternate" hreflang="es" href="https://monlucien.fr/es/"/>
     <xhtml:link rel="alternate" hreflang="it" href="https://monlucien.fr/it/"/>
+    <xhtml:link rel="alternate" hreflang="el" href="https://monlucien.fr/el/"/>
     <xhtml:link rel="alternate" hreflang="ar" href="https://monlucien.fr/ar/"/>
   </url>
   <url><loc>https://monlucien.fr/en/</loc><priority>0.9</priority>
@@ -12,6 +13,7 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://monlucien.fr/en/"/>
     <xhtml:link rel="alternate" hreflang="es" href="https://monlucien.fr/es/"/>
     <xhtml:link rel="alternate" hreflang="it" href="https://monlucien.fr/it/"/>
+    <xhtml:link rel="alternate" hreflang="el" href="https://monlucien.fr/el/"/>
     <xhtml:link rel="alternate" hreflang="ar" href="https://monlucien.fr/ar/"/>
   </url>
   <url><loc>https://monlucien.fr/es/</loc><priority>0.9</priority>
@@ -19,6 +21,7 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://monlucien.fr/en/"/>
     <xhtml:link rel="alternate" hreflang="es" href="https://monlucien.fr/es/"/>
     <xhtml:link rel="alternate" hreflang="it" href="https://monlucien.fr/it/"/>
+    <xhtml:link rel="alternate" hreflang="el" href="https://monlucien.fr/el/"/>
     <xhtml:link rel="alternate" hreflang="ar" href="https://monlucien.fr/ar/"/>
   </url>
   <url><loc>https://monlucien.fr/it/</loc><priority>0.9</priority>
@@ -26,6 +29,15 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://monlucien.fr/en/"/>
     <xhtml:link rel="alternate" hreflang="es" href="https://monlucien.fr/es/"/>
     <xhtml:link rel="alternate" hreflang="it" href="https://monlucien.fr/it/"/>
+    <xhtml:link rel="alternate" hreflang="el" href="https://monlucien.fr/el/"/>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://monlucien.fr/ar/"/>
+  </url>
+  <url><loc>https://monlucien.fr/el/</loc><priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://monlucien.fr/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://monlucien.fr/en/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://monlucien.fr/es/"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://monlucien.fr/it/"/>
+    <xhtml:link rel="alternate" hreflang="el" href="https://monlucien.fr/el/"/>
     <xhtml:link rel="alternate" hreflang="ar" href="https://monlucien.fr/ar/"/>
   </url>
   <url><loc>https://monlucien.fr/ar/</loc><priority>0.9</priority>
@@ -33,6 +45,7 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://monlucien.fr/en/"/>
     <xhtml:link rel="alternate" hreflang="es" href="https://monlucien.fr/es/"/>
     <xhtml:link rel="alternate" hreflang="it" href="https://monlucien.fr/it/"/>
+    <xhtml:link rel="alternate" hreflang="el" href="https://monlucien.fr/el/"/>
     <xhtml:link rel="alternate" hreflang="ar" href="https://monlucien.fr/ar/"/>
   </url>
   <url><loc>https://monlucien.fr/mentions-legales.html</loc><priority>0.2</priority></url>

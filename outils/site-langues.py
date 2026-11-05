@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Génère une page par langue du site vitrine (en/, es/, it/, ar/) à partir de index.html.
+"""Génère une page par langue du site vitrine (en/, es/, it/, el/, ar/) à partir de index.html.
 
 La page reste la même (le texte est traduit par i18n.js) ; chaque version a sa propre adresse, son titre, sa
 description, sa langue déclarée et les liens hreflang, pour que les moteurs de recherche référencent chaque langue.
@@ -13,6 +13,7 @@ LANGUES = {
     "en": ("Lucien, the butler for your paperwork and your budget", "en_GB", "ltr"),
     "es": ("Lucien, el mayordomo de sus papeles y su presupuesto", "es_ES", "ltr"),
     "it": ("Lucien, il maggiordomo dei suoi documenti e del suo budget", "it_IT", "ltr"),
+    "el": ("Lucien, ο μπάτλερ των εγγράφων και του προϋπολογισμού σας", "el_GR", "ltr"),
     "ar": ("لوسيان، خادم أوراقك وميزانيتك", "ar_AR", "rtl"),
 }
 
