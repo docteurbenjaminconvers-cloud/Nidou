@@ -45,7 +45,11 @@ function afficherErreur(err: unknown) {
 class Garde extends React.Component<{ children: React.ReactNode }, { err: unknown }> {
   state = { err: null as unknown };
   static getDerivedStateFromError(err: unknown) { return { err }; }
-  componentDidCatch(err: unknown) { console.error("[lucien]", err); setTimeout(() => afficherErreur(err)); }
+  componentDidCatch(err: unknown) {
+    console.error("[lucien]", err); setTimeout(() => afficherErreur(err));
+    const e = err as Error;
+    (window as unknown as { __lucienDiag?: (q: string) => void }).__lucienDiag?.(`plantage: ${e?.name}: ${e?.message} @ ${String(e?.stack ?? "").split("\n").slice(0, 4).join(" | ")}`.slice(0, 800));
+  }
   render() { return this.state.err ? null : this.props.children; }
 }
 // Diagnostics: errors are kept (messages only), and if the current screen is still empty a few seconds after it

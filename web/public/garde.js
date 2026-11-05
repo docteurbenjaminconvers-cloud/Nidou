@@ -7,3 +7,14 @@ window.__lucienErreur = function (m) {
 };
 window.addEventListener("error", function (e) { setTimeout(function () { window.__lucienErreur((e.error && e.error.stack) || e.message || "erreur de chargement"); }, 0); });
 setTimeout(function () { window.__lucienErreur("L'appli ne s'est pas lancée après 40 secondes."); }, 40000);
+
+/* Diagnostics sent to the server log (never the page's text): what went wrong when the app could not show itself. */
+window.__lucienDiag = function (quoi) {
+  try {
+    var r = document.getElementById("root");
+    fetch("/api/diagnostic", { method: "POST", headers: { "content-type": "text/plain" }, keepalive: true,
+      body: JSON.stringify({ garde: quoi, enfants: r ? r.childElementCount : null, route: location.hash.split("?")[0].slice(0, 40), ua: navigator.userAgent, sw: !!(navigator.serviceWorker && navigator.serviceWorker.controller) }) }).catch(function () {});
+  } catch (e) {}
+};
+window.addEventListener("error", function (e) { window.__lucienDiag("erreur: " + String((e.error && (e.error.name + ": " + e.error.message + " @ " + String(e.error.stack || "").split("\n").slice(0, 3).join(" | "))) || e.message || "chargement").slice(0, 600)); });
+setTimeout(function () { var r = document.getElementById("root"); if (!r || !r.childElementCount) window.__lucienDiag("rien d'affiché après 8 s"); }, 8000);

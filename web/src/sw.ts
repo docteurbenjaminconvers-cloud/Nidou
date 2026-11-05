@@ -2,7 +2,6 @@
 import { precacheAndRoute, cleanupOutdatedCaches } from "workbox-precaching";
 import { registerRoute, NavigationRoute } from "workbox-routing";
 import { NetworkFirst } from "workbox-strategies";
-import { createHandlerBoundToURL } from "workbox-precaching";
 
 declare let self: ServiceWorkerGlobalScope & { __WB_MANIFEST: Parameters<typeof precacheAndRoute>[0] };
 
@@ -10,7 +9,9 @@ declare let self: ServiceWorkerGlobalScope & { __WB_MANIFEST: Parameters<typeof 
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
 // Le site vitrine (/site) et les pages publiques servies par le serveur ne doivent jamais être remplacés par l'appli.
-registerRoute(new NavigationRoute(createHandlerBoundToURL("index.html"), { denylist: [/^\/api/, /^\/mcp/, /^\/site(\/|$)/, /^\/health/] }));
+// Pages: always the latest version from the server when online (an old copy kept by the phone must never be shown
+// after an update); the copy kept on the phone is only used without network.
+registerRoute(new NavigationRoute(new NetworkFirst({ cacheName: "lucien-pages", networkTimeoutSeconds: 6 }), { denylist: [/^\/api/, /^\/mcp/, /^\/site(\/|$)/, /^\/health/] }));
 // Offline, only what helps at a counter without network: the household, the list of papers (without their content),
 // deadlines, family, week, folders. Never files, bank, budget, spaces, exports, accountant or elder-watch data.
 // The page empties this cache at logout and when the account is deleted (api.ts).
