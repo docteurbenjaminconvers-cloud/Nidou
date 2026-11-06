@@ -43,7 +43,9 @@ p { margin: 0; }
 /* ----- shell ----- */
 .app { min-height: 100dvh; max-width: 560px; margin: 0 auto; padding: 0 20px calc(var(--tab-h) + env(safe-area-inset-bottom) + 20px); }
 .screen { padding-top: calc(env(safe-area-inset-top) + 20px); animation: in 160ms ease-out; }
-@keyframes in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+/* only a slide, never a fade: if the browser pauses the animation (tab in the background, iPad Safari), the screen stays visible instead of stuck invisible (diagnostic of 05/11: opacity 0, animation « in ») */
+@keyframes in { from { transform: translateY(4px); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .screen, .reveal, .reveal-actions { animation: none; } }
 .top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
 .top h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
 .top .sub { color: var(--mist); font-size: 14px; }
