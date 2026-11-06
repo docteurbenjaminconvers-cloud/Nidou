@@ -300,6 +300,204 @@ GUIDES.append(dict(
 ))
 
 
+# --------------------------------------------------------------------------------------------------------------- vérifiés le 6/11/2026
+NOV6 = dict(verifie="2026-11-06", verifie_fr="6 novembre 2026")
+
+GUIDES.append(dict(**NOV6,
+    slug="trouver-ses-abonnements-oublies",
+    titre="Abonnements oubliés : comment les retrouver et les arrêter",
+    titre_court="Retrouver ses abonnements oubliés",
+    description="Streaming, applis, box, salle de sport, assurances en double : la méthode pour repérer les prélèvements qui ne servent plus sur vos relevés, et les arrêter sans frais inutiles.",
+    resume="La méthode pour repérer sur vos relevés les prélèvements qui ne servent plus, et les arrêter.",
+    chapo="Un abonnement à quelques euros passe inaperçu sur un relevé. Cinq ou six, oubliés depuis des mois, pèsent vite plusieurs centaines d'euros par an. Voici comment les débusquer, en une demi-heure.",
+    corps=lambda: f"""
+<h2 id="ou-chercher">Où chercher</h2>
+<ul>
+<li><b>Vos relevés bancaires des 12 derniers mois</b>, pas seulement du dernier : les abonnements annuels (antivirus, stockage en ligne, assurance d'un téléphone) ne passent qu'une fois par an.</li>
+<li><b>Les libellés « PRLV SEPA »</b> : ce sont les prélèvements. Le nom du créancier suit souvent juste après, avant des références techniques.</li>
+<li><b>Les paiements par carte qui reviennent chaque mois au même montant</b> : beaucoup d'applis et de plateformes passent par la carte, pas par un prélèvement.</li>
+<li><b>Les achats intégrés de votre téléphone</b> : sur iPhone et Android, la liste des abonnements actifs se trouve dans les réglages du compte (App Store ou Google Play).</li>
+<li><b>Votre boîte mail</b> : cherchez « abonnement », « renouvellement », « votre facture » ou « période d'essai ».</li>
+</ul>
+
+<h2 id="trier">Faire le tri</h2>
+{tableau(["Signal", "Ce qu'il faut se demander"], [
+    ["Un service que personne n'a utilisé depuis trois mois", "On l'arrête. On pourra toujours se réabonner le jour où on en a besoin."],
+    ["Deux services qui font la même chose (deux plateformes vidéo, deux stockages en ligne)", "On garde le plus utilisé."],
+    ["Une garantie déjà couverte ailleurs (assurance du téléphone, protection juridique, assistance)", "La carte bancaire ou l'assurance habitation la couvre parfois déjà : on vérifie avant de payer deux fois."],
+    ["Un prix qui a augmenté depuis la souscription", "On compare avec l'offre actuelle du même fournisseur ou d'un concurrent."],
+    ["Une période d'essai gratuite qui se transforme en abonnement", "On l'arrête avant la date de fin de l'essai."],
+])}
+
+<h2 id="arreter">Arrêter proprement</h2>
+<ul>
+<li>Utilisez la <b>fonction de résiliation en ligne</b> que les professionnels doivent proposer depuis juin 2023, ou la lettre type de notre guide. <a href="../resilier-assurance-abonnement/">Résilier une assurance ou un abonnement</a>.</li>
+<li>Gardez la <b>confirmation de résiliation</b>, et vérifiez sur les relevés suivants que le prélèvement a bien disparu.</li>
+<li>Pour une box ou un décodeur, gardez la <b>preuve de restitution du matériel</b> 5 ans.</li>
+</ul>
+<div class="note">Arrêter un abonnement chez le fournisseur ne suffit pas toujours : si un prélèvement continue après la résiliation, contactez d'abord le fournisseur avec votre confirmation, puis votre banque.</div>
+""",
+    lucien="Lucien lit vos relevés pour vous : il repère chaque abonnement, prélèvement ou paiement par carte qui revient, signale ceux qui augmentent, font doublon ou ne servent plus, prépare la résiliation et vérifie chaque mois que le prélèvement a bien disparu.",
+    faq=[
+        ("Comment savoir quels abonnements je paie ?", "Parcourez vos relevés des 12 derniers mois : les prélèvements (libellés « PRLV SEPA »), les paiements par carte qui reviennent au même montant, et la liste des abonnements de votre téléphone dans l'App Store ou Google Play."),
+        ("Combien de temps garder la preuve d'une résiliation ?", "Gardez la confirmation au moins jusqu'à ce que les prélèvements aient cessé. Pour une box ou un décodeur, la preuve de restitution du matériel se garde 5 ans."),
+        ("Que faire si un prélèvement continue après la résiliation ?", "Contactez le fournisseur avec votre confirmation de résiliation, puis votre banque si le prélèvement continue."),
+    ],
+    sources=[
+        ("Durée de conservation des papiers — service-public.gouv.fr", SP + "F19134"),
+        ("Tout savoir sur la résiliation « en 3 clics » — Institut national de la consommation", "https://www.inc-conso.fr/node/15413"),
+    ],
+))
+
+GUIDES.append(dict(**NOV6,
+    slug="changer-de-banque",
+    titre="Changer de banque : la mobilité bancaire, gratuite, étape par étape",
+    titre_court="Changer de banque",
+    description="Le service d'aide à la mobilité bancaire est gratuit : la nouvelle banque s'occupe de prévenir ceux qui vous prélèvent ou vous versent de l'argent. Comment il fonctionne, quels comptes sont concernés, les délais.",
+    resume="Le service gratuit de mobilité bancaire : qui fait quoi, quels comptes, quels délais.",
+    chapo="Frais de tenue de compte, carte trop chère, conseiller injoignable : changer de banque fait moins peur quand on sait que c'est la nouvelle banque qui fait l'essentiel des démarches, gratuitement.",
+    corps=lambda: f"""
+<h2 id="principe">Le principe</h2>
+<p>Le <b>service d'aide à la mobilité bancaire</b> est gratuit. C'est la <b>nouvelle banque</b> qui le propose et s'en charge : elle prévient les organismes qui prélèvent de l'argent sur votre compte ou qui vous en versent par virement (employeur, Caf, impôts, fournisseurs…) de votre nouveau compte.</p>
+<p>Il concerne les comptes de dépôt et de paiement des particuliers, utilisés pour des besoins non professionnels. Les livrets et les comptes à terme n'en font pas partie.</p>
+
+<h2 id="etapes">Les étapes</h2>
+<ol>
+<li><b>Choisir la nouvelle banque</b> et y ouvrir le compte.</li>
+<li><b>Signer l'accord de mobilité</b> : vous donnez votre accord écrit à la nouvelle banque pour qu'elle fasse les démarches. Dans cet accord, vous demandez l'annulation des virements permanents de l'ancien compte et la date de leur dernier envoi.</li>
+<li><b>Choisir de fermer ou non l'ancien compte</b>. Si vous le fermez, vous indiquez à partir de quelle date le solde est transféré sur le nouveau compte.</li>
+<li><b>Laisser les organismes s'adapter</b> : ceux qui vous prélèvent ou vous versent de l'argent ont 10 jours ouvrés pour enregistrer le changement, et vous en informent.</li>
+</ol>
+
+<h2 id="apres">Après la fermeture de l'ancien compte</h2>
+<p>Pendant 13 mois, l'ancienne banque doit vous prévenir gratuitement, dans les 3 jours ouvrés, si un prélèvement, un virement ou un chèque se présente sur le compte fermé. Pensez donc à <b>vérifier vos chèques non encaissés</b> avant la fermeture.</p>
+<div class="note">Les banques doivent publier une brochure d'information sur la mobilité bancaire sur leur site. En cas de problème, vous pouvez saisir le service réclamations de la banque, puis son médiateur.</div>
+""",
+    lucien="Lucien range vos frais bancaires parmi vos dépenses et liste tous les prélèvements et virements réguliers de vos comptes : pratique pour choisir sa banque, puis pour vérifier après le changement que rien n'est resté sur l'ancien compte.",
+    faq=[
+        ("Changer de banque est-il payant ?", "Non. Le service d'aide à la mobilité bancaire est gratuit ; c'est la nouvelle banque qui le propose."),
+        ("Qui prévient l'employeur, la Caf ou les fournisseurs ?", "La nouvelle banque, avec votre accord écrit. Les organismes ont ensuite 10 jours ouvrés pour enregistrer le changement de compte."),
+        ("Mon livret A est-il transféré aussi ?", "Non : les livrets et les comptes à terme ne sont pas concernés par le service de mobilité bancaire."),
+        ("Que se passe-t-il si un chèque arrive sur l'ancien compte fermé ?", "Pendant 13 mois, l'ancienne banque doit vous prévenir gratuitement dans les 3 jours ouvrés, avec les conséquences du rejet et les moyens de régulariser."),
+    ],
+    sources=[("Changer de banque : qu'est-ce que la mobilité bancaire ? — service-public.gouv.fr (vérifié le 21 septembre 2026)", SP + "F33881")],
+))
+
+GUIDES.append(dict(**NOV6,
+    slug="changer-assurance-emprunteur",
+    titre="Assurance de prêt immobilier : en changer à tout moment, sans frais",
+    titre_court="Changer d'assurance emprunteur",
+    description="Depuis la loi Lemoine, l'assurance d'un prêt immobilier se change à tout moment et sans frais, à garanties équivalentes. La marche à suivre et le délai de réponse de la banque.",
+    resume="Depuis la loi Lemoine : à tout moment, sans frais, à garanties équivalentes. La marche à suivre.",
+    chapo="L'assurance emprunteur pèse souvent lourd dans le coût total d'un crédit immobilier. Depuis 2022, on peut en changer quand on veut : c'est l'une des économies les plus importantes à portée d'une famille propriétaire.",
+    corps=lambda: f"""
+<h2 id="regle">La règle</h2>
+<p>Depuis la loi n° 2022-270 du 28 février 2022 (dite loi Lemoine), l'assurance d'un prêt immobilier peut être <b>résiliée à tout moment et sans frais</b> : depuis le 1<sup>er</sup> juin 2022 pour les nouveaux prêts, et depuis le 1<sup>er</sup> septembre 2022 pour tous les contrats en cours, y compris les plus anciens.</p>
+<p>Une seule condition : le nouveau contrat doit offrir des <b>garanties équivalentes</b> à celles exigées par la banque.</p>
+
+<h2 id="etapes">Les étapes</h2>
+<ol>
+<li><b>Récupérer la liste des garanties exigées</b> par votre banque (décès, invalidité, incapacité…) et votre contrat actuel.</li>
+<li><b>Comparer</b> des offres à garanties équivalentes, et faire établir le nouveau contrat.</li>
+<li><b>Demander la substitution à la banque</b> en lui envoyant le nouveau contrat. Elle a <b>10 jours</b> pour répondre. Si elle refuse, elle doit motiver son refus (par exemple des garanties non équivalentes).</li>
+<li><b>Si elle accepte</b>, elle modifie le contrat de prêt par un avenant dans les 10 jours ouvrés, avec le nouveau taux annuel effectif global.</li>
+<li><b>Résilier l'ancien contrat</b> en transmettant l'accord de la banque à l'ancien assureur. Une lettre recommandée n'est pas obligatoire.</li>
+</ol>
+<div class="note">Chaque année, votre assureur doit vous rappeler votre droit de résilier et les modalités pour le faire. C'est le bon moment pour comparer.</div>
+""",
+    lucien="Dans Lucien, la situation de vie « Obtenir un prêt immobilier » prévoit de comparer l'assurance avant la signature, puis vous rappelle chaque année de la revoir : la concurrence joue tant que le prêt court.",
+    faq=[
+        ("Peut-on changer d'assurance emprunteur à tout moment ?", "Oui, depuis le 1er septembre 2022 pour tous les contrats, sans frais, à condition que le nouveau contrat offre des garanties équivalentes."),
+        ("Combien de temps la banque a-t-elle pour répondre ?", "10 jours. En cas de refus, elle doit en donner les motifs. En cas d'accord, elle établit un avenant au prêt dans les 10 jours ouvrés."),
+        ("La banque peut-elle facturer le changement ?", "Non, la résiliation se fait sans frais pour l'assuré."),
+    ],
+    sources=[("Assurance emprunteur : la résiliation infra-annuelle ouverte à tous les contrats à compter du 1er septembre 2022 — Previssima", "https://www.previssima.fr/actualite/assurance-emprunteur-la-resiliation-infra-annuelle-ouverte-a-tous-les-contrats-a-compter-du-1er-septembre-2022.html")],
+))
+
+GUIDES.append(dict(**NOV6,
+    slug="renouveler-carte-identite",
+    titre="Renouveler sa carte d'identité : quand, où, quels documents",
+    titre_court="Renouveler sa carte d'identité",
+    description="Renouvellement de la carte d'identité d'un majeur : dès l'année qui précède l'expiration, dans n'importe quelle mairie équipée, gratuit avec l'ancienne carte. Documents à apporter et délais.",
+    resume="Dès l'année avant l'expiration, dans n'importe quelle mairie équipée, gratuit avec l'ancienne carte.",
+    chapo="Une carte d'identité expirée, on s'en aperçoit souvent la veille d'un voyage. Les délais de rendez-vous et de fabrication se comptent en semaines : mieux vaut s'y prendre tôt.",
+    corps=lambda: f"""
+<h2 id="quand">Quand faire la demande</h2>
+<p>Vous pouvez demander le renouvellement <b>dans l'année qui précède la date d'expiration</b> de votre carte. Si vous avez une carte ancien modèle, vous pouvez aussi demander un renouvellement anticipé pour obtenir le nouveau format.</p>
+<p>La demande est <b>gratuite</b> si vous présentez l'ancienne carte.</p>
+
+<h2 id="ou">Où et comment</h2>
+<ol>
+<li><b>Choisir la mairie</b> : n'importe quelle mairie équipée d'une station d'enregistrement, pas forcément celle de votre domicile. Beaucoup ne reçoivent que sur rendez-vous.</li>
+<li><b>Faire la pré-demande en ligne</b> (conseillée pour gagner du temps, obligatoire pour passer d'une carte ancien modèle au nouveau format), et noter son numéro ou garder son QR code.</li>
+<li><b>Déposer le dossier en personne</b> avec les documents originaux.</li>
+<li><b>Suivre la fabrication</b> : comptez plusieurs semaines, davantage à l'approche de l'été. Un SMS prévient quand la carte est prête si vous avez donné un numéro de portable.</li>
+<li><b>Retirer la carte vous-même</b> à l'endroit du dépôt, dans les 3 mois, en rendant l'ancienne. Passé ce délai, elle est détruite.</li>
+</ol>
+
+<h2 id="documents">Les documents à apporter</h2>
+{tableau(["Votre situation", "Documents"], [
+    ["Carte en cours de validité, ou périmée depuis moins de 5 ans", "La carte actuelle, 1 photo d'identité de moins de 6 mois aux normes, 1 justificatif de domicile de moins de 1 an, le numéro de pré-demande"],
+    ["Carte périmée depuis plus de 5 ans, avec un passeport valide", "Le passeport et la carte, 1 photo de moins de 6 mois, 1 justificatif de domicile de moins de 1 an, le numéro de pré-demande"],
+])}
+<p>La nouvelle carte, au format carte bancaire, est <b>valable 10 ans</b>.</p>
+""",
+    lucien="Rangez vos cartes d'identité et passeports dans Lucien : il relève leur date de fin de validité et vous prévient six mois avant, pour toute la famille, en rappelant la pré-demande en ligne.",
+    faq=[
+        ("Quand peut-on renouveler sa carte d'identité ?", "Dans l'année qui précède sa date d'expiration. Une carte ancien modèle peut aussi être renouvelée par anticipation pour obtenir le nouveau format."),
+        ("Le renouvellement est-il payant ?", "Non, il est gratuit si vous présentez l'ancienne carte."),
+        ("Faut-il aller à la mairie de son domicile ?", "Non, n'importe quelle mairie équipée d'une station d'enregistrement convient, souvent sur rendez-vous."),
+        ("Combien de temps la nouvelle carte est-elle valable ?", "10 ans."),
+    ],
+    sources=[("Renouvellement de la carte d'identité d'un majeur — service-public.gouv.fr (vérifié le 13 mai 2026)", SP + "F21089")],
+))
+
+GUIDES.append(dict(**NOV6,
+    slug="demarches-apres-un-deces",
+    titre="Décès d'un proche : les démarches, dans l'ordre",
+    titre_court="Démarches après un décès",
+    description="Déclaration en mairie dans les 24 heures, obsèques, banques, organismes sociaux, papiers, impôts, succession : les démarches après le décès d'un proche, dans l'ordre où elles se présentent.",
+    resume="Mairie, obsèques, banques, organismes, impôts, succession : ce qu'il faut faire, et quand.",
+    chapo="Dans les jours qui suivent un décès, les démarches s'enchaînent alors qu'on a la tête ailleurs. Voici l'essentiel, dans l'ordre, pour ne rien oublier et pouvoir déléguer.",
+    corps=lambda: f"""
+<h2 id="premiers-jours">Les premiers jours</h2>
+<ol>
+<li><b>Faire constater le décès</b> par un médecin, qui établit le certificat de décès.</li>
+<li><b>Prévenir les proches</b> et sécuriser le logement de la personne.</li>
+<li><b>Déclarer le décès à la mairie</b> du lieu du décès, <b>dans les 24 heures</b>. C'est gratuit et sans rendez-vous ; les pompes funèbres s'en chargent souvent.</li>
+<li><b>Prévenir l'employeur</b> de la personne si elle travaillait, et demander à votre propre employeur le congé prévu pour un décès.</li>
+<li><b>Vérifier les dernières volontés</b> (obsèques, don du corps…) et l'existence d'un contrat obsèques.</li>
+<li><b>Organiser les obsèques.</b> Le devis des pompes funèbres est gratuit et sans engagement.</li>
+</ol>
+
+<h2 id="banques">Les banques</h2>
+<p>Un héritier, un proche ou le notaire prévient chaque banque où la personne avait un compte, puis confirme par lettre recommandée. Pour connaître tous ses comptes en France, les héritiers peuvent interroger gratuitement le fichier national des comptes bancaires (<b>Ficoba</b>).</p>
+<p>Les frais facturés par la banque pour la succession sont <b>plafonnés à 1 % du total des comptes et de l'épargne, sans dépasser 857 €</b>.</p>
+
+<h2 id="obseques">Les frais d'obsèques</h2>
+<p>S'ils n'ont pas été réglés par un contrat obsèques, ils reviennent aux héritiers, même s'ils renoncent à la succession, à proportion de ce que chacun reçoit. Si la famille n'a pas les ressources suffisantes, la commune peut les prendre en charge. Renseignez-vous aussi auprès de la caisse de retraite, de la mutuelle, des assurances ou de l'employeur.</p>
+
+<h2 id="ensuite">Les semaines et les mois suivants</h2>
+<ul>
+<li><b>Organismes sociaux</b> : retraite, Assurance maladie, Caf. Le conjoint survivant peut avoir droit à une <b>pension de réversion</b> (à partir de 55 ans) ou à l'allocation veuvage.</li>
+<li><b>Particulier employeur</b> : s'occuper du contrat du salarié à domicile.</li>
+<li><b>Logement, contrats et abonnements</b> : bail, énergie, box, assurances, véhicules.</li>
+<li><b>Impôts</b> : les règles dépendent de la situation (marié, pacsé, enfant rattaché au foyer).</li>
+<li><b>Succession</b> : rassembler les documents (actes, relevés, titres de propriété, contrats d'assurance-vie) pour le notaire.</li>
+</ul>
+<p>Les papiers de la personne décédée se conservent selon des durées propres : <a href="../combien-de-temps-garder-ses-papiers/">voir les durées de conservation</a>.</p>
+""",
+    lucien="Dans Lucien, la situation de vie « Décès d'un proche » place chaque démarche dans votre agenda à la bonne date, de la première semaine aux premiers mois, et relie les contrats à résilier ou à transférer.",
+    faq=[
+        ("Dans quel délai faut-il déclarer un décès ?", "Dans les 24 heures, à la mairie du lieu du décès. La déclaration est gratuite et se fait sans rendez-vous ; les pompes funèbres s'en chargent souvent."),
+        ("Comment connaître tous les comptes bancaires d'un proche décédé ?", "Les héritiers peuvent interroger gratuitement le fichier Ficoba, par courrier, avec l'acte de décès, un justificatif d'identité et un document prouvant leur qualité d'héritier."),
+        ("Combien la banque peut-elle facturer pour la succession ?", "Au plus 1 % du solde total des comptes et de l'épargne du défunt, sans dépasser 857 €."),
+        ("Qui paie les obsèques ?", "Les héritiers, à proportion de ce que chacun reçoit, même s'ils renoncent à la succession, sauf si un contrat obsèques les a déjà réglées."),
+    ],
+    sources=[("Un proche est décédé — service-public.gouv.fr (vérifié le 1er octobre 2026)", SP + "F16507")],
+))
+
+
 # ---------------------------------------------------------------------------------------------------------------
 def entete(chemin_racine: str) -> str:
     return f"""<header class="nav">
@@ -377,7 +575,7 @@ def generer(dossier: Path):
         corps = f"""<nav class="fil" aria-label="Fil d'Ariane"><a href="/">Lucien</a> › <a href="/guides/">Guides</a> › {html.escape(g['titre_court'])}</nav>
 <h1>{html.escape(g['titre'])}</h1>
 <p class="chapo">{html.escape(g['chapo'])}</p>
-<p class="verif">Vérifié le {VERIFIE_FR} d'après les sources officielles citées en bas de page.</p>
+<p class="verif">Vérifié le {g.get('verifie_fr', VERIFIE_FR)} d'après les sources officielles citées en bas de page.</p>
 {g['corps']()}
 <aside class="encart">
   <h2>Lucien le fait pour vous</h2>
@@ -393,7 +591,7 @@ def generer(dossier: Path):
         ld = {"@context": "https://schema.org", "@graph": [
             organisation,
             {"@type": "Article", "headline": g["titre"], "description": g["description"], "inLanguage": "fr", "url": url, "mainEntityOfPage": url,
-             "datePublished": VERIFIE, "dateModified": VERIFIE, "image": BASE + "img/partage.png",
+             "datePublished": g.get("verifie", VERIFIE), "dateModified": g.get("verifie", VERIFIE), "image": BASE + "img/partage.png",
              "author": {"@id": BASE + "#organisation"}, "publisher": {"@id": BASE + "#organisation"}},
             {"@type": "BreadcrumbList", "itemListElement": [
                 {"@type": "ListItem", "position": 1, "name": "Lucien", "item": BASE},

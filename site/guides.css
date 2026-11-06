@@ -7,7 +7,7 @@
 .guide h2 { font-size: clamp(25px, 3.4vw, 32px); margin: 44px 0 14px; }
 .guide h3 { font-size: 19px; margin: 26px 0 8px; }
 .guide p, .guide li { font-weight: 600; }
-.guide a { color: var(--nest-deep); }
+.guide a:not(.btn) { color: var(--nest-deep); }
 .guide .fil a { color: var(--mist); }
 .chapo { font-size: 19px; line-height: 1.55; }
 .verif { font-size: 14px; color: var(--mist); margin: 6px 0 26px; }
