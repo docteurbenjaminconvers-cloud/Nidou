@@ -5,7 +5,7 @@ import type { Api } from "../api";
 type Statut = "en_attente" | "valide" | "refuse";
 interface CabinetAdmin { code: string; nom: string; email: string; ville: string | null; statut: Statut; cree_le: string; clients: number; abonnes: number }
 interface MessageSupport { id: string; user_email: string | null; sujet: string; message: string; contexte: Record<string, string>; traite: boolean; cree_le: string }
-interface Invite { email: string; prenom: string | null; note: string | null; cree_le: string; inscrit: boolean }
+interface Invite { email: string; prenom: string | null; note: string | null; cree_le: string; inscrit: boolean; offert?: boolean }
 const SUJET: Record<string, string> = { question: "Question", probleme: "Problème", banque: "Banque", abonnement: "Abonnement", idee: "Idée" };
 interface Resume { cabinets: { en_attente: number; valides: number; refuses: number }; via_cabinets: { foyers: number; abonnes: number }; foyers: { total: number; abonnes: number }; ia: { gratuit_eur: number; payant_eur: number } }
 
@@ -43,6 +43,7 @@ function demo() {
     async messages() { return messages.map((m) => ({ ...m })); },
     async traiter(id: string, traite: boolean) { messages = messages.map((m) => (m.id === id ? { ...m, traite } : m)); },
     async acces() { return { restreint: true, liste: invites.map((x) => ({ ...x })) }; },
+    async offrir(email: string, offert: boolean) { const x = invites.find((i) => i.email === email); if (x) x.offert = offert; return {}; },
     async inviter(p: { email: string; prenom: string }) { invites = [{ email: p.email.toLowerCase(), prenom: p.prenom || null, note: null, cree_le: new Date().toISOString(), inscrit: false }, ...invites.filter((x) => x.email !== p.email.toLowerCase())]; return { envoye: true }; },
     async retirerAcces(email: string) { invites = invites.filter((x) => x.email !== email); },
     async lienConnexion() { return { lien: "https://nidou.onrender.com/api/auth/lien?token=demo", valable_minutes: 30 }; },
@@ -67,7 +68,8 @@ function serveur(jeton: string) {
     messages: () => appel<MessageSupport[]>("/admin/support"),
     traiter: (id: string, traite: boolean) => appel(`/admin/support/${id}`, { method: "POST", body: JSON.stringify({ traite }) }),
     acces: () => appel<{ restreint: boolean; liste: Invite[] }>("/admin/acces"),
-    inviter: (p: { email: string; prenom: string }) => appel<{ envoye: boolean }>("/admin/acces", { method: "POST", body: JSON.stringify({ ...p, envoyer_email: true }) }),
+    inviter: (p: { email: string; prenom: string; offert?: boolean }) => appel<{ envoye: boolean }>("/admin/acces", { method: "POST", body: JSON.stringify({ ...p, envoyer_email: true }) }),
+    offrir: (email: string, offert: boolean) => appel(`/admin/acces/${encodeURIComponent(email)}`, { method: "PATCH", body: JSON.stringify({ offert }) }),
     lienConnexion: (email: string) => appel<{ lien: string; valable_minutes: number }>("/admin/acces/lien", { method: "POST", body: JSON.stringify({ email }) }),
     retirerAcces: (email: string) => appel(`/admin/acces/${encodeURIComponent(email)}`, { method: "DELETE" }),
   };
@@ -86,7 +88,7 @@ export function PageAdmin({ api }: { api: Api }) {
   const [ajout, setAjout] = useState<{ nom: string; email: string; ville: string } | null>(null);
   const [onglet, setOnglet] = useState<"cabinets" | "messages" | "acces">("cabinets");
   const [acces, setAcces] = useState<{ restreint: boolean; liste: Invite[] } | null>(null);
-  const [nouvel, setNouvel] = useState({ email: "", prenom: "" });
+  const [nouvel, setNouvel] = useState<{ email: string; prenom: string; offert?: boolean }>({ email: "", prenom: "", offert: true });
   const [lienEmail, setLienEmail] = useState("");
   const [lien, setLien] = useState<string | null>(null);
   const [messages, setMessages] = useState<MessageSupport[] | null>(null);
@@ -150,10 +152,11 @@ export function PageAdmin({ api }: { api: Api }) {
       {onglet === "acces" ? (
         <div className="admin-liste">
           <p className="note">{acces?.restreint ? "Accès sur invitation : seules les personnes de cette liste (et celles déjà inscrites) peuvent se connecter." : "Accès ouvert à tous (LUCIEN_ACCES n'est pas réglé sur « restreint ») : cette liste n'est pas nécessaire."}</p>
-          <form className="admin-form" onSubmit={async (e) => { e.preventDefault(); try { const x = await client.inviter(nouvel); info(x.envoye ? `Invitation envoyée à ${nouvel.email}` : `${nouvel.email} ajouté(e) (email non envoyé : service d'email non configuré)`); setNouvel({ email: "", prenom: "" }); setAcces(await client.acces()); } catch (x) { info((x as Error).message); } }}>
+          <form className="admin-form" onSubmit={async (e) => { e.preventDefault(); try { const x = await client.inviter(nouvel); info(x.envoye ? `Invitation envoyée à ${nouvel.email}` : `${nouvel.email} ajouté(e) (email non envoyé : service d'email non configuré)`); setNouvel({ email: "", prenom: "", offert: true }); setAcces(await client.acces()); } catch (x) { info((x as Error).message); } }}>
             <b>Inviter une personne</b>
             <input className="in" placeholder="Prénom" value={nouvel.prenom} onChange={(e) => setNouvel({ ...nouvel, prenom: e.target.value })} />
             <input className="in" required type="email" placeholder="Email" value={nouvel.email} onChange={(e) => setNouvel({ ...nouvel, email: e.target.value })} />
+            <label className="note" style={{ display: "flex", gap: 8, alignItems: "center" }}><input type="checkbox" checked={!!nouvel.offert} onChange={(e) => setNouvel({ ...nouvel, offert: e.target.checked })} /> Accès offert : tout Lucien gratuitement pendant l'avant-première</label>
             <div className="admin-form-actions"><button className="btn">Inviter et envoyer l'email</button></div>
           </form>
           <form className="admin-form" onSubmit={async (e) => { e.preventDefault(); try { setLien((await client.lienConnexion(lienEmail.trim())).lien); } catch (x) { info((x as Error).message); } }}>
@@ -170,7 +173,10 @@ export function PageAdmin({ api }: { api: Api }) {
                 <div><b>{x.prenom ?? x.email}</b><span>{x.email} · invité(e) le {dateFr(x.cree_le)}</span></div>
                 <span className={`statut-cab ${x.inscrit ? "valide" : "en_attente"}`}>{x.inscrit ? "Inscrit(e)" : "Pas encore venu(e)"}</span>
               </div>
-              <div className="admin-carte-actions"><button className="link" onClick={async () => { await client.retirerAcces(x.email); setAcces(await client.acces()); info("Retiré(e) de la liste"); }}>Retirer de la liste</button></div>
+              <div className="admin-carte-actions">
+                <label className="note" style={{ display: "flex", gap: 8, alignItems: "center", marginRight: "auto" }}><input type="checkbox" checked={!!x.offert} onChange={async (e) => { try { await client.offrir(x.email, e.target.checked); setAcces(await client.acces()); info(e.target.checked ? `Accès offert à ${x.prenom ?? x.email}` : `Accès offert retiré à ${x.prenom ?? x.email}`); } catch (er) { info((er as Error).message); } }} /> Accès offert</label>
+                <button className="link" onClick={async () => { await client.retirerAcces(x.email); setAcces(await client.acces()); info("Retiré(e) de la liste"); }}>Retirer de la liste</button>
+              </div>
             </div>
           ))}
         </div>

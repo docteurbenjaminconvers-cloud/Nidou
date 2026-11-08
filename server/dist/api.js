@@ -33,7 +33,7 @@ import { connexionEnDouble } from "./doublons.js";
 import { analyseProFoyer, deciderPro, recurrencesPro } from "./analysePro.js";
 import { remarquer } from "./remarques.js";
 import { vueSituation } from "./situationsApi.js";
-import { accesAutorise, MESSAGE_FERME, monterAcces } from "./acces.js";
+import { accesAutorise, MESSAGE_FERME, monterAcces, synchroniserOffert } from "./acces.js";
 import { monterPartages } from "./partages.js";
 import { monterSituations } from "./situationsApi.js";
 import { bordereau, etatDossiers, etatKit, KITS } from "./dossiers.js";
@@ -177,6 +177,8 @@ export function createApi(db, opts) {
                 db.addMember(row.id, "Moi", "adulte");
             }
         }
+        // avant-première: an invitation marked « offert » gives the household the whole of Lucien, free (acces.ts)
+        row = synchroniserOffert(db, row);
         // Accounts beyond the formule's capacity are paused (owner first, then by join date); the owner always keeps access.
         if (user) {
             const ordre = db.usersOfHousehold(row.id).sort((a, b) => Number(b.role === "proprietaire") - Number(a.role === "proprietaire") || a.rejoint_le.localeCompare(b.rejoint_le));

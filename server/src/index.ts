@@ -7,6 +7,8 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Db } from "./db.js";
 import { migrerMarchands } from "./marchands.js";
+import { preparerStripe } from "./stripeCatalogue.js";
+import { stripeOn } from "./abonnement.js";
 import { AUTH_ON } from "./auth.js";
 import { createApi } from "./api.js";
 import { securiser } from "./securite.js";
@@ -40,6 +42,10 @@ if (process.env.LUCIEN_SEED === "1" && !db.firstHousehold()) {
 
 // merchant names of operations already imported, recomputed once when the reading of bank labels improves
 try { migrerMarchands(db); } catch (e) { console.error("[marchands]", (e as Error).message); }
+// Stripe: prices of the grid and webhook created if missing, so that the secret key is the only setting (stripeCatalogue.ts)
+if (stripeOn()) preparerStripe(db)
+  .then((r) => console.log(`[stripe] ${process.env.STRIPE_SECRET_KEY!.includes("_live_") ? "mode réel" : "mode test"} · prix : ${r.existants} déjà là, ${r.crees} créés · webhook : ${r.webhook}`))
+  .catch((e) => console.error("[stripe] préparation impossible :", (e as Error).message));
 
 const app = new Hono();
 securiser(app);

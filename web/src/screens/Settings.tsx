@@ -96,6 +96,12 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
         <div className="section-head"><h2>Votre formule</h2>{household.essai?.actif && <span className="badge">essai : {household.essai.jours_restants} j</span>}</div>
         {household.essai?.actif && <p className="note" style={{ marginBottom: 10 }}>Vous profitez de tout Lucien, jusqu'à 6 personnes, pendant 15 jours, sans carte bancaire. Ensuite, choisissez une formule : sans abonnement, vos papiers et vos échéances restent consultables et exportables, mais Lucien ne range plus rien de nouveau.</p>}
 
+        {household.abonnement?.statut === "offert" ? (
+          <div className="plan-card on">
+            <h3>Accès offert pendant l'avant-première</h3>
+            <p className="note">Tout Lucien, jusqu'à 6 personnes, avec tous les modules (Budget expert, Vie pro, Patrimoine locatif, assistant). Rien à payer, aucune carte bancaire : merci de nous aider à préparer le lancement.</p>
+          </div>
+        ) : (<>
         <div className={`plan-card ${household.plan === "gratuit" ? "on" : ""}`}>
           <h3>Sans abonnement, après l'essai</h3>
           <ul><li>Vos papiers et vos échéances restent consultables et exportables</li><li>Les rappels d'échéances continuent (notifications sur le téléphone)</li><li>Pas de nouveau papier, ni lecture par l'IA, ni banque, ni modules</li><li>Un seul compte reste connecté</li></ul>
@@ -112,7 +118,7 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
           {household.abonnement?.paiement === false && <p className="note" style={{ background: "var(--yolk-soft)", padding: "10px 12px", borderRadius: 12 }}>Le paiement en ligne arrive bientôt. D'ici là, votre essai et vos papiers restent tels quels.</p>}
           <CodePartenaire api={api} toast={toast} />
           <button className="offre-lien" onClick={() => go("offre")}><b>Modules et packs</b><span>Budget expert, Vie pro, Patrimoine locatif : composez votre Lucien.</span></button>
-          {!formuleActuelle && <ConsentementDemarrage coche={demarrage} onChange={setDemarrage} />}
+          {!formuleActuelle && household.abonnement?.paiement !== false && <ConsentementDemarrage coche={demarrage} onChange={setDemarrage} />}
           <div className="tiers">
             {TIERS.map((t) => {
               const actuel = formuleActuelle === t.id;
@@ -126,6 +132,7 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
                   <p className="note">{periode === "annuel" ? `soit ${fmtPrix(prix / 12)} par mois` : `ou ${fmtPrix(t.prix.annuel)} par an`} · {t.pour}</p>
                   {actuel ? <span className="badge" style={{ marginTop: 10 }}>votre formule</span>
                     : tropPetite ? <p className="note" style={{ marginTop: 8 }}>{comptes} personnes se connectent déjà à ce foyer.</p>
+                    : household.abonnement?.paiement === false ? null
                     : <button className={`btn block ${t.id === conseil ? "" : "ghost"}`} style={{ marginTop: 10 }} onClick={() => checkout(t.id, periode)}>{formuleActuelle ? `Passer à ${t.nom}` : `Choisir ${t.nom}`}</button>}
                 </div>
               );
@@ -141,6 +148,7 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
             </div>
           )}
         </div>
+        </>)}
       </section>
 
       <section className="section">

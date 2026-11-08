@@ -123,7 +123,8 @@ export function Offre({ api, household, focus, onBack, onChange, toast }: { api:
 
       <p className="note">Prix TTC, sans engagement en mensuel. Le socle est obligatoire pour ajouter des modules. Sans abonnement après l'essai, vos papiers restent consultables et exportables.</p>
 
-      {!abonne && <ConsentementDemarrage coche={demarrage} onChange={setDemarrage} />}
+      {household.abonnement?.statut === "offert" && <p className="note" style={{ background: "var(--moss-soft)", padding: "10px 12px", borderRadius: 12 }}>Votre accès offert d'avant-première comprend déjà tous les modules : rien à activer.</p>}
+      {!abonne && household.abonnement?.statut !== "offert" && etat?.paiement !== false && <ConsentementDemarrage coche={demarrage} onChange={setDemarrage} />}
       <div className="devis">
         {d.lignes.length > 1 && <div className="devis-lignes">
           {d.lignes.map((l) => <div key={l.libelle}><span>{l.libelle}{l.detail ? <small> · {l.detail}</small> : null}</span><b>{eur(prixP(l.mensuel), true)}</b></div>)}
@@ -131,7 +132,7 @@ export function Offre({ api, household, focus, onBack, onChange, toast }: { api:
         {d.conseil && <button className="devis-conseil" onClick={() => { setPack(d.conseil!.pack); setMods(mods.filter((m) => m === "veille")); }}>Le pack {PACKS.find((p) => p.id === d.conseil!.pack)!.nom} couvre ces modules pour {eur(prixP(d.conseil.gain), true)} de moins {par} : le prendre</button>}
         <div className="devis-total">
           <div><b>{eur(d.total, true)}</b><span>{par}{periode === "annuel" ? `, soit ${eur(d.mensuel, true)} par mois` : ""}</span>{d.economie > 0 && <small>{eur(d.economie, true)} d'économie avec le pack</small>}</div>
-          <button className="btn" disabled={envoi} onClick={activer}>{etat && !etat.paiement ? "Bientôt" : "Activer"}</button>
+          <button className="btn" disabled={envoi || household.abonnement?.statut === "offert" || (etat ? !etat.paiement : false)} onClick={activer}>{household.abonnement?.statut === "offert" ? "Inclus" : etat && !etat.paiement ? "Bientôt" : "Activer"}</button>
         </div>
       </div>
     </div>

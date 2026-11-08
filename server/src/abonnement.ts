@@ -17,7 +17,8 @@ import { joursOfferts } from "./partenaires.js";
  */
 export const stripeOn = () => Boolean(process.env.STRIPE_SECRET_KEY);
 /** Simulated payments (no money taken) only on a test instance that asks for them explicitly; never in production. */
-export const simulationPaiement = () => !stripeOn() && process.env.LUCIEN_PAIEMENT_SIMULE === "1";
+// never in the production image: a simulated payment there would hand out real subscriptions for nothing
+export const simulationPaiement = () => !stripeOn() && process.env.LUCIEN_PAIEMENT_SIMULE === "1" && process.env.NODE_ENV !== "production";
 export const paiementDisponible = () => stripeOn() || simulationPaiement();
 /** A new subscription needs the consumer's express request to start before the 14-day withdrawal period ends. */
 export class ConsentementRequis extends Error {
@@ -158,13 +159,13 @@ export async function basculerAssistant(db: Db, h: HouseholdRow, actif: boolean)
 
 export async function portail(h: HouseholdRow): Promise<string | null> {
   if (!stripeOn() || !h.stripe_customer_id) return null;
-  const s = await stripe().billingPortal.sessions.create({ customer: h.stripe_customer_id, return_url: `${publicUrl()}/#/settings`, locale: "fr" });
+  const s = await stripe().billingPortal.sessions.create({ customer: h.stripe_customer_id, return_url: `${publicUrl()}/#/settings`, locale: "fr", ...(process.env.LUCIEN_STRIPE_PORTAIL ? { configuration: process.env.LUCIEN_STRIPE_PORTAIL } : {}) });
   return s.url;
 }
 
 /** Applies a subscription state to the household. Shared by the webhook and the simulated mode. */
 export function appliquerAbonnement(db: Db, h: HouseholdRow, a: { customer?: string | null; subscription?: string | null; statut: string; formule?: Formule | null; periode?: Periode | null; fin?: string | null }) {
-  const actif = ["active", "trialing", "past_due", "simule"].includes(a.statut);
+  const actif = ["active", "trialing", "past_due", "simule", "offert"].includes(a.statut);
   db.setAbonnement(h.id, {
     stripe_customer_id: a.customer ?? h.stripe_customer_id,
     stripe_subscription_id: a.subscription === undefined ? h.stripe_subscription_id : a.subscription,
