@@ -11,9 +11,6 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 export function Deadlines({ deadlines, go, onDone, unread, semaine, extra }: { deadlines: Deadline[]; go: (s: string, id?: string) => void; onDone: (id: string) => void; unread: number; semaine?: { jour: number; heure_debut: string | null; titre: string; membre: string | null; lieu: string | null }[]; extra?: ReactNode }) {
-  const todayIdx = ((new Date().getDay() + 6) % 7) + 1;
-  const aujourdhui = (semaine ?? []).filter((s) => s.jour === todayIdx);
-  const demain = (semaine ?? []).filter((s) => s.jour === (todayIdx % 7) + 1);
   const groups: { label: string; items: Deadline[] }[] = [
     { label: "En retard", items: deadlines.filter((d) => daysUntil(d.date) < 0) },
     { label: "Ce mois-ci", items: deadlines.filter((d) => daysUntil(d.date) >= 0 && daysUntil(d.date) <= 30) },
@@ -24,19 +21,7 @@ export function Deadlines({ deadlines, go, onDone, unread, semaine, extra }: { d
   return (
     <div className="screen">
       <div className="top"><div><h1>Agenda</h1><p className="sub">{deadlines.length} échéance{deadlines.length > 1 ? "s" : ""} à venir, d'après vos papiers et votre famille</p></div><Bell unread={unread} onClick={() => go("notifs")} /></div>
-      {semaine && semaine.length > 0 && (
-        <section className="section">
-          <div className="section-head"><h2>Aujourd'hui et demain</h2><button className="link" onClick={() => go("famille")}>Toute la semaine</button></div>
-          {[["Aujourd'hui", aujourdhui], ["Demain", demain]].map(([label, items]) => (
-            <div key={label as string} style={{ marginBottom: 8 }}>
-              <div className="s" style={{ color: "var(--mist)", fontSize: 13, marginBottom: 4 }}>{label as string}</div>
-              {(items as typeof aujourdhui).length === 0 ? <p className="note">Rien de prévu.</p> : (items as typeof aujourdhui).map((s, i) => (
-                <div key={i} className="slot" style={{ padding: "6px 0" }}><span className="h">{s.heure_debut ?? "—"}</span><span className="w"><b>{s.titre}</b>{s.membre ? ` · ${s.membre}` : ""}{s.lieu ? <small>{s.lieu}</small> : null}</span></div>
-              ))}
-            </div>
-          ))}
-        </section>
-      )}
+      <Calendrier deadlines={deadlines} semaine={semaine ?? []} go={go} onDone={onDone} />
       {deadlines.length === 0 && <div className="empty"><b>Aucune échéance</b>Ajoutez un contrat, une facture ou une pièce d'identité.</div>}
       {extra}
       {groups.map((g) => (
@@ -65,6 +50,72 @@ export function Deadlines({ deadlines, go, onDone, unread, semaine, extra }: { d
         </section>
       ))}
     </div>
+  );
+}
+
+type Creneau = { jour: number; heure_debut: string | null; titre: string; membre: string | null; lieu: string | null };
+const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const JOURS = ["lun", "mar", "mer", "jeu", "ven", "sam", "dim"];
+
+/** A month you can click through: each day shows its deadlines and the family's weekly activities. */
+function Calendrier({ deadlines, semaine, go, onDone }: { deadlines: Deadline[]; semaine: Creneau[]; go: (s: string, id?: string) => void; onDone: (id: string) => void }) {
+  const auj = iso(new Date());
+  const [mois, setMois] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
+  const [choisi, setChoisi] = useState(auj);
+  const parJour = new Map<string, Deadline[]>();
+  for (const d of deadlines) parJour.set(d.date.slice(0, 10), [...(parJour.get(d.date.slice(0, 10)) ?? []), d]);
+  const jourSemaine = (x: string) => ((new Date(`${x}T12:00:00`).getDay() + 6) % 7) + 1;
+  const activites = (x: string) => semaine.filter((c) => c.jour === jourSemaine(x)).sort((a, b) => (a.heure_debut ?? "99").localeCompare(b.heure_debut ?? "99"));
+  // 6 rows of 7 days, starting on the Monday on or before the 1st
+  const debut = new Date(mois); debut.setDate(1 - ((mois.getDay() + 6) % 7));
+  const cases = Array.from({ length: 42 }, (_, k) => { const d = new Date(debut); d.setDate(debut.getDate() + k); return d; });
+  const lignes = cases[35].getMonth() !== mois.getMonth() ? cases.slice(0, 35) : cases;
+  const changer = (n: number) => setMois(new Date(mois.getFullYear(), mois.getMonth() + n, 1));
+  const echeances = parJour.get(choisi) ?? [];
+  const acts = activites(choisi);
+  const titreJour = new Date(`${choisi}T12:00:00`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+  return (
+    <section className="section calendrier">
+      <div className="cal-mois">
+        <div className="cal-tete">
+          <button className="round" aria-label="Mois précédent" onClick={() => changer(-1)}>‹</button>
+          <b>{mois.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}</b>
+          <button className="round" aria-label="Mois suivant" onClick={() => changer(1)}>›</button>
+        </div>
+        <div className="cal-grille" role="grid" aria-label="Choisir un jour">
+          {JOURS.map((j) => <span key={j} className="cal-jsem">{j}</span>)}
+          {lignes.map((d) => {
+            const x = iso(d), e = parJour.get(x)?.length ?? 0, a = activites(x).length;
+            return (
+              <button key={x} role="gridcell" className={`cal-jour${d.getMonth() !== mois.getMonth() ? " hors" : ""}${x === auj ? " auj" : ""}${x < auj ? " passe" : ""}`} aria-selected={x === choisi} aria-label={`${d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}${e ? `, ${e} échéance${e > 1 ? "s" : ""}` : ""}${a ? `, ${a} activité${a > 1 ? "s" : ""}` : ""}`} onClick={() => setChoisi(x)}>
+                <span>{d.getDate()}</span>
+                <i className="cal-points">{e > 0 && <em className="ech" />}{a > 0 && <em className="act" />}</i>
+              </button>
+            );
+          })}
+        </div>
+        <div className="cal-legende"><span><em className="ech" />échéance</span><span><em className="act" />activité</span>{choisi !== auj && <button className="link" onClick={() => { setChoisi(auj); const d = new Date(); setMois(new Date(d.getFullYear(), d.getMonth(), 1)); }}>Aujourd'hui</button>}</div>
+      </div>
+      <div className="cal-detail">
+        <h3>{choisi === auj ? "Aujourd'hui, " : ""}{titreJour}</h3>
+        {echeances.length === 0 && acts.length === 0 && <p className="note">Rien de prévu ce jour-là.</p>}
+        {echeances.map((d) => (
+          <div key={d.id} className="cal-item ech">
+            <b>{d.titre.replace(/^[^:]+:\s*/, "")}</b>
+            <span>{TYPE_LABEL[d.type] ?? d.type}{d.note ? ` · ${d.note}` : ""}</span>
+            <div className="cal-actions">
+              {d.document_id && <button className="link" onClick={() => go("doc", d.document_id!)}>Document</button>}
+              {d.type === "famille" && <button className="link" onClick={() => go(d.member_id ? "membre" : "famille", d.member_id ?? undefined)}>Famille</button>}
+              <button className="link" onClick={() => onDone(d.id)}>C'est fait</button>
+            </div>
+          </div>
+        ))}
+        {acts.map((c, k) => (
+          <div key={k} className="cal-item act"><b><span className="h">{c.heure_debut ?? "—"}</span> {c.titre}</b><span>{[c.membre, c.lieu].filter(Boolean).join(" · ")}</span></div>
+        ))}
+        {acts.length > 0 && <button className="link" style={{ marginTop: 6 }} onClick={() => go("famille")}>Toute la semaine de la famille</button>}
+      </div>
+    </section>
   );
 }
 
