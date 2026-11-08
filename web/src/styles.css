@@ -1206,3 +1206,4 @@ body.clavier .tabs { display: none; }
 .pill-action:disabled { opacity: .45; cursor: not-allowed; transform: none; }
 .lettre-envoi textarea.in { border-radius: 16px; padding: 10px 16px; border: 2px solid var(--line); background: var(--white); line-height: 1.45; min-height: 64px; }
 .lettre-envoi > .link { justify-self: start; }
+.lettre-envoi textarea.in, .lettre-envoi input.in { font-size: 16px; color: var(--ink); }

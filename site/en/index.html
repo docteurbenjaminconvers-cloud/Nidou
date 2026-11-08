@@ -175,6 +175,51 @@
   </div>
 </section>
 
+<!-- ========== SUR ORDINATEUR ========== -->
+<section id="ordinateur" class="ordi">
+  <div class="wrap">
+    <p class="eyebrow rv" data-i18n="dk0">On a computer too</p>
+    <h2 class="rv" data-i18n="dk1">The same Lucien, full size on your computer.</h2>
+    <p class="lead rv" data-i18n="dk2">Navigation on the left, your cards in two columns: the whole household at a glance. What you file on your phone is already there.</p>
+    <div class="ordi-onglets rv" role="tablist" aria-label="Computer screens">
+      <button type="button" role="tab" aria-selected="true" data-src="../img/desk-home.webp" data-i18n="dk3">Today</button>
+      <button type="button" role="tab" aria-selected="false" data-src="../img/desk-famille.webp" data-i18n="dk4">Family</button>
+      <button type="button" role="tab" aria-selected="false" data-src="../img/desk-expert.webp" data-i18n="dk5">Expert budget</button>
+    </div>
+    <figure class="navigateur rv">
+      <div class="navigateur-barre" aria-hidden="true"><i></i><i></i><i></i><span>monlucien.fr</span></div>
+      <img id="ordi-ecran" src="../img/desk-home.webp" width="1440" height="900" alt="Lucien on a computer" loading="lazy">
+    </figure>
+  </div>
+</section>
+
+<!-- ========== RÉSILIER POUR VOUS ========== -->
+<section id="resilier" class="resilier">
+  <div class="wrap">
+    <div class="grid2" style="margin-top:0;align-items:center">
+      <div>
+        <p class="eyebrow rv" data-i18n="rs0">Cancel without writing a line</p>
+        <h2 class="rv" data-i18n="rs1">Lucien writes the letter, finds the address and sends it.</h2>
+        <p class="lead rv" style="margin-top:14px" data-i18n="rs2">You tap “Cancel”. Lucien finds the customer service address and your contract number in your papers, lays out a real letter and sends it in your name. You are copied, and the reply comes straight to you.</p>
+        <ul class="howsave">
+          <li class="rv" data-i18n="rs3"><b>By email, in one click</b><span>the letter attached as a PDF, sent in your name, with you in copy</span></li>
+          <li class="rv"><b><span data-i18n="rs4">By registered mail with acknowledgement of receipt</span> <em class="bientot" data-i18n="rs7">soon</em></b><span data-i18n="rs5">Lucien prints it, posts it the same day and gives you the proof of posting and the acknowledgement of receipt</span></li>
+          <li class="rv" data-i18n="rs6"><b>Or as a PDF</b><span>to print, to upload to the customer area, to send yourself</span></li>
+          <li class="rv" data-i18n="rs8"><b>Then the proof on your statements</b><span>no more direct debit: the saving is proven. If it comes back, the refund request is ready</span></li>
+        </ul>
+      </div>
+      <div class="lettre-demo rv">
+        <div class="lettre-mail" aria-hidden="true">
+          <div><span data-i18n="rs9">To</span> resiliation@keepcool.fr</div>
+          <div><span data-i18n="rs10">Cc</span> claire@exemple.fr</div>
+          <div class="pj">Resiliation-Keepcool.pdf</div>
+        </div>
+        <img src="../img/lettre-resiliation.webp" width="910" height="797" alt="Cancellation letter prepared by Lucien" loading="lazy">
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ========== LES ESPACES (modules) ========== -->
 <section id="espaces" class="espaces">
   <div class="wrap">
@@ -210,7 +255,7 @@
         <p class="boucle-titre rv" data-i18n="nb0">All the way to proof on your statements</p>
         <ol class="boucle rv">
           <li><b data-i18n="nb1">Spotted</b><span data-i18n="nb2">The direct debit is found on your statements, with its cost over a year.</span></li>
-          <li><b data-i18n="nb3">Cancelled</b><span data-i18n="nb4">The steps and the letter are ready; you send it.</span></li>
+          <li><b data-i18n="nb3">Cancelled</b><span data-i18n="nb4">Lucien sends the letter for you, by email, or soon by registered mail.</span></li>
           <li><b data-i18n="nb5">Checked</b><span data-i18n="nb6">Lucien watches your next statements: the direct debit must disappear.</span></li>
           <li><b data-i18n="nb7">Proven</b><span data-i18n="nb8">Only then does the saving go on the counter. If it comes back, the refund request is ready.</span></li>
         </ol>
@@ -742,6 +787,10 @@
   window.addEventListener("lucien:lang", function () { setPeriode(cards.getAttribute("data-periode")); });
   setPeriode("annuel");
 })();
+</script>
+<script>
+(function(){var t=document.querySelectorAll('.ordi-onglets button'),i=document.getElementById('ordi-ecran');if(!i)return;
+t.forEach(function(b){b.addEventListener('click',function(){t.forEach(function(x){x.setAttribute('aria-selected',x===b?'true':'false')});i.src=b.getAttribute('data-src');});});})();
 </script>
 </body>
 </html>

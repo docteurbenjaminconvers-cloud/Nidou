@@ -29,6 +29,9 @@ VIDES = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "me
 
 # alt texts, aria labels and the few words written outside data-i18n, so that images and screen readers follow the page language
 ATTRIBUTS = {
+    "Lucien sur ordinateur": {"en": "Lucien on a computer", "es": "Lucien en el ordenador", "it": "Lucien sul computer", "el": "Ο Lucien στον υπολογιστή", "ar": "لوسيان على الحاسوب"},
+    "Écrans sur ordinateur": {"en": "Computer screens", "es": "Pantallas en el ordenador", "it": "Schermate sul computer", "el": "Οθόνες στον υπολογιστή", "ar": "شاشات على الحاسوب"},
+    "Lettre de résiliation préparée par Lucien": {"en": "Cancellation letter prepared by Lucien", "es": "Carta de baja preparada por Lucien", "it": "Lettera di disdetta preparata da Lucien", "el": "Επιστολή καταγγελίας που ετοίμασε ο Lucien", "ar": "رسالة إلغاء أعدّها لوسيان"},
     "Lucien, accueil": {"en": "Lucien, home", "es": "Lucien, inicio", "it": "Lucien, home", "el": "Lucien, αρχική", "ar": "لوسيان، الصفحة الرئيسية"},
     "Langue": {"en": "Language", "es": "Idioma", "it": "Lingua", "el": "Γλώσσα", "ar": "اللغة"},
     "Aperçu de l'application Lucien": {"en": "Preview of the Lucien app", "es": "Vista previa de la aplicación Lucien", "it": "Anteprima dell'app Lucien", "el": "Προεπισκόπηση της εφαρμογής Lucien", "ar": "معاينة تطبيق لوسيان"},

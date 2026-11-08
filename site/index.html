@@ -175,6 +175,51 @@
   </div>
 </section>
 
+<!-- ========== SUR ORDINATEUR ========== -->
+<section id="ordinateur" class="ordi">
+  <div class="wrap">
+    <p class="eyebrow rv" data-i18n="dk0">Sur ordinateur aussi</p>
+    <h2 class="rv" data-i18n="dk1">Le même Lucien, en grand sur votre ordinateur.</h2>
+    <p class="lead rv" data-i18n="dk2">La navigation à gauche, vos cartes sur deux colonnes : tout le foyer d'un coup d'œil. Ce que vous rangez sur le téléphone est déjà là.</p>
+    <div class="ordi-onglets rv" role="tablist" aria-label="Écrans sur ordinateur">
+      <button type="button" role="tab" aria-selected="true" data-src="img/desk-home.webp" data-i18n="dk3">Aujourd'hui</button>
+      <button type="button" role="tab" aria-selected="false" data-src="img/desk-famille.webp" data-i18n="dk4">Famille</button>
+      <button type="button" role="tab" aria-selected="false" data-src="img/desk-expert.webp" data-i18n="dk5">Budget expert</button>
+    </div>
+    <figure class="navigateur rv">
+      <div class="navigateur-barre" aria-hidden="true"><i></i><i></i><i></i><span>monlucien.fr</span></div>
+      <img id="ordi-ecran" src="img/desk-home.webp" width="1440" height="900" alt="Lucien sur ordinateur" loading="lazy">
+    </figure>
+  </div>
+</section>
+
+<!-- ========== RÉSILIER POUR VOUS ========== -->
+<section id="resilier" class="resilier">
+  <div class="wrap">
+    <div class="grid2" style="margin-top:0;align-items:center">
+      <div>
+        <p class="eyebrow rv" data-i18n="rs0">Résilier sans écrire une ligne</p>
+        <h2 class="rv" data-i18n="rs1">Lucien écrit la lettre, trouve l'adresse et l'envoie.</h2>
+        <p class="lead rv" style="margin-top:14px" data-i18n="rs2">Vous touchez « Résilier ». Lucien retrouve dans vos papiers l'adresse du service client et votre numéro de contrat, met en page une vraie lettre, et l'envoie en votre nom. Vous êtes en copie, la réponse vous arrive directement.</p>
+        <ul class="howsave">
+          <li class="rv" data-i18n="rs3"><b>Par email, en un clic</b><span>la lettre en PDF jointe, envoyée en votre nom, vous en copie</span></li>
+          <li class="rv"><b><span data-i18n="rs4">En recommandé avec avis de réception</span> <em class="bientot" data-i18n="rs7">bientôt</em></b><span data-i18n="rs5">Lucien l'imprime, la poste le jour même et vous rend la preuve de dépôt et l'avis de réception</span></li>
+          <li class="rv" data-i18n="rs6"><b>Ou en PDF</b><span>à imprimer, à déposer sur l'espace client, à envoyer vous-même</span></li>
+          <li class="rv" data-i18n="rs8"><b>Puis la preuve sur vos relevés</b><span>plus de prélèvement : l'économie est prouvée. S'il revient, la demande de remboursement est prête</span></li>
+        </ul>
+      </div>
+      <div class="lettre-demo rv">
+        <div class="lettre-mail" aria-hidden="true">
+          <div><span data-i18n="rs9">À</span> resiliation@keepcool.fr</div>
+          <div><span data-i18n="rs10">Copie</span> claire@exemple.fr</div>
+          <div class="pj">Resiliation-Keepcool.pdf</div>
+        </div>
+        <img src="img/lettre-resiliation.webp" width="910" height="797" alt="Lettre de résiliation préparée par Lucien" loading="lazy">
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ========== LES ESPACES (modules) ========== -->
 <section id="espaces" class="espaces">
   <div class="wrap">
@@ -210,7 +255,7 @@
         <p class="boucle-titre rv" data-i18n="nb0">Jusqu'à la preuve sur vos relevés</p>
         <ol class="boucle rv">
           <li><b data-i18n="nb1">Repéré</b><span data-i18n="nb2">Le prélèvement est trouvé sur vos relevés, avec son coût sur un an.</span></li>
-          <li><b data-i18n="nb3">Résilié</b><span data-i18n="nb4">La marche à suivre et la lettre sont prêtes ; vous l'envoyez.</span></li>
+          <li><b data-i18n="nb3">Résilié</b><span data-i18n="nb4">Lucien envoie la lettre pour vous, par email, ou bientôt en recommandé.</span></li>
           <li><b data-i18n="nb5">Vérifié</b><span data-i18n="nb6">Lucien surveille vos relevés suivants : le prélèvement doit disparaître.</span></li>
           <li><b data-i18n="nb7">Prouvé</b><span data-i18n="nb8">Alors seulement l'économie entre au compteur. S'il revient, la demande de remboursement est prête.</span></li>
         </ol>
@@ -741,6 +786,10 @@
   window.addEventListener("lucien:lang", function () { setPeriode(cards.getAttribute("data-periode")); });
   setPeriode("annuel");
 })();
+</script>
+<script>
+(function(){var t=document.querySelectorAll('.ordi-onglets button'),i=document.getElementById('ordi-ecran');if(!i)return;
+t.forEach(function(b){b.addEventListener('click',function(){t.forEach(function(x){x.setAttribute('aria-selected',x===b?'true':'false')});i.src=b.getAttribute('data-src');});});})();
 </script>
 </body>
 </html>

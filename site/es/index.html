@@ -175,6 +175,51 @@
   </div>
 </section>
 
+<!-- ========== SUR ORDINATEUR ========== -->
+<section id="ordinateur" class="ordi">
+  <div class="wrap">
+    <p class="eyebrow rv" data-i18n="dk0">También en el ordenador</p>
+    <h2 class="rv" data-i18n="dk1">El mismo Lucien, en grande en su ordenador.</h2>
+    <p class="lead rv" data-i18n="dk2">La navegación a la izquierda, sus tarjetas en dos columnas: todo el hogar de un vistazo. Lo que guarda en el móvil ya está ahí.</p>
+    <div class="ordi-onglets rv" role="tablist" aria-label="Pantallas en el ordenador">
+      <button type="button" role="tab" aria-selected="true" data-src="../img/desk-home.webp" data-i18n="dk3">Hoy</button>
+      <button type="button" role="tab" aria-selected="false" data-src="../img/desk-famille.webp" data-i18n="dk4">Familia</button>
+      <button type="button" role="tab" aria-selected="false" data-src="../img/desk-expert.webp" data-i18n="dk5">Presupuesto experto</button>
+    </div>
+    <figure class="navigateur rv">
+      <div class="navigateur-barre" aria-hidden="true"><i></i><i></i><i></i><span>monlucien.fr</span></div>
+      <img id="ordi-ecran" src="../img/desk-home.webp" width="1440" height="900" alt="Lucien en el ordenador" loading="lazy">
+    </figure>
+  </div>
+</section>
+
+<!-- ========== RÉSILIER POUR VOUS ========== -->
+<section id="resilier" class="resilier">
+  <div class="wrap">
+    <div class="grid2" style="margin-top:0;align-items:center">
+      <div>
+        <p class="eyebrow rv" data-i18n="rs0">Dar de baja sin escribir una línea</p>
+        <h2 class="rv" data-i18n="rs1">Lucien escribe la carta, encuentra la dirección y la envía.</h2>
+        <p class="lead rv" style="margin-top:14px" data-i18n="rs2">Toca «Dar de baja». Lucien busca en sus papeles la dirección del servicio de atención al cliente y su número de contrato, maqueta una carta de verdad y la envía en su nombre. Usted va en copia y la respuesta le llega directamente.</p>
+        <ul class="howsave">
+          <li class="rv" data-i18n="rs3"><b>Por email, con un clic</b><span>la carta en PDF adjunta, enviada en su nombre, con usted en copia</span></li>
+          <li class="rv"><b><span data-i18n="rs4">Por correo certificado con acuse de recibo</span> <em class="bientot" data-i18n="rs7">pronto</em></b><span data-i18n="rs5">Lucien la imprime, la envía el mismo día y le entrega el justificante de envío y el acuse de recibo</span></li>
+          <li class="rv" data-i18n="rs6"><b>O en PDF</b><span>para imprimir, subir al área de cliente o enviarla usted</span></li>
+          <li class="rv" data-i18n="rs8"><b>Y después, la prueba en sus extractos</b><span>sin más cargos: el ahorro queda demostrado. Si vuelve, la solicitud de reembolso está lista</span></li>
+        </ul>
+      </div>
+      <div class="lettre-demo rv">
+        <div class="lettre-mail" aria-hidden="true">
+          <div><span data-i18n="rs9">Para</span> resiliation@keepcool.fr</div>
+          <div><span data-i18n="rs10">Copia</span> claire@exemple.fr</div>
+          <div class="pj">Resiliation-Keepcool.pdf</div>
+        </div>
+        <img src="../img/lettre-resiliation.webp" width="910" height="797" alt="Carta de baja preparada por Lucien" loading="lazy">
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ========== LES ESPACES (modules) ========== -->
 <section id="espaces" class="espaces">
   <div class="wrap">
@@ -210,7 +255,7 @@
         <p class="boucle-titre rv" data-i18n="nb0">Hasta la prueba en tus extractos</p>
         <ol class="boucle rv">
           <li><b data-i18n="nb1">Detectado</b><span data-i18n="nb2">El cargo aparece en tus extractos, con su coste en un año.</span></li>
-          <li><b data-i18n="nb3">Cancelado</b><span data-i18n="nb4">Los pasos y la carta están listos; tú la envías.</span></li>
+          <li><b data-i18n="nb3">Cancelado</b><span data-i18n="nb4">Lucien envía la carta por usted, por email, o pronto por correo certificado.</span></li>
           <li><b data-i18n="nb5">Verificado</b><span data-i18n="nb6">Lucien vigila tus siguientes extractos: el cargo debe desaparecer.</span></li>
           <li><b data-i18n="nb7">Probado</b><span data-i18n="nb8">Solo entonces el ahorro entra en el contador. Si vuelve, la solicitud de reembolso está lista.</span></li>
         </ol>
@@ -742,6 +787,10 @@
   window.addEventListener("lucien:lang", function () { setPeriode(cards.getAttribute("data-periode")); });
   setPeriode("annuel");
 })();
+</script>
+<script>
+(function(){var t=document.querySelectorAll('.ordi-onglets button'),i=document.getElementById('ordi-ecran');if(!i)return;
+t.forEach(function(b){b.addEventListener('click',function(){t.forEach(function(x){x.setAttribute('aria-selected',x===b?'true':'false')});i.src=b.getAttribute('data-src');});});})();
 </script>
 </body>
 </html>

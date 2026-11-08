@@ -175,6 +175,51 @@
   </div>
 </section>
 
+<!-- ========== SUR ORDINATEUR ========== -->
+<section id="ordinateur" class="ordi">
+  <div class="wrap">
+    <p class="eyebrow rv" data-i18n="dk0">Anche sul computer</p>
+    <h2 class="rv" data-i18n="dk1">Lo stesso Lucien, in grande sul tuo computer.</h2>
+    <p class="lead rv" data-i18n="dk2">La navigazione a sinistra, le tue schede su due colonne: tutta la famiglia con un colpo d'occhio. Quello che archivi sul telefono è già lì.</p>
+    <div class="ordi-onglets rv" role="tablist" aria-label="Schermate sul computer">
+      <button type="button" role="tab" aria-selected="true" data-src="../img/desk-home.webp" data-i18n="dk3">Oggi</button>
+      <button type="button" role="tab" aria-selected="false" data-src="../img/desk-famille.webp" data-i18n="dk4">Famiglia</button>
+      <button type="button" role="tab" aria-selected="false" data-src="../img/desk-expert.webp" data-i18n="dk5">Budget esperto</button>
+    </div>
+    <figure class="navigateur rv">
+      <div class="navigateur-barre" aria-hidden="true"><i></i><i></i><i></i><span>monlucien.fr</span></div>
+      <img id="ordi-ecran" src="../img/desk-home.webp" width="1440" height="900" alt="Lucien sul computer" loading="lazy">
+    </figure>
+  </div>
+</section>
+
+<!-- ========== RÉSILIER POUR VOUS ========== -->
+<section id="resilier" class="resilier">
+  <div class="wrap">
+    <div class="grid2" style="margin-top:0;align-items:center">
+      <div>
+        <p class="eyebrow rv" data-i18n="rs0">Disdire senza scrivere una riga</p>
+        <h2 class="rv" data-i18n="rs1">Lucien scrive la lettera, trova l'indirizzo e la invia.</h2>
+        <p class="lead rv" style="margin-top:14px" data-i18n="rs2">Tocchi «Disdici». Lucien trova nei tuoi documenti l'indirizzo del servizio clienti e il tuo numero di contratto, impagina una vera lettera e la invia a tuo nome. Sei in copia e la risposta arriva direttamente a te.</p>
+        <ul class="howsave">
+          <li class="rv" data-i18n="rs3"><b>Via email, con un clic</b><span>la lettera in PDF allegata, inviata a tuo nome, con te in copia</span></li>
+          <li class="rv"><b><span data-i18n="rs4">Con raccomandata con avviso di ricevimento</span> <em class="bientot" data-i18n="rs7">presto</em></b><span data-i18n="rs5">Lucien la stampa, la spedisce in giornata e ti restituisce la prova di spedizione e l'avviso di ricevimento</span></li>
+          <li class="rv" data-i18n="rs6"><b>Oppure in PDF</b><span>da stampare, caricare nell'area clienti o inviare tu stesso</span></li>
+          <li class="rv" data-i18n="rs8"><b>Poi la prova sui tuoi estratti conto</b><span>nessun addebito: il risparmio è dimostrato. Se torna, la richiesta di rimborso è pronta</span></li>
+        </ul>
+      </div>
+      <div class="lettre-demo rv">
+        <div class="lettre-mail" aria-hidden="true">
+          <div><span data-i18n="rs9">A</span> resiliation@keepcool.fr</div>
+          <div><span data-i18n="rs10">Cc</span> claire@exemple.fr</div>
+          <div class="pj">Resiliation-Keepcool.pdf</div>
+        </div>
+        <img src="../img/lettre-resiliation.webp" width="910" height="797" alt="Lettera di disdetta preparata da Lucien" loading="lazy">
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ========== LES ESPACES (modules) ========== -->
 <section id="espaces" class="espaces">
   <div class="wrap">
@@ -210,7 +255,7 @@
         <p class="boucle-titre rv" data-i18n="nb0">Fino alla prova sui tuoi estratti conto</p>
         <ol class="boucle rv">
           <li><b data-i18n="nb1">Individuato</b><span data-i18n="nb2">L'addebito viene trovato sui tuoi estratti conto, con il suo costo su un anno.</span></li>
-          <li><b data-i18n="nb3">Disdetto</b><span data-i18n="nb4">La procedura e la lettera sono pronte; la invii tu.</span></li>
+          <li><b data-i18n="nb3">Disdetto</b><span data-i18n="nb4">Lucien invia la lettera al posto tuo, via email, o presto con raccomandata.</span></li>
           <li><b data-i18n="nb5">Verificato</b><span data-i18n="nb6">Lucien controlla i tuoi prossimi estratti conto: l'addebito deve sparire.</span></li>
           <li><b data-i18n="nb7">Provato</b><span data-i18n="nb8">Solo allora il risparmio entra nel contatore. Se ritorna, la richiesta di rimborso è pronta.</span></li>
         </ol>
@@ -742,6 +787,10 @@
   window.addEventListener("lucien:lang", function () { setPeriode(cards.getAttribute("data-periode")); });
   setPeriode("annuel");
 })();
+</script>
+<script>
+(function(){var t=document.querySelectorAll('.ordi-onglets button'),i=document.getElementById('ordi-ecran');if(!i)return;
+t.forEach(function(b){b.addEventListener('click',function(){t.forEach(function(x){x.setAttribute('aria-selected',x===b?'true':'false')});i.src=b.getAttribute('data-src');});});})();
 </script>
 </body>
 </html>

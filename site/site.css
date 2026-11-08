@@ -469,3 +469,31 @@ html[dir="rtl"] .legal .tableau th, html[dir="rtl"] .legal .tableau td { text-al
 .espaces-remplir { text-align: center; max-width: 620px; margin: 22px auto 0; color: var(--mist); }
 .hero .lead strong, .hero-text .lead strong { color: var(--ink); }
 .guides-lien { margin-top: 22px; font-weight: 800; } .guides-lien a { color: var(--nest-deep); }
+
+/* ===== Sur ordinateur ===== */
+.ordi .wrap { text-align: center; }
+.ordi .lead { margin-left: auto; margin-right: auto; }
+.ordi-onglets { display: inline-flex; gap: 6px; margin: 26px auto 22px; padding: 6px; border-radius: 999px; background: var(--white); box-shadow: var(--shadow); }
+.ordi-onglets button { border: 0; background: transparent; padding: 10px 18px; border-radius: 999px; font: inherit; font-weight: 800; font-size: 15px; color: var(--mist); cursor: pointer; }
+.ordi-onglets button[aria-selected="true"] { background: var(--ink); color: var(--paper); }
+.navigateur { margin: 0 auto; max-width: 1080px; border-radius: 18px; overflow: hidden; background: #fff; box-shadow: 0 30px 80px rgba(59, 42, 58, .22), 0 0 0 1px rgba(59, 42, 58, .06); }
+.navigateur-barre { display: flex; align-items: center; gap: 7px; height: 38px; padding: 0 14px; background: #f3ecef; border-bottom: 1px solid rgba(59, 42, 58, .07); }
+.navigateur-barre i { width: 11px; height: 11px; border-radius: 50%; background: #e3d6dc; }
+.navigateur-barre i:first-child { background: #ef8f7a; } .navigateur-barre i:nth-child(2) { background: #f0c75e; } .navigateur-barre i:nth-child(3) { background: #8fcf9e; }
+.navigateur-barre span { margin: 0 auto; padding: 4px 40px; border-radius: 8px; background: #fff; font-size: 12.5px; color: var(--mist); }
+.navigateur img { display: block; width: 100%; height: auto; }
+
+/* ===== Résilier pour vous ===== */
+.howsave b span { color: inherit; font-size: inherit; }
+.bientot { font-style: normal; font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; padding: 3px 9px; border-radius: 999px; background: var(--yolk-soft); color: var(--ink); vertical-align: 2px; margin-left: 6px; }
+.lettre-demo { position: relative; padding: 0 0 40px 28px; }
+.lettre-demo img { display: block; width: 100%; height: auto; border-radius: 6px; background: #fff; box-shadow: 0 24px 60px rgba(59, 42, 58, .18); transform: rotate(1.2deg); }
+.lettre-mail { position: absolute; z-index: 2; left: 0; bottom: -18px; display: grid; gap: 4px; padding: 14px 16px; border-radius: 18px; background: var(--white); box-shadow: var(--shadow-lg); font-size: 13.5px; transform: rotate(-2deg); }
+.lettre-mail span { display: inline-block; min-width: 46px; color: var(--mist); font-weight: 700; }
+.lettre-mail .pj { margin-top: 4px; padding: 6px 10px; border-radius: 10px; background: var(--yolk-soft); font-weight: 800; }
+.lettre-mail .pj::before { content: "📎 "; }
+@media (max-width: 860px) {
+  .ordi-onglets button { padding: 9px 12px; font-size: 14px; }
+  .navigateur-barre span { padding: 4px 16px; }
+  .lettre-demo { padding: 0 0 46px 10px; margin-top: 10px; }
+}
