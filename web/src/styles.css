@@ -1121,3 +1121,8 @@ html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
   html { min-height: min(100lvh, calc(100% + env(safe-area-inset-top))); }
 }
 body.clavier .tabs { display: none; }
+.feuille.apercu { gap: 6px; overflow-y: auto; }
+.feuille.apercu h2 { font-size: 22px; margin: 4px 0 6px; }
+.apercu-montant { font-size: 17px; margin: 0; }
+.apercu-montant b { font-size: 26px; font-family: var(--serif, inherit); }
+.apercu-detail { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14.5px; }

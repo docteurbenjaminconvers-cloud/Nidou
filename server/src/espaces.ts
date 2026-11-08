@@ -17,7 +17,7 @@ import { provider } from "./ia.js";
 import { budgetIa, coutAppel } from "./iaBudget.js";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { changerModules, paiementDisponible, PaiementIndisponible, ConsentementRequis } from "./abonnement.js";
+import { changerModules, choixAbonnement, modulesConserves, paiementDisponible, PaiementIndisponible, ConsentementRequis } from "./abonnement.js";
 
 type Ctx = { household: (c: any) => { id: string; nom: string; plan: string; essai_jours_restants: number | null; plan_souscrit: string; essai_fin: string | null }; isOwner: (c: any) => boolean; email: (c: any) => string | null; uploadDir?: string };
 
@@ -70,7 +70,7 @@ export function monterEspaces(api: Hono<any>, db: Db, ctx: Ctx) {
 
   api.get("/offre", (c) => {
     const h = ctx.household(c);
-    return c.json({ socle: SOCLE, socle_inclut: SOCLE_INCLUT, modules: MODULES, packs: PACKS, souscrits: db.getModules(h.id), actifs: [...actifs(c)], paiement: paiementDisponible() });
+    return c.json({ socle: SOCLE, socle_inclut: SOCLE_INCLUT, modules: MODULES, packs: PACKS, souscrits: db.getModules(h.id), actifs: [...actifs(c)], paiement: paiementDisponible(), choix: choixAbonnement(db, h.id), conserves: modulesConserves(db, h.id) });
   });
 
   api.post("/offre/devis", async (c) => {
@@ -86,13 +86,15 @@ export function monterEspaces(api: Hono<any>, db: Db, ctx: Ctx) {
       formule: z.enum(["solo", "duo", "tribu"]).optional(), periode: z.enum(["mensuel", "annuel"]).optional(),
       biens: z.number().int().min(0).max(200).optional(), proches: z.number().int().min(0).max(10).optional(),
       demarrage_immediat: z.boolean().optional(),
+      // an existing subscription: first the estimate, then the change with the same proration date
+      confirmer: z.boolean().optional(), proration_date: z.number().int().positive().optional(),
     }).parse(await c.req.json());
     const h = db.getHousehold(ctx.household(c).id)!;
     const formule = b.formule ?? (h.formule as "solo" | "duo" | "tribu" | null) ?? "duo";
     const periode = b.periode ?? (h.abonnement_periode as "mensuel" | "annuel" | null) ?? "mensuel";
     if (b.pack && !PACKS.some((p) => p.id === b.pack)) return c.json({ error: "saisie_invalide" }, 400);
     try {
-      const r = await changerModules(db, h, { formule, periode, modules: b.modules, pack: b.pack ?? null, biens: b.biens, proches: b.proches }, ctx.email(c), b.demarrage_immediat === true);
+      const r = await changerModules(db, h, { formule, periode, modules: b.modules, pack: b.pack ?? null, biens: b.biens, proches: b.proches }, ctx.email(c), b.demarrage_immediat === true, { confirmer: b.confirmer === true, prorationDate: b.proration_date });
       return c.json({ ...r, souscrits: r.modules, actifs: [...actifs(c)] });
     } catch (e) {
       if (e instanceof PaiementIndisponible) return c.json({ error: "paiement_indisponible", message: e.message }, 503);

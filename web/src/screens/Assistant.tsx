@@ -41,7 +41,9 @@ export function Assistant({ api, household, go, onBack, onChanged, toast }: { ap
     } finally { setAttente(false); }
   };
 
+  // with real payments, the offer shows the amount before paying
   const activer = async () => {
+    if (api.mode !== "demo") { go("offre", "assistant"); return; }
     try { setEtat(await api.assistantOption(true)); onChanged(); toast("Assistant activé"); }
     catch (e) { toast((e as Error).message); go("settings"); }
   };

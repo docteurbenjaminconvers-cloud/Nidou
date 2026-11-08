@@ -86,7 +86,10 @@ export function VeilleNouvelle({ api, memberId, onBack, go, toast }: { api: Api;
       setErr(e instanceof ApiError ? { code: e.code, message: e.message } : { code: "erreur", message: (e as Error).message });
     } finally { setBusy(false); }
   };
-  const acheter = async (periode: "mensuel" | "annuel") => { await api.acheterVeille(periode); toast("Veille supplémentaire ajoutée"); setErr(null); };
+  const acheter = async (periode: "mensuel" | "annuel") => {
+    if (api.mode !== "demo") { go("offre", "veille"); return; } // the offer shows the amount before paying
+    await api.acheterVeille(periode); toast("Veille supplémentaire ajoutée"); setErr(null);
+  };
 
   return (
     <div className="screen">

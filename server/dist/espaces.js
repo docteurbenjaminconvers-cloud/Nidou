@@ -10,7 +10,7 @@ import { provider } from "./ia.js";
 import { budgetIa, coutAppel } from "./iaBudget.js";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { changerModules, paiementDisponible, PaiementIndisponible, ConsentementRequis } from "./abonnement.js";
+import { changerModules, choixAbonnement, modulesConserves, paiementDisponible, PaiementIndisponible, ConsentementRequis } from "./abonnement.js";
 const MODULE_IDS = Object.keys(MODULES);
 const num = z.number().finite();
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -57,7 +57,7 @@ export function monterEspaces(api, db, ctx) {
     };
     api.get("/offre", (c) => {
         const h = ctx.household(c);
-        return c.json({ socle: SOCLE, socle_inclut: SOCLE_INCLUT, modules: MODULES, packs: PACKS, souscrits: db.getModules(h.id), actifs: [...actifs(c)], paiement: paiementDisponible() });
+        return c.json({ socle: SOCLE, socle_inclut: SOCLE_INCLUT, modules: MODULES, packs: PACKS, souscrits: db.getModules(h.id), actifs: [...actifs(c)], paiement: paiementDisponible(), choix: choixAbonnement(db, h.id), conserves: modulesConserves(db, h.id) });
     });
     api.post("/offre/devis", async (c) => {
         const b = z.object({ formule: z.enum(["solo", "duo", "tribu"]), periode: z.enum(["mensuel", "annuel"]), modules: z.array(z.enum(MODULE_IDS)).max(10), pack: z.string().max(30).nullable().optional(), biens: z.number().int().min(0).max(200).optional(), proches: z.number().int().min(0).max(10).optional() }).parse(await c.req.json());
@@ -72,6 +72,8 @@ export function monterEspaces(api, db, ctx) {
             formule: z.enum(["solo", "duo", "tribu"]).optional(), periode: z.enum(["mensuel", "annuel"]).optional(),
             biens: z.number().int().min(0).max(200).optional(), proches: z.number().int().min(0).max(10).optional(),
             demarrage_immediat: z.boolean().optional(),
+            // an existing subscription: first the estimate, then the change with the same proration date
+            confirmer: z.boolean().optional(), proration_date: z.number().int().positive().optional(),
         }).parse(await c.req.json());
         const h = db.getHousehold(ctx.household(c).id);
         const formule = b.formule ?? h.formule ?? "duo";
@@ -79,7 +81,7 @@ export function monterEspaces(api, db, ctx) {
         if (b.pack && !PACKS.some((p) => p.id === b.pack))
             return c.json({ error: "saisie_invalide" }, 400);
         try {
-            const r = await changerModules(db, h, { formule, periode, modules: b.modules, pack: b.pack ?? null, biens: b.biens, proches: b.proches }, ctx.email(c), b.demarrage_immediat === true);
+            const r = await changerModules(db, h, { formule, periode, modules: b.modules, pack: b.pack ?? null, biens: b.biens, proches: b.proches }, ctx.email(c), b.demarrage_immediat === true, { confirmer: b.confirmer === true, prorationDate: b.proration_date });
             return c.json({ ...r, souscrits: r.modules, actifs: [...actifs(c)] });
         }
         catch (e) {

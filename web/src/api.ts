@@ -132,7 +132,7 @@ export interface Api {
   setHebdo(actif: boolean): Promise<void>;
   /** The offer (socle, modules, packs) and the household's modules. */
   offre(): Promise<OffreEtat>;
-  choisirModules(modules: ModuleId[], pack: string | null, opts?: { formule: "solo" | "duo" | "tribu"; periode: "mensuel" | "annuel"; biens?: number; proches?: number; demarrage_immediat?: boolean }): Promise<{ souscrits: ModuleId[]; actifs: ModuleId[]; url?: string }>;
+  choisirModules(modules: ModuleId[], pack: string | null, opts?: { formule: "solo" | "duo" | "tribu"; periode: "mensuel" | "annuel"; biens?: number; proches?: number; demarrage_immediat?: boolean; confirmer?: boolean; proration_date?: number }): Promise<{ souscrits: ModuleId[]; actifs: ModuleId[]; url?: string; apercu?: ApercuModules; attente?: boolean }>;
   /** A paid space: its stored data, the report computed on the household's operations, and the bank accounts seen. */
   espace<E extends Espace>(e: E): Promise<EspaceReponse<E>>;
   sauverEspace<E extends Espace>(e: E, donnees: EspaceDonnees[E]): Promise<void>;
@@ -796,7 +796,9 @@ function assistantDemo(q: string, docs: Doc[], deadlines: Deadline[], charges: C
 export type EspaceDonnees = { budget: DonneesBudget; pro: DonneesPro; locatif: DonneesLocatif };
 export type EspaceRapport = { budget: RapportBudget; pro: RapportPro; locatif: RapportLocatif };
 export interface EspaceReponse<E extends Espace> { donnees: EspaceDonnees[E]; rapport: EspaceRapport[E]; comptes: string[] }
-export interface OffreEtat { socle: typeof SOCLE; socle_inclut: string[]; modules: typeof MODULES; packs: typeof PACKS; souscrits: ModuleId[]; actifs: ModuleId[]; paiement: boolean }
+export interface OffreEtat { socle: typeof SOCLE; socle_inclut: string[]; modules: typeof MODULES; packs: typeof PACKS; souscrits: ModuleId[]; actifs: ModuleId[]; paiement: boolean; choix?: { pack: string | null; modules: ModuleId[]; biens_supp: number; proches: number } | null; conserves?: { module: ModuleId; jusqu_au: string }[] }
+/** What an existing subscription will cost before the change is confirmed (amounts in euros, VAT included). */
+export interface ApercuModules { aujourdhui: number; credit: number; avoir: number; prochain: { montant: number; date: string | null }; retraits: { module: ModuleId; jusqu_au: string }[]; proration_date: number }
 export type { Espace, ModuleId };
 export type SujetSupport = "question" | "probleme" | "banque" | "abonnement" | "idee";
 export interface Partenaire { code: string | null; cabinet: { nom: string; ville: string | null } | null; offert: string | null }

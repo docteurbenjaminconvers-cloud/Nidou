@@ -100,3 +100,63 @@ export function ecartItems(actuels, voulus, env = process.env) {
     const ajouter = [...veut].filter(([price]) => !actuels.some((i) => i.price.id === price)).map(([price, quantite]) => ({ price, quantite }));
     return { supprimer, modifier, ajouter };
 }
+const cleDuPrix = (env) => {
+    const parId = new Map();
+    for (const x of tousLesPrix()) {
+        const id = env[x.env];
+        if (id)
+            parId.set(id, x.cle);
+    }
+    for (const [k, cle] of [["STRIPE_PRICE_ASSISTANT_MENSUEL", "assistant"], ["STRIPE_PRICE_ASSISTANT_ANNUEL", "assistant"], ["STRIPE_PRICE_VEILLE_MENSUEL", "veille"], ["STRIPE_PRICE_VEILLE_ANNUEL", "veille"]])
+        if (env[k])
+            parId.set(env[k], cle);
+    return (priceId) => parId.get(priceId);
+};
+const modulesDeCle = (cle) => !cle || cle === "locatif_bien" ? [] : cle.startsWith("pack:") ? [...(PACKS.find((p) => p.id === cle.slice(5))?.modules ?? [])] : [cle];
+const couvrePar = (mods, m) => mods.some((x) => x === m || (INCLUT[x] ?? []).includes(m));
+export function planChangement(actuels, voulus, o) {
+    const env = o.env ?? process.env;
+    const cle = cleDuPrix(env);
+    const e = ecartItems(actuels.map((i) => ({ id: i.id, price: { id: i.price.id }, quantity: i.quantity ?? 1 })), voulus, env);
+    const plan = { payant: { items: [], credits: [] }, apresPaiement: [], gratuit: [], conserves: [] };
+    const deja = new Set(o.conserves ?? []);
+    for (const a of e.ajouter) {
+        const mods = modulesDeCle(cle(a.price));
+        // a module still paid until the end of the period comes back for free; it is billed again at renewal
+        if (mods.length === 1 && deja.has(mods[0]) && !cle(a.price).startsWith("pack:"))
+            plan.gratuit.push({ price: a.price, quantity: a.quantite });
+        else
+            plan.payant.items.push({ price: a.price, quantity: a.quantite });
+    }
+    for (const m of e.modifier) {
+        const avant = actuels.find((i) => i.id === m.id)?.quantity ?? 1;
+        if (m.quantite > avant)
+            plan.payant.items.push({ id: m.id, quantity: m.quantite });
+        else
+            plan.gratuit.push({ id: m.id, quantity: m.quantite });
+    }
+    const nouveauPack = plan.payant.items.map((x) => ("price" in x ? cle(x.price) : undefined)).find((c) => c?.startsWith("pack:"));
+    const modsNouveauPack = modulesDeCle(nouveauPack);
+    const modsVoulus = voulus.flatMap((l) => modulesDeCle(l.cle));
+    for (const id of e.supprimer) {
+        const it = actuels.find((i) => i.id === id);
+        const mods = modulesDeCle(cle(it.price.id));
+        if (nouveauPack && mods.length && mods.every((m) => couvrePar(modsNouveauPack, m))) {
+            plan.apresPaiement.push(id);
+            const debut = it.current_period_start ?? 0, fin = it.current_period_end ?? 0;
+            const montant = !o.essai && fin > o.maintenant && fin > debut ? Math.round((it.price.unit_amount ?? 0) * (it.quantity ?? 1) * (fin - o.maintenant) / (fin - debut)) : 0;
+            const product = typeof it.price.product === "string" ? it.price.product : it.price.product?.id;
+            if (montant > 0 && product)
+                plan.payant.credits.push({ item: id, product, montant });
+        }
+        else {
+            plan.gratuit.push({ id, deleted: true });
+            const jusqu_au = it.current_period_end ? new Date(it.current_period_end * 1000).toISOString().slice(0, 10) : null;
+            if (jusqu_au && !o.essai)
+                for (const m of mods)
+                    if (!couvrePar(modsVoulus, m))
+                        plan.conserves.push({ module: m, jusqu_au });
+        }
+    }
+    return plan;
+}

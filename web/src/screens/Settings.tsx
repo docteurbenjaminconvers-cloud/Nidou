@@ -187,9 +187,9 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
         <div className="settings-row">
           <div><div className="t">{household.assistant?.option ? "Option active" : `${fmtPrix(household.assistant?.prix.mensuel ?? 2.9)} par mois ou ${fmtPrix(household.assistant?.prix.annuel ?? 29)} par an`}</div><div className="s">{household.assistant?.option ? `${household.assistant.restantes} questions restantes ce mois-ci, sur ${household.assistant.quota}` : household.assistant?.acces === "essai" ? `Essai : ${household.assistant.restantes} questions offertes` : "Jusqu'à 300 questions par mois, en plus de votre formule"}</div></div>
           {household.assistant?.option
-            ? <button className="link" onClick={async () => { if (!confirm("Retirer l'option assistant ?")) return; try { await api.assistantOption(false); onPlan(household.plan); toast("Option retirée"); } catch (e) { toast((e as Error).message); } }}>Retirer</button>
+            ? <button className="link" onClick={async () => { if (!confirm("Retirer l'option assistant ? Elle reste ouverte jusqu'à votre échéance, sans remboursement.")) return; try { await api.assistantOption(false); onPlan(household.plan); toast("Option retirée"); } catch (e) { toast((e as Error).message); } }}>Retirer</button>
             : household.plan === "famille"
-              ? <button className="link" onClick={async () => { try { await api.assistantOption(true); onPlan(household.plan); toast("Assistant activé"); } catch (e) { toast((e as Error).message); } }}>Ajouter</button>
+              ? <button className="link" onClick={async () => { if (api.mode !== "demo") { go("offre", "assistant"); return; } try { await api.assistantOption(true); onPlan(household.plan); toast("Assistant activé"); } catch (e) { toast((e as Error).message); } }}>Ajouter</button>
               : <span className="badge yolk">avec une formule</span>}
         </div>
         <button className="link" style={{ marginTop: 10 }} onClick={() => go("assistant")}>Ouvrir l'assistant</button>
