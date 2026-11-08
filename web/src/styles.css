@@ -248,9 +248,10 @@ textarea.ta { min-height: 140px; resize: vertical; }
    ===================================================================== */
 body { font-weight: 600; }
 .app { position: relative; overflow-x: clip; }
-.app::before, .app::after { content: ""; position: fixed; z-index: -1; border-radius: 48% 52% 55% 45% / 55% 45% 55% 45%; pointer-events: none; }
-.app::before { left: -120px; top: -140px; width: 320px; height: 320px; background: var(--peach); opacity: .75; }
-.app::after { right: -140px; top: 160px; width: 260px; height: 260px; border-radius: 55% 45% 50% 50% / 45% 55% 45% 55%; background: var(--lilac-soft); opacity: .7; }
+.fond { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.fond::before, .fond::after { content: ""; position: absolute; border-radius: 48% 52% 55% 45% / 55% 45% 55% 45%; }
+.fond::before { left: -120px; top: -140px; width: 320px; height: 320px; background: var(--peach); opacity: .75; }
+.fond::after { right: -140px; top: 160px; width: 260px; height: 260px; border-radius: 55% 45% 50% 50% / 45% 55% 45% 55%; background: var(--lilac-soft); opacity: .7; }
 h1, .detail-title { font-family: var(--display); font-style: italic; font-weight: 500; letter-spacing: -0.01em; }
 .top h1 { font-size: 32px; }
 .detail-title { font-size: 27px; }
@@ -1112,7 +1113,7 @@ body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 
    moves the layout under Safari's bars and the keyboard, and the bottom bar ended up floating mid-screen. Here the
    screen itself never moves, so the bar stays at the bottom. */
 html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
-#root { position: fixed; inset: 0; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; }
+#root { position: fixed; inset: 0; z-index: 1; overflow-y: auto; overflow-x: hidden; overscroll-behavior-y: contain; }
 /* iOS 26, app installed on the Home Screen: when the page is shorter than the screen, iOS gives it a viewport shorter
    by the status bar height (WebKit bug 301108), and the bottom bar floated about 60 pt too high. A page at least as tall
    as the screen gets the full viewport back. The min() cap keeps the page from scrolling when the status bar is opaque. */
