@@ -300,6 +300,28 @@ export function SheetResiliation({ api, cle, onClose, onLettre, onFait, toast }:
   );
 }
 
+/** « Annuler la résiliation » : if Lucien emailed the letter, he can tell the company too, the same way. */
+export function AnnulerResiliation({ api, cle, marchand, onFait, toast }: { api: Api; cle: string; marchand: string; onFait: () => void; toast: (m: string) => void }) {
+  const [etape, setEtape] = useState<null | { destinataire: string; envoye_le: string } | "sans">(null);
+  const [busy, setBusy] = useState(false);
+  const ouvrir = async () => { try { const r = await api.envoiResiliation(cle); setEtape(r.envoi ?? "sans"); } catch { setEtape("sans"); } };
+  const seulement = async () => { setBusy(true); try { await api.annulerResiliation(cle); toast(`Résiliation ${marchand} annulée dans Lucien`); onFait(); } catch (e) { toast((e as Error).message); setBusy(false); } };
+  const prevenir = async () => { setBusy(true); try { const r = await api.retirerResiliation(cle); toast(`${marchand} est prévenu (${r.envoye_a}), copie dans votre boîte. Résiliation annulée.`); onFait(); } catch (e) { toast((e as Error).message); setBusy(false); } };
+  if (!etape) return <button className="link discret" onClick={ouvrir}>Annuler la résiliation</button>;
+  return (
+    <div className="resil-note" style={{ flexBasis: "100%" }}>
+      {etape === "sans"
+        ? <span>Lucien arrête de surveiller ce prélèvement. Si vous aviez déjà envoyé une lettre vous-même, prévenez {marchand} que vous la retirez.</span>
+        : <span>Lucien a envoyé votre lettre à <b>{etape.destinataire}</b> le {new Date(etape.envoye_le).toLocaleDateString("fr-FR")}. Il peut leur écrire, en votre nom, que vous retirez votre demande : vous serez en copie.</span>}
+      <div className="actions-abo">
+        {etape !== "sans" && <button className="pill-action principal" disabled={busy} onClick={prevenir}>Prévenir {marchand} et annuler</button>}
+        <button className={`pill-action ${etape === "sans" ? "principal" : ""}`} disabled={busy} onClick={seulement}>{etape === "sans" ? "Annuler la résiliation" : "Annuler seulement dans Lucien"}</button>
+        <button className="pill-action" disabled={busy} onClick={() => setEtape(null)}>Garder</button>
+      </div>
+    </div>
+  );
+}
+
 /** Cancellations followed on the bank statements: in progress, proven, or still charged (refund letter ready). */
 function SuiviResiliations({ liste, api, toast, onChanged, onLettre }: { liste: Resiliation[]; api: Api; toast: (m: string) => void; onChanged: () => void; onLettre: (l: { titre: string; texte: string }) => void }) {
   return (
@@ -310,7 +332,7 @@ function SuiviResiliations({ liste, api, toast, onChanged, onLettre }: { liste: 
           <div><b>{r.marchand}</b> <span className="resil-chip">{CHIP[r.statut]}</span><p>{r.message}</p></div>
           <div className="resil-actions">
             {r.statut === "encore_prelevee" && <button className="link" onClick={async () => { try { const x = await api.lettreRemboursement(r.cle); onLettre({ titre: `Remboursement ${r.marchand}`, texte: x.lettre }); } catch (e) { toast((e as Error).message); } }}>Lettre de remboursement</button>}
-            {r.statut === "en_cours" && <button className="link" style={{ color: "var(--mist)" }} onClick={async () => { await api.annulerResiliation(r.cle); onChanged(); }}>Je ne l'ai pas résilié</button>}
+            {r.statut !== "confirmee" && <AnnulerResiliation api={api} cle={r.cle} marchand={r.marchand} onFait={onChanged} toast={toast} />}
           </div>
         </div>
       ))}

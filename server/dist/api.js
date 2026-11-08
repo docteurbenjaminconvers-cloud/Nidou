@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
-import { coordonnees, lettreResiliationStructuree, pdfLettre, texteLettre } from "./lettres.js";
+import { coordonnees, dateLongue, lettreResiliationStructuree, pdfLettre, texteLettre } from "./lettres.js";
 import { exporterFoyer } from "./export.js";
 import { prevoirFinDeMois } from "./prevision.js";
 import { annulerSuivi, demarrerSuivi, economieAnnuelle, nomMarchand, ensureResiliationsSchema, lettreRemboursement, marcheASuivre, suivis } from "./resiliations.js";
@@ -1023,6 +1023,43 @@ Cette lettre vous est adressée par ${b.expediteur.nom} (${moi}), qui l'a valid�
     api.delete("/resiliations/:cle", (c) => {
         annulerSuivi(db, household(c).id, c.req.param("cle"));
         return c.json({ ok: true });
+    });
+    /** The cancellation letter Lucien emailed for this subscription, if any (to offer to withdraw it). */
+    const derniereLettre = (hid, cle) => db.raw.prepare("SELECT destinataire, envoye_le FROM lettres_envoyees WHERE household_id = ? AND cle = ? AND objet = 'Résiliation de mon abonnement' ORDER BY envoye_le DESC LIMIT 1").get(hid, cle);
+    api.get("/resiliations/:cle/envoi", (c) => c.json({ envoi: derniereLettre(household(c).id, c.req.param("cle")) ?? null }));
+    /**
+     * Changed his mind: Lucien tells the company, in the same way (email to the same address, in the person's name,
+     * the person in copy), that the cancellation is withdrawn, then stops watching the statements.
+     */
+    api.post("/resiliations/:cle/retrait", async (c) => {
+        const h = household(c);
+        if (!isOwner(c))
+            return c.json({ error: "proprietaire", message: "Seul le propriétaire du foyer envoie des lettres en son nom." }, 403);
+        const cle = c.req.param("cle");
+        const l = derniereLettre(h.id, cle);
+        const moi = currentUser(c)?.email ?? null;
+        if (!l || !moi)
+            return c.json({ error: "introuvable", message: "Aucune lettre envoyée par Lucien pour cette résiliation." }, 404);
+        const recentes = db.raw.prepare("SELECT COUNT(*) n FROM lettres_envoyees WHERE household_id = ? AND envoye_le > ?").get(h.id, new Date(Date.now() - 86400_000).toISOString()).n;
+        if (recentes >= 5)
+            return c.json({ error: "limite", message: "Cinq lettres envoyées en 24 heures : réessayez demain." }, 429);
+        const sig = signataire(c);
+        const r = recurrence(h.id, cle);
+        const marchand = r ? nomMarchand(r.marchand) : "";
+        const quand = dateLongue(l.envoye_le.slice(0, 10));
+        const texte = `Madame, Monsieur,\n\nPar un courrier électronique du ${quand}, je vous ai demandé la résiliation de mon abonnement${marchand ? ` ${marchand}` : ""}.\n\nJe retire cette demande : merci de ne pas en tenir compte et de maintenir mon contrat aux conditions actuelles.\n\nJe vous prie d'agréer, Madame, Monsieur, l'expression de mes salutations distinguées.\n\n${sig.nom || moi}${sig.adresse ? `\n${sig.adresse}` : ""}`;
+        const ok = await envoyerEmail({
+            de: `${(sig.nom || "Client").replace(/[<>"]/g, "")} via Lucien <resiliation@monlucien.fr>`,
+            to: l.destinataire, cc: moi, replyTo: moi,
+            subject: `Retrait de ma demande de résiliation${sig.nom ? ` — ${sig.nom}` : ""}`,
+            text: `${texte}\n\n—\nMessage envoyé par ${sig.nom || moi} (${moi}) depuis Lucien. Répondez à ce message pour lui répondre directement.`,
+        });
+        if (!ok && (process.env.LUCIEN_PUBLIC_URL ?? "").startsWith("https://"))
+            return c.json({ error: "envoi", message: "L'email n'est pas parti. Réessayez dans un moment." }, 502);
+        db.raw.prepare("INSERT INTO lettres_envoyees (id, household_id, cle, canal, destinataire, objet, empreinte, envoye_le) VALUES (?, ?, ?, 'email', ?, 'Retrait de résiliation', ?, ?)")
+            .run(randomUUID(), h.id, cle, l.destinataire, createHash("sha256").update(texte).digest("hex"), new Date().toISOString());
+        annulerSuivi(db, h.id, cle);
+        return c.json({ ok: true, envoye_a: l.destinataire }, 201);
     });
     /** Refund request when a debit came back after the cancellation. */
     api.get("/resiliations/:cle/remboursement", (c) => {

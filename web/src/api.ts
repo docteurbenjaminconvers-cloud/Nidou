@@ -81,6 +81,8 @@ export interface Api {
   supprimerReglement(id: string): Promise<EtatPartages>;
   demarrerResiliation(cle: string): Promise<void>;
   annulerResiliation(cle: string): Promise<void>;
+  envoiResiliation(cle: string): Promise<{ envoi: { destinataire: string; envoye_le: string } | null }>;
+  retirerResiliation(cle: string): Promise<{ ok: true; envoye_a: string }>;
   lettreRemboursement(cle: string): Promise<{ lettre: string }>;
   bankStatus(): Promise<BankStatus>;
   verificationPro(): Promise<AnalysePro>;
@@ -264,6 +266,8 @@ const serverApi: Api = {
   supprimerReglement: (id) => call(`/partages/reglements/${encodeURIComponent(id)}`, { method: "DELETE" }),
   demarrerResiliation: async (cle) => { await call("/resiliations", json({ cle })); },
   annulerResiliation: async (cle) => { await call(`/resiliations/${encodeURIComponent(cle)}`, { method: "DELETE" }); },
+  envoiResiliation: (cle) => call(`/resiliations/${encodeURIComponent(cle)}/envoi`),
+  retirerResiliation: (cle) => call(`/resiliations/${encodeURIComponent(cle)}/retrait`, { method: "POST" }),
   lettreRemboursement: (cle) => call(`/resiliations/${encodeURIComponent(cle)}/remboursement`),
   bankStatus: () => call("/bank/status"),
   verificationPro: () => call("/pro/verification"),
@@ -485,6 +489,8 @@ function makeDemoApi(): Api {
       state.decisions[`fantome:${cle}`] = "resilie";
     },
     annulerResiliation: async (cle: string) => { state.resiliations = state.resiliations.filter((r) => r.cle !== cle); },
+    envoiResiliation: async () => ({ envoi: null }),
+    retirerResiliation: async () => { throw new ApiError(400, "demo", "En démonstration, Lucien n'envoie pas de vrai email."); },
     lettreRemboursement: async () => ({ lettre: "En démonstration, aucun prélèvement n'est revenu." }),
     bankStatus: async () => ({
       fournisseur: "simule", connecte: state.bank, statut: state.bank ? "connecte" : "aucune", derniere_synchro: state.bank ? new Date().toISOString() : null,

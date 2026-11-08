@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import type { Api } from "../api";
 import type { AlertePro, AnalysePro, PrelevementPro } from "../types";
 import { Back, fmtEuro } from "../ui";
-import { SheetResiliation } from "./Spending";
 import { Feuille } from "./espacesCommun";
+import { AnnulerResiliation, SheetResiliation } from "./Spending";
 
 const dateFr = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
 const SIGNAL: Record<PrelevementPro["signaux"][number], string> = { nouveau: "Nouveau", suspect: "À vérifier", hausse: "En hausse" };
@@ -78,6 +78,7 @@ export function VerifPro({ api, onBack, toast }: { api: Api; onBack: () => void;
               <div className="verif-actions">
                 {!p.suivi && <button className="pill" onClick={() => setResil(p.cle)}>Lettre et marche à suivre</button>}
                 {!p.suivi && <button className="link" onClick={() => decider(p.cle, null)}>Je garde finalement</button>}
+                {p.suivi && p.suivi.statut !== "confirmee" && <AnnulerResiliation api={api} cle={p.cle.replace(/^rec:/, "")} marchand={p.marchand} toast={toast} onFait={() => decider(p.cle, "ok")} />}
               </div>
             </div>
           ))}
