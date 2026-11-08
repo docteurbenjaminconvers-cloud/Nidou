@@ -79,13 +79,13 @@ export function Offre({ api, household, focus, onBack, onChange, toast }: { api:
 
       <div className="offre-reglages">
         <div className="pills" role="group" aria-label="Paiement">
-          <button className="pill" aria-pressed={periode === "mensuel"} disabled={fige && periode !== "mensuel"} onClick={() => setPeriode("mensuel")}>Mensuel</button>
-          <button className="pill" aria-pressed={periode === "annuel"} disabled={fige && periode !== "annuel"} onClick={() => setPeriode("annuel")}>Annuel · 2 mois offerts</button>
+          <button className="pill" aria-pressed={periode === "mensuel"} aria-disabled={fige && periode !== "mensuel"} onClick={() => (fige ? periode !== "mensuel" && toast("Le changement de rythme de paiement depuis un abonnement en cours arrive bientôt.") : setPeriode("mensuel"))}>Mensuel</button>
+          <button className="pill" aria-pressed={periode === "annuel"} aria-disabled={fige && periode !== "annuel"} onClick={() => (fige ? periode !== "annuel" && toast("Le changement de rythme de paiement depuis un abonnement en cours arrive bientôt.") : setPeriode("annuel"))}>Annuel · 2 mois offerts</button>
         </div>
         <div className="pills" role="group" aria-label="Formule">
-          {(Object.keys(SOCLE) as Formule[]).map((f) => <button key={f} className="pill" aria-pressed={formule === f} disabled={fige && formule !== f} onClick={() => setFormule(f)}>{SOCLE[f].nom} · {SOCLE[f].comptes} compte{SOCLE[f].comptes > 1 ? "s" : ""}</button>)}
+          {(Object.keys(SOCLE) as Formule[]).map((f) => <button key={f} className="pill" aria-pressed={formule === f} aria-disabled={fige && formule !== f} onClick={() => (fige ? f !== formule && toast(`Le passage à Lucien ${SOCLE[f].nom} depuis un abonnement en cours arrive bientôt. Écrivez-nous depuis Aide si vous en avez besoin maintenant.`) : setFormule(f))}>{SOCLE[f].nom} · {SOCLE[f].comptes} compte{SOCLE[f].comptes > 1 ? "s" : ""}</button>)}
         </div>
-        {fige && <p className="note">Votre formule et votre rythme de paiement se changent dans Réglages, « Gérer mon abonnement ».</p>}
+        {fige && <p className="note">Vous êtes en Lucien {SOCLE[formule].nom}, paiement {periode === "annuel" ? "annuel" : "mensuel"} : ici, vous ajoutez ou retirez des options.</p>}
       </div>
 
       <section className="socle">

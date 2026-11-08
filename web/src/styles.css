@@ -1184,3 +1184,4 @@ body.clavier .tabs { display: none; }
 @media (min-width: 1024px) and (max-width: 1240px) {
   .screen.offre { grid-template-columns: minmax(0, 1fr) 320px; }
 }
+.pill[aria-disabled="true"] { opacity: .45; }
