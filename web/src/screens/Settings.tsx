@@ -15,14 +15,10 @@ function PointDimanche({ api, household, onChanged, toast, go }: { api: Api; hou
     try { await api.setHebdo(v); onChanged(); toast(v ? "Le point du dimanche est activé" : "Plus de point du dimanche"); } catch (e) { setOn(!v); toast((e as Error).message && !/^Erreur /.test((e as Error).message) ? (e as Error).message : "Réglage non enregistré, réessayez"); }
   };
   return (
-    <section className="section">
-      <div className="section-head"><h2>Le point du dimanche</h2>{on ? <span className="badge">actif</span> : <span className="badge yolk">arrêté</span>}</div>
-      <div className="settings-row">
-        <div><div className="t">La semaine de Lucien</div><div className="s">Chaque dimanche soir : échéances, agenda des enfants, économies et un conseil{household.plan === "famille" ? ", par notification et par email" : ", par notification"}.</div></div>
-        <button className="toggle" role="switch" aria-checked={on} aria-label="Le point du dimanche" onClick={basculer} />
-      </div>
-      <button className="link" style={{ marginTop: 10 }} onClick={() => go("semaine")}>Voir ma semaine</button>
-    </section>
+    <div className="settings-row">
+      <div><div className="t">Le point du dimanche</div><div className="s">Chaque dimanche soir : échéances, agenda des enfants, économies et un conseil{household.plan === "famille" ? ", par notification et par email" : ", par notification"}. <button className="link" onClick={() => go("semaine")}>Voir ma semaine</button></div></div>
+      <button className="toggle" role="switch" aria-checked={on} aria-label="Le point du dimanche" onClick={basculer} />
+    </div>
   );
 }
 
@@ -39,27 +35,27 @@ function FamillePartagee({ api, household, toast }: { api: Api; household: House
     catch (e) { toast(e instanceof ApiError ? e.message : "L'invitation a échoué"); }
     finally { setBusy(false); }
   };
+  const [ouvrir, setOuvrir] = useState(false);
   return (
-    <section className="section">
-      <div className="section-head"><h2>Famille partagée</h2>{data && <span className="badge">{data.comptes.length} / {household.capacite_comptes ?? "?"} personne{(household.capacite_comptes ?? 2) > 1 ? "s" : ""}</span>}</div>
-      <p style={{ marginBottom: 10 }}>Votre conjoint·e ou un proche reçoit un lien par email et ouvre le même foyer sur son téléphone : mêmes papiers, mêmes rappels, même budget.</p>
+    <div className="reg-sous">
+      <div className="reg-sous-tete"><b>Comptes connectés</b>{data && <span className="badge">{data.comptes.length} / {household.capacite_comptes ?? "?"}</span>}</div>
+      <p className="note">Chacun ouvre le même foyer sur son téléphone : mêmes papiers, mêmes rappels, même budget.</p>
       {data?.comptes.map((c) => (
-        <div className="settings-row" key={c.id}><div><div className="t">{c.prenom ?? c.email}{household.utilisateur?.id === c.id ? " (vous)" : ""}</div><div className="s">{c.email} · {c.role === "proprietaire" ? "propriétaire du foyer" : "membre"}</div></div>{owner && household.utilisateur?.id !== c.id && c.role !== "proprietaire" && <button className="link" style={{ color: "var(--ember)" }} onClick={async () => { if (confirm(`Retirer ${c.prenom ?? c.email} du foyer ?`)) { await api.retirerCompte(c.id); toast("Compte retiré"); load(); } }}>Retirer</button>}</div>
+        <div className="settings-row" key={c.id}><div><div className="t">{c.prenom ?? c.email}{household.utilisateur?.id === c.id ? " (vous)" : ""}</div><div className="s">{c.email} · {c.role === "proprietaire" ? "propriétaire du foyer" : "membre"}</div></div>{owner && household.utilisateur?.id !== c.id && c.role !== "proprietaire" && <button className="link discret" onClick={async () => { if (confirm(`Retirer ${c.prenom ?? c.email} du foyer ?`)) { await api.retirerCompte(c.id); toast("Compte retiré"); load(); } }}>Retirer</button>}</div>
       ))}
       {data?.invitations.map((i) => (
         <div className="settings-row" key={i.id}><div><div className="t">{i.prenom ?? i.email}</div><div className="s">{i.email} · invitation en attente</div></div><button className="link" onClick={async () => { await api.annulerInvitation(i.id); load(); }}>Annuler</button></div>
       ))}
-      <div className="lock" style={{ marginTop: 12 }}>
-        <b>Inviter quelqu'un</b>
-        <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+      {!ouvrir ? <button className="pill-action" style={{ marginTop: 10 }} onClick={() => setOuvrir(true)}><Ico d="M12 5v14M5 12h14" />Inviter quelqu'un</button> : (
+        <div className="reg-invite">
           <input className="in" placeholder="Prénom" value={prenom} onChange={(e) => setPrenom(e.target.value)} />
           <input className="in" type="email" inputMode="email" placeholder="email@exemple.fr" value={email} onChange={(e) => setEmail(e.target.value)} />
           <button className="btn" disabled={busy || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)} onClick={invite}>{busy ? <span className="spinner" /> : "Envoyer l'invitation"}</button>
+          {lien && <p className="note">Mode développement, lien à transmettre : <a className="link" href={lien}>{lien}</a></p>}
+          <p className="note">{household.plan === "gratuit" ? "Sans abonnement, un seul compte reste connecté. Duo : 2 personnes, Tribu : jusqu’à 6." : (household.capacite_comptes ?? 6) < 6 ? `Votre formule accepte ${household.capacite_comptes} personne${(household.capacite_comptes ?? 1) > 1 ? "s" : ""} connectée${(household.capacite_comptes ?? 1) > 1 ? "s" : ""} ; Tribu va jusqu'à 6.` : "Jusqu'à 6 personnes connectées."}</p>
         </div>
-        {lien && <p className="note" style={{ marginTop: 8 }}>Mode développement, lien à transmettre : <a className="link" href={lien}>{lien}</a></p>}
-        <p className="note" style={{ marginTop: 8 }}>{household.plan === "gratuit" ? "Sans abonnement, un seul compte reste connecté. Duo : 2 personnes, Tribu : jusqu’à 6." : (household.capacite_comptes ?? 6) < 6 ? `Votre formule accepte ${household.capacite_comptes} personne${(household.capacite_comptes ?? 1) > 1 ? "s" : ""} connectée${(household.capacite_comptes ?? 1) > 1 ? "s" : ""} ; Tribu va jusqu'à 6.` : "Jusqu'à 6 personnes connectées."}</p>
-      </div>
-    </section>
+      )}
+    </div>
   );
 }
 
@@ -106,159 +102,160 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
       onPlan("famille"); toast(`Formule ${TIERS.find((t) => t.id === formule)!.nom} activée (démo)`);
     } catch (e) { toast((e as Error).message); }
   };
+  const abo = household.abonnement;
+  const offert = abo?.statut === "offert";
+  const essai = !!household.essai?.actif && !formuleActuelle && !offert;
+  const nomFormule = TIERS.find((t) => t.id === formuleActuelle)?.nom;
+  const paye = abo?.statut === "active" || abo?.statut === "simule" || abo?.statut === "past_due";
+  const [formules, setFormules] = useState(!formuleActuelle && !offert && household.plan === "gratuit" && !household.essai?.actif);
+  const [connecteur, setConnecteur] = useState(false);
+  const statut = offert ? { titre: "Accès offert", sous: "Tout Lucien et tous les modules pendant l'avant-première, sans carte bancaire." }
+    : formuleActuelle ? { titre: `Lucien ${nomFormule ?? ""}`, sous: `Paiement ${abo?.periode === "annuel" ? "annuel" : "mensuel"}${abo?.fin ? ` · ${abo.abonnement_resilie ? "s'arrête le" : "prochaine échéance le"} ${dateFr(abo.fin)}` : ""}${abo?.statut === "past_due" ? " · paiement en attente : mettez à jour votre carte" : ""}${abo?.statut === "simule" ? " · simulé" : ""}` }
+    : essai ? { titre: `Essai gratuit · ${(household.essai!.jours_restants ?? 0)} jour${(household.essai!.jours_restants ?? 0) > 1 ? "s" : ""}`, sous: "Tout Lucien, jusqu'à 6 personnes, sans carte bancaire. Ensuite, choisissez une formule." }
+    : { titre: "Sans abonnement", sous: "Vos papiers et vos échéances restent consultables et exportables. Lucien ne range plus rien de nouveau." };
+  const copier = async (t: string, ok: string) => { try { await navigator.clipboard.writeText(t); toast(ok); } catch { toast(t); } };
+  const initiales = (household.utilisateur?.prenom ?? household.utilisateur?.email ?? household.nom).trim().slice(0, 1).toUpperCase();
   return (
-    <div className="screen tableau">
+    <div className="screen tableau reglages">
       <Back onClick={onBack} />
-      <div className="top"><div><h1>Réglages</h1><p className="sub"><button className="link" style={{ fontWeight: 500, color: "var(--mist)" }} onClick={async () => { const n = prompt("Nom du foyer", household.nom); if (n && n.trim()) { await api.renommer(n.trim()); onPlan(household.plan); } }}>{household.nom} ✎</button>{api.mode === "demo" ? " · mode démo" : ""}</p></div></div>
+      <div className="top"><div><h1>Réglages</h1>{api.mode === "demo" && <p className="sub">mode démo</p>}</div></div>
 
-      <section className="section">
-        <div className="section-head"><h2>Votre formule</h2>{household.essai?.actif && <span className="badge">essai : {household.essai.jours_restants} j</span>}</div>
-        {household.essai?.actif && <p className="note" style={{ marginBottom: 10 }}>Vous profitez de tout Lucien, jusqu'à 6 personnes, pendant 15 jours, sans carte bancaire. Ensuite, choisissez une formule : sans abonnement, vos papiers et vos échéances restent consultables et exportables, mais Lucien ne range plus rien de nouveau.</p>}
-
-        {household.abonnement?.statut === "offert" ? (
-          <div className="plan-card on">
-            <h3>Accès offert pendant l'avant-première</h3>
-            <p className="note">Tout Lucien, jusqu'à 6 personnes, avec tous les modules (Budget expert, Vie pro, Patrimoine locatif, assistant). Rien à payer, aucune carte bancaire : merci de nous aider à préparer le lancement.</p>
-          </div>
-        ) : (<>
-        <div className={`plan-card ${household.plan === "gratuit" ? "on" : ""}`}>
-          <h3>Sans abonnement, après l'essai</h3>
-          <ul><li>Vos papiers et vos échéances restent consultables et exportables</li><li>Les rappels d'échéances continuent (notifications sur le téléphone)</li><li>Pas de nouveau papier, ni lecture par l'IA, ni banque, ni modules</li><li>Un seul compte reste connecté</li></ul>
-          {household.plan !== "gratuit" && api.mode === "demo" && <button className="link" style={{ marginTop: 10 }} onClick={() => { api.setPlan("gratuit"); onPlan("gratuit"); toast("Fin d'essai simulée"); }}>Simuler la fin de l'essai (démo)</button>}
+      {/* ---------- Vous et le foyer ---------- */}
+      <section className="section reg-carte reg-profil">
+        <span className="reg-avatar" aria-hidden>{initiales}</span>
+        <div className="reg-profil-texte">
+          <b>{household.utilisateur?.prenom ?? household.utilisateur?.email ?? "Vous"}</b>
+          {household.utilisateur?.email && <span>{household.utilisateur.email}</span>}
+          <button className="reg-foyer" onClick={async () => { const n = prompt("Nom du foyer", household.nom); if (n && n.trim()) { await api.renommer(n.trim()); onPlan(household.plan); } }}>Foyer « {household.nom} » <Ico d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" size={15} /></button>
         </div>
+        {household.utilisateur && <button className="pill-action" onClick={async () => { await api.deconnexion(); location.reload(); }}>Se déconnecter</button>}
+      </section>
 
-        <div style={{ marginTop: 18 }}>
-          <div className="section-head" style={{ marginBottom: 4 }}><h3 style={{ fontSize: 16 }}>Tout Lucien, selon le nombre de personnes connectées</h3></div>
-          <p className="note" style={{ marginBottom: 10 }}>Chaque formule comprend tout : lecture IA, banque et économies, courriers illimités, rappels par email, adresse de transfert, connecteur IA. Les fiches sans connexion (enfants, parents âgés) sont illimitées.</p>
-          <div className="pills" role="group" aria-label="Période">
-            <button className="pill" aria-pressed={periode === "annuel"} onClick={() => setPeriode("annuel")}>Annuel · 2 mois offerts</button>
-            <button className="pill" aria-pressed={periode === "mensuel"} onClick={() => setPeriode("mensuel")}>Mensuel</button>
-          </div>
-          {household.abonnement?.paiement === false && <p className="note" style={{ background: "var(--yolk-soft)", padding: "10px 12px", borderRadius: 12 }}>Le paiement en ligne arrive bientôt. D'ici là, votre essai et vos papiers restent tels quels.</p>}
-          <CodePartenaire api={api} toast={toast} />
-          <button className="offre-lien" onClick={() => go("offre")}><b>Modules et packs</b><span>Budget expert, Vie pro, Patrimoine locatif : composez votre Lucien.</span></button>
-          {!formuleActuelle && household.abonnement?.paiement !== false && <ConsentementDemarrage coche={demarrage} onChange={setDemarrage} />}
-          <div className="tiers">
-            {TIERS.map((t) => {
-              const actuel = formuleActuelle === t.id && (!enCours || household.abonnement?.periode === periode);
-              const memeFormule = formuleActuelle === t.id && !actuel;
-              const tropPetite = comptes > t.comptes;
-              const prix = t.prix[periode];
-              return (
-                <div key={t.id} className={`plan-card tier ${actuel ? "on" : ""} ${t.id === conseil && !formuleActuelle ? "conseil" : ""}`}>
-                  {t.id === conseil && !formuleActuelle && <span className="tier-tag">{comptes >= 2 ? "Pour votre foyer" : "Le plus choisi"}</span>}
-                  <div className="tier-head"><h3>{t.nom}</h3><span className="tier-people">{t.comptes === 1 ? "1 personne" : t.comptes === 2 ? "2 personnes" : "jusqu'à 6 personnes"}</span></div>
-                  <div className="tier-price"><b>{fmtPrix(prix)}</b><span>{periode === "annuel" ? " / an" : " / mois"}</span></div>
-                  <p className="note">{periode === "annuel" ? `soit ${fmtPrix(prix / 12)} par mois` : `ou ${fmtPrix(t.prix.annuel)} par an`} · {t.pour}</p>
-                  {actuel ? <span className="badge" style={{ marginTop: 10 }}>votre formule</span>
-                    : tropPetite ? <p className="note" style={{ marginTop: 8 }}>{comptes} personnes se connectent déjà à ce foyer.</p>
-                    : household.abonnement?.paiement === false ? null
-                    : <button className={`btn block ${t.id === conseil ? "" : "ghost"}`} style={{ marginTop: 10 }} onClick={() => checkout(t.id, periode)}>{memeFormule ? `Passer au paiement ${periode}` : formuleActuelle ? `Passer à ${t.nom}` : `Choisir ${t.nom}`}</button>}
-                </div>
-              );
-            })}
-          </div>
-          <p className="note" style={{ marginTop: 10 }}>Paiement sécurisé par Stripe. Une formule plus grande est payée tout de suite, au prorata ; une formule plus petite ou un autre rythme commence à votre échéance, sans remboursement.</p>
-          {household.abonnement?.changement_prevu && (
-            <div className="resil-note"><span>Passage à Lucien {TIERS.find((t) => t.id === household.abonnement!.changement_prevu!.formule)!.nom}, paiement {household.abonnement.changement_prevu.periode}, prévu le {dateFr(household.abonnement.changement_prevu.le)}.</span>
-              <div className="actions-abo"><button className="pill-action" onClick={async () => { try { await api.annulerChangementFormule(); toast("Changement annulé"); onPlan("famille"); } catch (e) { toast((e as Error).message); } }}>Annuler ce changement</button></div></div>
-          )}
-          {apercu && <ConfirmationPaiement apercu={apercu.a} periode={apercu.periode} envoi={envoi} titre="Changer de formule" nouveau={`Lucien ${TIERS.find((t) => t.id === apercu.formule)!.nom}, paiement ${apercu.periode},`} onAnnuler={() => setApercu(null)} onConfirmer={() => changer(apercu.formule, apercu.periode, true)} />}
-          {(household.abonnement?.statut === "active" || household.abonnement?.statut === "simule" || household.abonnement?.statut === "past_due") && (
-            <div style={{ marginTop: 12 }}>
-              <p className="note">Formule {TIERS.find((t) => t.id === formuleActuelle)?.nom ?? ""}, paiement {household.abonnement.periode === "annuel" ? "annuel" : "mensuel"}{household.abonnement.fin ? `, ${household.abonnement.abonnement_resilie ? "fin le" : "prochaine échéance le"} ${new Date(household.abonnement.fin).toLocaleDateString("fr-FR")}` : ""}{household.abonnement.statut === "past_due" ? " · paiement en attente, mettez à jour votre carte" : ""}{household.abonnement.statut === "simule" ? " · simulé (Stripe non configuré)" : ""}.</p>
-              <div className="actions-abo">
-                {household.abonnement.gerable && <button className="pill-action" onClick={async () => { const r = await api.portail(); location.href = r.url; }}><Ico d="M3 7h18v10H3zM3 11h18M7 15h3" />Carte et factures</button>}
-                <Resiliation api={api} household={household} toast={toast} />
-                <Retractation api={api} household={household} toast={toast} />
-              </div>
+      {/* ---------- Abonnement ---------- */}
+      <section className={`section reg-carte reg-abo ${formules && !offert ? "large" : ""}`}>
+        <p className="reg-titre">Abonnement</p>
+        <div className="reg-statut">
+          <div><b>{statut.titre}</b><span>{statut.sous}</span></div>
+          {essai && <span className="badge">essai</span>}{formuleActuelle && !abo?.abonnement_resilie && <span className="badge">actif</span>}{abo?.abonnement_resilie && <span className="badge yolk">résilié</span>}
+        </div>
+        {abo?.changement_prevu && (
+          <div className="resil-note"><span>Passage à Lucien {TIERS.find((t) => t.id === abo.changement_prevu!.formule)!.nom}, paiement {abo.changement_prevu.periode}, prévu le {dateFr(abo.changement_prevu.le)}.</span>
+            <div className="actions-abo"><button className="pill-action" onClick={async () => { try { await api.annulerChangementFormule(); toast("Changement annulé"); onPlan("famille"); } catch (e) { toast((e as Error).message); } }}>Annuler ce changement</button></div></div>
+        )}
+        <div className="actions-abo">
+          {!offert && <button className={`pill-action ${formules ? "actif" : ""}`} aria-expanded={formules} onClick={() => setFormules(!formules)}><Ico d="M4 6h16M4 12h16M4 18h10" />{formuleActuelle ? "Changer de formule" : "Choisir une formule"}</button>}
+          <button className="pill-action" onClick={() => go("offre")}><Ico d="M20 12v9H4v-9M2 7h20v5H2zM12 21V7" />Modules et packs</button>
+          {paye && abo?.gerable && <button className="pill-action" onClick={async () => { const r = await api.portail(); location.href = r.url; }}><Ico d="M3 7h18v10H3zM3 11h18M7 15h3" />Carte et factures</button>}
+          {paye && <Resiliation api={api} household={household} toast={toast} />}
+          {paye && <Retractation api={api} household={household} toast={toast} />}
+        </div>
+        {api.mode === "demo" && household.plan !== "gratuit" && <button className="link" style={{ marginTop: 10 }} onClick={() => { api.setPlan("gratuit"); onPlan("gratuit"); toast("Fin d'essai simulée"); }}>Simuler la fin de l'essai (démo)</button>}
+
+        {formules && !offert && (
+          <div className="reg-formules">
+            <div className="pills" role="group" aria-label="Période">
+              <button className="pill" aria-pressed={periode === "annuel"} onClick={() => setPeriode("annuel")}>Annuel · 2 mois offerts</button>
+              <button className="pill" aria-pressed={periode === "mensuel"} onClick={() => setPeriode("mensuel")}>Mensuel</button>
             </div>
-          )}
+            {abo?.paiement === false && <p className="note reg-info">Le paiement en ligne arrive bientôt. D'ici là, votre essai et vos papiers restent tels quels.</p>}
+            <div className="tiers">
+              {TIERS.map((t) => {
+                const actuel = formuleActuelle === t.id && (!enCours || abo?.periode === periode);
+                const memeFormule = formuleActuelle === t.id && !actuel;
+                const tropPetite = comptes > t.comptes;
+                const prix = t.prix[periode];
+                return (
+                  <div key={t.id} className={`plan-card tier ${actuel ? "on" : ""} ${t.id === conseil && !formuleActuelle ? "conseil" : ""}`}>
+                    {t.id === conseil && !formuleActuelle && <span className="tier-tag">{comptes >= 2 ? "Pour votre foyer" : "Le plus choisi"}</span>}
+                    <div className="tier-head"><h3>{t.nom}</h3><span className="tier-people">{t.comptes === 1 ? "1 personne" : t.comptes === 2 ? "2 personnes" : "jusqu'à 6 personnes"}</span></div>
+                    <div className="tier-price"><b>{fmtPrix(prix)}</b><span>{periode === "annuel" ? " / an" : " / mois"}</span></div>
+                    <p className="note">{periode === "annuel" ? `soit ${fmtPrix(prix / 12)} par mois` : `ou ${fmtPrix(t.prix.annuel)} par an`} · {t.pour}</p>
+                    {actuel ? <span className="badge" style={{ marginTop: 10 }}>votre formule</span>
+                      : tropPetite ? <p className="note" style={{ marginTop: 8 }}>{comptes} personnes se connectent déjà à ce foyer.</p>
+                      : abo?.paiement === false ? null
+                      : <button className={`btn block ${t.id === conseil ? "" : "ghost"}`} style={{ marginTop: 10 }} onClick={() => checkout(t.id, periode)}>{memeFormule ? `Passer au paiement ${periode}` : formuleActuelle ? `Passer à ${t.nom}` : `Choisir ${t.nom}`}</button>}
+                  </div>
+                );
+              })}
+            </div>
+            <p className="note">Chaque formule comprend tout Lucien ; elles diffèrent par le nombre de personnes qui se connectent. Les enfants et parents sans connexion sont illimités.{formuleActuelle ? " Une formule plus grande est payée tout de suite, au prorata ; une plus petite ou un autre rythme commence à votre échéance, sans remboursement." : ""}</p>
+            {!formuleActuelle && abo?.paiement !== false && <ConsentementDemarrage coche={demarrage} onChange={setDemarrage} />}
+            {!formuleActuelle && <CodePartenaire api={api} toast={toast} />}
+            {!formuleActuelle && <details className="reg-repli"><summary>Et sans abonnement, après l'essai ?</summary><ul><li>Vos papiers et vos échéances restent consultables et exportables</li><li>Les rappels d'échéances continuent (notifications)</li><li>Pas de nouveau papier, ni lecture par l'IA, ni banque, ni modules</li><li>Un seul compte reste connecté</li></ul></details>}
+          </div>
+        )}
+        {apercu && <ConfirmationPaiement apercu={apercu.a} periode={apercu.periode} envoi={envoi} titre="Changer de formule" nouveau={`Lucien ${TIERS.find((t) => t.id === apercu.formule)!.nom}, paiement ${apercu.periode},`} onAnnuler={() => setApercu(null)} onConfirmer={() => changer(apercu.formule, apercu.periode, true)} />}
+      </section>
+
+      {/* ---------- Foyer ---------- */}
+      <section className="section reg-carte">
+        <p className="reg-titre">Le foyer</p>
+        <div className="reg-membres">
+          {household.membres.map((m) => <span key={m.id} className="reg-membre"><b>{m.prenom}</b><small>{ROLE_LABEL[m.role] ?? m.role}</small></span>)}
         </div>
-        </>)}
+        <button className="pill-action" style={{ marginTop: 10 }} onClick={() => go("famille")}><Ico d="M9 11a4 4 0 100-8 4 4 0 000 8zM2 21v-1a6 6 0 0112 0v1M17 11a3 3 0 100-6M22 21v-1a5 5 0 00-4-4.9" />Gérer la famille</button>
+        <FamillePartagee api={api} household={household} toast={toast} />
       </section>
 
-      <section className="section">
-        <div className="section-head"><h2>Membres du foyer</h2></div>
-        {household.membres.map((m) => (
-          <div className="settings-row" key={m.id}><div><div className="t">{m.prenom}</div><div className="s">{ROLE_LABEL[m.role] ?? m.role}</div></div></div>
-        ))}
-        <button className="link" style={{ marginTop: 10 }} onClick={() => go("famille")}>Composition du foyer, écoles, activités, conseils</button>
-      </section>
+      {/* ---------- Lucien au quotidien ---------- */}
+      <section className="section reg-carte">
+        <p className="reg-titre">Lucien au quotidien</p>
+        <PointDimanche api={api} household={household} onChanged={() => onPlan(household.plan)} toast={toast} go={go} />
 
-      <FamillePartagee api={api} household={household} toast={toast} />
-
-      <PointDimanche api={api} household={household} onChanged={() => onPlan(household.plan)} toast={toast} go={go} />
-
-      <section className="section">
-        <div className="section-head"><h2>Papiers par email</h2>{household.boite_email ? <span className="badge">active</span> : household.boite_bientot ? <span className="badge yolk">bientôt</span> : <span className="badge yolk">formule complète</span>}</div>
-        <p style={{ marginBottom: 10 }}>Transférez un email à votre adresse Lucien : la facture, le contrat ou l'avis d'échéance se range tout seul et crée ses rappels. Lucien ne lit jamais votre boîte mail, seulement ce que vous lui envoyez.</p>
-        {household.boite_email ? (
-          <>
-            <div className="settings-row"><div><div className="t">Votre adresse Lucien</div><div className="s">À enregistrer dans vos contacts</div></div><button className="link" onClick={async () => { try { await navigator.clipboard.writeText(household.boite_email!); toast("Adresse copiée"); } catch { toast(household.boite_email!); } }}>Copier</button></div>
-            <div className="code" style={{ marginTop: 8 }}>{household.boite_email}</div>
-            <p className="note" style={{ marginTop: 10 }}>Astuce : dans Gmail ou Outlook, créez une règle « tout ce qui vient de EDF, MAIF, Orange… → transférer à cette adresse ». Vos papiers arriveront sans rien faire.</p>
-            {(household.boite_recus?.length ?? 0) > 0 && (
-              <ul className="list" style={{ marginTop: 10 }}>
-                {household.boite_recus!.slice(0, 5).map((m) => <li key={m.message_id} className="settings-row"><div><div className="t">{m.objet ?? "(sans objet)"}</div><div className="s">{m.expediteur ?? ""} · {m.documents} papier{m.documents > 1 ? "s" : ""}</div></div></li>)}
-              </ul>
-            )}
-          </>
-        ) : household.boite_bientot ? <p className="note">Votre adresse personnelle arrive bientôt : elle sera activée avec l'adresse email de Lucien. En attendant, ajoutez vos papiers avec le bouton +.</p>
-          : <p className="note">Pendant l'essai et avec la formule complète, vous recevez une adresse personnelle du type foyer-xxxxxx@in.monlucien.fr.</p>}
-      </section>
-
-      <section className="section">
-        <div className="section-head"><h2>Assistant Lucien</h2>{household.assistant?.option ? <span className="badge">actif</span> : <span className="badge yolk">option</span>}</div>
-        <p style={{ marginBottom: 10 }}>Posez vos questions directement dans Lucien : « qu'est-ce que je dois faire ce mois-ci ? », « résilie mon assurance auto ». Sans compte Claude ni ChatGPT.</p>
         <div className="settings-row">
-          <div><div className="t">{household.assistant?.option ? "Option active" : `${fmtPrix(household.assistant?.prix.mensuel ?? 2.9)} par mois ou ${fmtPrix(household.assistant?.prix.annuel ?? 29)} par an`}</div><div className="s">{household.assistant?.option ? `${household.assistant.restantes} questions restantes ce mois-ci, sur ${household.assistant.quota}` : household.assistant?.acces === "essai" ? `Essai : ${household.assistant.restantes} questions offertes` : "Jusqu'à 300 questions par mois, en plus de votre formule"}</div></div>
-          {household.assistant?.option
-            ? <button className="link" onClick={async () => { if (!confirm("Retirer l'option assistant ? Elle reste ouverte jusqu'à votre échéance, sans remboursement.")) return; try { await api.assistantOption(false); onPlan(household.plan); toast("Option retirée"); } catch (e) { toast((e as Error).message); } }}>Retirer</button>
-            : household.plan === "famille"
-              ? <button className="link" onClick={async () => { if (api.mode !== "demo") { go("offre", "assistant"); return; } try { await api.assistantOption(true); onPlan(household.plan); toast("Assistant activé"); } catch (e) { toast((e as Error).message); } }}>Ajouter</button>
-              : <span className="badge yolk">avec une formule</span>}
+          <div><div className="t">Papiers par email {household.boite_email ? <span className="badge">actif</span> : <span className="badge yolk">{household.boite_bientot ? "bientôt" : "formule"}</span>}</div>
+            <div className="s">{household.boite_email ? "Transférez une facture ou un contrat à votre adresse Lucien : il se range tout seul et crée ses rappels." : household.boite_bientot ? "Votre adresse personnelle arrive bientôt. En attendant, ajoutez vos papiers avec le bouton +." : "Une adresse personnelle pour transférer vos papiers, avec une formule."}</div></div>
+          {household.boite_email && <button className="link" onClick={() => copier(household.boite_email!, "Adresse copiée")}>Copier</button>}
         </div>
-        <button className="link" style={{ marginTop: 10 }} onClick={() => go("assistant")}>Ouvrir l'assistant</button>
+        {household.boite_email && <div className="code reg-code">{household.boite_email}</div>}
+
+        <div className="settings-row">
+          <div><div className="t">Demander à Lucien {household.assistant?.option ? <span className="badge">option active</span> : household.assistant?.acces === "essai" ? <span className="badge">essai</span> : <span className="badge yolk">option</span>}</div>
+            <div className="s">{household.assistant?.option ? `${household.assistant.restantes} questions restantes ce mois-ci, sur ${household.assistant.quota}` : household.assistant?.acces === "essai" ? `${household.assistant.restantes} questions offertes pendant l'essai` : `${fmtPrix(household.assistant?.prix.mensuel ?? 2.9)} par mois : vos questions, directement dans Lucien`}</div></div>
+          <div className="reg-liens">
+            <button className="link" onClick={() => go("assistant")}>Ouvrir</button>
+            {household.assistant?.option
+              ? <button className="link discret" onClick={async () => { if (!confirm("Retirer l'option assistant ? Elle reste ouverte jusqu'à votre échéance, sans remboursement.")) return; try { await api.assistantOption(false); onPlan(household.plan); toast("Option retirée"); } catch (e) { toast((e as Error).message); } }}>Retirer</button>
+              : household.plan === "famille" && <button className="link" onClick={async () => { if (api.mode !== "demo") { go("offre", "assistant"); return; } try { await api.assistantOption(true); onPlan(household.plan); toast("Assistant activé"); } catch (e) { toast((e as Error).message); } }}>Ajouter</button>}
+          </div>
+        </div>
+
+        <div className="settings-row">
+          <div><div className="t">Connecteur Claude ou ChatGPT {household.plan === "famille" ? <span className="badge">actif</span> : <span className="badge yolk">formule</span>}</div>
+            <div className="s">Votre assistant IA consulte vos papiers en lecture seule ; la banque n'est jamais lue, chaque accès est journalisé.</div></div>
+          <div className="reg-liens">
+            <button className="link" onClick={() => go("connecteur")}>Le tuto</button>
+            {household.mcp_token && <button className="link" aria-expanded={connecteur} onClick={() => setConnecteur(!connecteur)}>{connecteur ? "Masquer" : "Mon adresse"}</button>}
+          </div>
+        </div>
+        {connecteur && household.mcp_token && (
+          <div className="reg-sous">
+            <div className="code reg-code" style={{ wordBreak: "break-all" }}>{mcpUrl}/{household.mcp_token}</div>
+            <p className="note">À coller dans Claude ou ChatGPT. Gardez-la pour vous : elle ouvre vos papiers. Pour un outil avec en-tête d'autorisation (Claude Desktop, Cursor) : {mcpUrl} et « Bearer » suivi du jeton.</p>
+            <div className="actions-abo">
+              <button className="pill-action" onClick={() => copier(`${mcpUrl}/${household.mcp_token}`, "Adresse copiée")}>Copier l'adresse</button>
+              <button className="pill-action" onClick={async () => { const t = await api.regenererMcp(); toast("Nouvelle adresse : " + t.slice(0, 6) + "…"); onPlan(household.plan); }}>Changer l'adresse</button>
+            </div>
+          </div>
+        )}
       </section>
 
-      <section className="section">
-        <div className="section-head"><h2>Connecteur IA</h2>{household.plan === "famille" ? <span className="badge">actif</span> : <span className="badge yolk">formule complète</span>}</div>
-        <p style={{ marginBottom: 10 }}>Demandez à Claude ou ChatGPT « quand expire mon assurance auto ? » : l'assistant interroge vos papiers, en lecture seule, et chaque accès est journalisé.</p>
-        <button className="btn ghost block" style={{ marginBottom: 10 }} onClick={() => go("connecteur")}>Brancher Lucien sur Claude ou ChatGPT : le tuto</button>
-        {household.mcp_token ? (
-          <>
-            <div className="settings-row"><div><div className="t">Adresse personnelle du connecteur</div><div className="s">À coller dans Claude ou ChatGPT (voir le tuto). Gardez-la pour vous : elle ouvre vos papiers.</div></div><button className="link" onClick={async () => { const u = `${mcpUrl}/${household.mcp_token}`; try { await navigator.clipboard.writeText(u); toast("Adresse copiée"); } catch { toast(u); } }}>Copier</button></div>
-            <div className="code" style={{ marginTop: 8, wordBreak: "break-all" }}>{mcpUrl}/{household.mcp_token}</div>
-            <p className="note" style={{ marginTop: 8 }}>Pour un outil qui accepte un en-tête d'autorisation (Claude Desktop, Cursor) : adresse {mcpUrl} et « Bearer » suivi du jeton.</p>
-            <button className="link" style={{ marginTop: 8 }} onClick={async () => { const t = await api.regenererMcp(); toast("Nouveau jeton : " + t.slice(0, 6) + "…"); onPlan(household.plan); }}>Régénérer l'adresse (révoque l'ancienne)</button>
-          </>
-        ) : <p className="note">L'adresse personnelle du connecteur apparaît ici avec la formule complète.</p>}
-        <div className="settings-row"><div><div className="t">Banque exclue</div><div className="s">Vos opérations bancaires ne sont jamais lues par le connecteur</div></div><button className="toggle" role="switch" aria-checked="true" onClick={() => toast("Réglé côté serveur (LUCIEN_MCP_EXCLUDE)")} /></div>
-        <div className="settings-row"><div><div className="t">Lecture seule</div><div className="s">Aucune action sans confirmation dans Lucien</div></div><button className="toggle" role="switch" aria-checked="true" onClick={() => toast("L'écriture arrivera plus tard, toujours avec confirmation")} /></div>
-      </section>
-
-      <section className="section">
-        <div className="section-head"><h2>Aide</h2></div>
-        {household.assistant && household.assistant.acces !== "aucun" && <div className="settings-row"><div><div className="t">Demander à Lucien</div><div className="s">Réponse immédiate pour se servir de l'appli</div></div><button className="link" onClick={() => go("assistant")}>Demander</button></div>}
-        <div className="settings-row"><div><div className="t">Écrire à l'équipe Lucien</div><div className="s">Une question, un souci, une idée : réponse par email sous 48 h ouvrées</div></div><button className="link" onClick={() => setAide(true)}>Écrire</button></div>
-      </section>
-
-      <section className="section">
-        <div className="section-head"><h2>Vos données</h2></div>
+      {/* ---------- Aide et données ---------- */}
+      <section className="section reg-carte">
+        <p className="reg-titre">Aide et données</p>
+        <div className="settings-row"><div><div className="t">Une question, un souci, une idée</div><div className="s">Réponse par email sous 48 h ouvrées{household.assistant && household.assistant.acces !== "aucun" ? ", ou tout de suite avec « Demander à Lucien »" : ""}</div></div><button className="link" onClick={() => setAide(true)}>Écrire</button></div>
         <div className="settings-row"><div><div className="t">Langue de l'appli</div><div className="s">Language of the app</div></div>
           <select className="in langue-choix" aria-label="Langue / Language" value={langueChoisie()} onChange={(e) => choisirLangue(e.target.value as "fr" | "en")} data-pas-traduire>
             <option value="fr">Français</option><option value="en">English</option>
           </select></div>
-        <div className="settings-row"><div><div className="t">Hébergement</div><div className="s">Europe · connexion chiffrée · jamais revendu</div></div></div>
         <div className="settings-row"><div><div className="t">Exporter tout</div><div className="s">Vos papiers d'origine et toutes vos données, dans un fichier .zip</div></div><button className="link" onClick={async () => { toast("Préparation de l'export…"); try { await api.exporter(); } catch (e) { toast((e as Error).message); } }}>Exporter</button></div>
-        {household.abonnement?.suppression_le && household.titulaire !== false ? (
-          <div className="settings-row suppr-prevue"><div><div className="t">Suppression prévue le {dateFr(household.abonnement.suppression_le)}</div><div className="s">Tout reste accessible d'ici là. Pensez à exporter vos données.</div></div><button className="link" onClick={async () => { try { await api.annulerSuppression(); toast("Suppression annulée, l'abonnement continue"); setTimeout(() => location.reload(), 900); } catch (e) { toast((e as Error).message); } }}>Annuler</button></div>
+        {abo?.suppression_le && household.titulaire !== false ? (
+          <div className="settings-row suppr-prevue"><div><div className="t">Suppression prévue le {dateFr(abo.suppression_le)}</div><div className="s">Tout reste accessible d'ici là. Pensez à exporter vos données.</div></div><button className="link" onClick={async () => { try { await api.annulerSuppression(); toast("Suppression annulée, l'abonnement continue"); setTimeout(() => location.reload(), 900); } catch (e) { toast((e as Error).message); } }}>Annuler</button></div>
         ) : <div className="settings-row"><div><div className="t">Supprimer le compte</div><div className="s">{household.titulaire === false ? "Vous quittez le foyer, votre compte est effacé" : "Le foyer est effacé à la fin de la période déjà payée"}</div></div><button className="link" style={{ color: "var(--ember)" }} onClick={() => setSuppression(true)}>Supprimer</button></div>}
-        {household.utilisateur && <div className="settings-row"><div><div className="t">Connecté·e</div><div className="s">{household.utilisateur.email}</div></div><button className="link" onClick={async () => { await api.deconnexion(); location.reload(); }}>Se déconnecter</button></div>}
+        <p className="note reg-pied">Hébergé en Europe · connexion chiffrée · vos données ne sont jamais revendues.</p>
       </section>
-      {aide && <EcrireEquipe api={api} formule={household.abonnement?.formule ?? null} email={household.utilisateur?.email ?? null} onClose={() => setAide(false)} toast={toast} />}
-      {suppression && <SuppressionCompte api={api} titulaire={household.titulaire !== false} foyer={household.nom} paye={paiementEnCours(household)} fin={household.abonnement?.fin ?? null} onClose={() => setSuppression(false)} toast={toast} />}
+      {aide && <EcrireEquipe api={api} formule={abo?.formule ?? null} email={household.utilisateur?.email ?? null} onClose={() => setAide(false)} toast={toast} />}
+      {suppression && <SuppressionCompte api={api} titulaire={household.titulaire !== false} foyer={household.nom} paye={paiementEnCours(household)} fin={abo?.fin ?? null} onClose={() => setSuppression(false)} toast={toast} />}
     </div>
   );
 }

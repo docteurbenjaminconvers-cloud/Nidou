@@ -1239,3 +1239,43 @@ em.ech { background: var(--nest); } em.act { background: var(--lilac, #b89bd9); 
   .calendrier { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); align-items: start; gap: 24px; }
   .cal-jour { padding: 9px 0 7px; font-size: 15.5px; }
 }
+/* réglages : cartes groupées, statut d'abonnement en tête */
+.reglages .reg-carte { background: var(--white); border-radius: 24px; padding: 18px; box-shadow: var(--shadow); margin-top: 16px; }
+.reg-titre { margin: 0 0 10px; font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--mist); }
+.reg-profil { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.reg-avatar { width: 52px; height: 52px; flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--lilac-soft, #ece3f6); color: var(--plum); font-family: var(--display); font-size: 24px; font-weight: 600; }
+.reg-profil-texte { display: grid; gap: 1px; flex: 1; min-width: 160px; }
+.reg-profil-texte b { font-size: 17px; }
+.reg-profil-texte > span { font-size: 13.5px; color: var(--mist); overflow-wrap: anywhere; }
+.reg-foyer { justify-self: start; display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; padding: 0; border: 0; background: none; font: inherit; font-size: 13.5px; font-weight: 700; color: var(--nest); cursor: pointer; }
+.reg-statut { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 14px 16px; border-radius: 18px; background: var(--paper); }
+.reg-statut b { display: block; font-family: var(--display); font-size: 22px; font-weight: 600; }
+.reg-statut span:not(.badge) { display: block; margin-top: 2px; font-size: 13.5px; color: var(--mist); }
+.reg-statut .badge { flex: none; }
+.reg-formules { display: grid; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px dashed var(--line); }
+.reg-formules .pills { margin: 0; }
+.reg-formules .tiers { margin: 0; }
+.reg-info { background: var(--yolk-soft); padding: 10px 12px; border-radius: 12px; }
+.reg-repli summary { cursor: pointer; font-weight: 700; font-size: 14px; color: var(--mist); }
+.reg-repli ul { margin: 8px 0 0; padding-left: 18px; font-size: 14px; color: var(--mist); }
+.reg-membres { display: flex; flex-wrap: wrap; gap: 8px; }
+.reg-membre { display: grid; padding: 8px 14px; border-radius: 14px; background: var(--paper); }
+.reg-membre b { font-size: 14.5px; }
+.reg-membre small { font-size: 12px; color: var(--mist); }
+.reg-sous { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--line); }
+.reg-sous-tete { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.reg-sous .note { margin: 2px 0 6px; }
+.reg-invite { display: grid; gap: 8px; margin-top: 10px; }
+.reglages .settings-row .t .badge { margin-left: 6px; vertical-align: 1px; }
+.reg-liens { display: flex; gap: 14px; flex: none; }
+.link.discret { color: var(--mist); }
+.reg-code { margin: 6px 0 10px; }
+.reg-pied { margin: 12px 0 0; font-size: 12.5px; }
+.pill-action.actif { background: var(--plum); border-color: var(--plum); color: var(--white); }
+.reglages .settings-row:last-child { border-bottom: 0; }
+@media (min-width: 1024px) {
+  .screen.tableau.reglages > .reg-profil { column-span: all; display: flex; }
+  .screen.tableau.reglages > .reg-carte { margin-top: 0; margin-bottom: 20px; }
+}
+@media (min-width: 1024px) { .screen.tableau.reglages > .reg-abo.large { column-span: all; display: block; } .reglages .reg-abo.large .tiers { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.reglages .langue-choix { width: auto; max-width: 150px; flex: none; }
