@@ -17,7 +17,7 @@ import { chargesReport, lignesFamille } from "./charges.js";
 import { generateLetter, templateLetter } from "./letters.js";
 import { rappelsEssai, rappelsEcheances } from "./rappels.js";
 import * as V from "./veille.js";
-import { ajouterVeillePayante, basculerAssistant, PaiementIndisponible, simulationPaiement, ConsentementRequis } from "./abonnement.js";
+import { ajouterVeillePayante, annulerChangementFormule, basculerAssistant, changementPrevu, changerFormule, PaiementIndisponible, simulationPaiement, ConsentementRequis } from "./abonnement.js";
 import { AssistantErreur, ensureAssistantSchema, etatAssistant, repondre } from "./assistant.js";
 import { bridge, eb, fournisseur, notifierAlertes, synchroniserFoyer, synchroniserVeille } from "./banques.js";
 import { ebConnecterSup, ebSynchroSup, ebTerminerSup, listConnexions, simulerConnexionSup, supprimerConnexion } from "./connexions.js";
@@ -344,6 +344,30 @@ export function createApi(db, opts) {
             throw e;
         }
     });
+    /** Change of formule or period on a running subscription: estimate first, then the change (same proration date). */
+    api.post("/abonnement/formule", async (c) => {
+        if (!isOwner(c))
+            return c.json({ error: "proprietaire", message: "Seul le propriétaire du foyer gère l'abonnement." }, 403);
+        const b = z.object({ formule: z.enum(["solo", "duo", "tribu"]), periode: z.enum(["mensuel", "annuel"]), confirmer: z.boolean().optional(), proration_date: z.number().int().positive().optional() }).parse(await c.req.json());
+        const h = db.getHousehold(household(c).id);
+        const comptes = db.usersOfHousehold(h.id).length;
+        if (comptes > FORMULES[b.formule].comptes)
+            return c.json({ error: "formule_trop_petite", message: `${comptes} personnes se connectent à ce foyer : la formule ${FORMULES[b.formule].nom} en accepte ${FORMULES[b.formule].comptes}. Retirez d'abord un compte.` }, 400);
+        try {
+            return c.json(await changerFormule(db, h, { formule: b.formule, periode: b.periode }, { confirmer: b.confirmer === true, prorationDate: b.proration_date }));
+        }
+        catch (e) {
+            if (e instanceof PaiementIndisponible)
+                return c.json({ error: "paiement_indisponible", message: e.message }, 503);
+            return c.json({ error: "paiement", message: e.message }, 400);
+        }
+    });
+    api.delete("/abonnement/formule", async (c) => {
+        if (!isOwner(c))
+            return c.json({ error: "proprietaire", message: "Seul le propriétaire du foyer gère l'abonnement." }, 403);
+        await annulerChangementFormule(db, db.getHousehold(household(c).id));
+        return c.json({ ok: true });
+    });
     api.post("/abonnement/portail", async (c) => {
         const url = await portail(db.getHousehold(household(c).id));
         return url ? c.json({ url }) : c.json({ error: "indisponible", message: "Le portail de facturation nécessite Stripe." }, 400);
@@ -396,7 +420,7 @@ export function createApi(db, opts) {
             mcp_token: h.plan === "famille" ? db.getHousehold(h.id).mcp_token : null,
             utilisateur: currentUser(c),
             titulaire: isOwner(c),
-            abonnement: { ...resumeAbonnement(db.getHousehold(h.id)), ...etatFin(db, h.id), retractation: etatRetractation(db, h.id) },
+            abonnement: { ...resumeAbonnement(db.getHousehold(h.id)), ...etatFin(db, h.id), retractation: etatRetractation(db, h.id), changement_prevu: changementPrevu(db, h.id) },
             modules: db.getModules(h.id),
             comptes: db.usersOfHousehold(h.id).length,
             capacite_comptes: capaciteComptes(db, db.getHousehold(h.id)),

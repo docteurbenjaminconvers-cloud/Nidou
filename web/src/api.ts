@@ -151,6 +151,9 @@ export interface Api {
   agendaLien(): Promise<{ url: string }>;
   agendaLienNouveau(): Promise<{ url: string }>;
   checkout(formule: "solo" | "duo" | "tribu", periode: "mensuel" | "annuel", demarrageImmediat?: boolean): Promise<{ url: string; simule: boolean }>;
+  /** Running subscription: estimate first (no `confirmer`), then the change with the same proration date. */
+  changerFormule(formule: "solo" | "duo" | "tribu", periode: "mensuel" | "annuel", opts?: { confirmer?: boolean; proration_date?: number }): Promise<{ simule: boolean; apercu?: ApercuModules & { mode: "maintenant" | "echeance" }; url?: string; attente?: boolean; prevu?: { formule: "solo" | "duo" | "tribu"; periode: "mensuel" | "annuel"; le: string } }>;
+  annulerChangementFormule(): Promise<void>;
   /** « Me rétracter » : within 14 days of a new subscription. */
   seRetracter(): Promise<{ rembourse_centimes: number }>;
   pushCle(): Promise<{ actif: boolean; cle: string | null; appareils: number }>;
@@ -326,6 +329,8 @@ const serverApi: Api = {
   agendaLien: () => call("/agenda-lien"),
   agendaLienNouveau: () => call("/agenda-lien", { method: "POST" }),
   checkout: (formule, periode, demarrageImmediat = false) => call("/abonnement/checkout", json({ formule, periode, demarrage_immediat: demarrageImmediat })),
+  changerFormule: (formule, periode, opts = {}) => call("/abonnement/formule", json({ formule, periode, ...opts })),
+  annulerChangementFormule: async () => { await call("/abonnement/formule", { method: "DELETE" }); },
   seRetracter: () => call("/abonnement/retractation", json({})),
   pushCle: () => call("/push/cle"),
   pushAbonner: async (s) => { await call("/push/abonner", json(s)); },
@@ -561,6 +566,8 @@ function makeDemoApi(): Api {
     agendaLien: async () => ({ url: "" }),
     agendaLienNouveau: async () => ({ url: "" }),
     seRetracter: async () => { throw new ApiError(400, "demo", "En démonstration, il n'y a pas d'abonnement payé."); },
+    changerFormule: async (formule, periode) => { const a = state.household.abonnement; if (a) { a.formule = formule; a.periode = periode; } state.household.capacite_comptes = { solo: 1, duo: 2, tribu: 6 }[formule]; return { simule: true }; },
+    annulerChangementFormule: async () => {},
     checkout: async (formule, periode) => { state.household.plan = "famille"; state.household.plan_souscrit = "famille"; state.household.capacite_comptes = { solo: 1, duo: 2, tribu: 6 }[formule]; state.household.abonnement = { stripe: false, statut: "simule", formule, periode, fin: new Date(Date.now() + (periode === "annuel" ? 365 : 30) * 864e5).toISOString().slice(0, 10), prix: { mensuel: 9.9, annuel: 99 }, gerable: false }; return { url: "", simule: true }; },
     portail: async () => ({ url: "" }),
     pushCle: async () => ({ actif: false, cle: null, appareils: 0 }),

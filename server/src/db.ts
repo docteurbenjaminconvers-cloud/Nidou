@@ -394,6 +394,8 @@ export class Db {
     if (!cols.includes("situation")) this.raw.exec("ALTER TABLE households ADD COLUMN situation TEXT");
     if (!cols.includes("mcp_token")) this.raw.exec("ALTER TABLE households ADD COLUMN mcp_token TEXT");
     if (!cols.includes("hebdo")) this.raw.exec("ALTER TABLE households ADD COLUMN hebdo INTEGER DEFAULT 1");
+    if (!cols.includes("modules_choix")) this.raw.exec("ALTER TABLE households ADD COLUMN modules_choix TEXT");
+    if (!cols.includes("changement_prevu")) this.raw.exec("ALTER TABLE households ADD COLUMN changement_prevu TEXT");
     if (!cols.includes("ics_token")) this.raw.exec("ALTER TABLE households ADD COLUMN ics_token TEXT");
     for (const [col] of [["stripe_customer_id"], ["stripe_subscription_id"], ["abonnement_statut"], ["abonnement_periode"], ["abonnement_fin"], ["formule"], ["modules"]]) {
       if (!cols.includes(col)) this.raw.exec(`ALTER TABLE households ADD COLUMN ${col} TEXT`);

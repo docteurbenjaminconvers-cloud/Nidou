@@ -1,3 +1,5 @@
+import { ConfirmationPaiement } from "./Confirmation";
+import { Ico } from "./espacesCommun";
 import { useEffect, useState } from "react";
 import type { Api, Partenaire, SujetSupport } from "../api";
 import { ApiError } from "../api";
@@ -74,12 +76,29 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
   const mcpUrl = `${location.origin}/mcp`;
   const [suppression, setSuppression] = useState(false);
   const [aide, setAide] = useState(false);
-  const [periode, setPeriode] = useState<"mensuel" | "annuel">("annuel");
+  const [periode, setPeriode] = useState<"mensuel" | "annuel">(household.abonnement?.periode ?? "annuel");
+  const [apercu, setApercu] = useState<{ a: NonNullable<Awaited<ReturnType<Api["changerFormule"]>>["apercu"]>; formule: Formule; periode: "mensuel" | "annuel" } | null>(null);
+  const [envoi, setEnvoi] = useState(false);
   const comptes = household.comptes ?? 1;
   const formuleActuelle = household.plan_souscrit === "famille" || household.abonnement?.statut === "simule" ? household.abonnement?.formule ?? null : null;
   const conseil: Formule = comptes >= 3 ? "tribu" : "duo";
   const [demarrage, setDemarrage] = useState(false);
+  // a running subscription changes formule (amount shown first); otherwise a new subscription goes through Checkout
+  const enCours = !!formuleActuelle && ["active", "trialing", "simule"].includes(household.abonnement?.statut ?? "");
+  const changer = async (formule: Formule, p: "mensuel" | "annuel", confirmer = false) => {
+    setEnvoi(true);
+    try {
+      const r = await api.changerFormule(formule, p, confirmer ? { confirmer: true, proration_date: apercu?.a.proration_date } : {});
+      if (r.apercu) { setApercu({ a: r.apercu, formule, periode: p }); return; }
+      setApercu(null);
+      if (r.url) { location.href = r.url; return; }
+      if (r.attente) { toast("Le paiement n'est pas passé : rien n'a changé. Vérifiez votre carte dans « Gérer mon abonnement »."); return; }
+      toast(r.prevu ? `C'est noté : Lucien ${TIERS.find((t) => t.id === r.prevu!.formule)!.nom} à partir du ${dateFr(r.prevu.le)}` : `C'est fait : Lucien ${TIERS.find((t) => t.id === formule)!.nom}`);
+      onPlan("famille");
+    } catch (e) { toast((e as Error).message); } finally { setEnvoi(false); }
+  };
   const checkout = async (formule: Formule, p: "mensuel" | "annuel") => {
+    if (enCours) return changer(formule, p);
     if (!formuleActuelle && !demarrage) { toast("Cochez d'abord la case sur le démarrage de l'abonnement."); return; }
     try {
       const r = await api.checkout(formule, p, true);
@@ -121,7 +140,8 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
           {!formuleActuelle && household.abonnement?.paiement !== false && <ConsentementDemarrage coche={demarrage} onChange={setDemarrage} />}
           <div className="tiers">
             {TIERS.map((t) => {
-              const actuel = formuleActuelle === t.id;
+              const actuel = formuleActuelle === t.id && (!enCours || household.abonnement?.periode === periode);
+              const memeFormule = formuleActuelle === t.id && !actuel;
               const tropPetite = comptes > t.comptes;
               const prix = t.prix[periode];
               return (
@@ -133,18 +153,25 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
                   {actuel ? <span className="badge" style={{ marginTop: 10 }}>votre formule</span>
                     : tropPetite ? <p className="note" style={{ marginTop: 8 }}>{comptes} personnes se connectent déjà à ce foyer.</p>
                     : household.abonnement?.paiement === false ? null
-                    : <button className={`btn block ${t.id === conseil ? "" : "ghost"}`} style={{ marginTop: 10 }} onClick={() => checkout(t.id, periode)}>{formuleActuelle ? `Passer à ${t.nom}` : `Choisir ${t.nom}`}</button>}
+                    : <button className={`btn block ${t.id === conseil ? "" : "ghost"}`} style={{ marginTop: 10 }} onClick={() => checkout(t.id, periode)}>{memeFormule ? `Passer au paiement ${periode}` : formuleActuelle ? `Passer à ${t.nom}` : `Choisir ${t.nom}`}</button>}
                 </div>
               );
             })}
           </div>
-          <p className="note" style={{ marginTop: 10 }}>Paiement sécurisé par Stripe. Sans engagement : on change de formule ou on résilie en un clic.</p>
+          <p className="note" style={{ marginTop: 10 }}>Paiement sécurisé par Stripe. Une formule plus grande est payée tout de suite, au prorata ; une formule plus petite ou un autre rythme commence à votre échéance, sans remboursement.</p>
+          {household.abonnement?.changement_prevu && (
+            <div className="resil-note"><span>Passage à Lucien {TIERS.find((t) => t.id === household.abonnement!.changement_prevu!.formule)!.nom}, paiement {household.abonnement.changement_prevu.periode}, prévu le {dateFr(household.abonnement.changement_prevu.le)}.</span>
+              <div className="actions-abo"><button className="pill-action" onClick={async () => { try { await api.annulerChangementFormule(); toast("Changement annulé"); onPlan("famille"); } catch (e) { toast((e as Error).message); } }}>Annuler ce changement</button></div></div>
+          )}
+          {apercu && <ConfirmationPaiement apercu={apercu.a} periode={apercu.periode} envoi={envoi} titre="Changer de formule" nouveau={`Lucien ${TIERS.find((t) => t.id === apercu.formule)!.nom}, paiement ${apercu.periode},`} onAnnuler={() => setApercu(null)} onConfirmer={() => changer(apercu.formule, apercu.periode, true)} />}
           {(household.abonnement?.statut === "active" || household.abonnement?.statut === "simule" || household.abonnement?.statut === "past_due") && (
             <div style={{ marginTop: 12 }}>
               <p className="note">Formule {TIERS.find((t) => t.id === formuleActuelle)?.nom ?? ""}, paiement {household.abonnement.periode === "annuel" ? "annuel" : "mensuel"}{household.abonnement.fin ? `, ${household.abonnement.abonnement_resilie ? "fin le" : "prochaine échéance le"} ${new Date(household.abonnement.fin).toLocaleDateString("fr-FR")}` : ""}{household.abonnement.statut === "past_due" ? " · paiement en attente, mettez à jour votre carte" : ""}{household.abonnement.statut === "simule" ? " · simulé (Stripe non configuré)" : ""}.</p>
-              {household.abonnement.gerable && <button className="link" style={{ marginTop: 6 }} onClick={async () => { const r = await api.portail(); location.href = r.url; }}>Gérer mon abonnement (carte, factures)</button>}
-              <Resiliation api={api} household={household} toast={toast} />
-              <Retractation api={api} household={household} toast={toast} />
+              <div className="actions-abo">
+                {household.abonnement.gerable && <button className="pill-action" onClick={async () => { const r = await api.portail(); location.href = r.url; }}><Ico d="M3 7h18v10H3zM3 11h18M7 15h3" />Carte et factures</button>}
+                <Resiliation api={api} household={household} toast={toast} />
+                <Retractation api={api} household={household} toast={toast} />
+              </div>
             </div>
           )}
         </div>
@@ -291,8 +318,8 @@ function Retractation({ api, household, toast }: { api: Api; household: Househol
   if (!r?.possible || household.titulaire === false) return null;
   return confirmer ? (
     <div className="resil-note"><span>L'abonnement s'arrête tout de suite et vous êtes remboursé de ce que vous avez payé, moins les jours déjà utilisés. Vos papiers restent consultables.</span>
-      <div style={{ display: "flex", gap: 14 }}><button className="link" style={{ color: "var(--ember)" }} onClick={async () => { try { const x = await api.seRetracter(); toast(x.rembourse_centimes ? `Rétractation faite : ${(x.rembourse_centimes / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2 })} € remboursés sous quelques jours` : "Rétractation faite"); setTimeout(() => location.reload(), 1500); } catch (e) { toast((e as Error).message); } }}>Confirmer la rétractation</button><button className="link" onClick={() => setConfirmer(false)}>Garder</button></div></div>
-  ) : <button className="link" style={{ marginTop: 6, display: "block" }} onClick={() => setConfirmer(true)}>Me rétracter (jusqu'au {r.jusquau ? dateFr(r.jusquau) : "14e jour"})</button>;
+      <div className="actions-abo"><button className="pill-action danger" onClick={async () => { try { const x = await api.seRetracter(); toast(x.rembourse_centimes ? `Rétractation faite : ${(x.rembourse_centimes / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2 })} € remboursés sous quelques jours` : "Rétractation faite"); setTimeout(() => location.reload(), 1500); } catch (e) { toast((e as Error).message); } }}>Confirmer la rétractation</button><button className="pill-action" onClick={() => setConfirmer(false)}>Garder</button></div></div>
+  ) : <button className="pill-action" onClick={() => setConfirmer(true)}><Ico d="M9 14L4 9l5-5M4 9h11a5 5 0 010 10h-3" />Me rétracter · jusqu'au {r.jusquau ? dateFr(r.jusquau) : "14e jour"}</button>;
 }
 
 /** « Résilier l'abonnement » : no renewal, active until the end of the period already paid; can be taken back. */
@@ -302,12 +329,12 @@ function Resiliation({ api, household, toast }: { api: Api; household: Household
   if (!a || !paiementEnCours(household) || household.titulaire === false || a.suppression_le) return null;
   if (a.abonnement_resilie) return (
     <div className="resil-note"><span>Abonnement résilié : il reste actif jusqu'au {a.fin ? dateFr(a.fin) : "terme de la période"}, puis s'arrête sans autre prélèvement.</span>
-      <button className="link" onClick={async () => { try { await api.reprendre(); toast("Abonnement repris"); setTimeout(() => location.reload(), 900); } catch (e) { toast((e as Error).message); } }}>Reprendre l'abonnement</button></div>
+      <button className="pill-action" onClick={async () => { try { await api.reprendre(); toast("Abonnement repris"); setTimeout(() => location.reload(), 900); } catch (e) { toast((e as Error).message); } }}>Reprendre l'abonnement</button></div>
   );
   return confirmer ? (
     <div className="resil-note"><span>L'abonnement ne sera pas renouvelé. Il reste actif jusqu'au {a.fin ? dateFr(a.fin) : "terme de la période déjà payée"}, sans remboursement ; vos papiers restent ensuite consultables.</span>
-      <div style={{ display: "flex", gap: 14 }}><button className="link" style={{ color: "var(--ember)" }} onClick={async () => { try { const r = await api.resilier(); toast(`Résilié : actif jusqu'au ${dateFr(r.fin)}`); setTimeout(() => location.reload(), 900); } catch (e) { toast((e as Error).message); } }}>Confirmer la résiliation</button><button className="link" onClick={() => setConfirmer(false)}>Garder</button></div></div>
-  ) : <button className="link" style={{ marginTop: 6, display: "block" }} onClick={() => setConfirmer(true)}>Résilier l'abonnement</button>;
+      <div className="actions-abo"><button className="pill-action danger" onClick={async () => { try { const r = await api.resilier(); toast(`Résilié : actif jusqu'au ${dateFr(r.fin)}`); setTimeout(() => location.reload(), 900); } catch (e) { toast((e as Error).message); } }}>Confirmer la résiliation</button><button className="pill-action" onClick={() => setConfirmer(false)}>Garder</button></div></div>
+  ) : <button className="pill-action danger" onClick={() => setConfirmer(true)}><Ico d="M18 6L6 18M6 6l12 12" />Résilier</button>;
 }
 
 /** Confirmation sheet for « Supprimer le compte »: what goes, the export first, then SUPPRIMER typed by hand. */

@@ -63,6 +63,8 @@ export function capaciteComptes(db: Db, h: HouseholdRow): number {
 
 export async function creerCheckout(db: Db, h: HouseholdRow, formule: Formule, periode: Periode, email: string | null, modules?: ChoixModules, demarrageImmediat = false): Promise<{ url: string; simule: boolean }> {
   if (!demarrageImmediat) throw new ConsentementRequis();
+  // never a second subscription on top of a running one (it would be billed twice): change of formule instead
+  if (stripeOn() && h.stripe_subscription_id && ["active", "trialing", "past_due"].includes(h.abonnement_statut ?? "")) throw new Error("Vous avez déjà un abonnement en cours : changez de formule depuis Réglages, « Votre formule ».");
   if (!stripeOn()) {
     if (!simulationPaiement()) throw new PaiementIndisponible();
     return { url: `${publicUrl()}/api/abonnement/simule?formule=${formule}&periode=${periode}`, simule: true };
@@ -95,6 +97,7 @@ export function ensureConservesSchema(db: Db) {
   db.raw.exec("CREATE TABLE IF NOT EXISTS modules_conserves (household_id TEXT NOT NULL, module TEXT NOT NULL, jusqu_au TEXT NOT NULL, PRIMARY KEY (household_id, module))");
   const cols = (db.raw.prepare("PRAGMA table_info(households)").all() as { name: string }[]).map((c) => c.name);
   if (!cols.includes("modules_choix")) db.raw.exec("ALTER TABLE households ADD COLUMN modules_choix TEXT");
+  if (!cols.includes("changement_prevu")) db.raw.exec("ALTER TABLE households ADD COLUMN changement_prevu TEXT");
 }
 const aujourdhui = () => new Date().toISOString().slice(0, 10);
 export function modulesConserves(db: Db, householdId: string, jour = aujourdhui()): { module: ModuleId; jusqu_au: string }[] {
@@ -154,6 +157,8 @@ export async function changerModules(db: Db, h: HouseholdRow, c: ChoixModules, e
     return { url: r.url, simule: false, modules: voulus };
   }
   if (h.abonnement_statut === "past_due") throw new Error("Votre dernier paiement n'est pas passé : mettez à jour votre carte dans « Gérer mon abonnement », puis réessayez.");
+  const prevu = changementPrevu(db, h.id);
+  if (prevu) throw new Error(`Un passage à Lucien ${FORMULES[prevu.formule].nom} (${prevu.periode}) est prévu le ${prevu.le.split("-").reverse().join("/")} : vos options se modifieront après, ou annulez ce changement dans Réglages.`);
   // module lines follow the subscription's own formule and period
   const choix: ChoixModules = { ...c, periode: (h.abonnement_periode as Periode | null) ?? c.periode, formule: (h.formule as Formule | null) ?? c.formule };
   const lignes = lignesModules(choix);
@@ -206,6 +211,110 @@ export async function changerModules(db: Db, h: HouseholdRow, c: ChoixModules, e
   const lu = noterChoix(db, h.id, apres.items.data);
   fixerModules(db, h.id, lu.modules);
   return { simule: false, modules: db.getModules(h.id) as ModuleId[], attente, url };
+}
+
+
+const RANG: Record<Formule, number> = { solo: 0, duo: 1, tribu: 2 };
+export function changementPrevu(db: Db, householdId: string): { formule: Formule; periode: Periode; le: string } | null {
+  ensureConservesSchema(db);
+  const r = db.raw.prepare("SELECT changement_prevu FROM households WHERE id = ?").get(householdId) as { changement_prevu: string | null } | undefined;
+  try { return r?.changement_prevu ? JSON.parse(r.changement_prevu) : null; } catch { return null; }
+}
+
+/** The lines of a subscription moved to another formule and/or period: socle, pack (priced per formule), modules. */
+function lignesCibles(items: { price: { id: string }; quantity?: number | null }[], formule: Formule, periode: Periode) {
+  const lu = modulesDepuisItems(items.map((i) => ({ price: { id: i.price.id }, quantity: i.quantity ?? 1 })));
+  const pack = PACKS.find((p) => p.id === lu.pack);
+  const horsPack = lu.modules.filter((m) => !(pack?.modules ?? []).includes(m));
+  const lignes = lignesModules({ formule, periode, modules: horsPack, pack: lu.pack, biens: lu.biens_supp + 2, proches: lu.proches || undefined });
+  return { socle: priceEnv(formule, periode), lignes };
+}
+
+/**
+ * Change of formule or period on a running subscription (rules agreed for Lucien):
+ * - a bigger formule, same period: switched today, the difference charged now (prorated), applied only once paid;
+ * - a smaller formule, or another period: planned for the end of the period already paid, without refund
+ *   (a Stripe subscription schedule: the current lines until the due date, then the new ones).
+ */
+export async function changerFormule(db: Db, h: HouseholdRow, cible: { formule: Formule; periode: Periode }, opts: { confirmer?: boolean; prorationDate?: number } = {}): Promise<{ simule: boolean; apercu?: ApercuChangement & { mode: "maintenant" | "echeance" }; url?: string; attente?: boolean; prevu?: { formule: Formule; periode: Periode; le: string } }> {
+  if (!stripeOn()) {
+    if (!simulationPaiement()) throw new PaiementIndisponible();
+    appliquerAbonnement(db, h, { statut: "simule", formule: cible.formule, periode: cible.periode });
+    return { simule: true };
+  }
+  if (!h.stripe_subscription_id || !["active", "trialing"].includes(h.abonnement_statut ?? "")) throw new Error(h.abonnement_statut === "past_due" ? "Votre dernier paiement n'est pas passé : mettez à jour votre carte dans « Gérer mon abonnement », puis réessayez." : "Aucun abonnement en cours à modifier.");
+  const sub = await stripe().subscriptions.retrieve(h.stripe_subscription_id);
+  const socleItem = sub.items.data.find((i) => depuisPrix(i.price.id));
+  const actuel = socleItem ? depuisPrix(socleItem.price.id)! : { formule: (h.formule as Formule) ?? "duo", periode: (h.abonnement_periode as Periode) ?? "mensuel" };
+  if (!socleItem) throw new Error("Formule introuvable sur l'abonnement : contactez-nous depuis Aide.");
+  if (actuel.formule === cible.formule && actuel.periode === cible.periode) {
+    // same as today: a planned change is simply cancelled
+    if (sub.schedule && opts.confirmer) await annulerChangementFormule(db, h);
+    throw new Error(`Vous êtes déjà en Lucien ${FORMULES[cible.formule].nom}, paiement ${cible.periode}.`);
+  }
+  if (sub.cancel_at_period_end) throw new Error("Votre abonnement s'arrête à l'échéance : reprenez-le d'abord dans Réglages.");
+  const { socle, lignes } = lignesCibles(sub.items.data, cible.formule, cible.periode);
+  const manquants = [...prixManquants(lignes), ...(process.env[socle] ? [] : [socle])];
+  if (manquants.length) throw new Error(`Prix Stripe manquants : ${manquants.join(", ")}`);
+  const fin = sub.items.data[0]?.current_period_end ? new Date(sub.items.data[0].current_period_end * 1000).toISOString().slice(0, 10) : h.abonnement_fin;
+  const prochain = { montant: devis({ formule: cible.formule, periode: cible.periode, ...((): { modules: ModuleId[]; pack: string | null; biens: number; proches?: number } => { const lu = modulesDepuisItems(sub.items.data.map((i) => ({ price: { id: i.price.id }, quantity: i.quantity ?? 1 }))); const pk = PACKS.find((p) => p.id === lu.pack); return { modules: lu.modules.filter((m) => !(pk?.modules ?? []).includes(m)), pack: lu.pack, biens: lu.biens_supp + 2, proches: lu.proches || undefined }; })() }).total, date: fin };
+  const maintenant = Math.floor(Date.now() / 1000);
+  const prorationDate = opts.prorationDate && opts.prorationDate <= maintenant && opts.prorationDate > maintenant - 3600 ? opts.prorationDate : maintenant;
+  const montee = RANG[cible.formule] > RANG[actuel.formule] && cible.periode === actuel.periode;
+
+  if (montee) {
+    // same lines, new prices: the socle, and the pack line whose price depends on the formule
+    const items: { id: string; price: string }[] = [{ id: socleItem.id, price: process.env[socle]! }];
+    const cle = (id: string) => tousLesPrix().find((x) => process.env[x.env] === id);
+    for (const it of sub.items.data) {
+      const x = cle(it.price.id);
+      if (x?.cle.startsWith("pack:")) { const l = lignes.find((y) => y.cle === x.cle); if (l && process.env[l.env] !== it.price.id) items.push({ id: it.id, price: process.env[l.env]! }); }
+    }
+    if (!opts.confirmer) {
+      const p = await stripe().invoices.createPreview({ customer: sub.customer as string, subscription: sub.id, subscription_details: { items, proration_behavior: "create_prorations", proration_date: prorationDate } });
+      let net = 0;
+      for (const l of p.lines.data) {
+        const pr = l.parent?.subscription_item_details?.proration ?? l.parent?.invoice_item_details?.proration ?? false;
+        if (pr && l.period?.start === prorationDate) net += l.amount;
+      }
+      return { simule: false, apercu: { mode: "maintenant", aujourdhui: Math.max(0, net) / 100, credit: 0, avoir: Math.max(0, -net) / 100, prochain, retraits: [], proration_date: prorationDate } };
+    }
+    if (sub.schedule) await annulerChangementFormule(db, h);
+    const maj = await stripe().subscriptions.update(sub.id, { items, proration_behavior: "always_invoice", proration_date: prorationDate, payment_behavior: "pending_if_incomplete", expand: ["latest_invoice"] });
+    if (maj.pending_update) return { simule: false, attente: true, url: (maj.latest_invoice as Stripe.Invoice | null)?.hosted_invoice_url ?? undefined };
+    appliquerAbonnement(db, db.getHousehold(h.id)!, { statut: maj.status, formule: cible.formule, periode: cible.periode });
+    return { simule: false };
+  }
+
+  // smaller formule or another period: at the due date, nothing to pay today
+  if (!fin) throw new Error("Échéance introuvable : contactez-nous depuis Aide.");
+  if (!opts.confirmer) return { simule: false, apercu: { mode: "echeance", aujourdhui: 0, credit: 0, avoir: 0, prochain, retraits: [], proration_date: prorationDate } };
+  const actuels = sub.items.data.map((i) => ({ price: i.price.id, quantity: i.quantity ?? 1 }));
+  const suivants = [{ price: process.env[socle]!, quantity: 1 }, ...lignes.map((l) => ({ price: process.env[l.env]!, quantity: l.quantite }))];
+  const schedId = sub.schedule ? (typeof sub.schedule === "string" ? sub.schedule : sub.schedule.id) : (await stripe().subscriptionSchedules.create({ from_subscription: sub.id })).id;
+  const sched = await stripe().subscriptionSchedules.retrieve(schedId);
+  const phase = sched.phases[0];
+  await stripe().subscriptionSchedules.update(schedId, {
+    end_behavior: "release",
+    proration_behavior: "none",
+    phases: [
+      { items: actuels, start_date: phase.start_date, end_date: phase.end_date },
+      { items: suivants, iterations: 1, proration_behavior: "none" },
+    ],
+  });
+  const prevu = { formule: cible.formule, periode: cible.periode, le: fin };
+  db.raw.prepare("UPDATE households SET changement_prevu = ? WHERE id = ?").run(JSON.stringify(prevu), h.id);
+  return { simule: false, prevu };
+}
+
+/** Drops a change of formule planned for the due date: the subscription renews as it is. */
+export async function annulerChangementFormule(db: Db, h: HouseholdRow) {
+  ensureConservesSchema(db);
+  if (stripeOn() && h.stripe_subscription_id) {
+    const sub = await stripe().subscriptions.retrieve(h.stripe_subscription_id);
+    if (sub.schedule) await stripe().subscriptionSchedules.release(typeof sub.schedule === "string" ? sub.schedule : sub.schedule.id);
+  }
+  db.raw.prepare("UPDATE households SET changement_prevu = NULL WHERE id = ?").run(h.id);
 }
 
 /** Removes the lines a paid pack replaced (already credited on that payment). Safe to run twice. */
@@ -317,6 +426,7 @@ export function appliquerEvenement(db: Db, event: EvenementMinimal): string {
     if (!h) return "subscription: foyer inconnu";
     const statut = event.type === "customer.subscription.deleted" ? "canceled" : o.status ?? "active";
     appliquerAbonnement(db, h, { customer: o.customer ?? null, subscription: o.id, statut, formule: formuleDe(), periode: periodeDe(), fin: finDe() });
+    { const p = changementPrevu(db, h.id); const x = db.getHousehold(h.id)!; if (p && (statut === "canceled" || (x.formule === p.formule && x.abonnement_periode === p.periode))) db.raw.prepare("UPDATE households SET changement_prevu = NULL WHERE id = ?").run(h.id); }
     // cancelled in the Stripe portal or by Lucien: no renewal at the end of the period
     if (typeof o.cancel_at_period_end === "boolean") { ensureSuppressionSchema(db); db.raw.prepare("UPDATE households SET abonnement_resilie = ? WHERE id = ?").run(o.cancel_at_period_end ? 1 : 0, h.id); }
     const prixAssistant = [process.env.STRIPE_PRICE_ASSISTANT_MENSUEL, process.env.STRIPE_PRICE_ASSISTANT_ANNUEL].filter(Boolean);

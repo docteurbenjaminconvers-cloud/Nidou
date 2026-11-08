@@ -48,6 +48,11 @@ export async function arreterALEcheance(db, householdId, client) {
         const sub = await stripe.subscriptions.retrieve(h.stripe_subscription_id);
         if (sub.status === "canceled")
             return null;
+        // a change of formule planned at the end of the period is dropped: there is no next period
+        if (sub.schedule) {
+            await stripe.subscriptionSchedules.release(typeof sub.schedule === "string" ? sub.schedule : sub.schedule.id);
+            db.raw.prepare("UPDATE households SET changement_prevu = NULL WHERE id = ?").run(householdId);
+        }
         const maj = sub.cancel_at_period_end ? sub : await stripe.subscriptions.update(sub.id, { cancel_at_period_end: true });
         fin = jour(finDePeriode(maj));
     }

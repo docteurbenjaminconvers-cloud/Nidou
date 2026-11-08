@@ -1185,3 +1185,12 @@ body.clavier .tabs { display: none; }
   .screen.offre { grid-template-columns: minmax(0, 1fr) 320px; }
 }
 .pill[aria-disabled="true"] { opacity: .45; }
+/* actions d'abonnement : pilules plutôt que liens */
+.actions-abo { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.actions-abo > .resil-note { flex-basis: 100%; }
+.pill-action { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 999px; border: 2px solid var(--line); background: var(--white); color: var(--ink); font: inherit; font-size: 14px; font-weight: 800; cursor: pointer; transition: background .15s, border-color .15s, transform .1s; }
+.pill-action svg { width: 17px; height: 17px; }
+.pill-action:hover { border-color: var(--nest); }
+.pill-action:active { transform: scale(.97); }
+.pill-action.danger { color: var(--nest); border-color: rgba(217, 95, 69, .35); background: rgba(217, 95, 69, .06); }
+.pill-action.danger:hover { background: rgba(217, 95, 69, .12); }

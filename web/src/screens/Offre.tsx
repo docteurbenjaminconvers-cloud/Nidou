@@ -5,6 +5,7 @@ import type { Household } from "../types";
 import { Back } from "../ui";
 import { eur, Ico, ICONES } from "./espacesCommun";
 import { ConsentementDemarrage } from "./Settings";
+import { ConfirmationPaiement } from "./Confirmation";
 
 const ORDRE: ModuleId[] = ["budget_expert", "vie_pro_salarie", "vie_pro_micro", "vie_pro_independant", "locatif", "assistant", "veille"];
 const VIE_PRO: ModuleId[] = ["vie_pro_salarie", "vie_pro_micro", "vie_pro_independant"];
@@ -26,7 +27,31 @@ export function Offre({ api, household, focus, onBack, onChange, toast }: { api:
   const [ouvert, setOuvert] = useState<ModuleId | null>(focus && focus in MODULES ? (focus as ModuleId) : null);
   const [envoi, setEnvoi] = useState(false);
   const [demarrage, setDemarrage] = useState(false);
-  const [apercu, setApercu] = useState<ApercuModules | null>(null);
+  const [apercu, setApercu] = useState<(ApercuModules & { mode?: "maintenant" | "echeance" }) | null>(null);
+  const [apercuFormule, setApercuFormule] = useState<string | null>(null);
+  const [cibleFormule, setCibleFormule] = useState<{ formule: Formule; periode: Periode } | null>(null);
+  // a running subscription: Solo/Duo/Tribu and the period go through a change of formule (amount shown first)
+  const formuleDemander = async (f: Formule, p: Periode) => {
+    if (f === abo?.formule && p === abo?.periode) return;
+    setEnvoi(true);
+    try {
+      const r = await api.changerFormule(f, p);
+      if (r.apercu) { setCibleFormule({ formule: f, periode: p }); setApercuFormule(`Lucien ${SOCLE[f].nom}, paiement ${p}`); setApercu(r.apercu); }
+      else if (r.simule) { toast(`Lucien ${SOCLE[f].nom} (simulé)`); onChange(); }
+    } catch (e) { toast((e as Error).message); } finally { setEnvoi(false); }
+  };
+  const formuleConfirmer = async () => {
+    if (!cibleFormule || !apercu) return;
+    setEnvoi(true);
+    try {
+      const r = await api.changerFormule(cibleFormule.formule, cibleFormule.periode, { confirmer: true, proration_date: apercu.proration_date });
+      setApercu(null); setApercuFormule(null);
+      if (r.url) { location.href = r.url; return; }
+      if (r.attente) { toast("Le paiement n'est pas passé : rien n'a changé. Vérifiez votre carte dans « Gérer mon abonnement »."); return; }
+      toast(r.prevu ? `C'est noté : Lucien ${SOCLE[r.prevu.formule].nom} à partir du ${date(r.prevu.le)}` : `C'est fait : vous êtes en Lucien ${SOCLE[cibleFormule.formule].nom}`);
+      onChange();
+    } catch (e) { toast((e as Error).message); } finally { setEnvoi(false); }
+  };
   const abonne = ["active", "trialing", "past_due", "simule"].includes(household.abonnement?.statut ?? "");
   // a running subscription keeps its formule and period here (changed in « Gérer mon abonnement »)
   const fige = abonne && abo?.statut !== "simule" && !!abo?.formule;
@@ -79,13 +104,14 @@ export function Offre({ api, household, focus, onBack, onChange, toast }: { api:
 
       <div className="offre-reglages">
         <div className="pills" role="group" aria-label="Paiement">
-          <button className="pill" aria-pressed={periode === "mensuel"} aria-disabled={fige && periode !== "mensuel"} onClick={() => (fige ? periode !== "mensuel" && toast("Le changement de rythme de paiement depuis un abonnement en cours arrive bientôt.") : setPeriode("mensuel"))}>Mensuel</button>
-          <button className="pill" aria-pressed={periode === "annuel"} aria-disabled={fige && periode !== "annuel"} onClick={() => (fige ? periode !== "annuel" && toast("Le changement de rythme de paiement depuis un abonnement en cours arrive bientôt.") : setPeriode("annuel"))}>Annuel · 2 mois offerts</button>
+          <button className="pill" aria-pressed={periode === "mensuel"} onClick={() => (fige ? formuleDemander(formule, "mensuel") : setPeriode("mensuel"))}>Mensuel</button>
+          <button className="pill" aria-pressed={periode === "annuel"} onClick={() => (fige ? formuleDemander(formule, "annuel") : setPeriode("annuel"))}>Annuel · 2 mois offerts</button>
         </div>
         <div className="pills" role="group" aria-label="Formule">
-          {(Object.keys(SOCLE) as Formule[]).map((f) => <button key={f} className="pill" aria-pressed={formule === f} aria-disabled={fige && formule !== f} onClick={() => (fige ? f !== formule && toast(`Le passage à Lucien ${SOCLE[f].nom} depuis un abonnement en cours arrive bientôt. Écrivez-nous depuis Aide si vous en avez besoin maintenant.`) : setFormule(f))}>{SOCLE[f].nom} · {SOCLE[f].comptes} compte{SOCLE[f].comptes > 1 ? "s" : ""}</button>)}
+          {(Object.keys(SOCLE) as Formule[]).map((f) => <button key={f} className="pill" aria-pressed={formule === f}  onClick={() => (fige ? formuleDemander(f, periode) : setFormule(f))}>{SOCLE[f].nom} · {SOCLE[f].comptes} compte{SOCLE[f].comptes > 1 ? "s" : ""}</button>)}
         </div>
-        {fige && <p className="note">Vous êtes en Lucien {SOCLE[formule].nom}, paiement {periode === "annuel" ? "annuel" : "mensuel"} : ici, vous ajoutez ou retirez des options.</p>}
+        {fige && <p className="note">Vous êtes en Lucien {SOCLE[formule].nom}, paiement {periode === "annuel" ? "annuel" : "mensuel"} : touchez une autre formule ou un autre rythme pour en changer.</p>}
+        {abo?.changement_prevu && <p className="note">Passage à Lucien {SOCLE[abo.changement_prevu.formule].nom} (paiement {abo.changement_prevu.periode}) prévu le {date(abo.changement_prevu.le)}.</p>}
       </div>
 
       <section className="socle">
@@ -158,28 +184,7 @@ export function Offre({ api, household, focus, onBack, onChange, toast }: { api:
         </div>
       </div>
 
-      {apercu && (
-        <div className="feuille-fond" role="dialog" aria-modal="true" aria-labelledby="apercu-titre" onClick={(e) => { if (e.target === e.currentTarget) setApercu(null); }}>
-          <div className="feuille apercu">
-            <h2 id="apercu-titre">Confirmer le changement</h2>
-            {apercu.aujourdhui > 0
-              ? <p className="apercu-montant"><b>{eur(apercu.aujourdhui, true)}</b> débités aujourd'hui sur votre carte enregistrée</p>
-              : <p className="apercu-montant"><b>Rien à payer aujourd'hui</b></p>}
-            <ul className="apercu-detail">
-              {apercu.aujourdhui > 0 && <li>Au prorata, jusqu'à votre échéance du {date(apercu.prochain.date)}.</li>}
-              {apercu.credit > 0 && <li>Les options remplacées par le pack sont déduites : {eur(apercu.credit, true)}.</li>}
-              {apercu.avoir > 0 && <li>Il vous reste un avoir de {eur(apercu.avoir, true)}, déduit de vos prochaines factures.</li>}
-              {apercu.retraits.map((r) => <li key={r.module}>{MODULES[r.module].nom} reste ouvert jusqu'au {date(r.jusqu_au)}, puis s'arrête (sans remboursement).</li>)}
-              <li>Ensuite : <b>{eur(apercu.prochain.montant, true)}</b> {periode === "annuel" ? "par an" : "par mois"}{apercu.prochain.date ? ` à partir du ${date(apercu.prochain.date)}` : ""}.</li>
-              {apercu.aujourdhui > 0 && <li>Les nouvelles options s'ouvrent dès que le paiement est accepté. Si votre banque demande une validation, vous passez par la page de paiement sécurisée Stripe.</li>}
-            </ul>
-            <div className="feuille-actions">
-              <button className="btn ghost" onClick={() => setApercu(null)} disabled={envoi}>Annuler</button>
-              <button className="btn" onClick={() => envoyer(true)} disabled={envoi}>{apercu.aujourdhui > 0 ? `Payer ${eur(apercu.aujourdhui, true)}` : "Confirmer"}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {apercu && <ConfirmationPaiement apercu={apercu} periode={periode} envoi={envoi} titre={apercuFormule ? "Changer de formule" : undefined} nouveau={apercuFormule ?? undefined} onAnnuler={() => { setApercu(null); setApercuFormule(null); }} onConfirmer={() => (apercuFormule ? formuleConfirmer() : envoyer(true))} />}
     </div>
   );
 }
