@@ -1,5 +1,5 @@
 import { langueChoisie } from "./i18n/traduction";
-import type { AssistantEtat, AssistantMessage, AssistantReponse, AideResiliation, Resiliation, Prevision, DepensePartagee, EtatPartages, ReglementPartage } from "./types";
+import type { AssistantEtat, AssistantMessage, AssistantReponse, AideResiliation, ChampsLettre, Resiliation, Prevision, DepensePartagee, EtatPartages, ReglementPartage } from "./types";
 import type { Activite, AnalysePro, Remarque, BankStatus, DestinationCompte, BudgetAction, BudgetReport, ChargesReport, Deadline, Doc, FamilleReport, Household, ImportResult, Member, Mesure, Temoin, Banque, BanquesReport, Veille, VeillesReport, VuePersonne } from "./types";
 import demoFamille from "./demo/famille.json";
 import { MODULES, PACKS, SOCLE, SOCLE_INCLUT, droits, normaliser, type Espace, type ModuleId } from "../../server/src/offre";
@@ -71,6 +71,8 @@ export interface Api {
   decide(cle: string, decision: "garde" | "resilie" | "a_faire"): Promise<void>;
   /** The subscription loop. */
   aideResiliation(cle: string): Promise<AideResiliation>;
+  lettreResiliationPdf(champs: ChampsLettre): Promise<Blob>;
+  envoyerLettreResiliation(champs: ChampsLettre & { email: string }): Promise<{ ok: true; envoye_a: string; copie: string }>;
   /** Shared expenses between members. */
   partages(): Promise<EtatPartages>;
   ajouterDepensePartagee(d: { date: string; libelle: string; montant: number; paye_par: string; participants: string[]; transaction_id?: string | null }): Promise<EtatPartages>;
@@ -249,6 +251,12 @@ const serverApi: Api = {
   },
   decide: async (cle, decision) => { await call("/budget/decision", json({ cle, decision })); },
   aideResiliation: (cle) => call(`/resiliations/aide?cle=${encodeURIComponent(cle)}`),
+  lettreResiliationPdf: async (champs) => {
+    const r = await fetch("/api/resiliations/lettre.pdf", json(champs));
+    if (!r.ok) { let b: any = {}; try { b = await r.json(); } catch {} throw new ApiError(r.status, b.error ?? "pdf", b.message ?? "La lettre n'a pas pu être préparée."); }
+    return r.blob();
+  },
+  envoyerLettreResiliation: (champs) => call("/resiliations/envoyer", json(champs)),
   partages: () => call("/partages"),
   ajouterDepensePartagee: (d) => call("/partages/depenses", json(d)),
   supprimerDepensePartagee: (id) => call(`/partages/depenses/${encodeURIComponent(id)}`, { method: "DELETE" }),
@@ -467,6 +475,8 @@ function makeDemoApi(): Api {
         etapes: [`Connectez-vous à votre espace client ${marchand} : un bouton « Résilier » doit y être visible si le contrat a été souscrit en ligne.`, "Sinon, envoyez la lettre ci-dessous par email ou par courrier recommandé.", "Un dernier prélèvement peut encore passer pour le mois commencé : c'est normal.", "Touchez « C'est fait, j'ai résilié » : Lucien vérifiera vos prochains relevés."],
         lettre: `Moi\n[votre adresse]\n\n${marchand}\nService client\n\nObjet : Résiliation de mon abonnement\n\nMadame, Monsieur,\n\nJe vous informe de ma décision de résilier mon abonnement, pour lequel vous prélevez ${montant.toLocaleString("fr-FR")} € sur mon compte. Merci de cesser tout prélèvement et de me confirmer la date de fin.\n\nSalutations distinguées.` };
     },
+    lettreResiliationPdf: async () => { throw new ApiError(400, "demo", "En démonstration, la lettre se copie ou se télécharge en texte."); },
+    envoyerLettreResiliation: async () => { throw new ApiError(400, "demo", "En démonstration, Lucien n'envoie pas de vrai email."); },
     demarrerResiliation: async (cle: string) => {
       const act = (structuredClone(state.household.plan === "famille" ? demoBudgetFamille : demoBudget) as BudgetReport).actions.find((x) => x.marchand === cle);
       const aide = act ? { marchand: (act.marchand ?? cle).replace(/(^|[\s-])(\p{L})/gu, (_, x: string, y: string) => x + y.toUpperCase()), montant: Math.round((act.economie_annuelle / 12) * 100) / 100, economie_annuelle: act.economie_annuelle } : null;

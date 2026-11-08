@@ -2,10 +2,11 @@ import { anthropicCreate } from "./ia.js";
 import { Hono } from "hono";
 import { z } from "zod";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { coordonnees, lettreResiliationStructuree, pdfLettre, texteLettre } from "./lettres.js";
 import { exporterFoyer } from "./export.js";
 import { prevoirFinDeMois } from "./prevision.js";
-import { annulerSuivi, demarrerSuivi, economieAnnuelle, nomMarchand, ensureResiliationsSchema, lettreRemboursement, lettreResiliation, marcheASuivre, suivis } from "./resiliations.js";
+import { annulerSuivi, demarrerSuivi, economieAnnuelle, nomMarchand, ensureResiliationsSchema, lettreRemboursement, marcheASuivre, suivis } from "./resiliations.js";
 import { estMedical, MESSAGE_MEDICAL } from "./extract.js";
 import { budgetIa, coutAppel } from "./iaBudget.js";
 import { ensureRetractationSchema, etatRetractation, marquerDebutAbonnement, seRetracter } from "./retractation.js";
@@ -890,14 +891,80 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
   // a subscription of the household budget, or of a business account (« Dépenses du compte pro »)
   const recurrence = (hid: string, cle: string) => findRecurrences(db.transactionsFoyer(hid)).find((r) => r.cle === cle) ?? recurrencesPro(db, hid).find((r) => r.cle === cle);
 
-  /** How to cancel, and the letter, before the person does it. */
+  // who signs the letters: saved once, reused (name and postal address of the household)
+  const signataire = (c: any) => {
+    const r = db.raw.prepare("SELECT expediteur_nom, expediteur_adresse FROM households WHERE id = ?").get(household(c).id) as { expediteur_nom: string | null; expediteur_adresse: string | null } | undefined;
+    return { nom: r?.expediteur_nom || currentUser(c)?.prenom || "", adresse: r?.expediteur_adresse || null };
+  };
+  const ChampsLettre = z.object({
+    cle: z.string().min(1).max(200),
+    expediteur: z.object({ nom: z.string().trim().min(2).max(80), adresse: z.string().trim().min(5).max(200) }),
+    destinataire: z.string().trim().max(200).optional().nullable(),
+    reference: z.string().trim().max(60).optional().nullable(),
+  });
+  const lettreDe = (c: any, b: z.infer<typeof ChampsLettre>) => {
+    const r = recurrence(household(c).id, b.cle);
+    if (!r) return null;
+    return { r, lettre: lettreResiliationStructuree({ marchand: nomMarchand(r.marchand), montant: r.dernier_montant, expediteur: b.expediteur, destinataire: b.destinataire || null, reference: b.reference || null }) };
+  };
+  const retenirSignataire = (hid: string, e: { nom: string; adresse: string }) => db.raw.prepare("UPDATE households SET expediteur_nom = ?, expediteur_adresse = ? WHERE id = ?").run(e.nom, e.adresse, hid);
+  const fichierLettre = (marchand: string) => `Resiliation-${marchand.normalize("NFD").replace(/[^\w]+/g, "-").replace(/^-|-$/g, "")}.pdf`;
+
+  /** How to cancel, the letter, and who to send it to (read from the papers), before the person does it. */
   api.get("/resiliations/aide", (c) => {
     const h = household(c);
     const r = recurrence(h.id, c.req.query("cle") ?? "");
     if (!r) return c.json({ error: "introuvable", message: "Ce prélèvement n'apparaît plus dans vos relevés." }, 404);
     const nom = nomMarchand(r.marchand);
+    const co = coordonnees(db.listDocuments(h.id), nom);
+    const sig = signataire(c);
+    const l = lettreResiliationStructuree({ marchand: nom, montant: r.dernier_montant, expediteur: sig, destinataire: co.adresse, reference: co.reference });
     return c.json({ marchand: nom, montant: r.dernier_montant, frequence: r.frequence, economie_annuelle: economieAnnuelle(r.dernier_montant, r.frequence),
-      etapes: marcheASuivre(nom, r.frequence), lettre: lettreResiliation({ marchand: nom, montant: r.dernier_montant, expediteur: expediteur(c) }) });
+      etapes: marcheASuivre(nom, r.frequence), lettre: texteLettre(l), envoi: { coordonnees: co, expediteur: sig, email_client: currentUser(c)?.email ?? null } });
+  });
+
+  /** The letter as a PDF, with the fields the person checked. */
+  api.post("/resiliations/lettre.pdf", async (c) => {
+    const b = ChampsLettre.parse(await c.req.json());
+    const x = lettreDe(c, b);
+    if (!x) return c.json({ error: "introuvable", message: "Ce prélèvement n'apparaît plus dans vos relevés." }, 404);
+    retenirSignataire(household(c).id, b.expediteur);
+    return new Response(Buffer.from(await pdfLettre(x.lettre)), { headers: { "content-type": "application/pdf", "content-disposition": `attachment; filename="${fichierLettre(x.lettre.destinataire.nom)}"` } });
+  });
+
+  /**
+   * Lucien sends the letter by email, in the person's name: from resiliation@monlucien.fr, the PDF attached, the person
+   * in copy and answers going straight to them. The text is Lucien's own letter (only the fields are the person's),
+   * five letters a day at most: this address never becomes a way to write anything to anyone.
+   */
+  api.post("/resiliations/envoyer", async (c) => {
+    const h = household(c);
+    if (!isOwner(c)) return c.json({ error: "proprietaire", message: "Seul le propriétaire du foyer envoie des lettres en son nom." }, 403);
+    const b = ChampsLettre.extend({ email: z.string().trim().toLowerCase().email().max(120) }).parse(await c.req.json());
+    const moi = currentUser(c)?.email ?? null;
+    if (!moi) return c.json({ error: "email", message: "Connectez-vous avec votre adresse email pour envoyer une lettre." }, 400);
+    const recentes = (db.raw.prepare("SELECT COUNT(*) n FROM lettres_envoyees WHERE household_id = ? AND envoye_le > ?").get(h.id, new Date(Date.now() - 86400_000).toISOString()) as { n: number }).n;
+    if (recentes >= 5) return c.json({ error: "limite", message: "Cinq lettres envoyées en 24 heures : réessayez demain." }, 429);
+    const x = lettreDe(c, b);
+    if (!x) return c.json({ error: "introuvable", message: "Ce prélèvement n'apparaît plus dans vos relevés." }, 404);
+    retenirSignataire(h.id, b.expediteur);
+    const pdf = await pdfLettre(x.lettre);
+    const texte = texteLettre(x.lettre);
+    const ok = await envoyerEmail({
+      de: `${b.expediteur.nom.replace(/[<>"]/g, "")} via Lucien <resiliation@monlucien.fr>`,
+      to: b.email, cc: moi, replyTo: moi,
+      subject: `${x.lettre.objet}${x.lettre.reference ? ` — ${x.lettre.reference}` : ""} — ${b.expediteur.nom}`,
+      text: `${texte}
+
+—
+Cette lettre vous est adressée par ${b.expediteur.nom} (${moi}), qui l'a validée dans Lucien. Répondez à ce message pour lui répondre directement. La lettre est jointe en PDF.`,
+      pieces: [{ nom: fichierLettre(x.lettre.destinataire.nom), contenu: pdf }],
+    });
+    if (!ok && (process.env.LUCIEN_PUBLIC_URL ?? "").startsWith("https://")) return c.json({ error: "envoi", message: "L'email n'est pas parti. Réessayez dans un moment ou téléchargez la lettre." }, 502);
+    db.raw.prepare("INSERT INTO lettres_envoyees (id, household_id, cle, canal, destinataire, objet, empreinte, envoye_le) VALUES (?, ?, ?, 'email', ?, ?, ?, ?)")
+      .run(randomUUID(), h.id, b.cle, b.email, x.lettre.objet, createHash("sha256").update(pdf).digest("hex"), new Date().toISOString());
+    demarrerSuivi(db, h.id, { cle: x.r.cle, marchand: nomMarchand(x.r.marchand), montant: x.r.dernier_montant, frequence: x.r.frequence });
+    return c.json({ ok: true, envoye_a: b.email, copie: moi }, 201);
   });
 
   /** « C'est fait, j'ai résilié » : Lucien watches the next statements. */

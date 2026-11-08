@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Api } from "../api";
 import { ApiError } from "../api";
 import type { AideResiliation, BudgetAction, BudgetReport, Household, Prevision, Resiliation } from "../types";
-import { Feuille } from "./espacesCommun";
+import { Feuille, Ico } from "./espacesCommun";
 import { fmtEuro } from "../ui";
 import { BankLink } from "./BankLink";
 
@@ -202,16 +202,47 @@ function ImportBox({ busy, err, texte, setTexte, pick, onFile, onText, onDemo }:
 
 const CHIP: Record<Resiliation["statut"], string> = { en_cours: "Vérification en cours", confirmee: "Prouvé par la banque", encore_prelevee: "Encore prélevé" };
 
-/** « Je résilie » : how to cancel, the letter, then « C'est fait » so Lucien watches the next statements. */
+/** « Je résilie » : how to cancel, the letter (PDF, sent by Lucien by email), then Lucien watches the next statements. */
 export function SheetResiliation({ api, cle, onClose, onLettre, onFait, toast }: { api: Api; cle: string; onClose: () => void; onLettre: (l: { titre: string; texte: string }) => void; onFait: () => void; toast: (m: string) => void }) {
   const [aide, setAide] = useState<AideResiliation | null>(null);
   const [busy, setBusy] = useState(false);
-  useEffect(() => { api.aideResiliation(cle).then(setAide).catch((e) => { toast((e as Error).message); onClose(); }); }, [cle]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [nom, setNom] = useState(""); const [adresse, setAdresse] = useState("");
+  const [email, setEmail] = useState(""); const [postale, setPostale] = useState(""); const [reference, setReference] = useState("");
+  const [confirmer, setConfirmer] = useState(false);
+  const [etapes, setEtapes] = useState(false);
+  useEffect(() => {
+    api.aideResiliation(cle).then((a) => {
+      setAide(a);
+      if (a.envoi) {
+        setNom(a.envoi.expediteur.nom); setAdresse(a.envoi.expediteur.adresse ?? "");
+        setEmail(a.envoi.coordonnees.emails[0] ?? ""); setPostale(a.envoi.coordonnees.adresse ?? ""); setReference(a.envoi.coordonnees.reference ?? "");
+      }
+    }).catch((e) => { toast((e as Error).message); onClose(); });
+  }, [cle]); // eslint-disable-line react-hooks/exhaustive-deps
+  const champs = () => ({ cle, expediteur: { nom: nom.trim(), adresse: adresse.trim() }, destinataire: postale.trim() || null, reference: reference.trim() || null });
+  const pret = nom.trim().length >= 2 && adresse.trim().length >= 5;
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
+  const pdf = async () => {
+    if (!pret) { toast("Indiquez votre nom et votre adresse : ils figurent en haut de la lettre."); return; }
+    setBusy(true);
+    try {
+      const b = await api.lettreResiliationPdf(champs());
+      const url = URL.createObjectURL(b); const a = document.createElement("a"); a.href = url; a.download = `Resiliation-${aide!.marchand}.pdf`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1500);
+    } catch (e) { toast((e as Error).message); } finally { setBusy(false); }
+  };
+  const envoyer = async () => {
+    setBusy(true);
+    try {
+      const r = await api.envoyerLettreResiliation({ ...champs(), email: email.trim() });
+      toast(`Lettre envoyée à ${r.envoye_a}, copie dans votre boîte. Lucien surveille maintenant vos relevés.`); onFait();
+    } catch (e) { toast((e as Error).message); setBusy(false); setConfirmer(false); }
+  };
+  const co = aide?.envoi?.coordonnees;
   return (
     <div className="feuille-fond" onClick={onClose}>
       <div className="feuille resil-feuille" role="dialog" aria-modal="true" aria-label={`Résilier ${aide?.marchand ?? ""}`} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}>
         <div className="feuille-tete"><b>Résilier {aide?.marchand ?? "…"}</b><button className="link" onClick={onClose}>Fermer</button></div>
-        {!aide ? <p className="note">Lucien prépare la résiliation…</p> : (
+        {!aide ? <p className="note">Lucien prépare la résiliation…</p> : !aide.envoi ? (
           <>
             <p className="resil-gain">{fmtEuro(aide.economie_annuelle)} par an</p>
             <ol className="resil-etapes">{aide.etapes.map((e) => <li key={e}>{e}</li>)}</ol>
@@ -222,6 +253,47 @@ export function SheetResiliation({ api, cle, onClose, onLettre, onFait, toast }:
               catch (e) { toast((e as Error).message); setBusy(false); }
             }}>C'est fait, j'ai résilié</button>
           </>
+        ) : confirmer ? (
+          <div className="lettre-confirmer">
+            <p className="resil-gain" style={{ fontSize: 20 }}>Envoyer la lettre ?</p>
+            <ul className="apercu-detail">
+              <li>Lucien envoie votre lettre de résiliation, en PDF, à <b>{email.trim()}</b>, en votre nom ({nom.trim()}).</li>
+              <li>Vous êtes en copie{aide.envoi.email_client ? ` (${aide.envoi.email_client})` : ""}, et les réponses de {aide.marchand} vous arrivent directement.</li>
+              <li>Ensuite, Lucien vérifie vos relevés : plus aucun prélèvement, et l'économie est prouvée.</li>
+            </ul>
+            <div className="feuille-actions">
+              <button className="btn ghost" disabled={busy} onClick={() => setConfirmer(false)}>Retour</button>
+              <button className="btn" disabled={busy} onClick={envoyer}>{busy ? "Envoi…" : "Envoyer la lettre"}</button>
+            </div>
+          </div>
+        ) : (
+          <div className="lettre-envoi">
+            <p className="resil-gain">{fmtEuro(aide.economie_annuelle)} par an</p>
+            <button className="link" onClick={() => setEtapes(!etapes)}>{etapes ? "Masquer la marche à suivre" : "La marche à suivre"}</button>
+            {etapes && <ol className="resil-etapes">{aide.etapes.map((e) => <li key={e}>{e}</li>)}</ol>}
+
+            <h3>La lettre</h3>
+            <label className="champ"><span>Votre nom</span><input className="in" value={nom} maxLength={80} onChange={(e) => setNom(e.target.value)} autoComplete="name" /></label>
+            <label className="champ"><span>Votre adresse postale</span><textarea className="in" rows={2} value={adresse} maxLength={200} placeholder={"12 rue des Lilas\n34000 Montpellier"} onChange={(e) => setAdresse(e.target.value)} autoComplete="street-address" /></label>
+            <label className="champ"><span>Référence client ou n° de contrat</span><input className="in" value={reference} maxLength={60} placeholder="Facultatif, mais utile" onChange={(e) => setReference(e.target.value)} /></label>
+            <label className="champ"><span>Adresse email de {aide.marchand}</span><input className="in" type="email" inputMode="email" value={email} maxLength={120} placeholder="service-client@…" onChange={(e) => setEmail(e.target.value)} /></label>
+            {co && co.emails.length > 1 && <div className="pills">{co.emails.map((m) => <button key={m} className="pill" aria-pressed={email === m} onClick={() => setEmail(m)}>{m}</button>)}</div>}
+            <p className="note">{co?.emails.length ? `Trouvée dans « ${co.source} ». Vérifiez-la avant d'envoyer.` : `Lucien n'a pas trouvé d'adresse email dans vos papiers ${aide.marchand} : vous la trouverez dans vos emails ou sur leur site (rubrique contact, résiliation).`}</p>
+            <label className="champ"><span>Adresse postale de {aide.marchand} (sur la lettre)</span><textarea className="in" rows={2} value={postale} maxLength={200} placeholder="Service client" onChange={(e) => setPostale(e.target.value)} /></label>
+
+            <div className="actions-abo">
+              <button className="pill-action principal" disabled={busy || !pret || !emailOk} onClick={() => setConfirmer(true)}><Ico d="M4 6h16v12H4zM4 7l8 6 8-6" />Envoyer par email</button>
+              <button className="pill-action" disabled={busy} onClick={pdf}><Ico d="M12 4v11M7 10l5 5 5-5M5 20h14" />Lettre en PDF</button>
+              <button className="pill-action" onClick={() => onLettre({ titre: `Résiliation ${aide.marchand}`, texte: aide.lettre })}><Ico d="M8 4h8l4 4v12H8zM16 4v4h4" />Texte</button>
+              <button className="pill-action" disabled title="Bientôt : Lucien l'envoie en recommandé avec avis de réception"><Ico d="M4 7h16v11H4zM8 7V5h8v2" />Recommandé · bientôt</button>
+            </div>
+            {!pret && <p className="note">Votre nom et votre adresse figurent en haut de la lettre : Lucien les retient pour les prochaines.</p>}
+            <button className="link" style={{ marginTop: 12 }} disabled={busy} onClick={async () => {
+              setBusy(true);
+              try { await api.demarrerResiliation(cle); toast(`Noté. Lucien vérifiera vos relevés : plus aucun prélèvement de ${aide.marchand}, et l'économie sera prouvée.`); onFait(); }
+              catch (e) { toast((e as Error).message); setBusy(false); }
+            }}>J'ai déjà résilié autrement</button>
+          </div>
         )}
       </div>
     </div>

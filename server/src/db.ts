@@ -396,6 +396,9 @@ export class Db {
     if (!cols.includes("hebdo")) this.raw.exec("ALTER TABLE households ADD COLUMN hebdo INTEGER DEFAULT 1");
     if (!cols.includes("modules_choix")) this.raw.exec("ALTER TABLE households ADD COLUMN modules_choix TEXT");
     if (!cols.includes("changement_prevu")) this.raw.exec("ALTER TABLE households ADD COLUMN changement_prevu TEXT");
+    if (!cols.includes("expediteur_nom")) this.raw.exec("ALTER TABLE households ADD COLUMN expediteur_nom TEXT");
+    if (!cols.includes("expediteur_adresse")) this.raw.exec("ALTER TABLE households ADD COLUMN expediteur_adresse TEXT");
+    this.raw.exec("CREATE TABLE IF NOT EXISTS lettres_envoyees (id TEXT PRIMARY KEY, household_id TEXT NOT NULL, cle TEXT NOT NULL, canal TEXT NOT NULL, destinataire TEXT NOT NULL, objet TEXT NOT NULL, empreinte TEXT NOT NULL, envoye_le TEXT NOT NULL)");
     if (!cols.includes("ics_token")) this.raw.exec("ALTER TABLE households ADD COLUMN ics_token TEXT");
     for (const [col] of [["stripe_customer_id"], ["stripe_subscription_id"], ["abonnement_statut"], ["abonnement_periode"], ["abonnement_fin"], ["formule"], ["modules"]]) {
       if (!cols.includes(col)) this.raw.exec(`ALTER TABLE households ADD COLUMN ${col} TEXT`);

@@ -177,7 +177,10 @@ export interface EtatPartages {
   membres: { id: string; prenom: string; role: string }[]; depenses: DepensePartagee[]; reglements: ReglementPartage[];
   soldes: { member_id: string; prenom: string; solde: number }[]; suggestions: { de: string; a: string; montant: number }[];
 }
-export interface AideResiliation { marchand: string; montant: number; frequence: string; economie_annuelle: number; etapes: string[]; lettre: string }
+export interface AideResiliation { marchand: string; montant: number; frequence: string; economie_annuelle: number; etapes: string[]; lettre: string;
+  /** Who to send it to, read from the papers, and who signs (saved once). Absent in the demo. */
+  envoi?: { coordonnees: { emails: string[]; adresse: string | null; reference: string | null; source: string | null }; expediteur: { nom: string; adresse: string | null }; email_client: string | null } }
+export interface ChampsLettre { cle: string; expediteur: { nom: string; adresse: string }; destinataire?: string | null; reference?: string | null }
 
 export interface ImportResult { lues: number; ajoutees: number; doublons: number; de?: string; a?: string }
 

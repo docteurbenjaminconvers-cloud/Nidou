@@ -1194,3 +1194,15 @@ body.clavier .tabs { display: none; }
 .pill-action:active { transform: scale(.97); }
 .pill-action.danger { color: var(--nest); border-color: rgba(217, 95, 69, .35); background: rgba(217, 95, 69, .06); }
 .pill-action.danger:hover { background: rgba(217, 95, 69, .12); }
+/* lettre de résiliation : champs, envoi par Lucien */
+.lettre-envoi { display: grid; gap: 10px; }
+.lettre-envoi h3 { font-family: var(--display); font-weight: 600; font-size: 20px; margin: 8px 0 0; }
+.lettre-envoi .champ span { font-weight: 700; }
+.lettre-envoi textarea.in { resize: vertical; font: inherit; }
+.lettre-envoi .pills { margin: -4px 0 0; }
+.lettre-envoi .note { margin: 0; font-size: 13px; }
+.pill-action.principal { background: var(--nest); border-color: var(--nest); color: var(--white); }
+.pill-action.principal:hover { background: #c94f37; }
+.pill-action:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.lettre-envoi textarea.in { border-radius: 16px; padding: 10px 16px; border: 2px solid var(--line); background: var(--white); line-height: 1.45; min-height: 64px; }
+.lettre-envoi > .link { justify-self: start; }
