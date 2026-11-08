@@ -43,7 +43,9 @@ export function monterSituations(api, db, ctx) {
         try {
             db.raw.prepare("INSERT INTO situations (id, household_id, cle, date, options, cree_le) VALUES (?, ?, ?, ?, ?, ?)").run(id, hid, cle, date, JSON.stringify(options), new Date().toISOString());
             for (const e of etapesApplicables(def, { locataire: b.locataire })) {
-                const d = db.insertDeadline({ household_id: hid, document_id: null, titre: `${def.titre} : ${e.titre}`, type: "situation", date: dateEtape(date, e.j), rappel_jours: e.j < -30 ? 14 : 5, note: null });
+                // a step whose ideal date has already passed (situation opened late) goes in the agenda for today, not « en retard »
+                const ideale = dateEtape(date, e.j), auj = new Date().toISOString().slice(0, 10);
+                const d = db.insertDeadline({ household_id: hid, document_id: null, titre: `${def.titre} : ${e.titre}`, type: "situation", date: ideale < auj ? auj : ideale, rappel_jours: e.j < -30 ? 14 : 5, note: ideale < auj ? "À faire dès que possible : la date idéale est passée." : null });
                 db.raw.prepare("INSERT INTO situation_etapes (situation_id, household_id, cle, deadline_id) VALUES (?, ?, ?, ?)").run(id, hid, e.cle, d.id);
             }
             db.raw.exec("COMMIT");
