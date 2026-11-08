@@ -98,7 +98,7 @@ export function Famille({ api, household, go, unread, onChanged, toast, sel, doc
   };
 
   return (
-    <div className="screen famille">
+    <div className="screen famille tableau">
       <div className="top"><div><h1>{solo ? "Mon foyer" : "Famille"}</h1><p className="sub">{solo ? (f.situation === "couple" ? "En couple" : "Vous vivez seul·e") : <>{f.composition.adultes} adulte{f.composition.adultes > 1 ? "s" : ""}{f.composition.enfants ? ` · ${f.composition.enfants} enfant${f.composition.enfants > 1 ? "s" : ""}` : ""}{f.composition.a_charge ? ` · ${f.composition.a_charge} à charge` : ""}</>}</p></div><Bell unread={unread} onClick={() => go("notifs")} /></div>
 
       <div className="trombi" ref={strip} role="tablist" aria-label="Membres de la famille">

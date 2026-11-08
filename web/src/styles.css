@@ -1126,3 +1126,60 @@ body.clavier .tabs { display: none; }
 .apercu-montant { font-size: 17px; margin: 0; }
 .apercu-montant b { font-size: 26px; font-family: var(--serif, inherit); }
 .apercu-detail { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14.5px; }
+
+/* ===== Ordinateur : barre latérale, contenu large, tableaux de bord sur deux colonnes ===== */
+.tabs-marque, .tab.ordi, .tabs-espace, .tab-add-texte { display: none; }
+@media (min-width: 1024px) {
+  :root { --barre: 248px; }
+  .app { max-width: none; margin: 0; padding: 0 40px 56px calc(var(--barre) + 40px); }
+  .screen { max-width: 1120px; margin: 0 auto; padding-top: 32px; }
+  .screen > .top h1, .offre-tete h1 { font-size: 44px; }
+
+  /* la barre d'onglets devient une barre latérale prune */
+  .tabs { inset: 0 auto 0 0; width: var(--barre); height: auto; padding: 0; background: var(--plum); border: 0; z-index: 20; }
+  .tabs-inner { display: flex; flex-direction: column; align-items: stretch; gap: 4px; height: 100%; max-width: none; margin: 0; padding: 28px 16px 24px; background: transparent; border-radius: 0; box-shadow: none; overflow-y: auto; }
+  .tabs-marque { display: block; padding: 0 10px 22px; }
+  .tabs-marque .logo, .tabs-marque * { color: var(--white); }
+  .tab, .tab.ordi { display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 12px; width: 100%; padding: 11px 14px; border-radius: 14px; font-size: 15px; font-weight: 700; color: #d9c8d5; text-align: left; }
+  .tab svg { width: 22px; height: 22px; flex: none; }
+  .tab:hover { background: rgba(255, 255, 255, .07); color: var(--white); }
+  .tab[aria-current="page"] { background: rgba(255, 255, 255, .13); color: var(--white); }
+  .tab-add { order: -1; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 48px; margin: 0 0 14px; border-radius: 14px; transform: none; font-weight: 800; font-size: 15px; color: var(--white); }
+  .tabs-marque { order: -2; }
+  .tab-add:active { transform: scale(.98); }
+  .tab-add svg { width: 20px; height: 20px; }
+  .tab-add-texte { display: inline; }
+  .tabs-espace { display: block; flex: 1; }
+  .toast { bottom: 28px; left: calc(50% + var(--barre) / 2); }
+
+  /* tableaux de bord (Aujourd'hui, Famille, Réglages) : deux colonnes de cartes */
+  .screen.tableau { columns: 2; column-gap: 24px; }
+  .screen.tableau > * { break-inside: avoid; }
+  .screen.tableau > .top, .screen.tableau > .back, .screen.tableau > .trombi { column-span: all; }
+  .screen.tableau > .ask { margin-bottom: 18px; }
+  .home-brand { display: none; }
+  .screen.tableau > .section, .screen.tableau > section { margin-top: 0; margin-bottom: 18px; display: inline-block; width: 100%; }
+
+  /* listes (agenda, papiers, budget, détails) : une colonne confortable */
+  .screen:not(.tableau):not(.offre) { max-width: 880px; }
+
+  /* l'offre : le récapitulatif reste à droite au lieu de recouvrir les cartes */
+  .screen.offre { max-width: 1180px; display: grid; grid-template-columns: minmax(0, 1fr) 360px; column-gap: 32px; align-items: start; }
+  .screen.offre > * { grid-column: 1; }
+  .screen.offre > .devis { grid-column: 2; grid-row: 1 / span 12; position: sticky; top: 32px; bottom: auto; margin-top: 0; }
+  .screen.offre .devis-lignes { max-height: none; }
+  .screen.offre > .devis::before { content: "Votre sélection"; display: block; font-family: var(--display); font-size: 20px; font-weight: 600; margin-bottom: 10px; }
+  .screen.offre .devis-total:first-child, .screen.offre .devis > .devis-total:only-of-type { border-top: 0; margin-top: 0; padding-top: 0; }
+  .screen.offre .devis-total { flex-direction: column; align-items: stretch; }
+  .screen.offre .devis-total .btn { width: 100%; }
+  .packs { grid-template-columns: repeat(4, 1fr); }
+  .modules { grid-template-columns: 1fr 1fr; }
+
+  /* les feuilles du bas deviennent des fenêtres centrées */
+  .feuille-fond { align-items: center; padding-left: var(--barre); }
+  .feuille { border-radius: 24px; max-height: 80vh; }
+}
+@media (min-width: 1024px) and (max-width: 1240px) {
+  .packs { grid-template-columns: 1fr 1fr; }
+  .screen.offre { grid-template-columns: minmax(0, 1fr) 320px; }
+}

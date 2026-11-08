@@ -28,7 +28,7 @@ export function Today({ api, household, deadlines, docs, charges, budget, go, on
   const etape3 = seul ? docs.some((d) => d.source === "email") : household.membres.length >= 2;
 
   return (
-    <div className="screen">
+    <div className="screen tableau">
       <div className="top">
         <div>
           <div className="home-brand"><Logo /></div>

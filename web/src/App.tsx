@@ -48,6 +48,7 @@ let langueEnvoyee = false;
 export default function App() {
   const [api, setApi] = useState<Api | null>(null);
   const [route, setRoute] = useState<Route>(() => parseHash());
+  const ordi = useOrdi();
   const [household, setHousehold] = useState<Household | null>(null);
   const [docs, setDocs] = useState<Doc[]>([]);
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
@@ -170,11 +171,18 @@ export default function App() {
 
       <nav className="tabs" aria-label="Navigation">
         <div className="tabs-inner">
-          <button className="tab" aria-current={tab === "home" || tab === "settings" || tab === "notifs" || tab === "semaine" || tab === "urgence" || tab === "coup-dur" || tab === "offre" || tab === "espace" || tab === "location" || tab === "situations" || tab === "situation" || tab === "famille" || tab === "assistant" || tab === "connecteur" ? "page" : undefined} onClick={() => go("home")}><TabIcon d="M3 11l9-7 9 7v9a1 1 0 01-1 1h-5v-6h-6v6H4a1 1 0 01-1-1v-9z" />Aujourd'hui</button>
+          <div className="tabs-marque" aria-hidden="true"><Logo /></div>
+          <button className="tab" aria-current={(ordi ? ["home", "notifs", "semaine", "urgence", "coup-dur", "espace", "location", "situations", "situation"] : ["home", "settings", "notifs", "semaine", "urgence", "coup-dur", "offre", "espace", "location", "situations", "situation", "famille", "assistant", "connecteur"]).includes(tab) ? "page" : undefined} onClick={() => go("home")}><TabIcon d="M3 11l9-7 9 7v9a1 1 0 01-1 1h-5v-6h-6v6H4a1 1 0 01-1-1v-9z" />Aujourd'hui</button>
           <button className="tab" aria-current={tab === "deadlines" ? "page" : undefined} onClick={() => go("deadlines")}><TabIcon d="M4 5h16v15H4zM4 9h16M8 3v4M16 3v4M9 14l2 2 4-4" />Agenda</button>
-          <button className="tab-add" aria-label="Ajouter un papier" onClick={() => go("add")}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg></button>
+          <button className="tab-add" aria-label="Ajouter un papier" onClick={() => go("add")}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg><span className="tab-add-texte">Ajouter un papier</span></button>
           <button className="tab" aria-current={tab === "docs" ? "page" : undefined} onClick={() => go("docs")}><TabIcon d="M4 4h10l6 6v10H4zM14 4v6h6M8 13h8M8 17h5" />Papiers</button>
           <button className="tab" aria-current={tab === "budget" || tab === "verif-pro" ? "page" : undefined} onClick={() => go("budget")}><TabIcon d="M3 20h18M6 16V9M11 16V5M16 16v-7M21 16v-4" />Budget</button>
+          {/* on a computer the side bar has room for the rest of Lucien */}
+          <button className="tab ordi" aria-current={tab === "famille" ? "page" : undefined} onClick={() => go("famille")}><TabIcon d="M9 11a4 4 0 100-8 4 4 0 000 8zM2 21v-1a6 6 0 0112 0v1M17 11a3 3 0 100-6M22 21v-1a5 5 0 00-4-4.9" />Famille</button>
+          <button className="tab ordi" aria-current={tab === "assistant" ? "page" : undefined} onClick={() => go("assistant")}><TabIcon d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z" />Demander à Lucien</button>
+          <span className="tabs-espace ordi" />
+          <button className="tab ordi" aria-current={tab === "offre" ? "page" : undefined} onClick={() => go("offre")}><TabIcon d="M20 12v9H4v-9M2 7h20v5H2zM12 21V7M12 7H7.5a2.5 2.5 0 110-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 100-5C13 2 12 7 12 7z" />L'offre</button>
+          <button className="tab ordi" aria-current={tab === "settings" || tab === "connecteur" ? "page" : undefined} onClick={() => go("settings")}><TabIcon d="M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z" />Réglages</button>
         </div>
       </nav>
       {reveal && budget && <Reveal budget={budget} onClose={() => setReveal(false)} go={go} toast={toast} />}
@@ -187,4 +195,16 @@ export default function App() {
 function parseHash(): Route {
   const [s, id] = location.hash.replace(/^#\/?/, "").split("/");
   return { s: s || "home", id };
+}
+
+/** True on a computer-sized screen (side bar instead of the bottom tab bar). */
+function useOrdi() {
+  const q = "(min-width: 1024px)";
+  const [v, setV] = useState(() => typeof matchMedia === "function" && matchMedia(q).matches);
+  useEffect(() => {
+    if (typeof matchMedia !== "function") return;
+    const m = matchMedia(q); const f = () => setV(m.matches);
+    m.addEventListener?.("change", f); return () => m.removeEventListener?.("change", f);
+  }, []);
+  return v;
 }

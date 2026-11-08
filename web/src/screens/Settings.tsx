@@ -88,7 +88,7 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
     } catch (e) { toast((e as Error).message); }
   };
   return (
-    <div className="screen">
+    <div className="screen tableau">
       <Back onClick={onBack} />
       <div className="top"><div><h1>Réglages</h1><p className="sub"><button className="link" style={{ fontWeight: 500, color: "var(--mist)" }} onClick={async () => { const n = prompt("Nom du foyer", household.nom); if (n && n.trim()) { await api.renommer(n.trim()); onPlan(household.plan); } }}>{household.nom} ✎</button>{api.mode === "demo" ? " · mode démo" : ""}</p></div></div>
 
