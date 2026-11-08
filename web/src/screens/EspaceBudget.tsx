@@ -18,7 +18,7 @@ export function EspaceBudget({ api, go, onBack, toast }: { api: Api; go: (s: str
   if (ferme) return <Verrou module={ferme} go={go} onBack={onBack} />;
   if (!data) return <div className="screen"><EnTete titre="Budget expert" sous="Chargement…" espace="budget" onBack={onBack} />{err && <p className="note">{err}</p>}</div>;
   const { rapport: r, donnees: d } = data;
-  const m = r.mois.find((x) => x.mois === moisSel) ?? r.mois.filter((x) => x.complet).at(-1) ?? r.mois.at(-1)!;
+  const m = r.mois.find((x) => x.mois === moisSel) ?? r.mois.filter((x) => x.complet).at(-1) ?? r.mois.at(-1);
   const maxBarre = Math.max(1, ...r.mois.map((x) => Math.max(x.total_produits, x.total_charges)));
 
   const enregistrerPrevu = async (p: Poste) => {
@@ -49,27 +49,35 @@ export function EspaceBudget({ api, go, onBack, toast }: { api: Api; go: (s: str
         { label: "endettement", valeur: pct(r.ratios.endettement), ton: (r.ratios.endettement ?? 0) > 35 ? "alerte" : "ok", detail: "plafond bancaire 35 %" },
       ]} />
 
+      {!m ? (
+        <section className="section">
+          <div className="section-head"><h2>Compte de résultat</h2></div>
+          <p className="note">Pas encore d'opérations : connectez votre banque dans Budget, et Lucien tiendra le compte de résultat du foyer mois par mois.</p>
+          <button className="btn" onClick={() => go("budget")}>Connecter ma banque</button>
+        </section>
+      ) : (
       <section className="section">
-        <div className="section-head"><h2>Compte de résultat</h2><span className="badge">{nomMois(m.mois)}{m.complet ? "" : " · en cours"}</span></div>
-        <div className="barres" role="group" aria-label="Choisir le mois">
-          {r.mois.map((x) => (
-            <button key={x.mois} className={`barre-mois ${x.mois === m.mois ? "sel" : ""}`} onClick={() => setMoisSel(x.mois)}>
-              <span className="bm-col"><i className="p" style={{ height: `${(x.total_produits / maxBarre) * 100}%` }} /><i className="c" style={{ height: `${(x.total_charges / maxBarre) * 100}%` }} /></span>
-              <small>{moisCourt(x.mois)}</small>
-            </button>
-          ))}
-        </div>
-        <div className="cr">
-          <div className="cr-bloc"><div className="cr-titre"><span>Produits</span><b>{eur(m.total_produits)}</b></div>
-            {PRODUITS.filter((p) => m.produits[p]).map((p) => <div className="cr-ligne" key={p}><em>{POSTES[p].compte}</em><span>{POSTES[p].libelle}</span><b>{eur(m.produits[p])}</b></div>)}
+          <div className="section-head"><h2>Compte de résultat</h2><span className="badge">{nomMois(m.mois)}{m.complet ? "" : " · en cours"}</span></div>
+          <div className="barres" role="group" aria-label="Choisir le mois">
+            {r.mois.map((x) => (
+              <button key={x.mois} className={`barre-mois ${x.mois === m.mois ? "sel" : ""}`} onClick={() => setMoisSel(x.mois)}>
+                <span className="bm-col"><i className="p" style={{ height: `${(x.total_produits / maxBarre) * 100}%` }} /><i className="c" style={{ height: `${(x.total_charges / maxBarre) * 100}%` }} /></span>
+                <small>{moisCourt(x.mois)}</small>
+              </button>
+            ))}
           </div>
-          <div className="cr-bloc"><div className="cr-titre"><span>Charges</span><b>{eur(m.total_charges)}</b></div>
-            {CHARGES.filter((p) => m.charges[p]).sort((a, b) => (m.charges[b] ?? 0) - (m.charges[a] ?? 0)).map((p) => <div className="cr-ligne" key={p}><em>{POSTES[p].compte}</em><span>{POSTES[p].libelle}</span><b>{eur(m.charges[p])}</b></div>)}
+          <div className="cr">
+            <div className="cr-bloc"><div className="cr-titre"><span>Produits</span><b>{eur(m.total_produits)}</b></div>
+              {PRODUITS.filter((p) => m.produits[p]).map((p) => <div className="cr-ligne" key={p}><em>{POSTES[p].compte}</em><span>{POSTES[p].libelle}</span><b>{eur(m.produits[p])}</b></div>)}
+            </div>
+            <div className="cr-bloc"><div className="cr-titre"><span>Charges</span><b>{eur(m.total_charges)}</b></div>
+              {CHARGES.filter((p) => m.charges[p]).sort((a, b) => (m.charges[b] ?? 0) - (m.charges[a] ?? 0)).map((p) => <div className="cr-ligne" key={p}><em>{POSTES[p].compte}</em><span>{POSTES[p].libelle}</span><b>{eur(m.charges[p])}</b></div>)}
+            </div>
+            <div className={`cr-resultat ${m.resultat >= 0 ? "ok" : "alerte"}`}><span>Résultat du mois</span><b>{m.resultat >= 0 ? "+" : ""}{eur(m.resultat)}</b></div>
+            {m.epargne_versee !== 0 && <div className="cr-ligne epargne"><em>512</em><span>Versé sur l'épargne</span><b>{eur(m.epargne_versee)}</b></div>}
           </div>
-          <div className={`cr-resultat ${m.resultat >= 0 ? "ok" : "alerte"}`}><span>Résultat du mois</span><b>{m.resultat >= 0 ? "+" : ""}{eur(m.resultat)}</b></div>
-          {m.epargne_versee !== 0 && <div className="cr-ligne epargne"><em>512</em><span>Versé sur l'épargne</span><b>{eur(m.epargne_versee)}</b></div>}
-        </div>
-      </section>
+        </section>
+      )}
 
       <section className="section">
         <div className="section-head"><h2>Prévisionnel du mois</h2><span className="badge yolk">{nomMois(r.mois_courant)}</span></div>

@@ -129,7 +129,7 @@ export function pointSemaine(e: SemaineEntree, now = new Date()): PointSemaine {
   const premiere = cetteSemaine[0] ?? retard[0];
   const corps = vide
     ? "Rien d'urgent cette semaine. Je veille."
-    : [premiere ? `${premiere.titre.replace(/^[^:]+:\s*/, "")}, ${dateCourte(premiere.date)}` : null, nbActivites ? pluriel(nbActivites, "activité") : null, geste ? `${euro(geste.gain)}/an à gagner` : null].filter(Boolean).join(" · ");
+    : [premiere ? `${premiere.titre.replace(/^[^:]+:\s*/, "")}, ${premiere.date < du ? `en retard depuis le ${dateCourte(premiere.date)}` : dateCourte(premiere.date)}` : null, nbActivites ? pluriel(nbActivites, "activité") : null, geste ? `${euro(geste.gain)}/an à gagner` : null].filter(Boolean).join(" · ");
 
   return {
     cle: semaineIso(du), du, au,

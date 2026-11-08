@@ -984,7 +984,8 @@ function makeSituationsDemo(state: { deadlines: Deadline[]; docs: Doc[]; househo
       const { cle, date, ...options } = x;
       const liens: Record<string, string> = {};
       for (const e of etapesApplicables(def, { locataire: x.locataire })) {
-        const d: Deadline = { id: `sit-${id}-${e.cle}`, document_id: null, titre: `${def.titre} : ${e.titre}`, type: "situation", date: dateEtape(date, e.j), rappel_jours: 5, fait: 0, note: null };
+        const ideale = dateEtape(date, e.j), auj = new Date().toISOString().slice(0, 10);
+        const d: Deadline = { id: `sit-${id}-${e.cle}`, document_id: null, titre: `${def.titre} : ${e.titre}`, type: "situation", date: ideale < auj ? auj : ideale, rappel_jours: 5, fait: 0, note: ideale < auj ? "À faire dès que possible : la date idéale est passée." : null };
         state.deadlines.push(d); liens[e.cle] = d.id;
       }
       const s = { id, cle, date, options, liens }; ouvertes.push(s); sauver(); return vue(s);

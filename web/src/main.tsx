@@ -46,11 +46,28 @@ class Garde extends React.Component<{ children: React.ReactNode }, { err: unknow
   state = { err: null as unknown };
   static getDerivedStateFromError(err: unknown) { return { err }; }
   componentDidCatch(err: unknown) {
-    console.error("[lucien]", err); setTimeout(() => afficherErreur(err));
+    console.error("[lucien]", err);
     const e = err as Error;
     (window as unknown as { __lucienDiag?: (q: string) => void }).__lucienDiag?.(`plantage: ${e?.name}: ${e?.message} @ ${String(e?.stack ?? "").split("\n").slice(0, 4).join(" | ")}`.slice(0, 800));
   }
-  render() { return this.state.err ? null : this.props.children; }
+  // a crash on one screen must not leave the others blank: going to another screen tries again
+  private retenter = () => { if (this.state.err) this.setState({ err: null }); };
+  componentDidMount() { window.addEventListener("hashchange", this.retenter); }
+  componentWillUnmount() { window.removeEventListener("hashchange", this.retenter); }
+  render() {
+    const err = this.state.err;
+    if (!err) return this.props.children;
+    const msg = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+    return (
+      <div className="erreur-fatale" style={{ maxWidth: 440, margin: "18vh auto 0", padding: 24, fontFamily: "system-ui, sans-serif", color: "#3a2a33" }}>
+        <h1 style={{ fontSize: 22, margin: "0 0 10px" }}>Cet écran n'a pas pu s'afficher</h1>
+        <p style={{ margin: "0 0 14px", lineHeight: 1.45 }}>Revenez à l'accueil ou rechargez la page. Si cela recommence, envoyez une capture de cet écran à l'équipe Lucien.</p>
+        <button onClick={() => { location.hash = "#home"; }} style={{ padding: "12px 18px", borderRadius: 999, border: 0, background: "#c4513a", color: "#fff", fontSize: 16, marginRight: 8 }}>Accueil</button>
+        <button onClick={() => location.reload()} style={{ padding: "12px 18px", borderRadius: 999, border: "1px solid #c4513a", background: "transparent", color: "#c4513a", fontSize: 16 }}>Recharger</button>
+        <pre style={{ marginTop: 18, whiteSpace: "pre-wrap", fontSize: 12, color: "#7a6470" }}>{msg}{"\n"}{navigator.userAgent}</pre>
+      </div>
+    );
+  }
 }
 // Diagnostics: errors are kept (messages only), and if the current screen is still empty a few seconds after it
 // opens, its sizes and styles are sent to the server log, never its text.
