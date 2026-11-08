@@ -661,7 +661,8 @@ b, strong { font-weight: 800; }
 .pack { position: relative; display: flex; flex-direction: column; gap: 6px; text-align: left; padding: 16px 14px 14px; border-radius: 20px; border: 2px solid transparent; background: var(--white); box-shadow: var(--shadow); color: var(--ink); }
 .pack.vedette { background: linear-gradient(180deg, var(--yolk-soft), var(--white)); }
 .pack[aria-pressed="true"] { border-color: var(--nest); }
-.pack-ruban { position: absolute; top: -9px; right: 10px; background: var(--nest); color: var(--white); }
+.pack-ruban { position: absolute; top: -10px; right: 10px; max-width: calc(100% - 20px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: var(--nest); color: var(--white); }
+.pack.vedette { padding-top: 22px; }
 .pack-nom { font-family: var(--display); font-weight: 600; font-size: 20px; }
 .pack-accroche { font-size: 13px; color: var(--mist); line-height: 1.35; }
 .pack-mods { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -1172,14 +1173,14 @@ body.clavier .tabs { display: none; }
   .screen.offre .devis-total:first-child, .screen.offre .devis > .devis-total:only-of-type { border-top: 0; margin-top: 0; padding-top: 0; }
   .screen.offre .devis-total { flex-direction: column; align-items: stretch; }
   .screen.offre .devis-total .btn { width: 100%; }
-  .packs { grid-template-columns: repeat(4, 1fr); }
+  .packs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .modules { grid-template-columns: 1fr 1fr; }
 
   /* les feuilles du bas deviennent des fenêtres centrées */
   .feuille-fond { align-items: center; padding-left: var(--barre); }
   .feuille { border-radius: 24px; max-height: 80vh; }
 }
+@media (min-width: 1440px) { .packs { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (min-width: 1024px) and (max-width: 1240px) {
-  .packs { grid-template-columns: 1fr 1fr; }
   .screen.offre { grid-template-columns: minmax(0, 1fr) 320px; }
 }
