@@ -46,3 +46,17 @@ test("dépense IA de la plateforme : réservée à l'administrateur", async () =
     assert.equal((await api.request("/ia/depense", { headers: { authorization: "Bearer admin-secret" } })).status, 200);
   } finally { if (avant === undefined) delete process.env.LUCIEN_ADMIN_TOKEN; else process.env.LUCIEN_ADMIN_TOKEN = avant; }
 });
+
+test("budget IA : un essai à cheval sur deux mois garde 3 € en tout, un abonné repart à 10 € chaque mois", () => {
+  const db = new Db(":memory:"); createApi(db, { uploadDir: "/tmp/lucien-test-uploads" });
+  const essai = db.createHousehold("Essai");
+  db.iaCentimesMois(essai.id); // creates the counters
+  // 2,50 € spent last month, at the start of the trial
+  db.raw.prepare("INSERT INTO ia_usage (household_id, mois, lectures, centimes) VALUES (?, '2000-01', 0, 250)").run(essai.id);
+  const b = budgetIa(db, essai.id);
+  assert.equal(b.reste(), 50, "50 cents left for the rest of the trial, not 3 € again");
+  const abonne = db.createHousehold("Abonné");
+  db.raw.prepare("UPDATE households SET plan = 'famille', abonnement_statut = 'active' WHERE id = ?").run(abonne.id);
+  db.raw.prepare("INSERT INTO ia_usage (household_id, mois, lectures, centimes) VALUES (?, '2000-01', 0, 900)").run(abonne.id);
+  assert.equal(budgetIa(db, abonne.id).reste(), 1000, "a new month, a new budget");
+});

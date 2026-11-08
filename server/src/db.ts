@@ -969,6 +969,12 @@ export class Db {
   private month(): string { return this.now().slice(0, 7); }
 
   /** Estimated AI spend of the household this month, in cents (all AI calls, see iaBudget.ts). */
+  /** Everything the household's AI calls cost, all months together (the trial budget). */
+  iaCentimesTotal(household_id: string): number {
+    this.ensureIaCentimes();
+    const r = this.raw.prepare("SELECT COALESCE(SUM(centimes), 0) AS c FROM ia_usage WHERE household_id = ?").get(household_id) as { c: number };
+    return r.c;
+  }
   iaCentimesMois(household_id: string): number {
     this.ensureIaCentimes();
     const r = this.raw.prepare("SELECT centimes FROM ia_usage WHERE household_id = ? AND mois = ?").get(household_id, this.month()) as { centimes: number } | undefined;

@@ -1,5 +1,5 @@
 import { modelFor } from "./ia.js";
-/** Budget in cents for the month: trial 3 €, paying household 10 €, free plan 0 (overridable by env). */
+/** Budget in cents: the whole trial 3 €, paying household 10 € a month, free plan 0 (overridable by env). */
 export function plafondCentimes(db, householdId) {
     const h = db.getHousehold(householdId);
     if (!h)
@@ -12,7 +12,9 @@ export function plafondCentimes(db, householdId) {
 export function budgetIa(db, householdId) {
     const plafond = plafondCentimes(db, householdId);
     const gratuit = db.getHousehold(householdId) ? db.effectivePlan(db.getHousehold(householdId)) === "gratuit" : true;
-    const reste = () => Math.max(0, plafond - db.iaCentimesMois(householdId));
+    const h = db.getHousehold(householdId);
+    const essai = !!h && h.plan === "gratuit" && !gratuit; // the trial: what is spent since the start of the account counts
+    const reste = () => Math.max(0, plafond - (essai ? db.iaCentimesTotal(householdId) : db.iaCentimesMois(householdId)));
     return {
         ok: (cout = 0) => reste() > 0 && reste() >= cout,
         compter: (centimes, lecture = false) => (lecture ? db.recordIaLecture(householdId, gratuit, centimes) : db.recordIaCout(householdId, gratuit, centimes)),

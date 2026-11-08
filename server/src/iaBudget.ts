@@ -2,12 +2,12 @@
  * Monthly AI budget per household, so that no single account (a trial opened with any email, a heavy user) can run
  * up the AI bill. Every AI call is counted here: paper readings, bank-label categorisation, letters, PDF statements.
  * Over the budget, Lucien falls back to what it does without AI (local reading, rules, letter templates) until the
- * 1st of next month. Amounts in cents of euro, estimated per call (LUCIEN_COUT_* in ia.ts).
+ * 1st of next month. A trial has one budget for the whole trial, whatever months it spans. Amounts in cents of euro, estimated per call (LUCIEN_COUT_* in ia.ts).
  */
 import type { Db } from "./db.js";
 import { modelFor, type Tier } from "./ia.js";
 
-/** Budget in cents for the month: trial 3 €, paying household 10 €, free plan 0 (overridable by env). */
+/** Budget in cents: the whole trial 3 €, paying household 10 € a month, free plan 0 (overridable by env). */
 export function plafondCentimes(db: Db, householdId: string): number {
   const h = db.getHousehold(householdId);
   if (!h) return 0;
@@ -27,7 +27,9 @@ export interface BudgetIa {
 export function budgetIa(db: Db, householdId: string): BudgetIa {
   const plafond = plafondCentimes(db, householdId);
   const gratuit = db.getHousehold(householdId) ? db.effectivePlan(db.getHousehold(householdId)!) === "gratuit" : true;
-  const reste = () => Math.max(0, plafond - db.iaCentimesMois(householdId));
+  const h = db.getHousehold(householdId);
+  const essai = !!h && h.plan === "gratuit" && !gratuit; // the trial: what is spent since the start of the account counts
+  const reste = () => Math.max(0, plafond - (essai ? db.iaCentimesTotal(householdId) : db.iaCentimesMois(householdId)));
   return {
     ok: (cout = 0) => reste() > 0 && reste() >= cout,
     compter: (centimes, lecture = false) => (lecture ? db.recordIaLecture(householdId, gratuit, centimes) : db.recordIaCout(householdId, gratuit, centimes)),
