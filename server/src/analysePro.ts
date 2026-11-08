@@ -5,7 +5,7 @@
  * Read-only: Lucien never cancels or disputes anything itself; it says how.
  */
 import type { Db, TransactionRow } from "./db.js";
-import { findRecurrences } from "./budget.js";
+import { findRecurrences, resiliable } from "./budget.js";
 import { suivis } from "./resiliations.js";
 
 export type Signal = "nouveau" | "suspect" | "hausse";
@@ -47,7 +47,7 @@ export function analyserPro(txs: TransactionRow[], decisions: Record<string, "ok
     const signaux: Signal[] = [];
     if (jours(today, depuis) <= 60 && mois >= 3) signaux.push("nouveau");
     if (lignes.some((t) => ARNAQUE.test(texte(t)))) signaux.push("suspect");
-    if (r.hausse) signaux.push("hausse");
+    if (r.hausse && resiliable(r)) signaux.push("hausse");
     const cle = `rec:${r.cle}`;
     return {
       cle, marchand: nomPropre(r.marchand), frequence: r.frequence, montant: r.dernier_montant, annuel: r2(r.mensuel_equivalent * 12), depuis,

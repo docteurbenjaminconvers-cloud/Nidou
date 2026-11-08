@@ -1,4 +1,4 @@
-import { findRecurrences } from "./budget.js";
+import { findRecurrences, resiliable } from "./budget.js";
 import { suivis } from "./resiliations.js";
 /**
  * Wording common to the « annuaire » and « registre » scams aimed at businesses (fake directories, fake official
@@ -28,7 +28,7 @@ export function analyserPro(txs, decisions, today = new Date().toISOString().sli
             signaux.push("nouveau");
         if (lignes.some((t) => ARNAQUE.test(texte(t))))
             signaux.push("suspect");
-        if (r.hausse)
+        if (r.hausse && resiliable(r))
             signaux.push("hausse");
         const cle = `rec:${r.cle}`;
         return {

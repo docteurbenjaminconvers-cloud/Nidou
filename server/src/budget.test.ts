@@ -98,3 +98,15 @@ test("hausse : une vraie hausse de tarif, pas une facture de régularisation ni 
   assert.equal(recs.filter((r) => r.marchand === "engie").length, 2, "deux contrats");
   assert.ok(recs.every((r) => !r.hausse), "aucune hausse inventée");
 });
+
+test("hausse : pas d'alerte « résiliez » sur un impôt, un loyer ou un prêt", async () => {
+  const { budgetReport, resiliable } = await import("./budget.js");
+  const tx = (date: string, montant: number, marchand: string, categorie: string) => ({ id: date + marchand, household_id: "h", compte: "c", date, libelle: `PRLV ${marchand}`, marchand, montant, categorie, empreinte: date + marchand, note: null } as any);
+  const serie = (marchand: string, categorie: string, montants: number[]) => montants.map((m, i) => tx(`2026-0${5 + i}-05`, -m, marchand, categorie));
+  const txs = [...serie("impot 64060", "impots", [38, 38, 38, 42]), ...serie("loyer agence", "logement", [800, 800, 800, 840]), ...serie("free mobile", "telecom", [20, 20, 20, 25])];
+  const r = budgetReport(txs, [], {}, "2026-09-20");
+  const hausses = r.actions.filter((a) => a.type === "hausse").map((a) => a.marchand);
+  assert.deepEqual(hausses, ["free mobile"]);
+  assert.equal(resiliable({ categorie: "autre", marchand: "dgfip impot" }), false);
+  assert.equal(resiliable({ categorie: "assurance", marchand: "maif" }), true);
+});

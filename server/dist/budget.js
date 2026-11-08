@@ -51,6 +51,11 @@ export function hausseDurable(amounts) {
     }
     return null;
 }
+/**
+ * Can this recurring debit be cancelled or renegotiated? Taxes, rent, loan repayments, savings and transfers cannot:
+ * no « hausse → résiliez » alert for them (same rule as the « Résilier » link in the app, Spending.tsx).
+ */
+export const resiliable = (r) => !["impots", "epargne", "virements", "revenus", "logement"].includes(r.categorie) && !/\b(impots?|dgfip|tresor|urssaf|pret|credit|emprunt|echeance|loyer)\b/i.test(r.marchand);
 export function findRecurrences(txs) {
     const byMerchant = new Map();
     for (const t of txs) {
@@ -158,7 +163,7 @@ export function budgetReport(txs, docs, decisions, today = new Date().toISOStrin
     }
     // 2. Silent increases on any recurring charge.
     for (const r of recs) {
-        if (r.hausse) {
+        if (r.hausse && resiliable(r)) {
             const { avant, apres } = r.hausse;
             const pct = Math.round(((apres - avant) / avant) * 100);
             push({
