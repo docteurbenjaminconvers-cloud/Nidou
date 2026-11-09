@@ -1,3 +1,4 @@
+import { estResiliable } from "../../../server/src/categorie";
 import { useEffect, useRef, useState } from "react";
 import type { Api } from "../api";
 import { ApiError } from "../api";
@@ -161,8 +162,8 @@ export function Spending({ api, budget, household, go, onChanged, onUpgrade, toa
                 <div className="t" style={{ textTransform: "capitalize" }}>{r.marchand}</div>
                 <div className="s">{r.jour_du_mois ? `le ${r.jour_du_mois} du mois · ` : ""}{r.contrat_id ? <button className="link" style={{ fontSize: 13 }} onClick={() => go("doc", r.contrat_id!)}>contrat connu</button> : "aucun contrat dans Lucien"}</div>
                 {(() => {
-                  // taxes, savings and transfers are not subscriptions: nothing to cancel
-                  if (["impots", "epargne", "virements", "revenus", "logement"].includes(r.categorie) || /\b(impots?|dgfip|tresor|urssaf|pret|credit|emprunt|echeance|loyer)\b/i.test(r.marchand)) return null;
+                  // taxes, social contributions, pension funds, loans, rent, savings: not subscriptions, nothing to cancel
+                  if (!(r.resiliable ?? estResiliable(r.categorie, r.marchand))) return null;
                   const suivi = budget.resiliations?.find((x) => x.cle === r.cle);
                   return suivi
                     ? <div className="s" style={{ marginTop: 4 }}><span className="resil-chip">{CHIP[suivi.statut]}</span></div>

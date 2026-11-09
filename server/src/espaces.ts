@@ -4,6 +4,7 @@
  * own bank operations and papers. A space answers 402 when its module is not part of the household's offer.
  */
 import type { Hono } from "hono";
+import { ecrireFichier, lireFichier } from "./coffre.js";
 import { z } from "zod";
 import type { Db } from "./db.js";
 import { devis, droits, ESPACES, MODULES, PACKS, SOCLE, SOCLE_INCLUT, type Espace, type ModuleId } from "./offre.js";
@@ -199,7 +200,7 @@ export function monterEspaces(api: Hono<any>, db: Db, ctx: Ctx) {
       if (ctx.uploadDir) {
         await mkdir(ctx.uploadDir, { recursive: true });
         const fichier = `${Date.now()}-${f.name.replace(/[^\w.\-]+/g, "_")}`;
-        await writeFile(join(ctx.uploadDir, fichier), buf);
+        await ecrireFichier(join(ctx.uploadDir, fichier), buf);
         db.insertDocument({ household_id: h.id, member_id: null, title: titre.slice(0, 120), category: e === "pro" ? "autre" : "logement", organisme: null, numero_contrat: null,
           montant: null, periodicite: null, date_document: null, date_debut: null, date_fin: null, preavis_jours: null, resume, texte: entree.texte ?? null, fichier, mime, confiance: (lu as { confiance: number }).confiance });
       }

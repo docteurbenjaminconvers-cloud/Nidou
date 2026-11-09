@@ -1279,3 +1279,20 @@ em.ech { background: var(--nest); } em.act { background: var(--lilac, #b89bd9); 
 }
 @media (min-width: 1024px) { .screen.tableau.reglages > .reg-abo.large { column-span: all; display: block; } .reglages .reg-abo.large .tiers { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .reglages .langue-choix { width: auto; max-width: 150px; flex: none; }
+/* coffre-fort */
+.coffre-bandeau { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 14px; margin: 0 0 16px; border-radius: 16px; background: var(--plum); color: var(--white); }
+.coffre-bandeau span { flex: 1; min-width: 200px; font-size: 14px; }
+.coffre-bandeau.ouvert { background: var(--yolk-soft); color: var(--ink); }
+.coffre-feuille { text-align: center; }
+.coffre-feuille h2 { font-family: var(--display); font-weight: 600; font-size: 24px; margin: 4px 0 6px; }
+.coffre-icone { width: 58px; height: 58px; margin: 4px auto 6px; display: grid; place-items: center; border-radius: 50%; background: var(--plum); color: var(--white); }
+.coffre-choix { display: grid; gap: 10px; margin-top: 14px; }
+.coffre-code { text-align: center; font-size: 26px; letter-spacing: .4em; font-weight: 800; }
+.cadenas { font-size: .85em; }
+.secu-points { display: grid; gap: 10px; margin-bottom: 8px; }
+.secu-points > div { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border-radius: 14px; background: var(--paper); }
+.secu-points svg { flex: none; color: var(--nest); margin-top: 2px; }
+.secu-points b { display: block; font-size: 14.5px; }
+.secu-points span { font-size: 13.5px; color: var(--mist); }
+.secu-journal { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; font-size: 13px; color: var(--mist); max-height: 240px; overflow-y: auto; }
+.secu-journal b { color: var(--ink); font-weight: 700; }

@@ -32,7 +32,7 @@ export function Documents({ docs, go, unread }: { docs: Doc[]; go: (s: string, i
               <button className="row-item" onClick={() => go("doc", d.id)}>
                 <CatIcon c={d.category} />
                 <div>
-                  <div className="t">{d.title}</div>
+                  <div className="t">{d.au_coffre && <span className="cadenas" title="Au coffre-fort" aria-label="Au coffre-fort">🔒 </span>}{d.title}</div>
                   <div className="s">{[d.organisme, CATEGORY_LABEL[d.category], d.date_fin ? `jusqu'au ${fmtDate(d.date_fin, { day: "numeric", month: "short", year: "numeric" })}` : null].filter(Boolean).join(" · ")}</div>
                 </div>
                 <div className="r">{d.montant != null ? fmtEuro(d.montant, d.montant % 1 ? 2 : 0) : ""}{d.periodicite && <small>{PERIOD_LABEL[d.periodicite]}</small>}</div>

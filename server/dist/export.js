@@ -1,10 +1,4 @@
-/**
- * « Exporter tout » (RGPD, droit d'accès et portabilité) : everything the household holds in Lucien, in one .zip —
- * one JSON file per kind of data, the original papers and portraits, and a short "lisez-moi".
- * Secrets that would open an account or a connection (session and login tokens, connector token, bank and push keys)
- * are left out: they are not the user's data, and a lost export must not become a way in.
- */
-import { readFile } from "node:fs/promises";
+import { lireFichier } from "./coffre.js";
 import { basename, extname, join } from "node:path";
 import { zip } from "./zip.js";
 /** Technical tables with nothing personal, or holding only access secrets. */
@@ -53,7 +47,7 @@ export async function exporterFoyer(db, householdId, uploadDir, maintenant = new
     for (const d of (donnees.documents ?? [])) {
         if (!d.fichier)
             continue;
-        const buf = await readFile(join(uploadDir, basename(d.fichier))).catch(() => null);
+        const buf = await lireFichier(join(uploadDir, basename(d.fichier))).catch(() => null);
         if (!buf) {
             manquants.push(d.title ?? d.id);
             continue;
@@ -63,7 +57,7 @@ export async function exporterFoyer(db, householdId, uploadDir, maintenant = new
     for (const m of (donnees.members ?? [])) {
         if (!m.photo)
             continue;
-        const buf = await readFile(join(uploadDir, basename(m.photo))).catch(() => null);
+        const buf = await lireFichier(join(uploadDir, basename(m.photo))).catch(() => null);
         if (buf)
             fichiers.push({ nom: `photos/${propre(m.prenom ?? "membre", 40)}${extname(m.photo) || ".jpg"}`, contenu: buf });
     }

@@ -1,5 +1,6 @@
 import type { DocumentRow, TransactionRow } from "./db.js";
 import { TX_LABEL, type TxCategory } from "./transactions.js";
+import { estResiliable } from "./categorie.js";
 
 export interface Recurrence {
   cle: string;              // marchand normalisé
@@ -14,6 +15,8 @@ export interface Recurrence {
   frequence: "mensuel" | "hebdomadaire" | "annuel" | "irregulier";
   derniere_date: string;
   jour_du_mois: number | null;
+  /** False for taxes, social contributions, pension funds, loans, rent…: no « Résilier » for them. */
+  resiliable: boolean;
   mensuel_equivalent: number;
   contrat_id: string | null; // document Lucien rapproché
 }
@@ -96,8 +99,7 @@ export function hausseDurable(amounts: number[]): { avant: number; apres: number
  * Can this recurring debit be cancelled or renegotiated? Taxes, rent, loan repayments, savings and transfers cannot:
  * no « hausse → résiliez » alert for them (same rule as the « Résilier » link in the app, Spending.tsx).
  */
-export const resiliable = (r: { categorie: string; marchand: string }) =>
-  !["impots", "epargne", "virements", "revenus", "logement"].includes(r.categorie) && !/\b(impots?|dgfip|tresor|urssaf|pret|credit|emprunt|echeance|loyer)\b/i.test(r.marchand);
+export const resiliable = (r: { categorie: string; marchand: string }) => estResiliable(r.categorie, r.marchand);
 
 export function findRecurrences(txs: TransactionRow[]): Recurrence[] {
   const byMerchant = new Map<string, TransactionRow[]>();
@@ -138,7 +140,7 @@ export function findRecurrences(txs: TransactionRow[]): Recurrence[] {
       hausse: hausseDurable(amounts),
       occurrences: sorted.length, frequence, derniere_date: sorted[sorted.length - 1].date,
       jour_du_mois: frequence === "mensuel" ? Math.round(days.reduce((s, d) => s + d, 0) / days.length) : null,
-      mensuel_equivalent: round2(monthly), contrat_id: null,
+      mensuel_equivalent: round2(monthly), contrat_id: null, resiliable: estResiliable(sorted[sorted.length - 1].categorie, marchand),
     });
   }
   return out.sort((a, b) => b.mensuel_equivalent - a.mensuel_equivalent);
@@ -189,7 +191,7 @@ export function budgetReport(txs: TransactionRow[], docs: DocumentRow[], decisio
 
   // 1. Ghost subscriptions: recurring, no matching contract, "abonnements" or unknown category.
   for (const r of recs) {
-    if (r.categorie === "abonnements" && !r.contrat_id) {
+    if (r.categorie === "abonnements" && !r.contrat_id && resiliable(r)) {
       push({
         cle: `fantome:${r.cle}`, type: "fantome", priorite: 1, effort: "2 min",
         titre: `${cap(r.marchand)} : ${fmt(r.montant_moyen)} chaque ${r.frequence === "mensuel" ? "mois" : r.frequence === "hebdomadaire" ? "semaine" : "année"}`,

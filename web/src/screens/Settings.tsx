@@ -1,4 +1,5 @@
 import { ConfirmationPaiement } from "./Confirmation";
+import { CarteSecurite, CoffreSheet } from "./Coffre";
 import { Ico } from "./espacesCommun";
 import { useEffect, useState } from "react";
 import type { Api, Partenaire, SujetSupport } from "../api";
@@ -113,6 +114,12 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
     : formuleActuelle ? { titre: `Lucien ${nomFormule ?? ""}`, sous: `Paiement ${abo?.periode === "annuel" ? "annuel" : "mensuel"}${abo?.fin ? ` · ${abo.abonnement_resilie ? "s'arrête le" : "prochaine échéance le"} ${dateFr(abo.fin)}` : ""}${abo?.statut === "past_due" ? " · paiement en attente : mettez à jour votre carte" : ""}${abo?.statut === "simule" ? " · simulé" : ""}` }
     : essai ? { titre: `Essai gratuit · ${(household.essai!.jours_restants ?? 0)} jour${(household.essai!.jours_restants ?? 0) > 1 ? "s" : ""}`, sous: "Tout Lucien, jusqu'à 6 personnes, sans carte bancaire. Ensuite, choisissez une formule." }
     : { titre: "Sans abonnement", sous: "Vos papiers et vos échéances restent consultables et exportables. Lucien ne range plus rien de nouveau." };
+  const [coffreExport, setCoffreExport] = useState(false);
+  const exporter = async () => {
+    toast("Préparation de l'export…");
+    try { await api.exporter(); }
+    catch (e) { if ((e as { status?: number }).status === 423) setCoffreExport(true); else toast((e as Error).message); }
+  };
   const copier = async (t: string, ok: string) => { try { await navigator.clipboard.writeText(t); toast(ok); } catch { toast(t); } };
   const initiales = (household.utilisateur?.prenom ?? household.utilisateur?.email ?? household.nom).trim().slice(0, 1).toUpperCase();
   return (
@@ -240,6 +247,9 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
         )}
       </section>
 
+      {/* ---------- Sécurité ---------- */}
+      <CarteSecurite api={api} toast={toast} />
+
       {/* ---------- Aide et données ---------- */}
       <section className="section reg-carte">
         <p className="reg-titre">Aide et données</p>
@@ -248,12 +258,13 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
           <select className="in langue-choix" aria-label="Langue / Language" value={langueChoisie()} onChange={(e) => choisirLangue(e.target.value as "fr" | "en")} data-pas-traduire>
             <option value="fr">Français</option><option value="en">English</option>
           </select></div>
-        <div className="settings-row"><div><div className="t">Exporter tout</div><div className="s">Vos papiers d'origine et toutes vos données, dans un fichier .zip</div></div><button className="link" onClick={async () => { toast("Préparation de l'export…"); try { await api.exporter(); } catch (e) { toast((e as Error).message); } }}>Exporter</button></div>
+        <div className="settings-row"><div><div className="t">Exporter tout</div><div className="s">Vos papiers d'origine et toutes vos données, dans un fichier .zip</div></div><button className="link" onClick={exporter}>Exporter</button></div>
         {abo?.suppression_le && household.titulaire !== false ? (
           <div className="settings-row suppr-prevue"><div><div className="t">Suppression prévue le {dateFr(abo.suppression_le)}</div><div className="s">Tout reste accessible d'ici là. Pensez à exporter vos données.</div></div><button className="link" onClick={async () => { try { await api.annulerSuppression(); toast("Suppression annulée, l'abonnement continue"); setTimeout(() => location.reload(), 900); } catch (e) { toast((e as Error).message); } }}>Annuler</button></div>
         ) : <div className="settings-row"><div><div className="t">Supprimer le compte</div><div className="s">{household.titulaire === false ? "Vous quittez le foyer, votre compte est effacé" : "Le foyer est effacé à la fin de la période déjà payée"}</div></div><button className="link" style={{ color: "var(--ember)" }} onClick={() => setSuppression(true)}>Supprimer</button></div>}
         <p className="note reg-pied">Hébergé en Europe · connexion chiffrée · vos données ne sont jamais revendues.</p>
       </section>
+      {coffreExport && <CoffreSheet api={api} toast={toast} onClose={() => setCoffreExport(false)} onOuvert={() => { setCoffreExport(false); exporter(); }} />}
       {aide && <EcrireEquipe api={api} formule={abo?.formule ?? null} email={household.utilisateur?.email ?? null} onClose={() => setAide(false)} toast={toast} />}
       {suppression && <SuppressionCompte api={api} titulaire={household.titulaire !== false} foyer={household.nom} paye={paiementEnCours(household)} fin={abo?.fin ?? null} onClose={() => setSuppression(false)} toast={toast} />}
     </div>

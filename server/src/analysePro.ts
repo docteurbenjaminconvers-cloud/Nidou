@@ -11,7 +11,7 @@ import { suivis } from "./resiliations.js";
 export type Signal = "nouveau" | "suspect" | "hausse";
 export interface Prelevement {
   cle: string; marchand: string; frequence: string; montant: number; annuel: number; depuis: string; derniere_date: string;
-  occurrences: number; compte: string | null; signaux: Signal[]; hausse: { avant: number; apres: number } | null; decision: "ok" | "resilier" | null;
+  occurrences: number; compte: string | null; signaux: Signal[]; hausse: { avant: number; apres: number } | null; decision: "ok" | "resilier" | null; resiliable: boolean;
   /** once « C'est fait, j'ai résilié » is tapped: what the bank statements show since */
   suivi?: { statut: "en_cours" | "confirmee" | "encore_prelevee"; message: string } | null;
 }
@@ -51,7 +51,7 @@ export function analyserPro(txs: TransactionRow[], decisions: Record<string, "ok
     const cle = `rec:${r.cle}`;
     return {
       cle, marchand: nomPropre(r.marchand), frequence: r.frequence, montant: r.dernier_montant, annuel: r2(r.mensuel_equivalent * 12), depuis,
-      derniere_date: r.derniere_date, occurrences: r.occurrences, compte: lignes[lignes.length - 1]?.compte ?? null, signaux, hausse: r.hausse ?? null, decision: decisions[cle] ?? null,
+      derniere_date: r.derniere_date, occurrences: r.occurrences, compte: lignes[lignes.length - 1]?.compte ?? null, signaux, hausse: r.hausse ?? null, decision: decisions[cle] ?? null, resiliable: r.resiliable,
     };
   }).sort((a, b) => b.signaux.length - a.signaux.length || b.annuel - a.annuel);
   const recurrents = new Set(prelevements.map((p) => p.marchand.toLowerCase()));

@@ -13,6 +13,7 @@
     "@anthropic-ai/sdk": "^0.60.0",
     "@hono/node-server": "^1.13.0",
     "@modelcontextprotocol/sdk": "^1.17.0",
+    "@simplewebauthn/server": "^13.3.3",
     "hono": "^4.6.0",
     "pdf-lib": "^1.17.1",
     "stripe": "^18.5.0",

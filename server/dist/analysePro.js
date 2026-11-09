@@ -33,7 +33,7 @@ export function analyserPro(txs, decisions, today = new Date().toISOString().sli
         const cle = `rec:${r.cle}`;
         return {
             cle, marchand: nomPropre(r.marchand), frequence: r.frequence, montant: r.dernier_montant, annuel: r2(r.mensuel_equivalent * 12), depuis,
-            derniere_date: r.derniere_date, occurrences: r.occurrences, compte: lignes[lignes.length - 1]?.compte ?? null, signaux, hausse: r.hausse ?? null, decision: decisions[cle] ?? null,
+            derniere_date: r.derniere_date, occurrences: r.occurrences, compte: lignes[lignes.length - 1]?.compte ?? null, signaux, hausse: r.hausse ?? null, decision: decisions[cle] ?? null, resiliable: r.resiliable,
         };
     }).sort((a, b) => b.signaux.length - a.signaux.length || b.annuel - a.annuel);
     const recurrents = new Set(prelevements.map((p) => p.marchand.toLowerCase()));

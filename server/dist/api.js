@@ -1,8 +1,11 @@
 import { anthropicCreate } from "./ia.js";
 import { Hono } from "hono";
 import { z } from "zod";
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { mkdir, unlink } from "node:fs/promises";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { pourquoiPasResiliable } from "./categorie.js";
+import { ecrireFichier, lireFichier } from "./coffre.js";
+import { coffreOuvert, docVerrouille, estAuCoffre, journaliser, monterCoffre } from "./coffreAcces.js";
 import { coordonnees, dateLongue, lettreResiliationStructuree, pdfLettre, texteLettre } from "./lettres.js";
 import { exporterFoyer } from "./export.js";
 import { prevoirFinDeMois } from "./prevision.js";
@@ -516,7 +519,7 @@ export function createApi(db, opts) {
             return c.json({ error: "photo_invalide", message: "Format accepté : JPEG, PNG ou WebP." }, 400);
         await mkdir(opts.uploadDir, { recursive: true });
         const nom = `membre-${m.id.replace(/[^\w-]/g, "")}-${randomBytes(6).toString("hex")}.${ext}`;
-        await writeFile(join(opts.uploadDir, nom), buf);
+        await ecrireFichier(join(opts.uploadDir, nom), buf);
         if (m.photo)
             await unlink(join(opts.uploadDir, basename(m.photo))).catch(() => { });
         db.setMemberPhoto(m.id, nom);
@@ -535,7 +538,7 @@ export function createApi(db, opts) {
         const m = db.getMember(c.req.param("id"));
         if (!m || m.household_id !== household(c).id || !m.photo)
             return c.json({ error: "introuvable" }, 404);
-        const buf = await readFile(join(opts.uploadDir, basename(m.photo))).catch(() => null);
+        const buf = await lireFichier(join(opts.uploadDir, basename(m.photo))).catch(() => null);
         const ext = buf && typePhoto(buf);
         if (!buf || !ext)
             return c.json({ error: "introuvable" }, 404);
@@ -580,15 +583,27 @@ export function createApi(db, opts) {
         return c.json({ ok: true });
     });
     // ---------- documents ----------
+    // The coffre-fort (identity, health, taxes, bank): unlocked by Face ID / fingerprint or an emailed code (coffreAcces.ts)
+    monterCoffre(api, db, { household, user: currentUser });
+    const COFFRE_FERME = { error: "coffre", message: "Ce papier est au coffre : déverrouillez-le pour l'ouvrir." };
+    const pourAffichage = (c, d) => {
+        const p = publicDoc(d);
+        if (!estAuCoffre(d))
+            return p;
+        return coffreOuvert(db, c) ? { ...p, au_coffre: true, verrouille: false } : docVerrouille(p);
+    };
     api.get("/documents", (c) => {
         const h = household(c);
-        return c.json(db.listDocuments(h.id, { category: c.req.query("category"), q: c.req.query("q") }).map(publicDoc));
+        return c.json(db.listDocuments(h.id, { category: c.req.query("category"), q: c.req.query("q") }).map((d) => pourAffichage(c, d)));
     });
     api.get("/documents/:id", (c) => {
         const d = db.getDocument(c.req.param("id"));
         if (!d || d.household_id !== household(c).id)
             return c.json({ error: "introuvable" }, 404);
-        return c.json({ ...publicDoc(d), texte: d.texte, echeances: db.listDeadlines(d.household_id, { includeDone: true }).filter((x) => x.document_id === d.id) });
+        const ouvert = !estAuCoffre(d) || coffreOuvert(db, c);
+        if (estAuCoffre(d) && ouvert)
+            journaliser(db, { householdId: d.household_id, user: currentUser(c), doc: d, action: "consultation" });
+        return c.json({ ...pourAffichage(c, d), texte: ouvert ? d.texte : null, echeances: db.listDeadlines(d.household_id, { includeDone: true }).filter((x) => x.document_id === d.id) });
     });
     /**
      * Calendar subscription (Google, Apple, Outlook): deadlines and the children's weekly activities, refreshed by the calendar app.
@@ -622,9 +637,13 @@ export function createApi(db, opts) {
         const d = db.getDocument(c.req.param("id"));
         if (!d || d.household_id !== household(c).id || !d.fichier)
             return c.json({ error: "introuvable" }, 404);
-        const buf = await readFile(join(opts.uploadDir, basename(d.fichier))).catch(() => null);
+        if (estAuCoffre(d) && !coffreOuvert(db, c))
+            return c.json(COFFRE_FERME, 423);
+        const buf = await lireFichier(join(opts.uploadDir, basename(d.fichier))).catch(() => null);
         if (!buf)
             return c.json({ error: "introuvable" }, 404);
+        if (estAuCoffre(d))
+            journaliser(db, { householdId: d.household_id, user: currentUser(c), doc: d, action: "fichier ouvert" });
         const nom = `${d.title.replace(/[^\p{L}\p{N} ._-]+/gu, "").trim().slice(0, 80) || "document"}${extname(d.fichier)}`;
         // Only PDFs and photos are shown in the browser; anything else (HTML, SVG…) is downloaded, never rendered on our origin.
         const affichable = /^(application\/pdf|image\/(png|jpeg|webp|gif|heic|heif))$/.test(d.mime ?? "");
@@ -638,6 +657,10 @@ export function createApi(db, opts) {
     /** « Exporter tout » : the household's whole data and papers in one .zip (RGPD access and portability). */
     api.get("/export.zip", async (c) => {
         const h = household(c);
+        // everything leaves in this file, the coffre included: only from an unlocked coffre
+        if (!coffreOuvert(db, c))
+            return c.json({ error: "coffre", message: "L'export contient vos papiers du coffre : déverrouillez-le d'abord." }, 423);
+        journaliser(db, { householdId: h.id, user: currentUser(c), action: "export de toutes les données" });
         const nom = `Lucien - export ${h.nom ?? "foyer"} ${new Date().toISOString().slice(0, 10)}.zip`;
         return new Response(new Uint8Array(await exporterFoyer(db, h.id, opts.uploadDir)), { headers: { "content-type": "application/zip", "content-disposition": dispositionFichier("attachment", nom), "x-content-type-options": "nosniff", "cache-control": "private, no-store" } });
     });
@@ -651,6 +674,11 @@ export function createApi(db, opts) {
             return c.json({ error: "introuvable" }, 404);
         const docs = db.listDocuments(h.id);
         const e = etatKit(kit, docs);
+        const coffre = e.pieces.some((p) => p.documents.some((ref) => { const d = docs.find((x) => x.id === ref.id); return !!d && estAuCoffre(d); }));
+        if (coffre && !coffreOuvert(db, c))
+            return c.json({ error: "coffre", message: "Ce dossier contient des papiers du coffre : déverrouillez-le d'abord." }, 423);
+        if (coffre)
+            journaliser(db, { householdId: h.id, user: currentUser(c), action: `dossier « ${kit.titre} » téléchargé` });
         const fichiers = [{ nom: "00 - Bordereau.txt", contenu: Buffer.from(bordereau(e, db.getHousehold(h.id).nom), "utf8") }];
         let n = 1;
         for (const p of e.pieces)
@@ -658,7 +686,7 @@ export function createApi(db, opts) {
                 const d = docs.find((x) => x.id === ref.id);
                 if (!d?.fichier)
                     continue;
-                const buf = await readFile(join(opts.uploadDir, basename(d.fichier))).catch(() => null);
+                const buf = await lireFichier(join(opts.uploadDir, basename(d.fichier))).catch(() => null);
                 if (!buf)
                     continue;
                 const titre = d.title.replace(/[^\p{L}\p{N} ._'-]+/gu, " ").replace(/\s+/g, " ").trim().slice(0, 70);
@@ -695,7 +723,7 @@ export function createApi(db, opts) {
                 base64 = buf.toString("base64");
                 await mkdir(opts.uploadDir, { recursive: true });
                 fichier = `${Date.now()}-${f.name.replace(/[^\w.\-]+/g, "_")}`;
-                await writeFile(join(opts.uploadDir, fichier), buf);
+                await ecrireFichier(join(opts.uploadDir, fichier), buf);
                 if (mime.startsWith("text/"))
                     texte = texte ?? buf.toString("utf8");
             }
@@ -771,10 +799,13 @@ export function createApi(db, opts) {
             verifie: z.number().int().min(0).max(1).optional(),
         })
             .parse(await c.req.json());
+        // a masked number (« •••• 1234 », as a closed coffre shows it) never overwrites the real one
+        if (patch.numero_contrat?.includes("•"))
+            delete patch.numero_contrat;
         db.updateDocument(d.id, patch);
         const updated = db.getDocument(d.id);
         db.replaceDeadlinesForDocument(updated.id, updated.household_id, deadlinesFor(updated));
-        return c.json(publicDoc(updated));
+        return c.json(pourAffichage(c, updated));
     });
     api.delete("/documents/:id", (c) => {
         const d = db.getDocument(c.req.param("id"));
@@ -943,7 +974,7 @@ export function createApi(db, opts) {
     });
     const lettreDe = (c, b) => {
         const r = recurrence(household(c).id, b.cle);
-        if (!r)
+        if (!r || pourquoiPasResiliable(r.categorie, r.marchand))
             return null;
         return { r, lettre: lettreResiliationStructuree({ marchand: nomMarchand(r.marchand), montant: r.dernier_montant, expediteur: b.expediteur, destinataire: b.destinataire || null, reference: b.reference || null }) };
     };
@@ -955,6 +986,9 @@ export function createApi(db, opts) {
         const r = recurrence(h.id, c.req.query("cle") ?? "");
         if (!r)
             return c.json({ error: "introuvable", message: "Ce prélèvement n'apparaît plus dans vos relevés." }, 404);
+        const pourquoi = pourquoiPasResiliable(r.categorie, r.marchand);
+        if (pourquoi)
+            return c.json({ error: "non_resiliable", message: `Ce prélèvement ne se résilie pas (${pourquoi}).` }, 400);
         const nom = nomMarchand(r.marchand);
         const co = coordonnees(db.listDocuments(h.id), nom);
         const sig = signataire(c);

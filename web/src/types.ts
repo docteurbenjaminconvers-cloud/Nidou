@@ -4,6 +4,9 @@ export type Category =
 
 export interface Doc {
   id: string;
+  /** Identity, health, taxes, bank: opened after Face ID / fingerprint or an emailed code. */
+  au_coffre?: boolean;
+  verrouille?: boolean;
   title: string;
   category: Category;
   organisme: string | null;
@@ -145,7 +148,7 @@ export interface BudgetReport {
   revenus_moyenne_mensuelle: number;
   reste_a_vivre_moyen: number;
   par_categorie: { categorie: string; libelle: string; mois_courant: number; moyenne: number; variation: number | null }[];
-  recurrences: { cle: string; marchand: string; categorie: string; mensuel_equivalent: number; jour_du_mois: number | null; contrat_id: string | null; occurrences: number }[];
+  recurrences: { cle: string; marchand: string; categorie: string; mensuel_equivalent: number; jour_du_mois: number | null; contrat_id: string | null; occurrences: number; resiliable?: boolean }[];
   actions: BudgetAction[];
   actions_total: number;
   apercu: boolean;
@@ -222,9 +225,11 @@ export interface VuePersonne {
 }
 
 /** « Dépenses à vérifier » on the professional accounts (read-only analysis). */
-export interface PrelevementPro { cle: string; marchand: string; frequence: string; montant: number; annuel: number; depuis: string; derniere_date: string; occurrences: number; compte: string | null; signaux: ("nouveau" | "suspect" | "hausse")[]; hausse: { avant: number; apres: number } | null; decision: "ok" | "resilier" | null; suivi?: { statut: "en_cours" | "confirmee" | "encore_prelevee"; message: string } | null }
+export interface PrelevementPro { cle: string; marchand: string; frequence: string; montant: number; annuel: number; depuis: string; derniere_date: string; occurrences: number; compte: string | null; signaux: ("nouveau" | "suspect" | "hausse")[]; hausse: { avant: number; apres: number } | null; decision: "ok" | "resilier" | null; resiliable?: boolean; suivi?: { statut: "en_cours" | "confirmee" | "encore_prelevee"; message: string } | null }
 export interface AlertePro { cle: string; type: "suspect" | "doublon" | "micro" | "frais"; titre: string; detail: string; montant: number; date: string | null; marchand: string | null; decision: "ok" | "resilier" | null }
 export interface AnalysePro { comptes: string[]; mois: number; prelevements: PrelevementPro[]; alertes: AlertePro[]; total_annuel: number; a_verifier: number }
 
 /** « Lucien a remarqué » : a remark computed from what Lucien knows of the household. */
 export interface Remarque { cle: string; niveau: "alerte" | "conseil" | "info"; titre: string; detail: string; action: { libelle: string; route: string } | null }
+
+export interface EtatCoffre { chiffrement: boolean; categories: string[]; ouvert: boolean; jusqu_au: string | null; verrou: boolean; passkeys: { id: string; appareil: string | null; cree_le: string; utilisee_le: string | null }[]; duree_minutes: number }

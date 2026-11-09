@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { estAuCoffre, masquer } from "./coffreAcces.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { z } from "zod";
 import { familleReport, JOURS, coutsParMembre } from "./famille.js";
@@ -64,7 +65,9 @@ export function createMcpServer(db: Db, householdId: string) {
       log("detail_document", { id });
       const d = db.getDocument(id);
       if (!d || d.household_id !== householdId || excluded.has(d.category)) return text({ erreur: "Document introuvable ou hors périmètre du connecteur." });
-      return text({ ...sansFoyer(publicDoc(d)), ...fin(d), echeances: db.listDeadlines(householdId, { includeDone: true }).filter((x) => x.document_id === d.id).map(sansFoyer) });
+      // papers of the coffre (identity, taxes…): the assistant sees the dates, never the full numbers
+      const p = estAuCoffre(d) ? { ...publicDoc(d), numero_contrat: masquer(d.numero_contrat) } : publicDoc(d);
+      return text({ ...sansFoyer(p), ...fin(d), echeances: db.listDeadlines(householdId, { includeDone: true }).filter((x) => x.document_id === d.id).map(sansFoyer) });
     }
   );
 
@@ -184,7 +187,7 @@ export function createMcpServer(db: Db, householdId: string) {
     async ({ q }) => {
       log("rechercher", { q });
       const docs = db.listDocuments(householdId, { q }).filter((d) => !excluded.has(d.category));
-      return text(docs.map((d) => ({ id: d.id, titre: d.title, categorie: d.category, organisme: d.organisme, resume: d.resume, ...correspondance(d, q) })));
+      return text(docs.map((d) => ({ id: d.id, titre: d.title, categorie: d.category, organisme: d.organisme, resume: d.resume, ...(estAuCoffre(d) ? {} : correspondance(d, q)) })));
     }
   );
 

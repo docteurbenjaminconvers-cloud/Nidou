@@ -1,4 +1,5 @@
 import "./env-compat.js";
+import { chiffrerExistants, etatCoffre, initCoffre } from "./coffre.js";
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
@@ -61,6 +62,14 @@ app.post("/api/diagnostic", async (c) => {
     console.warn("[diagnostic]", brut.replace(/[\r\n]+/g, " "));
     return c.json({ ok: true });
 });
+initCoffre(DATA_DIR);
+{
+    const e = etatCoffre();
+    console.log(`[coffre] fichiers chiffrés sur le disque : ${e.chiffrement ? "oui" : "non"} · clé : ${e.cle === "serveur" ? "réglage du serveur" : "fichier du disque (ajoutez LUCIEN_CLE_COFFRE)"}`);
+    // the files written before encryption existed are encrypted in place only when asked (LUCIEN_COFFRE_MIGRER=1)
+    if (process.env.LUCIEN_COFFRE_MIGRER === "1")
+        chiffrerExistants(join(DATA_DIR, "uploads")).then((r) => console.log(`[coffre] anciens fichiers chiffrés : ${r.chiffres} (déjà chiffrés : ${r.deja})`)).catch((err) => console.error("[coffre] chiffrement des anciens fichiers interrompu :", err.message));
+}
 app.route("/api", createApi(db, { uploadDir: join(DATA_DIR, "uploads") }));
 // MCP endpoint (streamable HTTP). Claude Desktop / claude.ai: https://<host>/mcp
 app.all("/mcp", (c) => handleMcpRequest(db, c.req.raw));

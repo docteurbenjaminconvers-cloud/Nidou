@@ -110,3 +110,13 @@ test("hausse : pas d'alerte « résiliez » sur un impôt, un loyer ou un prêt"
   assert.equal(resiliable({ categorie: "autre", marchand: "dgfip impot" }), false);
   assert.equal(resiliable({ categorie: "assurance", marchand: "maif" }), true);
 });
+
+test("résiliable : impôts, URSSAF, CARMF, ordre des médecins, prêts, loyer ne sont jamais proposés ; Netflix, Leocare, Orange oui", async () => {
+  const { pourquoiPasResiliable, estResiliable } = await import("./categorie.js");
+  for (const [cat, m] of [["autre", "URSSAF ILE DE FRANCE"], ["autre", "CARMF"], ["autre", "Cipav"], ["autre", "ORDRE DES MEDECINS"], ["autre", "DGFIP IMPOT"], ["autre", "Prélèvement à la source"],
+    ["assurance", "COFIDIS ECHEANCE"], ["autre", "Cotisations sociales SSI"], ["autre", "Taxe foncière"], ["autre", "AGIRC ARRCO"], ["frais_bancaires", "Cotisation carte"], ["logement", "Foncia"], ["epargne", "Livret A"]])
+    assert.ok(pourquoiPasResiliable(cat, m), `${m} ne se résilie pas`);
+  for (const [cat, m] of [["abonnements", "Netflix"], ["assurance", "Leocare"], ["telecom", "Orange"], ["abonnements", "Keepcool"], ["energie", "EDF"], ["assurance", "Harmonie Mutuelle"]])
+    assert.ok(estResiliable(cat, m), `${m} se résilie`);
+  assert.equal(pourquoiPasResiliable("autre", "URSSAF"), "cotisation sociale obligatoire");
+});

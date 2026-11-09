@@ -1,4 +1,5 @@
 import { TX_LABEL } from "./transactions.js";
+import { estResiliable } from "./categorie.js";
 const round2 = (n) => Math.round(n * 100) / 100;
 const ym = (iso) => iso.slice(0, 7);
 const daysBetween = (a, b) => Math.abs(Date.parse(a) - Date.parse(b)) / 864e5;
@@ -55,7 +56,7 @@ export function hausseDurable(amounts) {
  * Can this recurring debit be cancelled or renegotiated? Taxes, rent, loan repayments, savings and transfers cannot:
  * no « hausse → résiliez » alert for them (same rule as the « Résilier » link in the app, Spending.tsx).
  */
-export const resiliable = (r) => !["impots", "epargne", "virements", "revenus", "logement"].includes(r.categorie) && !/\b(impots?|dgfip|tresor|urssaf|pret|credit|emprunt|echeance|loyer)\b/i.test(r.marchand);
+export const resiliable = (r) => estResiliable(r.categorie, r.marchand);
 export function findRecurrences(txs) {
     const byMerchant = new Map();
     for (const t of txs) {
@@ -106,7 +107,7 @@ export function findRecurrences(txs) {
             hausse: hausseDurable(amounts),
             occurrences: sorted.length, frequence, derniere_date: sorted[sorted.length - 1].date,
             jour_du_mois: frequence === "mensuel" ? Math.round(days.reduce((s, d) => s + d, 0) / days.length) : null,
-            mensuel_equivalent: round2(monthly), contrat_id: null,
+            mensuel_equivalent: round2(monthly), contrat_id: null, resiliable: estResiliable(sorted[sorted.length - 1].categorie, marchand),
         });
     }
     return out.sort((a, b) => b.mensuel_equivalent - a.mensuel_equivalent);
@@ -152,7 +153,7 @@ export function budgetReport(txs, docs, decisions, today = new Date().toISOStrin
     const push = (a) => actions.push({ ...a, decision: decisions[a.cle] ?? null });
     // 1. Ghost subscriptions: recurring, no matching contract, "abonnements" or unknown category.
     for (const r of recs) {
-        if (r.categorie === "abonnements" && !r.contrat_id) {
+        if (r.categorie === "abonnements" && !r.contrat_id && resiliable(r)) {
             push({
                 cle: `fantome:${r.cle}`, type: "fantome", priorite: 1, effort: "2 min",
                 titre: `${cap(r.marchand)} : ${fmt(r.montant_moyen)} chaque ${r.frequence === "mensuel" ? "mois" : r.frequence === "hebdomadaire" ? "semaine" : "année"}`,

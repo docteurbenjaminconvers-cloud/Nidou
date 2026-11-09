@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import type { Api } from "../api";
 import { CATEGORIES, CATEGORY_LABEL, type Category, type Deadline, type Doc } from "../types";
 import { Back, DateChip, fmtDate, fmtEuro, PERIOD_LABEL, relative } from "../ui";
+import { CoffreSheet } from "./Coffre";
+import { Ico } from "./espacesCommun";
 
 type Full = Doc & { echeances: Deadline[]; texte?: string | null };
 
@@ -62,6 +64,7 @@ export function DocumentDetail({ api, id, onBack, onChanged, toast }: { api: Api
   const [motif, setMotif] = useState("");
   const [busy, setBusy] = useState(false);
   const [original, setOriginal] = useState(false);
+  const [coffre, setCoffre] = useState(false);
 
   useEffect(() => { api.document(id).then(setDoc); }, [api, id]);
 
@@ -133,8 +136,16 @@ export function DocumentDetail({ api, id, onBack, onChanged, toast }: { api: Api
       <h1 className="detail-title">{doc.title}</h1>
       <p className="detail-sub">{[doc.organisme, CATEGORY_LABEL[doc.category]].filter(Boolean).join(" · ")}</p>
 
+      {doc.au_coffre && (
+        <div className={`coffre-bandeau ${doc.verrouille ? "" : "ouvert"}`}>
+          <Ico d="M6 11h12v9H6zM8 11V8a4 4 0 018 0v3" size={22} />
+          <span>{doc.verrouille ? <><b>Au coffre-fort.</b> L'original, le texte et les numéros complets s'ouvrent après Face ID, empreinte ou un code par email.</> : <><b>Coffre ouvert.</b> Cette consultation est notée dans votre journal des accès.</>}</span>
+          {doc.verrouille && <button className="pill-action principal" onClick={() => setCoffre(true)}>Déverrouiller</button>}
+        </div>
+      )}
+      {coffre && <CoffreSheet api={api} toast={toast} onClose={() => setCoffre(false)} onOuvert={async () => { setCoffre(false); setDoc(await api.document(id)); }} />}
       {doc.resume && <p style={{ marginBottom: 16 }}>{doc.resume}</p>}
-      {(doc.fichier || api.mode === "demo") && <button className="btn ghost original-btn" onClick={() => setOriginal(true)}>Voir le document original</button>}
+      {(doc.fichier || api.mode === "demo") && <button className="btn ghost original-btn" onClick={() => (doc.verrouille ? setCoffre(true) : setOriginal(true))}>Voir le document original</button>}
       {original && <Original api={api} doc={doc} onClose={() => setOriginal(false)} toast={toast} />}
 
       {uncertain ? (

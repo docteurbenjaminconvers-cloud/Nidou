@@ -5,6 +5,7 @@
  * are left out: they are not the user's data, and a lost export must not become a way in.
  */
 import { readFile } from "node:fs/promises";
+import { ecrireFichier, lireFichier } from "./coffre.js";
 import { basename, extname, join } from "node:path";
 import type { Db } from "./db.js";
 import { zip, type FichierZip } from "./zip.js";
@@ -47,13 +48,13 @@ export async function exporterFoyer(db: Db, householdId: string, uploadDir: stri
   let n = 1;
   for (const d of (donnees.documents ?? []) as { id: string; title?: string; fichier?: string | null }[]) {
     if (!d.fichier) continue;
-    const buf = await readFile(join(uploadDir, basename(d.fichier))).catch(() => null);
+    const buf = await lireFichier(join(uploadDir, basename(d.fichier))).catch(() => null);
     if (!buf) { manquants.push(d.title ?? d.id); continue; }
     fichiers.push({ nom: `papiers/${String(n++).padStart(3, "0")} - ${propre(d.title ?? "", 70)}${extname(d.fichier)}`, contenu: buf });
   }
   for (const m of (donnees.members ?? []) as { prenom?: string; photo?: string | null }[]) {
     if (!m.photo) continue;
-    const buf = await readFile(join(uploadDir, basename(m.photo))).catch(() => null);
+    const buf = await lireFichier(join(uploadDir, basename(m.photo))).catch(() => null);
     if (buf) fichiers.push({ nom: `photos/${propre(m.prenom ?? "membre", 40)}${extname(m.photo) || ".jpg"}`, contenu: buf });
   }
   for (const [table, rows] of Object.entries(donnees)) fichiers.push({ nom: `donnees/${table}.json`, contenu: Buffer.from(JSON.stringify(rows, null, 2), "utf8") });

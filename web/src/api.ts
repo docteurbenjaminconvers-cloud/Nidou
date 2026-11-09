@@ -1,5 +1,5 @@
 import { langueChoisie } from "./i18n/traduction";
-import type { AssistantEtat, AssistantMessage, AssistantReponse, AideResiliation, ChampsLettre, Resiliation, Prevision, DepensePartagee, EtatPartages, ReglementPartage } from "./types";
+import type { AssistantEtat, AssistantMessage, AssistantReponse, AideResiliation, ChampsLettre, EtatCoffre, Resiliation, Prevision, DepensePartagee, EtatPartages, ReglementPartage } from "./types";
 import type { Activite, AnalysePro, Remarque, BankStatus, DestinationCompte, BudgetAction, BudgetReport, ChargesReport, Deadline, Doc, FamilleReport, Household, ImportResult, Member, Mesure, Temoin, Banque, BanquesReport, Veille, VeillesReport, VuePersonne } from "./types";
 import demoFamille from "./demo/famille.json";
 import { MODULES, PACKS, SOCLE, SOCLE_INCLUT, droits, normaliser, type Espace, type ModuleId } from "../../server/src/offre";
@@ -71,6 +71,16 @@ export interface Api {
   decide(cle: string, decision: "garde" | "resilie" | "a_faire"): Promise<void>;
   /** The subscription loop. */
   aideResiliation(cle: string): Promise<AideResiliation>;
+  coffre(): Promise<EtatCoffre>;
+  coffreCode(): Promise<{ ok: true; a: string }>;
+  coffreVerifierCode(code: string): Promise<{ ok: true; jusqu_au: string }>;
+  coffrePasskeyOptions(): Promise<any>;
+  coffrePasskeyVerifier(reponse: unknown): Promise<{ ok: true; jusqu_au: string }>;
+  coffrePasskeyOptionsEnregistrement(): Promise<any>;
+  coffrePasskeyEnregistrer(reponse: unknown, appareil: string): Promise<void>;
+  coffreRetirerPasskey(id: string): Promise<void>;
+  coffreFermer(): Promise<void>;
+  coffreJournal(): Promise<{ qui: string | null; titre: string | null; action: string; quand: string }[]>;
   lettreResiliationPdf(champs: ChampsLettre): Promise<Blob>;
   envoyerLettreResiliation(champs: ChampsLettre & { email: string }): Promise<{ ok: true; envoye_a: string; copie: string }>;
   /** Shared expenses between members. */
@@ -253,6 +263,16 @@ const serverApi: Api = {
   },
   decide: async (cle, decision) => { await call("/budget/decision", json({ cle, decision })); },
   aideResiliation: (cle) => call(`/resiliations/aide?cle=${encodeURIComponent(cle)}`),
+  coffre: () => call("/coffre"),
+  coffreCode: () => call("/coffre/code", { method: "POST" }),
+  coffreVerifierCode: (code) => call("/coffre/code/verifier", json({ code })),
+  coffrePasskeyOptions: () => call("/coffre/passkey/options", { method: "POST" }),
+  coffrePasskeyVerifier: (reponse) => call("/coffre/passkey/verifier", json({ reponse })),
+  coffrePasskeyOptionsEnregistrement: () => call("/coffre/passkey/options-enregistrement", { method: "POST" }),
+  coffrePasskeyEnregistrer: async (reponse, appareil) => { await call("/coffre/passkey/enregistrer", json({ reponse, appareil })); },
+  coffreRetirerPasskey: async (id) => { await call(`/coffre/passkey/${encodeURIComponent(id)}`, { method: "DELETE" }); },
+  coffreFermer: async () => { await call("/coffre/fermer", { method: "POST" }); },
+  coffreJournal: () => call("/coffre/journal"),
   lettreResiliationPdf: async (champs) => {
     const r = await fetch("/api/resiliations/lettre.pdf", json(champs));
     if (!r.ok) { let b: any = {}; try { b = await r.json(); } catch {} throw new ApiError(r.status, b.error ?? "pdf", b.message ?? "La lettre n'a pas pu être préparée."); }
@@ -304,11 +324,13 @@ const serverApi: Api = {
   reprendre: async () => { await call("/abonnement/reprendre", json({})); },
   fichierDocument: async (id) => {
     const r = await fetch(`/api/documents/${encodeURIComponent(id)}/fichier`);
+    if (r.status === 423) throw new ApiError(423, "coffre", "Ce papier est au coffre : déverrouillez-le pour l'ouvrir.");
     if (!r.ok) throw new ApiError(r.status, "introuvable", "L'original de ce papier n'est pas disponible.");
     return r.blob();
   },
   exporter: async () => {
     const r = await fetch("/api/export.zip");
+    if (r.status === 423) throw new ApiError(423, "coffre", "L'export contient vos papiers du coffre : déverrouillez-le d'abord.");
     if (!r.ok) throw new ApiError(r.status, "export", "L'export n'a pas pu être préparé. Réessayez dans un instant.");
     const url = URL.createObjectURL(await r.blob());
     const a = document.createElement("a"); a.href = url; a.download = `Lucien - export ${new Date().toISOString().slice(0, 10)}.zip`; a.click();
@@ -479,6 +501,16 @@ function makeDemoApi(): Api {
         etapes: [`Connectez-vous à votre espace client ${marchand} : un bouton « Résilier » doit y être visible si le contrat a été souscrit en ligne.`, "Sinon, envoyez la lettre ci-dessous par email ou par courrier recommandé.", "Un dernier prélèvement peut encore passer pour le mois commencé : c'est normal.", "Touchez « C'est fait, j'ai résilié » : Lucien vérifiera vos prochains relevés."],
         lettre: `Moi\n[votre adresse]\n\n${marchand}\nService client\n\nObjet : Résiliation de mon abonnement\n\nMadame, Monsieur,\n\nJe vous informe de ma décision de résilier mon abonnement, pour lequel vous prélevez ${montant.toLocaleString("fr-FR")} € sur mon compte. Merci de cesser tout prélèvement et de me confirmer la date de fin.\n\nSalutations distinguées.` };
     },
+    coffre: async () => ({ chiffrement: true, categories: ["identite", "sante", "impots", "banque"], ouvert: true, jusqu_au: null, verrou: false, passkeys: [], duree_minutes: 10 }),
+    coffreCode: async () => ({ ok: true as const, a: "demo@monlucien.fr" }),
+    coffreVerifierCode: async () => ({ ok: true as const, jusqu_au: new Date(Date.now() + 600000).toISOString() }),
+    coffrePasskeyOptions: async () => { throw new ApiError(400, "demo", "En démonstration, le coffre est ouvert."); },
+    coffrePasskeyVerifier: async () => ({ ok: true as const, jusqu_au: new Date(Date.now() + 600000).toISOString() }),
+    coffrePasskeyOptionsEnregistrement: async () => { throw new ApiError(400, "demo", "En démonstration, Face ID n'est pas enregistré."); },
+    coffrePasskeyEnregistrer: async () => {},
+    coffreRetirerPasskey: async () => {},
+    coffreFermer: async () => {},
+    coffreJournal: async () => [],
     lettreResiliationPdf: async () => { throw new ApiError(400, "demo", "En démonstration, la lettre se copie ou se télécharge en texte."); },
     envoyerLettreResiliation: async () => { throw new ApiError(400, "demo", "En démonstration, Lucien n'envoie pas de vrai email."); },
     demarrerResiliation: async (cle: string) => {

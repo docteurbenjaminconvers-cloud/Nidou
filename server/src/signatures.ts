@@ -12,6 +12,7 @@
  * plugged in later if needed.
  */
 import type { Hono } from "hono";
+import { ecrireFichier, lireFichier } from "./coffre.js";
 import { randomBytes, randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
@@ -72,7 +73,7 @@ async function finaliser(db: Db, d: DocLocationRow, uploadDir: string) {
   const pdf = await pdfDocument(c, sigPdf(ss), { id: d.id, empreinte: d.empreinte ?? empreinte(c) });
   await mkdir(uploadDir, { recursive: true });
   const nom = `${randomUUID()}.pdf`;
-  await writeFile(join(uploadDir, nom), pdf);
+  await ecrireFichier(join(uploadDir, nom), pdf);
   const donnees = JSON.parse(d.donnees);
   const locataires = d.type === "bail" ? (donnees as DonneesBail).locataires.map((l) => l.nom).join(", ") : (donnees as DonneesEdl).locataires.join(", ");
   const doc = db.insertDocument({
@@ -134,7 +135,7 @@ export function monterSignatures(api: Hono<any>, db: Db, ctx: {
   api.get("/locatif/documents/:id/pdf", async (c) => {
     const d = duFoyer(c, c.req.param("id"));
     if (!d) return c.json({ error: "introuvable" }, 404);
-    const buf = d.fichier ? await readFile(join(ctx.uploadDir, basename(d.fichier))).catch(() => null) : null;
+    const buf = d.fichier ? await lireFichier(join(ctx.uploadDir, basename(d.fichier))).catch(() => null) : null;
     const pdf = buf ?? await pdfDocument(contenu(db, d), sigPdf(signatures(db, d.id)), d.empreinte ? { id: d.id, empreinte: d.empreinte } : undefined);
     return new Response(new Uint8Array(pdf), { headers: { "content-type": "application/pdf", "content-disposition": "inline", "cache-control": "private, no-store", "x-content-type-options": "nosniff" } });
   });
@@ -200,7 +201,7 @@ export function monterSignatures(api: Hono<any>, db: Db, ctx: {
   api.get("/signature/p/:jeton/pdf", async (c) => {
     const r = parJeton(c.req.param("jeton"));
     if (!r) return c.json({ error: "introuvable" }, 404);
-    const buf = r.d.fichier ? await readFile(join(ctx.uploadDir, basename(r.d.fichier))).catch(() => null) : null;
+    const buf = r.d.fichier ? await lireFichier(join(ctx.uploadDir, basename(r.d.fichier))).catch(() => null) : null;
     const pdf = buf ?? await pdfDocument(contenu(db, r.d), sigPdf(signatures(db, r.d.id)));
     return new Response(new Uint8Array(pdf), { headers: { "content-type": "application/pdf", "content-disposition": "inline", "cache-control": "private, no-store", "x-content-type-options": "nosniff" } });
   });

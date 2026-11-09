@@ -50,3 +50,29 @@ export function lireReleveDemo(csv: string, compte: string | null = null) {
     return { date: d.split("/").reverse().join("-"), libelle, montant, categorie: categorieRegle(libelle, montant), compte };
   });
 }
+
+/**
+ * Debits that are not subscriptions: nothing to cancel, Lucien never offers « Résilier » for them (nor a « price went up,
+ * cancel » alert). Taxes, compulsory social contributions and pension funds of the self-employed, professional orders,
+ * loan repayments, rent and building charges, savings, transfers, bank fees, cash, care.
+ */
+const SANS_RESILIATION: [RegExp, string][] = [
+  [/\b(impots?|dgfip|tresor public|finances publiques|\bsip\b|\bsie\b|prelevement a la source|taxe (fonciere|d habitation|habitation|ordures)|amendes?|antai|contraventions?|douanes?)\b/, "impôt ou taxe"],
+  [/\b(urssaf|ssi|rsi|cpam|msa|caf|france travail|pole emploi|cotisations? sociales?|csg|crds)\b/, "cotisation sociale obligatoire"],
+  [/\b(carmf|cipav|carpimko|cavp|cavec|cnbf|carcdsf|crpcen|cavamac|cavom|carpv|agirc|arrco|ircantec|cnav|caisse de retraite|retraite complementaire|ircec)\b/, "caisse de retraite obligatoire"],
+  [/\b(ordre (national )?des? (medecins|pharmaciens|infirmiers|masseurs|kinesitherapeutes|avocats|architectes|experts|chirurgiens|sages|veterinaires)|cnom|cdom|cnoi|cnop)\b/, "cotisation à un ordre professionnel"],
+  [/\b(pret|prets|emprunt|echeance|credit (immo|immobilier|conso|renouvelable)|cetelem|cofidis|sofinco|franfinance|oney|floa|younited|financo|remboursement anticipe)\b/, "remboursement de prêt"],
+  [/\b(loyer|syndic|copropriete|copro|charges locatives|pension alimentaire|salaire)\b/, "loyer, charges ou obligation"],
+];
+const CATEGORIES_SANS_RESILIATION: Partial<Record<TxCategory, string>> = {
+  impots: "impôt ou taxe", logement: "loyer ou crédit", epargne: "épargne", virements: "virement", revenus: "revenu",
+  frais_bancaires: "frais bancaires", especes: "retrait d'espèces", sante: "dépense de santé",
+};
+const sansAccents = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ");
+/** Why this recurring debit cannot be cancelled, or null when it can (a subscription, a contract, a membership…). */
+export function pourquoiPasResiliable(categorie: string, marchand: string): string | null {
+  const m = ` ${sansAccents(marchand)} `;
+  for (const [re, raison] of SANS_RESILIATION) if (re.test(m)) return raison;
+  return CATEGORIES_SANS_RESILIATION[categorie as TxCategory] ?? null;
+}
+export const estResiliable = (categorie: string, marchand: string) => pourquoiPasResiliable(categorie, marchand) === null;

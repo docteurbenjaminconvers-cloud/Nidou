@@ -1,3 +1,4 @@
+import { ecrireFichier } from "./coffre.js";
 import { z } from "zod";
 import { devis, droits, ESPACES, MODULES, PACKS, SOCLE, SOCLE_INCLUT } from "./offre.js";
 import { DONNEES_BUDGET_VIDES, grandLivre, rapportBudget } from "./budgetExpert.js";
@@ -8,7 +9,7 @@ import { monterSignatures } from "./signatures.js";
 import { appliquerBail, appliquerBulletin, lire } from "./lecture.js";
 import { provider } from "./ia.js";
 import { budgetIa, coutAppel } from "./iaBudget.js";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { changerModules, choixAbonnement, modulesConserves, paiementDisponible, PaiementIndisponible, ConsentementRequis } from "./abonnement.js";
 const MODULE_IDS = Object.keys(MODULES);
@@ -203,7 +204,7 @@ export function monterEspaces(api, db, ctx) {
             if (ctx.uploadDir) {
                 await mkdir(ctx.uploadDir, { recursive: true });
                 const fichier = `${Date.now()}-${f.name.replace(/[^\w.\-]+/g, "_")}`;
-                await writeFile(join(ctx.uploadDir, fichier), buf);
+                await ecrireFichier(join(ctx.uploadDir, fichier), buf);
                 db.insertDocument({ household_id: h.id, member_id: null, title: titre.slice(0, 120), category: e === "pro" ? "autre" : "logement", organisme: null, numero_contrat: null,
                     montant: null, periodicite: null, date_document: null, date_debut: null, date_fin: null, preavis_jours: null, resume, texte: entree.texte ?? null, fichier, mime, confiance: lu.confiance });
             }

@@ -231,6 +231,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 /* ---------- trust ---------- */
 .trust { background: var(--moss-soft); padding-block: clamp(110px, 12vw, 160px); }
 .trust .wave path { fill: var(--paper); }
+.trust-grid .trust-coffre { grid-column: 1 / -1; }
 .trust-grid { margin: 40px 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
 @media (max-width: 960px) { .trust-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 600px) { .trust-grid { grid-template-columns: 1fr; } }

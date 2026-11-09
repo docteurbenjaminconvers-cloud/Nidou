@@ -104,7 +104,7 @@ export function VerifPro({ api, onBack, toast }: { api: Api; onBack: () => void;
               </button>
               {p.signaux.length > 0 && <div className="verif-signaux">{p.signaux.map((s) => <span key={s} className={`verif-signal ${s}`}>{SIGNAL[s]}{s === "hausse" && p.hausse ? ` : ${fmtEuro(p.hausse.avant, 2)} → ${fmtEuro(p.hausse.apres, 2)}` : ""}</span>)}</div>}
               {p.signaux.includes("suspect") && <p>Ce libellé ressemble aux fausses offres d'annuaire ou de registre qui visent les professionnels. Vérifiez que vous l'avez bien commandé.</p>}
-              {boutons(p.cle, p.decision)}
+              {boutons(p.cle, p.decision, p.resiliable !== false)}
             </div>
           ))}
         </section>
