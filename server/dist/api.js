@@ -7,6 +7,7 @@ import { pourquoiPasResiliable } from "./categorie.js";
 import { ecrireFichier, lireFichier } from "./coffre.js";
 import { coffreOuvert, docVerrouille, estAuCoffre, journaliser, monterCoffre } from "./coffreAcces.js";
 import { coordonnees, dateLongue, lettreResiliationStructuree, pdfLettre, texteLettre } from "./lettres.js";
+import { emailsDuTexte, MOTIFS, redigerCourrier } from "./courriers.js";
 import { exporterFoyer } from "./export.js";
 import { prevoirFinDeMois } from "./prevision.js";
 import { annulerSuivi, demarrerSuivi, economieAnnuelle, nomMarchand, ensureResiliationsSchema, lettreRemboursement, marcheASuivre, suivis } from "./resiliations.js";
@@ -871,6 +872,96 @@ export function createApi(db, opts) {
         if (avecIa)
             budget.compter(coutAppel("rapide"));
         return c.json({ texte });
+    });
+    // ---------- réclamation / remboursement à partir d'un papier ----------
+    const docDuFoyer = (c, id) => { const d = db.getDocument(id); return d && d.household_id === household(c).id ? d : null; };
+    const Courrier = z.object({
+        document_id: z.string().min(1).max(80),
+        expediteur: z.object({ nom: z.string().trim().min(2).max(80), adresse: z.string().trim().min(5).max(200) }),
+        destinataire: z.object({ nom: z.string().trim().min(2).max(200), adresse: z.string().trim().max(300).optional().nullable() }),
+        objet: z.string().trim().min(3).max(200),
+        reference: z.string().trim().max(300).optional().nullable(),
+        corps: z.string().trim().min(20).max(8000),
+    });
+    const lettreCourrier = (b) => ({
+        expediteur: b.expediteur, destinataire: { nom: b.destinataire.nom, adresse: b.destinataire.adresse || null },
+        date: dateLongue(new Date().toISOString().slice(0, 10)), objet: b.objet, reference: b.reference || null, libelleReference: "Références",
+        corps: b.corps.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean), signature: b.expediteur.nom,
+    });
+    const fichierCourrier = (l) => `Courrier-${l.destinataire.nom.normalize("NFD").replace(/[^\w]+/g, "-").replace(/^-|-$/g, "").slice(0, 50)}.pdf`;
+    /** Lucien writes the letter: why (chosen), what happened (told), the addressee and references read in the paper. */
+    api.post("/courriers/rediger", async (c) => {
+        const h = household(c);
+        const b = z.object({ document_id: z.string(), type: z.enum(["reclamation", "remboursement"]), motif: z.string().max(40), explication: z.string().trim().min(10, "Expliquez en quelques mots ce qui s'est passé.").max(2000) }).parse(await c.req.json());
+        const doc = docDuFoyer(c, b.document_id);
+        if (!doc)
+            return c.json({ error: "introuvable" }, 404);
+        if (estAuCoffre(doc) && !coffreOuvert(db, c))
+            return c.json({ error: "coffre", message: "Ouvrez le coffre pour que Lucien lise ce papier." }, 423);
+        const motif = MOTIFS[b.type].find((m) => m.cle === b.motif)?.libelle ?? "Autre chose";
+        const budget = budgetIa(db, h.id);
+        const ia = h.plan !== "gratuit" && budget.ok(coutAppel("rapide"));
+        const sig = signataire(c);
+        const r = await redigerCourrier({ type: b.type, doc, motif: b.motif === "autre" ? "Je souhaite vous signaler la situation suivante" : motif, explication: b.explication, expediteur: { nom: sig.nom, adresse: sig.adresse }, ia });
+        if (r.avec_ia)
+            budget.compter(coutAppel("rapide"));
+        return c.json({ ...r, corps: r.lettre.corps.join("\n\n"), expediteur: sig, email_client: currentUser(c)?.email ?? null });
+    });
+    api.post("/courriers/pdf", async (c) => {
+        const b = Courrier.parse(await c.req.json());
+        if (!docDuFoyer(c, b.document_id))
+            return c.json({ error: "introuvable" }, 404);
+        retenirSignataire(household(c).id, b.expediteur);
+        const l = lettreCourrier(b);
+        return new Response(Buffer.from(await pdfLettre(l)), { headers: { "content-type": "application/pdf", "content-disposition": `attachment; filename="${fichierCourrier(l)}"` } });
+    });
+    /**
+     * Sends the letter by email in the person's name (courrier@monlucien.fr, PDF attached, the person in copy, answers to
+     * them). Only to an address written in one of the household's papers, five letters a day at most: Lucien never
+     * becomes a way to write anything to anyone.
+     */
+    api.post("/courriers/envoyer", async (c) => {
+        const h = household(c);
+        if (!isOwner(c))
+            return c.json({ error: "proprietaire", message: "Seul le propriétaire du foyer envoie des courriers en son nom." }, 403);
+        const b = Courrier.extend({ email: z.string().trim().toLowerCase().email().max(120) }).parse(await c.req.json());
+        const doc = docDuFoyer(c, b.document_id);
+        if (!doc)
+            return c.json({ error: "introuvable" }, 404);
+        const moi = currentUser(c)?.email ?? null;
+        if (!moi)
+            return c.json({ error: "email", message: "Connectez-vous avec votre adresse email pour envoyer un courrier." }, 400);
+        const connue = emailsDuTexte(doc.texte).includes(b.email) || db.listDocuments(h.id).some((d) => emailsDuTexte(d.texte).includes(b.email));
+        if (!connue)
+            return c.json({ error: "adresse", message: "Lucien n'envoie qu'aux adresses lues dans vos papiers. Pour une autre adresse, téléchargez le PDF et envoyez-le vous-même." }, 400);
+        const recentes = db.raw.prepare("SELECT COUNT(*) n FROM lettres_envoyees WHERE household_id = ? AND envoye_le > ?").get(h.id, new Date(Date.now() - 86400_000).toISOString()).n;
+        if (recentes >= 5)
+            return c.json({ error: "limite", message: "Cinq courriers envoyés en 24 heures : réessayez demain." }, 429);
+        retenirSignataire(h.id, b.expediteur);
+        const l = lettreCourrier(b);
+        const pdf = await pdfLettre(l);
+        const ok = await envoyerEmail({
+            de: `${b.expediteur.nom.replace(/[<>"]/g, "")} via Lucien <courrier@monlucien.fr>`,
+            to: b.email, cc: moi, replyTo: moi,
+            subject: `${l.objet} — ${b.expediteur.nom}`.slice(0, 200),
+            text: `${texteLettre(l)}
+
+—
+Ce courrier vous est adressé par ${b.expediteur.nom} (${moi}), qui l'a validé dans Lucien. Répondez à ce message pour lui répondre directement. Le courrier est joint en PDF.`,
+            pieces: [{ nom: fichierCourrier(l), contenu: pdf }],
+        });
+        if (!ok && (process.env.LUCIEN_PUBLIC_URL ?? "").startsWith("https://"))
+            return c.json({ error: "envoi", message: "L'email n'est pas parti. Réessayez dans un moment ou téléchargez le PDF." }, 502);
+        db.raw.prepare("INSERT INTO lettres_envoyees (id, household_id, cle, canal, destinataire, objet, empreinte, envoye_le) VALUES (?, ?, ?, 'email', ?, ?, ?, ?)")
+            .run(randomUUID(), h.id, `doc:${doc.id}`, b.email, l.objet, createHash("sha256").update(pdf).digest("hex"), new Date().toISOString());
+        return c.json({ ok: true, envoye_a: b.email, copie: moi }, 201);
+    });
+    /** Letters already sent about this paper (shown under « Courrier prêt à envoyer »). */
+    api.get("/courriers/:id/envois", (c) => {
+        const d = docDuFoyer(c, c.req.param("id"));
+        if (!d)
+            return c.json({ error: "introuvable" }, 404);
+        return c.json({ envois: db.raw.prepare("SELECT destinataire, objet, envoye_le FROM lettres_envoyees WHERE household_id = ? AND cle = ? ORDER BY envoye_le DESC").all(d.household_id, `doc:${d.id}`) });
     });
     // ---------- dépenses (relevés bancaires) ----------
     api.get("/budget", (c) => {

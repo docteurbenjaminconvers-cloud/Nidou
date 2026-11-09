@@ -1470,3 +1470,34 @@ button.sem-date:hover b { color: var(--nest); }
 .maj-pastille span { background: var(--nest); color: var(--white); font-weight: 800; font-size: 13px; padding: 7px 14px; border-radius: 999px; }
 @keyframes maj-entree { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
 @media (min-width: 1024px) { .maj-pastille { bottom: 24px; left: calc(50% + var(--barre, 248px) / 2); } }
+
+/* ——— Réclamation / remboursement : Lucien demande, rédige, envoie ——— */
+.courrier-assist { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.cbulle { max-width: 92%; padding: 11px 14px; border-radius: 18px; line-height: 1.45; font-size: 15px; }
+.cbulle b:first-child { display: block; font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--nest); margin-bottom: 2px; }
+.cbulle.lucien { align-self: flex-start; background: var(--white); border: 1px solid var(--line); border-bottom-left-radius: 6px; box-shadow: var(--shadow); }
+.cbulle.moi { align-self: flex-end; background: var(--lilac-soft); border-bottom-right-radius: 6px; white-space: pre-wrap; }
+.courrier-motifs { display: flex; flex-wrap: wrap; gap: 8px; }
+.courrier-motifs .pill:disabled:not([aria-pressed="true"]) { opacity: .45; }
+.courrier-recit { min-height: 110px; }
+.courrier-carte { background: var(--white); border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 8px; box-shadow: var(--shadow); }
+.courrier-carte .reg-titre { margin: 0; }
+.courrier-carte.papier { background: #fffdf8; border: 1px solid var(--line); }
+.courrier-lbl { font-size: 12.5px; font-weight: 800; color: var(--mist); margin-top: 4px; }
+.courrier-corps { min-height: 280px; line-height: 1.5; font-size: 15px; }
+.courrier-q { font-family: var(--display); font-style: italic; font-size: 20px; margin: 8px 0 0; }
+.courrier-canaux { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.canal { display: flex; align-items: center; gap: 10px; text-align: left; padding: 14px; border-radius: 18px; border: 2px solid var(--line); background: var(--white); font: inherit; color: var(--ink); cursor: pointer; transition: border-color .15s, transform .1s; }
+.canal:not(:disabled):hover { border-color: var(--nest); transform: translateY(-1px); }
+.canal:not(:disabled) { border-color: var(--nest); box-shadow: 0 6px 16px rgba(217,95,69,.14); }
+.canal:disabled { opacity: .6; cursor: default; }
+.canal b { display: block; font-size: 15px; }
+.canal small { display: block; font-size: 12.5px; color: var(--mist); margin-top: 2px; }
+.canal-ico { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--peach); color: var(--nest-deep); }
+.canal-ico svg { width: 20px; height: 20px; }
+.courrier-carte.confirmer { border: 2px solid var(--nest); }
+.courrier-carte.envoye { background: var(--moss-soft); color: var(--mint-ink); }
+.courrier-deja { margin: 0; }
+@media (max-width: 420px) { .courrier-canaux { grid-template-columns: 1fr; } }
+.courrier-assist textarea.in { width: 100%; border-radius: 16px; border: 2px solid var(--line); padding: 12px 14px; font: inherit; font-size: 15px; color: var(--ink); background: var(--white); resize: vertical; box-sizing: border-box; }
+.courrier-assist textarea.in:focus { outline: none; border-color: var(--lilac); }

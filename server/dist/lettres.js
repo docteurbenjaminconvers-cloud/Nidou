@@ -76,7 +76,7 @@ export function texteLettre(l) {
         l.expediteur.nom, l.expediteur.adresse ?? "[votre adresse]", "",
         l.destinataire.nom, l.destinataire.adresse ?? "", "",
         `Le ${l.date}`, "",
-        `Objet : ${l.objet}`, ...(l.reference ? [`Référence client : ${l.reference}`] : []), "",
+        `Objet : ${l.objet}`, ...(l.reference ? [`${l.libelleReference ?? "Référence client"} : ${l.reference}`] : []), "",
         l.corps.join("\n\n"), "", l.signature,
     ].join("\n").replace(/\n{3,}/g, "\n\n");
 }
@@ -133,7 +133,7 @@ export async function pdfLettre(l) {
     y = bloc(`Le ${l.date}`, xd, y) - 22;
     y = bloc(`Objet : ${l.objet}`, M, y, { font: fb });
     if (l.reference)
-        y = bloc(`Référence client : ${l.reference}`, M, y);
+        y = bloc(`${l.libelleReference ?? "Référence client"} : ${l.reference}`, M, y);
     y -= 18;
     for (const p of l.corps)
         y = bloc(p, M, y, { w: W - 2 * M }) - 9;

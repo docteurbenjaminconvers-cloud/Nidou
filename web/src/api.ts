@@ -1,5 +1,5 @@
 import { langueChoisie } from "./i18n/traduction";
-import type { AssistantEtat, AssistantMessage, AssistantReponse, AideResiliation, ChampsLettre, EtatCoffre, Resiliation, Prevision, DepensePartagee, EtatPartages, ReglementPartage } from "./types";
+import type { AssistantEtat, AssistantMessage, AssistantReponse, AideResiliation, ChampsLettre, ChampsCourrier, BrouillonCourrier, EtatCoffre, Resiliation, Prevision, DepensePartagee, EtatPartages, ReglementPartage } from "./types";
 import type { Activite, AnalysePro, Remarque, BankStatus, DestinationCompte, BudgetAction, BudgetReport, ChargesReport, Deadline, Doc, FamilleReport, Household, ImportResult, Member, Mesure, Temoin, Banque, BanquesReport, Veille, VeillesReport, VuePersonne } from "./types";
 import demoFamille from "./demo/famille.json";
 import { MODULES, PACKS, SOCLE, SOCLE_INCLUT, droits, normaliser, type Espace, type ModuleId } from "../../server/src/offre";
@@ -82,6 +82,11 @@ export interface Api {
   coffreFermer(): Promise<void>;
   coffreJournal(): Promise<{ qui: string | null; titre: string | null; action: string; quand: string }[]>;
   lettreResiliationPdf(champs: ChampsLettre): Promise<Blob>;
+  /** Complaint / refund letter about a paper: written by Lucien, then PDF or email to an address read in the papers. */
+  redigerCourrier(input: { document_id: string; type: "reclamation" | "remboursement"; motif: string; explication: string }): Promise<BrouillonCourrier>;
+  courrierPdf(c: ChampsCourrier): Promise<Blob>;
+  envoyerCourrier(c: ChampsCourrier & { email: string }): Promise<{ ok: true; envoye_a: string; copie: string }>;
+  envoisCourrier(documentId: string): Promise<{ envois: { destinataire: string; objet: string; envoye_le: string }[] }>;
   envoyerLettreResiliation(champs: ChampsLettre & { email: string }): Promise<{ ok: true; envoye_a: string; copie: string }>;
   /** Shared expenses between members. */
   partages(): Promise<EtatPartages>;
@@ -279,6 +284,14 @@ const serverApi: Api = {
     return r.blob();
   },
   envoyerLettreResiliation: (champs) => call("/resiliations/envoyer", json(champs)),
+  redigerCourrier: (input) => call("/courriers/rediger", json(input)),
+  courrierPdf: async (champs) => {
+    const r = await fetch("/api/courriers/pdf", json(champs));
+    if (!r.ok) { let b: any = {}; try { b = await r.json(); } catch {} throw new ApiError(r.status, b.error ?? "pdf", b.message ?? "Le courrier n'a pas pu être préparé."); }
+    return r.blob();
+  },
+  envoyerCourrier: (champs) => call("/courriers/envoyer", json(champs)),
+  envoisCourrier: (id) => call(`/courriers/${encodeURIComponent(id)}/envois`),
   partages: () => call("/partages"),
   ajouterDepensePartagee: (d) => call("/partages/depenses", json(d)),
   supprimerDepensePartagee: (id) => call(`/partages/depenses/${encodeURIComponent(id)}`, { method: "DELETE" }),
@@ -513,6 +526,18 @@ function makeDemoApi(): Api {
     coffreJournal: async () => [],
     lettreResiliationPdf: async () => { throw new ApiError(400, "demo", "En démonstration, la lettre se copie ou se télécharge en texte."); },
     envoyerLettreResiliation: async () => { throw new ApiError(400, "demo", "En démonstration, Lucien n'envoie pas de vrai email."); },
+    redigerCourrier: async ({ document_id, type, explication }) => {
+      const d = state.docs.find((x) => x.id === document_id) ?? state.docs[0];
+      const brouillon: BrouillonCourrier = {
+        lettre: { destinataire: { nom: d?.organisme ?? "Service client", adresse: "Service client\n10 rue de la République\n34000 Montpellier" }, objet: `${type === "reclamation" ? "Contestation" : "Demande de remboursement"} — ${d?.title ?? ""}`, reference: d?.numero_contrat ? `Contrat n° ${d.numero_contrat}` : null },
+        corps: ["Madame, Monsieur,", `Je vous écris au sujet de « ${d?.title ?? "votre courrier"} ».`, explication.trim(), `Je vous remercie ${type === "reclamation" ? "de réexaminer mon dossier et de m'apporter une réponse écrite sous quinze jours" : "de procéder au remboursement sous trente jours et de me le confirmer par écrit"}.`, "Je vous prie d'agréer, Madame, Monsieur, l'expression de mes salutations distinguées."].join("\n\n"),
+        emails: ["service-client@exemple.fr"], source: d?.title ?? "", avec_ia: false, expediteur: { nom: "Claire Martin", adresse: null }, email_client: "claire@exemple.fr",
+      };
+      return brouillon;
+    },
+    courrierPdf: async () => { throw new ApiError(400, "demo", "En démonstration, le courrier se copie en texte."); },
+    envoyerCourrier: async () => { throw new ApiError(400, "demo", "En démonstration, Lucien n'envoie pas de vrai email."); },
+    envoisCourrier: async () => ({ envois: [] }),
     demarrerResiliation: async (cle: string) => {
       const act = (structuredClone(state.household.plan === "famille" ? demoBudgetFamille : demoBudget) as BudgetReport).actions.find((x) => x.marchand === cle);
       const aide = act ? { marchand: (act.marchand ?? cle).replace(/(^|[\s-])(\p{L})/gu, (_, x: string, y: string) => x + y.toUpperCase()), montant: Math.round((act.economie_annuelle / 12) * 100) / 100, economie_annuelle: act.economie_annuelle } : null;

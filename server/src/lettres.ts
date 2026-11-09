@@ -17,6 +17,7 @@ export interface Lettre {
   date: string;                // « 8 novembre 2026 »
   objet: string;
   reference: string | null;
+  libelleReference?: string;   // « Référence client » by default; « Références » for a complaint quoting several numbers
   corps: string[];             // paragraphs, salutation included
   signature: string;
 }
@@ -94,7 +95,7 @@ export function texteLettre(l: Lettre): string {
     l.expediteur.nom, l.expediteur.adresse ?? "[votre adresse]", "",
     l.destinataire.nom, l.destinataire.adresse ?? "", "",
     `Le ${l.date}`, "",
-    `Objet : ${l.objet}`, ...(l.reference ? [`Référence client : ${l.reference}`] : []), "",
+    `Objet : ${l.objet}`, ...(l.reference ? [`${l.libelleReference ?? "Référence client"} : ${l.reference}`] : []), "",
     l.corps.join("\n\n"), "", l.signature,
   ].join("\n").replace(/\n{3,}/g, "\n\n");
 }
@@ -137,7 +138,7 @@ export async function pdfLettre(l: Lettre): Promise<Uint8Array> {
   y = Math.min(yd, H - 230) - 18;
   y = bloc(`Le ${l.date}`, xd, y) - 22;
   y = bloc(`Objet : ${l.objet}`, M, y, { font: fb });
-  if (l.reference) y = bloc(`Référence client : ${l.reference}`, M, y);
+  if (l.reference) y = bloc(`${l.libelleReference ?? "Référence client"} : ${l.reference}`, M, y);
   y -= 18;
   for (const p of l.corps) y = bloc(p, M, y, { w: W - 2 * M }) - 9;
   y -= 18;

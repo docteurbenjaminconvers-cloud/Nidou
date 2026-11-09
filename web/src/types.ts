@@ -185,6 +185,9 @@ export interface AideResiliation { marchand: string; montant: number; frequence:
   envoi?: { coordonnees: { emails: string[]; adresse: string | null; reference: string | null; source: string | null }; expediteur: { nom: string; adresse: string | null }; email_client: string | null } }
 export interface ChampsLettre { cle: string; expediteur: { nom: string; adresse: string }; destinataire?: string | null; reference?: string | null }
 
+export interface ChampsCourrier { document_id: string; expediteur: { nom: string; adresse: string }; destinataire: { nom: string; adresse: string | null }; objet: string; reference: string | null; corps: string }
+export interface BrouillonCourrier { lettre: { destinataire: { nom: string; adresse: string | null }; objet: string; reference: string | null }; corps: string; emails: string[]; source: string; avec_ia: boolean; expediteur: { nom: string; adresse: string | null }; email_client: string | null }
+
 export interface ImportResult { lues: number; ajoutees: number; doublons: number; de?: string; a?: string }
 
 /** Where a bank account goes: household budget, Vie pro, rental/SCI, savings (balance only), or not followed. */

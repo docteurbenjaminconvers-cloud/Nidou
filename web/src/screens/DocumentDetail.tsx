@@ -4,6 +4,7 @@ import type { Api } from "../api";
 import { CATEGORIES, CATEGORY_LABEL, type Category, type Deadline, type Doc } from "../types";
 import { Back, DateChip, fmtDate, fmtEuro, PERIOD_LABEL, relative } from "../ui";
 import { CoffreSheet } from "./Coffre";
+import { CourrierAssistant } from "./Courrier";
 import { Ico } from "./espacesCommun";
 
 type Full = Doc & { echeances: Deadline[]; texte?: string | null };
@@ -212,7 +213,8 @@ export function DocumentDetail({ api, id, onBack, onChanged, toast }: { api: Api
             </button>
           ))}
         </div>
-        {letterKind && (
+        {(letterKind === "reclamation" || letterKind === "remboursement") && <CourrierAssistant api={api} doc={doc} type={letterKind} toast={toast} />}
+        {letterKind === "resiliation" && (
           <>
             <label className="lbl" htmlFor="nom">Votre nom</label>
             <input id="nom" className="in" value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Prénom Nom" />
