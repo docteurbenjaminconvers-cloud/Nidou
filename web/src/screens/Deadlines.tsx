@@ -22,8 +22,9 @@ export function Deadlines({ api, membres, deadlines, go, onDone, unread, semaine
   return (
     <div className="screen colonnes agenda">
       <div className="top"><div><h1>Agenda</h1><p className="sub">{deadlines.length} échéance{deadlines.length > 1 ? "s" : ""} à venir, d'après vos papiers et votre famille</p></div><Bell unread={unread} onClick={() => go("notifs")} /></div>
-      <Calendrier deadlines={deadlines} semaine={semaine ?? []} go={go} onDone={onDone} />
-      {api && membres && <Semainier api={api} membres={membres} semaine={semaine ?? []} deadlines={deadlines} go={go} />}
+      {api && membres
+        ? <Semainier api={api} membres={membres} semaine={semaine ?? []} deadlines={deadlines} go={go} mois={(ouvrir) => <Calendrier deadlines={deadlines} semaine={semaine ?? []} go={go} onDone={onDone} onOuvrir={ouvrir} />} />
+        : <Calendrier deadlines={deadlines} semaine={semaine ?? []} go={go} onDone={onDone} />}
       {deadlines.length === 0 && <div className="empty"><b>Aucune échéance</b>Ajoutez un contrat, une facture ou une pièce d'identité.</div>}
       {extra}
       {groups.map((g) => (
@@ -60,7 +61,7 @@ const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
 const JOURS = ["lun", "mar", "mer", "jeu", "ven", "sam", "dim"];
 
 /** A month you can click through: each day shows its deadlines and the family's weekly activities. */
-function Calendrier({ deadlines, semaine, go, onDone }: { deadlines: Deadline[]; semaine: Creneau[]; go: (s: string, id?: string) => void; onDone: (id: string) => void }) {
+function Calendrier({ deadlines, semaine, go, onDone, onOuvrir }: { deadlines: Deadline[]; semaine: Creneau[]; go: (s: string, id?: string) => void; onDone: (id: string) => void; onOuvrir?: (jour: string) => void }) {
   const auj = iso(new Date());
   const [mois, setMois] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const [choisi, setChoisi] = useState(auj);
@@ -77,7 +78,7 @@ function Calendrier({ deadlines, semaine, go, onDone }: { deadlines: Deadline[];
   const acts = activites(choisi);
   const titreJour = new Date(`${choisi}T12:00:00`).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
   return (
-    <section className="section calendrier">
+    <section className={`section calendrier${onOuvrir ? " dans-agenda" : ""}`}>
       <div className="cal-mois">
         <div className="cal-tete">
           <button className="round" aria-label="Mois précédent" onClick={() => changer(-1)}>‹</button>
@@ -115,7 +116,8 @@ function Calendrier({ deadlines, semaine, go, onDone }: { deadlines: Deadline[];
         {acts.map((c, k) => (
           <div key={k} className="cal-item act"><b><span className="h">{c.heure_debut ?? "—"}</span> {c.titre}</b><span>{[c.membre, c.lieu].filter(Boolean).join(" · ")}</span></div>
         ))}
-        {acts.length > 0 && <button className="link" style={{ marginTop: 6 }} onClick={() => go("famille")}>Toute la semaine de la famille</button>}
+        {onOuvrir ? <button className="btn ghost" style={{ marginTop: 8 }} onClick={() => onOuvrir(choisi)}>Ouvrir la journée</button>
+          : acts.length > 0 && <button className="link" style={{ marginTop: 6 }} onClick={() => go("famille")}>Toute la semaine de la famille</button>}
       </div>
     </section>
   );
