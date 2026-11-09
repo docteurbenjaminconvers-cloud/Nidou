@@ -1,5 +1,5 @@
 import { langueChoisie } from "./i18n/traduction";
-import type { AssistantEtat, AssistantMessage, AssistantReponse, AideResiliation, ChampsLettre, ChampsCourrier, BrouillonCourrier, EtatCoffre, Resiliation, Prevision, DepensePartagee, EtatPartages, ReglementPartage } from "./types";
+import type { AssistantEtat, AssistantMessage, AssistantReponse, AideResiliation, ChampsLettre, ChampsCourrier, BrouillonCourrier, DetailsDoc, EtatCoffre, Resiliation, Prevision, DepensePartagee, EtatPartages, ReglementPartage } from "./types";
 import type { Activite, AnalysePro, Remarque, BankStatus, DestinationCompte, BudgetAction, BudgetReport, ChargesReport, Deadline, Doc, FamilleReport, Household, ImportResult, Member, Mesure, Temoin, Banque, BanquesReport, Veille, VeillesReport, VuePersonne } from "./types";
 import demoFamille from "./demo/famille.json";
 import { MODULES, PACKS, SOCLE, SOCLE_INCLUT, droits, normaliser, type Espace, type ModuleId } from "../../server/src/offre";
@@ -58,7 +58,9 @@ export interface Api {
   household(): Promise<Household>;
   setPlan(plan: Household["plan"]): Promise<void>;
   documents(q?: string, category?: string): Promise<Doc[]>;
-  document(id: string): Promise<(Doc & { echeances: Deadline[]; texte?: string | null }) | null>;
+  document(id: string): Promise<(Doc & { echeances: Deadline[]; texte?: string | null; details?: DetailsDoc | null; relisible?: boolean }) | null>;
+  /** « Lucien relit ce papier »: coordinates, payment details, references read again on the page. */
+  relireDocument(id: string): Promise<{ details: DetailsDoc | null; texte: string | null }>;
   addDocument(input: { file?: File; texte?: string; nomFichier?: string }): Promise<Doc & { echeances: Deadline[] }>;
   updateDocument(id: string, patch: Partial<Doc>): Promise<Doc>;
   deleteDocument(id: string): Promise<void>;
@@ -291,6 +293,7 @@ const serverApi: Api = {
     return r.blob();
   },
   envoyerCourrier: (champs) => call("/courriers/envoyer", json(champs)),
+  relireDocument: (id) => call(`/documents/${encodeURIComponent(id)}/relire`, { method: "POST" }),
   envoisCourrier: (id) => call(`/courriers/${encodeURIComponent(id)}/envois`),
   partages: () => call("/partages"),
   ajouterDepensePartagee: (d) => call("/partages/depenses", json(d)),
@@ -455,7 +458,15 @@ function makeDemoApi(): Api {
       state.docs.filter((d) => (!category || d.category === category) && (!q || [d.title, d.organisme, d.resume].some((v) => v?.toLowerCase().includes(q.toLowerCase())))),
     document: async (id) => {
       const d = state.docs.find((x) => x.id === id);
-      return d ? { ...d, echeances: state.deadlines.filter((x) => x.document_id === id) } : null;
+      if (!d) return null;
+      // demo: what Lucien reads on a paper for later (address, email, phone, references)
+      const details: DetailsDoc | null = d.organisme && d.category !== "identite" ? {
+        contact: { nom: d.organisme, service: "Service clients", adresse: "10 rue de la République\n34000 Montpellier", email: `contact@${d.organisme.toLowerCase().normalize("NFD").replace(/[^a-z]/g, "")}.fr`, telephone: "04 67 00 00 00", site: null },
+        paiement: null,
+        references: d.numero_contrat ? [{ libelle: "N° de contrat", valeur: d.numero_contrat }] : [],
+        dates_cles: d.date_document ? [{ libelle: "Date d'émission", date: d.date_document }] : [],
+      } : null;
+      return { ...d, details, echeances: state.deadlines.filter((x) => x.document_id === id) };
     },
     addDocument: async ({ file, texte, nomFichier }) => {
       await new Promise((r) => setTimeout(r, 900));
@@ -538,6 +549,7 @@ function makeDemoApi(): Api {
     courrierPdf: async () => { throw new ApiError(400, "demo", "En démonstration, le courrier se copie en texte."); },
     envoyerCourrier: async () => { throw new ApiError(400, "demo", "En démonstration, Lucien n'envoie pas de vrai email."); },
     envoisCourrier: async () => ({ envois: [] }),
+    relireDocument: async () => { throw new ApiError(400, "demo", "En démonstration, Lucien ne relit pas les papiers."); },
     demarrerResiliation: async (cle: string) => {
       const act = (structuredClone(state.household.plan === "famille" ? demoBudgetFamille : demoBudget) as BudgetReport).actions.find((x) => x.marchand === cle);
       const aide = act ? { marchand: (act.marchand ?? cle).replace(/(^|[\s-])(\p{L})/gu, (_, x: string, y: string) => x + y.toUpperCase()), montant: Math.round((act.economie_annuelle / 12) * 100) / 100, economie_annuelle: act.economie_annuelle } : null;

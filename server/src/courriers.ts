@@ -102,6 +102,7 @@ export async function redigerCourrier(o: { type: TypeCourrier; doc: DocumentRow;
         `Date du jour : ${base.date}`,
         `Courrier reçu — titre : ${o.doc.title}; organisme : ${o.doc.organisme ?? "?"}; montant : ${o.doc.montant ?? "?"}; n° de contrat : ${o.doc.numero_contrat ?? "?"}; date : ${o.doc.date_document ?? "?"}`,
         `Résumé : ${o.doc.resume ?? ""}`,
+        ...(o.doc.details ? [`Coordonnées et références déjà lues sur ce courrier (JSON) : ${o.doc.details}`] : []),
         o.doc.texte ? `Texte du courrier reçu :\n${o.doc.texte.slice(0, 12000)}` : "Le courrier reçu est joint (photo ou PDF) : lis-y le destinataire, son adresse postale, son adresse email (souvent après « Mél », « Courriel » ou « Email ») et les références.",
       ].join("\n") }] as Content,
       tool: { name: "courrier", description: "Le courrier rédigé et le destinataire lu dans le courrier reçu.", schema: SCHEMA },

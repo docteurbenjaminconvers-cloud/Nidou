@@ -1,3 +1,4 @@
+import { aGarder } from "./details.js";
 import type { Db, DocumentRow } from "./db.js";
 import { estMedical, extractDocument, heuristicExtract } from "./extract.js";
 import { budgetIa } from "./iaBudget.js";
@@ -64,10 +65,11 @@ export async function processInboundEmail(db: Db, mail: InboundEmail, opts: { pl
     const ex = budget.ok() ? await extractDocument(input) : { ...heuristicExtract(input), modele: null };
     if (ex.modele) db.recordIaLecture(h.id, false, ex.modele.cout_lecture_centimes);
     if (estMedical(ex)) continue; // medical papers are never kept
+    const garde = aGarder(ex, input.texte);
     const doc = db.insertDocument({
       household_id: h.id, member_id: null, title: ex.title, category: ex.category, organisme: ex.organisme, numero_contrat: ex.numero_contrat,
       montant: ex.montant, periodicite: ex.periodicite, date_document: ex.date_document, date_debut: ex.date_debut, date_fin: ex.date_fin,
-      preavis_jours: ex.preavis_jours, resume: ex.resume, texte: input.texte ?? null, fichier: null, mime: input.mime ?? "text/plain",
+      preavis_jours: ex.preavis_jours, resume: ex.resume, texte: garde.texte, details: garde.details, fichier: null, mime: input.mime ?? "text/plain",
       confiance: ex.confiance, source: "email",
     });
     db.replaceDeadlinesForDocument(doc.id, h.id, deadlinesFor(doc));

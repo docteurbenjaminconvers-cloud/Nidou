@@ -8,6 +8,7 @@ import { ecrireFichier, lireFichier } from "./coffre.js";
 import { coffreOuvert, docVerrouille, estAuCoffre, journaliser, monterCoffre } from "./coffreAcces.js";
 import { coordonnees, dateLongue, lettreResiliationStructuree, pdfLettre, texteLettre } from "./lettres.js";
 import { emailsDuTexte, LISIBLE_PAR_IA, MOTIFS, redigerCourrier } from "./courriers.js";
+import { aGarder, lireDetails } from "./details.js";
 import { exporterFoyer } from "./export.js";
 import { prevoirFinDeMois } from "./prevision.js";
 import { annulerSuivi, demarrerSuivi, economieAnnuelle, nomMarchand, ensureResiliationsSchema, lettreRemboursement, marcheASuivre, suivis } from "./resiliations.js";
@@ -604,7 +605,7 @@ export function createApi(db, opts) {
         const ouvert = !estAuCoffre(d) || coffreOuvert(db, c);
         if (estAuCoffre(d) && ouvert)
             journaliser(db, { householdId: d.household_id, user: currentUser(c), doc: d, action: "consultation" });
-        return c.json({ ...pourAffichage(c, d), texte: ouvert ? d.texte : null, echeances: db.listDeadlines(d.household_id, { includeDone: true }).filter((x) => x.document_id === d.id) });
+        return c.json({ ...pourAffichage(c, d), texte: ouvert ? d.texte : null, details: ouvert ? lireDetails(d.details) : null, relisible: !!d.fichier && !!d.mime && LISIBLE_PAR_IA.test(d.mime) && d.category !== "identite", echeances: db.listDeadlines(d.household_id, { includeDone: true }).filter((x) => x.document_id === d.id) });
     });
     /**
      * Calendar subscription (Google, Apple, Outlook): deadlines and the children's weekly activities, refreshed by the calendar app.
@@ -758,6 +759,7 @@ export function createApi(db, opts) {
                 await unlink(join(opts.uploadDir, basename(fichier))).catch(() => { });
             return c.json({ error: "document_medical", message: MESSAGE_MEDICAL }, 422);
         }
+        const garde = aGarder(ex, texte);
         const doc = db.insertDocument({
             household_id: h.id,
             member_id: null,
@@ -772,13 +774,42 @@ export function createApi(db, opts) {
             date_fin: ex.date_fin,
             preavis_jours: ex.preavis_jours,
             resume: ex.resume,
-            texte: texte ?? null,
+            texte: garde.texte,
+            details: garde.details,
             fichier,
             mime: mime ?? (texte ? "text/plain" : null),
             confiance: ex.confiance,
         });
         db.replaceDeadlinesForDocument(doc.id, h.id, deadlinesFor(doc));
         return c.json({ ...publicDoc(doc), echeances: db.listDeadlines(h.id).filter((x) => x.document_id === doc.id) }, 201);
+    });
+    /**
+     * « Lucien relit ce papier » (papers added before the details existed): the page is read again for its
+     * coordinates, payment details, references and key dates; the text is kept when there was none. The fields the
+     * person may have corrected (title, amount, dates…) are left as they are.
+     */
+    api.post("/documents/:id/relire", async (c) => {
+        const h = household(c);
+        const d = db.getDocument(c.req.param("id"));
+        if (!d || d.household_id !== h.id)
+            return c.json({ error: "introuvable" }, 404);
+        if (estAuCoffre(d) && !coffreOuvert(db, c))
+            return c.json({ error: "coffre", message: "Ouvrez le coffre pour que Lucien relise ce papier." }, 423);
+        if (d.category === "identite" || !d.fichier || !d.mime || !LISIBLE_PAR_IA.test(d.mime))
+            return c.json({ error: "illisible", message: "Lucien ne peut pas relire ce papier." }, 400);
+        const budget = budgetIa(db, h.id);
+        if (h.plan === "gratuit" || !budget.ok(coutAppel("precis")))
+            return c.json({ error: "budget", message: "La lecture par l'IA n'est pas disponible pour le moment." }, 402);
+        const buf = await lireFichier(join(opts.uploadDir, basename(d.fichier))).catch(() => null);
+        if (!buf)
+            return c.json({ error: "fichier", message: "Le fichier de ce papier est introuvable." }, 404);
+        const ex = await extractDocument({ base64: buf.toString("base64"), mime: d.mime, texte: d.texte ?? undefined }, { precisOnly: true });
+        if (ex.modele)
+            db.recordIaLecture(h.id, false, ex.modele.cout_lecture_centimes);
+        const garde = aGarder({ ...ex, category: d.category }, d.texte);
+        db.updateDocument(d.id, { texte: garde.texte ?? undefined, details: garde.details ?? undefined });
+        const n = db.getDocument(d.id);
+        return c.json({ details: lireDetails(n.details), texte: n.texte });
     });
     api.patch("/documents/:id", async (c) => {
         const d = db.getDocument(c.req.param("id"));
@@ -904,7 +935,7 @@ export function createApi(db, opts) {
         const sig = signataire(c);
         // a photo or PDF whose text was not kept: Lucien reads the page itself (addressee, email, references)
         let fichier = null;
-        if (ia && !emailsDuTexte(doc.texte).length && doc.fichier && doc.mime && LISIBLE_PAR_IA.test(doc.mime) && budget.ok(coutAppel("precis"))) {
+        if (ia && !emailsDuTexte(doc.texte).length && !lireDetails(doc.details)?.contact.email && doc.fichier && doc.mime && LISIBLE_PAR_IA.test(doc.mime) && budget.ok(coutAppel("precis"))) {
             try {
                 fichier = { mime: doc.mime, base64: (await lireFichier(join(opts.uploadDir, basename(doc.fichier)))).toString("base64") };
             }
@@ -915,6 +946,13 @@ export function createApi(db, opts) {
         const r = await redigerCourrier({ type: b.type, doc, motif: b.motif === "autre" ? "Je souhaite vous signaler la situation suivante" : motif, explication: b.explication, expediteur: { nom: sig.nom, adresse: sig.adresse }, ia, fichier });
         if (r.avec_ia)
             budget.compter(coutAppel(fichier ? "precis" : "rapide"));
+        const det = lireDetails(doc.details);
+        if (det?.contact.email && !r.emails.includes(det.contact.email))
+            r.emails.unshift(det.contact.email);
+        if (det?.contact.adresse && !r.lettre.destinataire.adresse)
+            r.lettre.destinataire.adresse = [det.contact.service, det.contact.adresse].filter(Boolean).join("\n");
+        if (det?.references.length && !r.avec_ia)
+            r.lettre.reference = det.references.map((x) => `${x.libelle} ${x.valeur}`).join(" · ");
         for (const e of r.emails)
             db.raw.prepare("INSERT OR IGNORE INTO courrier_emails (household_id, document_id, email) VALUES (?, ?, ?)").run(h.id, doc.id, e);
         return c.json({ ...r, corps: r.lettre.corps.join("\n\n"), expediteur: sig, email_client: currentUser(c)?.email ?? null });
@@ -943,7 +981,7 @@ export function createApi(db, opts) {
         const moi = currentUser(c)?.email ?? null;
         if (!moi)
             return c.json({ error: "email", message: "Connectez-vous avec votre adresse email pour envoyer un courrier." }, 400);
-        const connue = emailsDuTexte(doc.texte).includes(b.email) || !!db.raw.prepare("SELECT 1 FROM courrier_emails WHERE household_id = ? AND email = ?").get(h.id, b.email)
+        const connue = emailsDuTexte(doc.texte).includes(b.email) || db.listDocuments(h.id).some((x) => lireDetails(x.details)?.contact.email === b.email) || !!db.raw.prepare("SELECT 1 FROM courrier_emails WHERE household_id = ? AND email = ?").get(h.id, b.email)
             || db.listDocuments(h.id).some((d) => emailsDuTexte(d.texte).includes(b.email));
         if (!connue)
             return c.json({ error: "adresse", message: "Lucien n'envoie qu'aux adresses lues dans vos papiers. Pour une autre adresse, téléchargez le PDF et envoyez-le vous-même." }, 400);
@@ -1693,7 +1731,7 @@ Cette lettre vous est adressée par ${b.expediteur.nom} (${moi}), qui l'a valid�
     return api;
 }
 export function publicDoc(d) {
-    const { texte, ...rest } = d;
+    const { texte, details, ...rest } = d;
     return rest;
 }
 /** Reads a PDF bank statement with Claude and returns it as CSV lines (date;libellé;montant). */

@@ -2,6 +2,14 @@ export type Category =
   | "assurance" | "energie" | "telecom" | "logement" | "banque" | "impots" | "abonnement"
   | "sante" | "identite" | "garantie" | "education" | "vehicule" | "autre";
 
+/** What Lucien read on a paper for later: who sent it, how to reach and pay them, references, key dates. */
+export interface DetailsDoc {
+  contact: { nom: string | null; service: string | null; adresse: string | null; email: string | null; telephone: string | null; site: string | null };
+  paiement: { iban: string | null; bic: string | null; titulaire: string | null; date_limite: string | null } | null;
+  references: { libelle: string; valeur: string }[];
+  dates_cles: { libelle: string; date: string }[];
+}
+
 export interface Doc {
   id: string;
   /** Identity, health, taxes, bank: opened after Face ID / fingerprint or an emailed code. */

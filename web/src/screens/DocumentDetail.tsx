@@ -1,13 +1,13 @@
 import { conservation, SOURCE_CONSERVATION } from "../../../server/src/conservation";
 import { useEffect, useState } from "react";
 import type { Api } from "../api";
-import { CATEGORIES, CATEGORY_LABEL, type Category, type Deadline, type Doc } from "../types";
+import { CATEGORIES, CATEGORY_LABEL, type Category, type Deadline, type DetailsDoc, type Doc } from "../types";
 import { Back, DateChip, fmtDate, fmtEuro, PERIOD_LABEL, relative } from "../ui";
 import { CoffreSheet } from "./Coffre";
 import { CourrierAssistant } from "./Courrier";
 import { Ico } from "./espacesCommun";
 
-type Full = Doc & { echeances: Deadline[]; texte?: string | null };
+type Full = Doc & { echeances: Deadline[]; texte?: string | null; details?: DetailsDoc | null; relisible?: boolean };
 
 const PERIODICITE: Record<string, string> = { mensuel: "Mensuelle", trimestriel: "Trimestrielle", annuel: "Annuelle", unique: "Paiement unique" };
 
@@ -155,6 +155,8 @@ export function DocumentDetail({ api, id, onBack, onChanged, toast }: { api: Api
         <div className="confidence ok">{doc.verifie ? "Vérifié par vous" : `Extrait par l'IA avec ${Math.round((doc.confiance ?? 0) * 100)} % de confiance`}</div>
       )}
 
+      {!doc.verrouille && <Coordonnees api={api} doc={doc} toast={toast} onDetails={(details, texte) => setDoc({ ...doc, details, texte: texte ?? doc.texte })} />}
+
       <div className="fields">
         <F k="category" label="Catégorie" options={CATEGORIES.map((c) => ({ value: c, label: CATEGORY_LABEL[c as Category] }))} />
         <F k="organisme" label="Organisme" />
@@ -236,5 +238,51 @@ export function DocumentDetail({ api, id, onBack, onChanged, toast }: { api: Api
         )}
       </section>}
     </div>
+  );
+}
+
+const ibanLisible = (x: string) => x.replace(/(.{4})/g, "$1 ").trim();
+
+/** « Coordonnées et références » : what Lucien read on the paper, ready to call, write, pay or quote. */
+function Coordonnees({ api, doc, toast, onDetails }: { api: Api; doc: Full; toast: (m: string) => void; onDetails: (d: DetailsDoc | null, texte: string | null) => void }) {
+  const [busy, setBusy] = useState(false);
+  const d = doc.details;
+  const copier = (x: string, quoi: string) => { navigator.clipboard?.writeText(x).then(() => toast(`${quoi} copié`)).catch(() => toast(x)); };
+  const relire = async () => {
+    setBusy(true);
+    try { const r = await api.relireDocument(doc.id); onDetails(r.details, r.texte); toast(r.details ? "Lucien a relu le papier" : "Rien de plus à relever sur ce papier"); }
+    catch (e) { toast((e as Error).message); } finally { setBusy(false); }
+  };
+  if (!d) return doc.relisible ? (
+    <div className="coord-vide">
+      <span>Adresse, email, téléphone, IBAN, références : Lucien peut les relever sur ce papier pour vos courriers et paiements.</span>
+      <button className="pill-action" disabled={busy} onClick={relire}>{busy ? "Lecture…" : "Lucien relit ce papier"}</button>
+    </div>
+  ) : null;
+  const c = d.contact;
+  const lignes: { t: string; v: string; lien?: string; copie?: string }[] = [
+    ...(c.service || c.nom ? [{ t: "Service", v: [c.nom, c.service].filter(Boolean).join(" — ") }] : []),
+    ...(c.adresse ? [{ t: "Adresse", v: c.adresse, copie: [c.service ?? c.nom, c.adresse].filter(Boolean).join("\n") }] : []),
+    ...(c.email ? [{ t: "Email", v: c.email, lien: `mailto:${c.email}`, copie: c.email }] : []),
+    ...(c.telephone ? [{ t: "Téléphone", v: c.telephone, lien: `tel:${c.telephone.replace(/\s+/g, "")}` }] : []),
+    ...(c.site ? [{ t: "Site", v: c.site, lien: /^https?:/.test(c.site) ? c.site : `https://${c.site}` }] : []),
+    ...(d.paiement?.iban ? [{ t: "IBAN", v: ibanLisible(d.paiement.iban) + (d.paiement.bic ? ` · BIC ${d.paiement.bic}` : ""), copie: d.paiement.iban }] : []),
+    ...(d.paiement?.date_limite ? [{ t: "À payer avant le", v: fmtDate(d.paiement.date_limite) }] : []),
+    ...d.references.map((r) => ({ t: r.libelle, v: r.valeur, copie: r.valeur })),
+    ...d.dates_cles.map((r) => ({ t: r.libelle, v: fmtDate(r.date) })),
+  ];
+  return (
+    <section className="section coord">
+      <div className="section-head"><h2>Coordonnées et références</h2></div>
+      <ul className="coord-liste">
+        {lignes.map((l, k) => (
+          <li key={k}>
+            <span className="coord-t">{l.t}</span>
+            <span className="coord-v">{l.lien ? <a href={l.lien} target={l.lien.startsWith("http") ? "_blank" : undefined} rel="noreferrer">{l.v}</a> : l.v}</span>
+            {l.copie && <button className="link coord-copier" onClick={() => copier(l.copie!, l.t)}>Copier</button>}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

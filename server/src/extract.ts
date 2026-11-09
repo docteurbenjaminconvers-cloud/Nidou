@@ -18,6 +18,16 @@ export const ExtractionSchema = z.object({
   preavis_jours: z.number().int().nullable(),
   resume: z.string().max(400),
   confiance: z.number().min(0).max(1),
+  // what Lucien needs later (letters, payments, calls): read once, at upload
+  contact: z.object({
+    nom: z.string().nullable().optional(), service: z.string().nullable().optional(), adresse: z.string().nullable().optional(),
+    email: z.string().nullable().optional(), telephone: z.string().nullable().optional(), site: z.string().nullable().optional(),
+  }).nullable().optional(),
+  paiement: z.object({ iban: z.string().nullable().optional(), bic: z.string().nullable().optional(), titulaire: z.string().nullable().optional(), date_limite: z.string().nullable().optional() }).nullable().optional(),
+  references: z.array(z.object({ libelle: z.string(), valeur: z.string() })).max(12).nullable().optional(),
+  dates_cles: z.array(z.object({ libelle: z.string(), date: z.string() })).max(12).nullable().optional(),
+  destinataire: z.object({ nom: z.string().nullable().optional(), adresse: z.string().nullable().optional() }).nullable().optional(),
+  transcription: z.string().nullable().optional(),
 });
 export type Extraction = z.infer<typeof ExtractionSchema>;
 
@@ -49,6 +59,30 @@ const JSON_SCHEMA = {
     preavis_jours: { type: ["integer", "null"], description: "Délai de préavis de résiliation en jours, si mentionné" },
     resume: { type: "string", description: "2 phrases maximum, en français, pour un particulier" },
     confiance: { type: "number", description: "0 à 1 : confiance globale dans l'extraction" },
+    contact: {
+      type: ["object", "null"], description: "Coordonnées de l'émetteur pour le joindre ou lui écrire (bloc « Pour nous contacter », en-tête, pied de page)",
+      properties: {
+        nom: { type: ["string", "null"], description: "Nom de l'organisme ou de la société" },
+        service: { type: ["string", "null"], description: "Service précis, ex. « Service de gestion comptable d'Uzès »" },
+        adresse: { type: ["string", "null"], description: "Adresse postale complète sur plusieurs lignes (rue, BP, code postal, ville, CEDEX)" },
+        email: { type: ["string", "null"], description: "Adresse email de contact écrite sur le document (après « Mél », « Courriel », « Email »). Jamais une adresse « no-reply »." },
+        telephone: { type: ["string", "null"] },
+        site: { type: ["string", "null"], description: "Site web ou espace en ligne indiqué" },
+      },
+    },
+    paiement: {
+      type: ["object", "null"], description: "Coordonnées pour payer l'émetteur, si le document en donne",
+      properties: {
+        iban: { type: ["string", "null"], description: "IBAN du bénéficiaire, sans espaces" },
+        bic: { type: ["string", "null"] },
+        titulaire: { type: ["string", "null"], description: "Titulaire du compte bénéficiaire" },
+        date_limite: { type: ["string", "null"], description: "Date limite de paiement, AAAA-MM-JJ" },
+      },
+    },
+    references: { type: ["array", "null"], description: "Toutes les références utiles pour répondre : n° d'acte, de dossier, de facture, de créance, de client, de contrat, de lettre…", items: { type: "object", properties: { libelle: { type: "string" }, valeur: { type: "string" } }, required: ["libelle", "valeur"] } },
+    dates_cles: { type: ["array", "null"], description: "Autres dates importantes du document (émission, échéance, rendez-vous, délai de réponse…), AAAA-MM-JJ", items: { type: "object", properties: { libelle: { type: "string" }, date: { type: "string" } }, required: ["libelle", "date"] } },
+    destinataire: { type: ["object", "null"], description: "À qui le document est adressé (nom et adresse du foyer)", properties: { nom: { type: ["string", "null"] }, adresse: { type: ["string", "null"] } } },
+    transcription: { type: ["string", "null"], description: "Pour une photo ou un PDF : le texte intégral du document, fidèlement, ligne par ligne (8 000 caractères au plus). null si le texte t'a été donné." },
   },
 } as const;
 
@@ -62,6 +96,7 @@ Extrais les champs demandés avec rigueur :
 - La catégorie « garantie » couvre les achats avec garantie constructeur ou extension.
 - La catégorie « sante » est réservée aux documents MÉDICAUX : ordonnance, compte rendu, résultat d'analyse ou d'examen, décompte de soins, certificat médical, carnet de santé ou de vaccination. Lucien ne les conserve pas.
 - Un contrat, une carte ou une attestation de mutuelle ou de complémentaire santé, qui ne décrit aucun soin, est de catégorie « assurance ».
+- Relève aussi tout ce qui servira ensuite : les coordonnées de l'émetteur (service, adresse postale, email, téléphone), ses coordonnées de paiement (IBAN, BIC), toutes les références (acte, dossier, facture, créance, client, contrat), les dates clés et, pour une photo ou un PDF, la transcription fidèle du texte.
 Réponds uniquement via l'outil fourni.`;
 
 export interface ExtractResult extends Extraction { modele: ModelInfo | null }

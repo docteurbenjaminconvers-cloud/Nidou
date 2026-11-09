@@ -1503,7 +1503,18 @@ button.sem-date:hover b { color: var(--nest); }
 .courrier-assist textarea.in:focus { outline: none; border-color: var(--lilac); }
 /* carte « Vous » : une longue adresse email ou un long nom de foyer reste dans le cadre */
 .reg-profil { min-width: 0; }
-.reg-profil-texte { min-width: 0; flex: 1 1 0; }
+.reg-profil-texte { min-width: 0; flex: 1 1 180px; }
 .reg-profil-texte > b, .reg-profil-texte > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .reg-profil-texte .reg-foyer { max-width: 100%; text-align: left; white-space: normal; overflow-wrap: anywhere; }
 .reg-profil-texte { grid-template-columns: minmax(0, 1fr); }
+
+/* ——— Papier : coordonnées et références relevées par Lucien ——— */
+.coord-liste { list-style: none; margin: 0; padding: 4px 16px; background: var(--white); border-radius: 18px; box-shadow: var(--shadow); }
+.coord-liste li { display: grid; grid-template-columns: minmax(90px, 32%) minmax(0, 1fr) auto; gap: 10px; align-items: baseline; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.coord-liste li:last-child { border-bottom: 0; }
+.coord-t { font-size: 12.5px; font-weight: 800; color: var(--mist); }
+.coord-v { font-size: 14.5px; white-space: pre-line; overflow-wrap: anywhere; }
+.coord-v a { color: var(--nest-deep); font-weight: 700; text-decoration: none; }
+.coord-copier { font-size: 12.5px; }
+.coord-vide { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 14px 16px; margin: 0 0 16px; border-radius: 18px; background: var(--lilac-soft); font-size: 14px; }
+.coord-vide span { flex: 1 1 220px; }

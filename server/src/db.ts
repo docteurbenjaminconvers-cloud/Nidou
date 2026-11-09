@@ -40,6 +40,7 @@ export interface DocumentRow {
   confiance: number | null;
   verifie: number;
   source: string | null;        // app | email
+  details?: string | null;      // JSON: who sent it (address, email, phone), payment (IBAN), references, key dates — see extract.ts
   cree_le: string;
 }
 
@@ -413,6 +414,7 @@ export class Db {
     }
     const dcols = (this.raw.prepare("PRAGMA table_info(documents)").all() as unknown as { name: string }[]).map((c) => c.name);
     if (!dcols.includes("source")) this.raw.exec("ALTER TABLE documents ADD COLUMN source TEXT DEFAULT 'app'");
+    if (!dcols.includes("details")) this.raw.exec("ALTER TABLE documents ADD COLUMN details TEXT");
     for (const h of this.raw.prepare("SELECT id FROM households WHERE boite_code IS NULL").all() as unknown as { id: string }[]) {
       this.raw.prepare("UPDATE households SET boite_code = ? WHERE id = ?").run(newBoiteCode(), h.id);
     }
@@ -781,13 +783,13 @@ export class Db {
     this.raw
       .prepare(
         `INSERT INTO documents (id, household_id, member_id, title, category, organisme, numero_contrat, montant, periodicite,
-          date_document, date_debut, date_fin, preavis_jours, resume, texte, fichier, mime, confiance, verifie, source, cree_le)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          date_document, date_debut, date_fin, preavis_jours, resume, texte, fichier, mime, confiance, verifie, source, cree_le, details)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         row.id, row.household_id, row.member_id, row.title, row.category, row.organisme, row.numero_contrat,
         row.montant, row.periodicite, row.date_document, row.date_debut, row.date_fin, row.preavis_jours,
-        row.resume, row.texte, row.fichier, row.mime, row.confiance, row.verifie, row.source, row.cree_le
+        row.resume, row.texte, row.fichier, row.mime, row.confiance, row.verifie, row.source, row.cree_le, row.details ?? null
       );
     return row;
   }
@@ -795,7 +797,7 @@ export class Db {
   updateDocument(id: string, patch: Partial<DocumentRow>) {
     const allowed: (keyof DocumentRow)[] = [
       "member_id", "title", "category", "organisme", "numero_contrat", "montant", "periodicite",
-      "date_document", "date_debut", "date_fin", "preavis_jours", "resume", "verifie",
+      "date_document", "date_debut", "date_fin", "preavis_jours", "resume", "verifie", "texte", "details",
     ];
     const keys = allowed.filter((k) => patch[k] !== undefined);
     if (keys.length === 0) return;
