@@ -7,7 +7,7 @@ import { randomBytes } from "node:crypto";
 import { rapportLocatif } from "./locatif.js";
 import { monterSignatures } from "./signatures.js";
 import { appliquerBail, appliquerBulletin, lire } from "./lecture.js";
-import { provider } from "./ia.js";
+import { provider, reel } from "./ia.js";
 import { budgetIa, coutAppel } from "./iaBudget.js";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -179,7 +179,7 @@ export function monterEspaces(api, db, ctx) {
         const cout = coutAppel("precis", Math.max(1, 0.5 + pages / 4));
         const { lu, ia } = await lire(quoi, entree, budget.ok(cout));
         if (ia)
-            budget.compter(cout, true);
+            budget.compter(reel(cout), true);
         try {
             let resume, titre;
             if (e === "pro") {

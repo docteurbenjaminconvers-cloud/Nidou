@@ -14,7 +14,7 @@ import { randomBytes } from "node:crypto";
 import { rapportLocatif, type DonneesLocatif } from "./locatif.js";
 import { monterSignatures } from "./signatures.js";
 import { appliquerBail, appliquerBulletin, lire } from "./lecture.js";
-import { provider } from "./ia.js";
+import { provider, reel } from "./ia.js";
 import { budgetIa, coutAppel } from "./iaBudget.js";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -179,7 +179,7 @@ export function monterEspaces(api: Hono<any>, db: Db, ctx: Ctx) {
     const pages = mime === "application/pdf" ? Math.max(1, (buf.toString("latin1").match(/\/Type\s*\/Page(?!s)/g) ?? []).length) : 1;
     const cout = coutAppel("precis", Math.max(1, 0.5 + pages / 4));
     const { lu, ia } = await lire(quoi, entree, budget.ok(cout));
-    if (ia) budget.compter(cout, true);
+    if (ia) budget.compter(reel(cout), true);
     try {
       let resume: string, titre: string;
       if (e === "pro") {

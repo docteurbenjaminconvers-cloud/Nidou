@@ -1,3 +1,4 @@
+import { avecCompteur, reel } from "./ia.js";
 import { aGarder } from "./details.js";
 import type { Db, DocumentRow } from "./db.js";
 import { estMedical, extractDocument, heuristicExtract } from "./extract.js";
@@ -62,8 +63,11 @@ export async function processInboundEmail(db: Db, mail: InboundEmail, opts: { pl
   const docs: DocumentRow[] = [];
   for (const input of inputs) {
     const budget = budgetIa(db, h.id);
-    const ex = budget.ok() ? await extractDocument(input) : { ...heuristicExtract(input), modele: null };
-    if (ex.modele) db.recordIaLecture(h.id, false, ex.modele.cout_lecture_centimes);
+    const [ex, cout] = await avecCompteur(async () => {
+      const ex = budget.ok() ? await extractDocument(input) : { ...heuristicExtract(input), modele: null };
+      return [ex, ex.modele ? reel(ex.modele.cout_lecture_centimes) : 0] as const;
+    });
+    if (ex.modele) db.recordIaLecture(h.id, false, cout);
     if (estMedical(ex)) continue; // medical papers are never kept
     const garde = aGarder(ex, input.texte);
     const doc = db.insertDocument({

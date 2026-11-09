@@ -1,4 +1,4 @@
-import { anthropicCreate } from "./ia.js";
+import { anthropicCreate, avecCompteur, reel } from "./ia.js";
 import { Hono } from "hono";
 import { z } from "zod";
 import { mkdir, unlink } from "node:fs/promises";
@@ -90,6 +90,8 @@ export function dispositionFichier(type, nom) {
 const idInvitation = (token) => createHash("sha256").update(token).digest("base64url").slice(0, 16);
 export function createApi(db, opts) {
     const api = new Hono();
+    // every request has its own AI meter: what each call really cost is what the household's budget counts (ia.ts)
+    api.use("*", (c, next) => avecCompteur(() => next()));
     // Invalid input (zod) is the caller's mistake: 400 with the first message, not a server error.
     api.onError((err, c) => {
         if (err instanceof z.ZodError)
@@ -744,7 +746,7 @@ export function createApi(db, opts) {
         const iaAutorisee = quotaOk && capOk && budgetOk;
         const ex = iaAutorisee ? await extractDocument({ texte, base64, mime, nomFichier }) : { ...heuristicExtract({ texte, nomFichier }), modele: null };
         if (ex.modele)
-            db.recordIaLecture(h.id, gratuit, ex.modele.cout_lecture_centimes);
+            db.recordIaLecture(h.id, gratuit, reel(ex.modele.cout_lecture_centimes));
         if (!budgetOk)
             ex.resume = "Votre foyer a atteint ce mois-ci la limite de lectures par l'IA : ce papier a été lu sans IA. Vérifiez et complétez les champs ; la lecture par l'IA reprend le 1er du mois.";
         else if (!iaAutorisee) {
@@ -805,7 +807,7 @@ export function createApi(db, opts) {
             return c.json({ error: "fichier", message: "Le fichier de ce papier est introuvable." }, 404);
         const ex = await extractDocument({ base64: buf.toString("base64"), mime: d.mime, texte: d.texte ?? undefined }, { precisOnly: true });
         if (ex.modele)
-            db.recordIaLecture(h.id, false, ex.modele.cout_lecture_centimes);
+            db.recordIaLecture(h.id, false, reel(ex.modele.cout_lecture_centimes));
         const garde = aGarder({ ...ex, category: d.category }, d.texte);
         db.updateDocument(d.id, { texte: garde.texte ?? undefined, details: garde.details ?? undefined });
         const n = db.getDocument(d.id);
@@ -901,7 +903,7 @@ export function createApi(db, opts) {
             ? await generateLetter({ kind: body.kind, doc, expediteur: { nom: body.nom, adresse: body.adresse }, motif: body.motif })
             : templateLetter({ kind: body.kind, doc, expediteur: { nom: body.nom, adresse: body.adresse }, motif: body.motif });
         if (avecIa)
-            budget.compter(coutAppel("rapide"));
+            budget.compter(reel(coutAppel("rapide")));
         return c.json({ texte });
     });
     // ---------- réclamation / remboursement à partir d'un papier ----------
@@ -945,7 +947,7 @@ export function createApi(db, opts) {
         }
         const r = await redigerCourrier({ type: b.type, doc, motif: b.motif === "autre" ? "Je souhaite vous signaler la situation suivante" : motif, explication: b.explication, expediteur: { nom: sig.nom, adresse: sig.adresse }, ia, fichier });
         if (r.avec_ia)
-            budget.compter(coutAppel(fichier ? "precis" : "rapide"));
+            budget.compter(reel(coutAppel(fichier ? "precis" : "rapide")));
         const det = lireDetails(doc.details);
         if (det?.contact.email && !r.emails.includes(det.contact.email))
             r.emails.unshift(det.contact.email);
@@ -1063,7 +1065,7 @@ Ce courrier vous est adressé par ${b.expediteur.nom} (${moi}), qui l'a validé 
                         return c.json({ error: "budget_ia", message: "Votre foyer a atteint ce mois-ci la limite de lectures par l'IA. Exportez le relevé en CSV depuis votre banque : il s'importe sans IA." }, 429);
                     const pages = Math.max(1, (buf.toString("latin1").match(/\/Type\s*\/Page(?!s)/g) ?? []).length);
                     text = await pdfStatementToCsv(buf);
-                    budget.compter(coutAppel("precis", Math.max(3, 0.5 + pages / 2)));
+                    budget.compter(reel(coutAppel("precis", Math.max(3, 0.5 + pages / 2))));
                 }
                 else
                     text = buf.toString("utf8");

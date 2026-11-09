@@ -2,7 +2,7 @@
  * Monthly AI budget per household, so that no single account (a trial opened with any email, a heavy user) can run
  * up the AI bill. Every AI call is counted here: paper readings, bank-label categorisation, letters, PDF statements.
  * Over the budget, Lucien falls back to what it does without AI (local reading, rules, letter templates) until the
- * 1st of next month. A trial has one budget for the whole trial, whatever months it spans. Amounts in cents of euro, estimated per call (LUCIEN_COUT_* in ia.ts).
+ * 1st of next month. A trial has one budget for the whole trial, whatever months it spans. Amounts in cents of euro: what each call really cost (tokens × Anthropic prices, ia.ts `reel`), the per-call estimate (LUCIEN_COUT_*) only when a call cannot be measured.
  */
 import type { Db } from "./db.js";
 import { modelFor, type Tier } from "./ia.js";

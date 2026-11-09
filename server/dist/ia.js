@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import Anthropic from "@anthropic-ai/sdk";
 export function provider() {
     const p = (process.env.LUCIEN_IA_PROVIDER ?? (process.env.ANTHROPIC_API_KEY ? "anthropic" : process.env.MISTRAL_API_KEY ? "mistral" : ""));
@@ -19,6 +20,50 @@ export function modelFor(tier) {
     return tier === "rapide"
         ? { provider: p, model: process.env.LUCIEN_MODEL_RAPIDE ?? "mistral-small-latest", cout_lecture_centimes: Number(process.env.LUCIEN_COUT_RAPIDE_CENTIMES ?? 0.4) }
         : { provider: p, model: process.env.LUCIEN_MODEL_PRECIS ?? "mistral-medium-latest", cout_lecture_centimes: Number(process.env.LUCIEN_COUT_PRECIS_CENTIMES ?? 1.5) };
+}
+// ---------- real cost of the calls (what Anthropic bills), counted per request ----------
+/**
+ * Anthropic prices, in US dollars per million tokens (docs « Pricing », November 2026). Haiku 5.5 costs five times
+ * more for a prompt over 100 000 tokens. Thinking tokens are billed as output (they are in output_tokens).
+ * Overridable: LUCIEN_PRIX_<HAIKU|SONNET>_<ENTREE|SORTIE> ; dollars → euros with LUCIEN_USD_EUR.
+ */
+export function prixModele(model, entreeTotale = 0) {
+    const env = (k, d) => Number(process.env[k] ?? d);
+    if (/haiku/.test(model)) {
+        const x = entreeTotale > 100_000 ? 5 : 1;
+        return { entree: env("LUCIEN_PRIX_HAIKU_ENTREE", 0.1) * x, sortie: env("LUCIEN_PRIX_HAIKU_SORTIE", 0.5) * x, cacheLecture: 0.01 * x, cacheEcriture: 0.125 * x };
+    }
+    return { entree: env("LUCIEN_PRIX_SONNET_ENTREE", 2), sortie: env("LUCIEN_PRIX_SONNET_SORTIE", 10), cacheLecture: 0.1, cacheEcriture: 2.5 }; // Sonnet 5.5, and any other model at Sonnet's price
+}
+/** What one Anthropic call cost, in cents of euro, from the tokens it used. */
+export function centimesReels(model, u) {
+    const entree = u.input_tokens + (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0);
+    const p = prixModele(model, entree);
+    const usd = (u.input_tokens * p.entree + u.output_tokens * p.sortie + (u.cache_read_input_tokens ?? 0) * p.cacheLecture + (u.cache_creation_input_tokens ?? 0) * p.cacheEcriture) / 1e6;
+    return usd * Number(process.env.LUCIEN_USD_EUR ?? 0.92) * 100;
+}
+const compteur = new AsyncLocalStorage();
+/** Runs fn with a meter: every AI call made inside adds what it really cost. */
+export const avecCompteur = (fn) => compteur.run({ centimes: 0, appels: 0 }, fn);
+/**
+ * The real cost of the AI calls made since the last count (and resets it), or the estimate when the calls could
+ * not be measured (no meter, or a provider that does not say how many tokens it used).
+ */
+export function reel(estimation) {
+    const c = compteur.getStore();
+    if (!c || c.appels === 0)
+        return estimation;
+    const v = c.centimes;
+    c.centimes = 0;
+    c.appels = 0;
+    return v;
+}
+function mesurer(model, u) {
+    const c = compteur.getStore();
+    if (!c || !u)
+        return;
+    c.centimes += centimesReels(model, u);
+    c.appels++;
 }
 /** Asks the model for one structured JSON answer. Returns the parsed object and the model used. */
 export async function structured(call) {
@@ -65,15 +110,16 @@ export async function anthropicCreate(params, usage = "redaction") {
     const client = new Anthropic();
     const model = String(params.model);
     const avec = () => ({ ...params, ...reglagesAnthropic(model, usage), max_tokens: Math.max(Number(params.max_tokens ?? 1024), generation55(model) ? 4096 : 0) });
+    const creer = async () => { const r = await client.messages.create(avec()); mesurer(model, r.usage); return r; };
     try {
-        return await client.messages.create(avec());
+        return await creer();
     }
     catch (e) {
         const msg = String(e.message);
         if (!/thinking|output_config|effort|between_tools/.test(msg) || refuse(model, "reglages"))
             throw e;
         noter(model, "reglages");
-        return client.messages.create(avec());
+        return creer();
     }
 }
 async function anthropicStructured(model, call) {

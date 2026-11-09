@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { structured, provider } from "./ia.js";
+import { avecCompteur, reel, structured, provider } from "./ia.js";
 import { coutAppel, type BudgetIa } from "./iaBudget.js";
 
 export { TX_CATEGORIES, TX_LABEL, type TxCategory } from "./categorie.js";
@@ -124,14 +124,14 @@ export async function categorise(items: { libelle: string; montant: number }[], 
   if (todo.length && provider() && (!budget || budget.ok())) {
     const uniq = [...new Set(todo.map((i) => items[i].libelle))].slice(0, 300);
     try {
-      const r = await structured({
+      const [r, cout] = await avecCompteur(async () => [await structured({
         tier: "rapide",
         system: `Tu classes des libellés de relevé bancaire français dans une de ces catégories : ${TX_CATEGORIES.join(", ")}.`,
         content: [{ type: "text", text: uniq.join("\n") }],
         tool: { name: "classer", description: "Attribue une catégorie à chaque libellé.", schema: { type: "object", required: ["items"], properties: { items: { type: "array", items: { type: "object", required: ["libelle", "categorie"], properties: { libelle: { type: "string" }, categorie: { type: "string", enum: [...TX_CATEGORIES] } } } } } } },
         maxTokens: 4000,
-      });
-      budget?.compter(coutAppel("rapide", 2));
+      }), reel(coutAppel("rapide", 2))] as const);
+      budget?.compter(cout);
       const map = new Map<string, TxCategory>();
       for (const it of (r.data as any).items ?? []) if (TX_CATEGORIES.includes(it.categorie)) map.set(it.libelle, it.categorie);
       for (const i of todo) out[i] = map.get(items[i].libelle) ?? null;

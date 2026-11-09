@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { structured, provider } from "./ia.js";
+import { avecCompteur, reel, structured, provider } from "./ia.js";
 import { coutAppel } from "./iaBudget.js";
 export { TX_CATEGORIES, TX_LABEL } from "./categorie.js";
 import { TX_CATEGORIES } from "./categorie.js";
@@ -126,14 +126,14 @@ export async function categorise(items, budget) {
     if (todo.length && provider() && (!budget || budget.ok())) {
         const uniq = [...new Set(todo.map((i) => items[i].libelle))].slice(0, 300);
         try {
-            const r = await structured({
-                tier: "rapide",
-                system: `Tu classes des libellés de relevé bancaire français dans une de ces catégories : ${TX_CATEGORIES.join(", ")}.`,
-                content: [{ type: "text", text: uniq.join("\n") }],
-                tool: { name: "classer", description: "Attribue une catégorie à chaque libellé.", schema: { type: "object", required: ["items"], properties: { items: { type: "array", items: { type: "object", required: ["libelle", "categorie"], properties: { libelle: { type: "string" }, categorie: { type: "string", enum: [...TX_CATEGORIES] } } } } } } },
-                maxTokens: 4000,
-            });
-            budget?.compter(coutAppel("rapide", 2));
+            const [r, cout] = await avecCompteur(async () => [await structured({
+                    tier: "rapide",
+                    system: `Tu classes des libellés de relevé bancaire français dans une de ces catégories : ${TX_CATEGORIES.join(", ")}.`,
+                    content: [{ type: "text", text: uniq.join("\n") }],
+                    tool: { name: "classer", description: "Attribue une catégorie à chaque libellé.", schema: { type: "object", required: ["items"], properties: { items: { type: "array", items: { type: "object", required: ["libelle", "categorie"], properties: { libelle: { type: "string" }, categorie: { type: "string", enum: [...TX_CATEGORIES] } } } } } } },
+                    maxTokens: 4000,
+                }), reel(coutAppel("rapide", 2))]);
+            budget?.compter(cout);
             const map = new Map();
             for (const it of r.data.items ?? [])
                 if (TX_CATEGORIES.includes(it.categorie))
