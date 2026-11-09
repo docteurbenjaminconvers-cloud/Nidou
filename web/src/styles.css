@@ -1501,3 +1501,9 @@ button.sem-date:hover b { color: var(--nest); }
 @media (max-width: 420px) { .courrier-canaux { grid-template-columns: 1fr; } }
 .courrier-assist textarea.in { width: 100%; border-radius: 16px; border: 2px solid var(--line); padding: 12px 14px; font: inherit; font-size: 15px; color: var(--ink); background: var(--white); resize: vertical; box-sizing: border-box; }
 .courrier-assist textarea.in:focus { outline: none; border-color: var(--lilac); }
+/* carte « Vous » : une longue adresse email ou un long nom de foyer reste dans le cadre */
+.reg-profil { min-width: 0; }
+.reg-profil-texte { min-width: 0; flex: 1 1 0; }
+.reg-profil-texte > b, .reg-profil-texte > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.reg-profil-texte .reg-foyer { max-width: 100%; text-align: left; white-space: normal; overflow-wrap: anywhere; }
+.reg-profil-texte { grid-template-columns: minmax(0, 1fr); }

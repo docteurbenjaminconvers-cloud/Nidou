@@ -122,7 +122,7 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
     catch (e) { if ((e as { status?: number }).status === 423) setCoffreExport(true); else toast((e as Error).message); }
   };
   const copier = async (t: string, ok: string) => { try { await navigator.clipboard.writeText(t); toast(ok); } catch { toast(t); } };
-  const initiales = (household.utilisateur?.prenom ?? household.utilisateur?.email ?? household.nom).trim().slice(0, 1).toUpperCase();
+  const initiales = (household.utilisateur?.prenom || household.utilisateur?.email || household.nom).trim().slice(0, 1).toUpperCase();
   return (
     <div className="screen tableau reglages">
       <Back onClick={onBack} />
@@ -132,7 +132,7 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
       <section className="section reg-carte reg-profil">
         <span className="reg-avatar" aria-hidden>{initiales}</span>
         <div className="reg-profil-texte">
-          <b>{household.utilisateur?.prenom ?? household.utilisateur?.email ?? "Vous"}</b>
+          <b>{household.utilisateur?.prenom || "Vous"}</b>
           {household.utilisateur?.email && <span>{household.utilisateur.email}</span>}
           <button className="reg-foyer" onClick={async () => { const n = prompt("Nom du foyer", household.nom); if (n && n.trim()) { await api.renommer(n.trim()); onPlan(household.plan); } }}>Foyer « {household.nom} » <Ico d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4" size={15} /></button>
         </div>
