@@ -63,8 +63,11 @@ test("courrier : rédigé, puis envoyé seulement à une adresse lue dans les pa
     const ok = await api.request("/courriers/envoyer", { method: "POST", headers: ck, body: JSON.stringify({ ...courrier, email: "sgc.uzes@dgfip.finances.gouv.fr" }) });
     assert.equal(ok.status, 201);
     assert.ok(vus.some((v) => /\[email → sgc\.uzes@dgfip\.finances\.gouv\.fr \(copie ben@x\.fr\) \(répondre à ben@x\.fr\) \[Courrier-.*\.pdf\]\] Contestation/.test(v)));
+    // an address the AI read on the photo of a paper (no text kept): recorded by « rédiger », then allowed
+    db.raw.prepare("INSERT INTO courrier_emails (household_id, document_id, email) VALUES (?, ?, ?)").run(hid, doc.id, "sip.uzes@dgfip.finances.gouv.fr");
+    assert.equal((await api.request("/courriers/envoyer", { method: "POST", headers: ck, body: JSON.stringify({ ...courrier, email: "sip.uzes@dgfip.finances.gouv.fr" }) })).status, 201);
     const envois = await (await api.request(`/courriers/${doc.id}/envois`, { headers: ck })).json() as any;
-    assert.equal(envois.envois.length, 1);
+    assert.equal(envois.envois.length, 2);
     assert.equal(db.raw.prepare("SELECT expediteur_adresse a FROM households WHERE id = ?").get(hid)!.a, "1 rue X\n34000 Montpellier", "the sender is remembered");
   } finally {
     console.log = log; process.env.LUCIEN_AUTH = avant;

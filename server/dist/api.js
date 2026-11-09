@@ -7,7 +7,7 @@ import { pourquoiPasResiliable } from "./categorie.js";
 import { ecrireFichier, lireFichier } from "./coffre.js";
 import { coffreOuvert, docVerrouille, estAuCoffre, journaliser, monterCoffre } from "./coffreAcces.js";
 import { coordonnees, dateLongue, lettreResiliationStructuree, pdfLettre, texteLettre } from "./lettres.js";
-import { emailsDuTexte, MOTIFS, redigerCourrier } from "./courriers.js";
+import { emailsDuTexte, LISIBLE_PAR_IA, MOTIFS, redigerCourrier } from "./courriers.js";
 import { exporterFoyer } from "./export.js";
 import { prevoirFinDeMois } from "./prevision.js";
 import { annulerSuivi, demarrerSuivi, economieAnnuelle, nomMarchand, ensureResiliationsSchema, lettreRemboursement, marcheASuivre, suivis } from "./resiliations.js";
@@ -902,9 +902,21 @@ export function createApi(db, opts) {
         const budget = budgetIa(db, h.id);
         const ia = h.plan !== "gratuit" && budget.ok(coutAppel("rapide"));
         const sig = signataire(c);
-        const r = await redigerCourrier({ type: b.type, doc, motif: b.motif === "autre" ? "Je souhaite vous signaler la situation suivante" : motif, explication: b.explication, expediteur: { nom: sig.nom, adresse: sig.adresse }, ia });
+        // a photo or PDF whose text was not kept: Lucien reads the page itself (addressee, email, references)
+        let fichier = null;
+        if (ia && !emailsDuTexte(doc.texte).length && doc.fichier && doc.mime && LISIBLE_PAR_IA.test(doc.mime) && budget.ok(coutAppel("precis"))) {
+            try {
+                fichier = { mime: doc.mime, base64: (await lireFichier(join(opts.uploadDir, basename(doc.fichier)))).toString("base64") };
+            }
+            catch {
+                fichier = null;
+            }
+        }
+        const r = await redigerCourrier({ type: b.type, doc, motif: b.motif === "autre" ? "Je souhaite vous signaler la situation suivante" : motif, explication: b.explication, expediteur: { nom: sig.nom, adresse: sig.adresse }, ia, fichier });
         if (r.avec_ia)
-            budget.compter(coutAppel("rapide"));
+            budget.compter(coutAppel(fichier ? "precis" : "rapide"));
+        for (const e of r.emails)
+            db.raw.prepare("INSERT OR IGNORE INTO courrier_emails (household_id, document_id, email) VALUES (?, ?, ?)").run(h.id, doc.id, e);
         return c.json({ ...r, corps: r.lettre.corps.join("\n\n"), expediteur: sig, email_client: currentUser(c)?.email ?? null });
     });
     api.post("/courriers/pdf", async (c) => {
@@ -931,7 +943,8 @@ export function createApi(db, opts) {
         const moi = currentUser(c)?.email ?? null;
         if (!moi)
             return c.json({ error: "email", message: "Connectez-vous avec votre adresse email pour envoyer un courrier." }, 400);
-        const connue = emailsDuTexte(doc.texte).includes(b.email) || db.listDocuments(h.id).some((d) => emailsDuTexte(d.texte).includes(b.email));
+        const connue = emailsDuTexte(doc.texte).includes(b.email) || !!db.raw.prepare("SELECT 1 FROM courrier_emails WHERE household_id = ? AND email = ?").get(h.id, b.email)
+            || db.listDocuments(h.id).some((d) => emailsDuTexte(d.texte).includes(b.email));
         if (!connue)
             return c.json({ error: "adresse", message: "Lucien n'envoie qu'aux adresses lues dans vos papiers. Pour une autre adresse, téléchargez le PDF et envoyez-le vous-même." }, 400);
         const recentes = db.raw.prepare("SELECT COUNT(*) n FROM lettres_envoyees WHERE household_id = ? AND envoye_le > ?").get(h.id, new Date(Date.now() - 86400_000).toISOString()).n;

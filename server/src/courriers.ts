@@ -6,7 +6,7 @@
  */
 import type { DocumentRow } from "./db.js";
 import { coordonnees, dateLongue, type Lettre } from "./lettres.js";
-import { provider, structured } from "./ia.js";
+import { provider, structured, type Content } from "./ia.js";
 
 import { MOTIFS, type TypeCourrier } from "./courriersMotifs.js";
 export { MOTIFS, type TypeCourrier };
@@ -77,16 +77,24 @@ const SCHEMA = {
  * The letter Lucien writes: with the AI when available (the paper's text + the person's explanation), otherwise the
  * model letter. The addressee's email is kept only if it is really written in the paper.
  */
-export async function redigerCourrier(o: { type: TypeCourrier; doc: DocumentRow; motif: string; explication: string; expediteur: { nom: string; adresse: string | null }; ia: boolean }): Promise<Brouillon> {
+export const LISIBLE_PAR_IA = /^(application\/pdf|image\/(jpeg|png|webp|gif))$/;
+const EMAIL_SEUL = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
+
+/**
+ * `fichier`: the paper itself (photo or PDF) when its text was not kept at upload — the AI then reads the addressee,
+ * the email and the references on the page, as one would. An email read this way is kept (it is the household's own
+ * paper), and the caller records it so that Lucien may send to it.
+ */
+export async function redigerCourrier(o: { type: TypeCourrier; doc: DocumentRow; motif: string; explication: string; expediteur: { nom: string; adresse: string | null }; ia: boolean; fichier?: { mime: string; base64: string } | null }): Promise<Brouillon> {
   const base = courrierModele(o);
   const lus = emailsDuTexte(o.doc.texte);
   const source = o.doc.title;
   if (!o.ia || !provider()) return { lettre: base, emails: lus, source, avec_ia: false };
   try {
     const { data } = await structured({
-      tier: "rapide",
+      tier: o.fichier ? "precis" : "rapide",
       system: "Tu rédiges, en français, des courriers de particuliers à des administrations et des entreprises : contestation, réclamation, demande de remboursement. Ton courtois, ferme et précis. Tu t'appuies uniquement sur le courrier reçu et sur ce que la personne explique : n'invente aucun fait, aucune date, aucun montant, aucune adresse. Cite les références utiles (numéros de lettre, de facture, de contrat, de dossier). Cite un texte de loi ou un médiateur seulement si c'est certain et utile.",
-      content: [{ type: "text", text: [
+      content: [...(o.fichier ? [o.fichier.mime === "application/pdf" ? { type: "pdf" as const, base64: o.fichier.base64 } : { type: "image" as const, mime: o.fichier.mime, base64: o.fichier.base64 }] : []), { type: "text" as const, text: [
         `Type de courrier : ${o.type === "reclamation" ? "réclamation / contestation" : "demande de remboursement"}`,
         `Motif choisi : ${o.motif}`,
         `Ce que la personne explique : ${o.explication}`,
@@ -94,16 +102,18 @@ export async function redigerCourrier(o: { type: TypeCourrier; doc: DocumentRow;
         `Date du jour : ${base.date}`,
         `Courrier reçu — titre : ${o.doc.title}; organisme : ${o.doc.organisme ?? "?"}; montant : ${o.doc.montant ?? "?"}; n° de contrat : ${o.doc.numero_contrat ?? "?"}; date : ${o.doc.date_document ?? "?"}`,
         `Résumé : ${o.doc.resume ?? ""}`,
-        `Texte du courrier reçu :\n${(o.doc.texte ?? "").slice(0, 12000)}`,
-      ].join("\n") }],
+        o.doc.texte ? `Texte du courrier reçu :\n${o.doc.texte.slice(0, 12000)}` : "Le courrier reçu est joint (photo ou PDF) : lis-y le destinataire, son adresse postale, son adresse email (souvent après « Mél », « Courriel » ou « Email ») et les références.",
+      ].join("\n") }] as Content,
       tool: { name: "courrier", description: "Le courrier rédigé et le destinataire lu dans le courrier reçu.", schema: SCHEMA },
       maxTokens: 1800,
     });
     const r = data as { destinataire_nom?: string; destinataire_adresse?: string; destinataire_email?: string; references?: string; objet?: string; paragraphes?: string[] };
     const paragraphes = (r.paragraphes ?? []).map((p) => p.trim()).filter(Boolean);
     if (paragraphes.length < 2) return { lettre: base, emails: lus, source, avec_ia: false };
-    const email = (r.destinataire_email ?? "").trim().toLowerCase();
-    const emails = email && lus.includes(email) ? [email, ...lus.filter((e) => e !== email)] : lus;
+    const email = (r.destinataire_email ?? "").trim().toLowerCase().replace(/\s+/g, "");
+    // from the text: only an address really written there; from the page itself: the address the AI read on it
+    const fiable = EMAIL_SEUL.test(email) && !SANS_REPONSE.test(email) && (lus.includes(email) || !!o.fichier);
+    const emails = fiable ? [email, ...lus.filter((e) => e !== email)] : lus;
     return {
       lettre: {
         ...base,

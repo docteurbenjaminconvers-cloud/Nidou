@@ -398,6 +398,7 @@ export class Db {
     if (!cols.includes("changement_prevu")) this.raw.exec("ALTER TABLE households ADD COLUMN changement_prevu TEXT");
     if (!cols.includes("expediteur_nom")) this.raw.exec("ALTER TABLE households ADD COLUMN expediteur_nom TEXT");
     if (!cols.includes("expediteur_adresse")) this.raw.exec("ALTER TABLE households ADD COLUMN expediteur_adresse TEXT");
+    this.raw.exec("CREATE TABLE IF NOT EXISTS courrier_emails (household_id TEXT NOT NULL, document_id TEXT NOT NULL, email TEXT NOT NULL, PRIMARY KEY (household_id, document_id, email))");
     this.raw.exec("CREATE TABLE IF NOT EXISTS lettres_envoyees (id TEXT PRIMARY KEY, household_id TEXT NOT NULL, cle TEXT NOT NULL, canal TEXT NOT NULL, destinataire TEXT NOT NULL, objet TEXT NOT NULL, empreinte TEXT NOT NULL, envoye_le TEXT NOT NULL)");
     if (!cols.includes("ics_token")) this.raw.exec("ALTER TABLE households ADD COLUMN ics_token TEXT");
     for (const [col] of [["stripe_customer_id"], ["stripe_subscription_id"], ["abonnement_statut"], ["abonnement_periode"], ["abonnement_fin"], ["formule"], ["modules"]]) {
@@ -830,6 +831,7 @@ export class Db {
   deleteDocument(id: string) {
     this.raw.prepare("DELETE FROM deadlines WHERE document_id = ?").run(id);
     this.raw.prepare("DELETE FROM documents WHERE id = ?").run(id);
+    this.raw.prepare("DELETE FROM courrier_emails WHERE document_id = ?").run(id);
   }
 
   // ---------- deadlines ----------
