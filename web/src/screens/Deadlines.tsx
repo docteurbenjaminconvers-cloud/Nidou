@@ -1,16 +1,17 @@
 import { Bell } from "../notifications";
 import { useState, type ReactNode } from "react";
 import type { Api } from "../api";
-import type { Deadline, FamilleReport, Household } from "../types";
+import type { Creneau as CreneauFamille, Deadline, FamilleReport, Household } from "../types";
 import { agendaIcs } from "../../../server/src/ics";
 import { DateChip, daysUntil, relative } from "../ui";
+import { Semainier } from "./Semainier";
 
 const TYPE_LABEL: Record<string, string> = {
   resiliation: "Résiliation", renouvellement: "Renouvellement", expiration: "Expiration", garantie: "Garantie",
   sante: "Santé", declaration: "Déclaration", echeance: "Échéance", famille: "Famille", situation: "Situation de vie",
 };
 
-export function Deadlines({ deadlines, go, onDone, unread, semaine, extra }: { deadlines: Deadline[]; go: (s: string, id?: string) => void; onDone: (id: string) => void; unread: number; semaine?: { jour: number; heure_debut: string | null; titre: string; membre: string | null; lieu: string | null }[]; extra?: ReactNode }) {
+export function Deadlines({ api, membres, deadlines, go, onDone, unread, semaine, extra }: { api?: Api; membres?: FamilleReport["membres"]; deadlines: Deadline[]; go: (s: string, id?: string) => void; onDone: (id: string) => void; unread: number; semaine?: CreneauFamille[]; extra?: ReactNode }) {
   const groups: { label: string; items: Deadline[] }[] = [
     { label: "En retard", items: deadlines.filter((d) => daysUntil(d.date) < 0) },
     { label: "Ce mois-ci", items: deadlines.filter((d) => daysUntil(d.date) >= 0 && daysUntil(d.date) <= 30) },
@@ -19,9 +20,10 @@ export function Deadlines({ deadlines, go, onDone, unread, semaine, extra }: { d
   ].filter((g) => g.items.length);
 
   return (
-    <div className="screen">
+    <div className="screen colonnes agenda">
       <div className="top"><div><h1>Agenda</h1><p className="sub">{deadlines.length} échéance{deadlines.length > 1 ? "s" : ""} à venir, d'après vos papiers et votre famille</p></div><Bell unread={unread} onClick={() => go("notifs")} /></div>
       <Calendrier deadlines={deadlines} semaine={semaine ?? []} go={go} onDone={onDone} />
+      {api && membres && <Semainier api={api} membres={membres} semaine={semaine ?? []} deadlines={deadlines} go={go} />}
       {deadlines.length === 0 && <div className="empty"><b>Aucune échéance</b>Ajoutez un contrat, une facture ou une pièce d'identité.</div>}
       {extra}
       {groups.map((g) => (

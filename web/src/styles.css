@@ -1313,3 +1313,83 @@ em.ech { background: var(--nest); } em.act { background: var(--lilac, #b89bd9); 
   .screen.tableau { column-gap: 32px; }
   .screen:not(.tableau):not(.offre) { max-width: 1280px; }
 }
+
+/* grands écrans : les listes aussi se répartissent en colonnes */
+@media (min-width: 1600px) {
+  .screen.colonnes:not(.tableau):not(.offre) { max-width: 1640px; columns: 2; column-gap: 28px; }
+  .screen.colonnes.agenda { columns: 3; }
+  .screen.colonnes > * { break-inside: avoid; }
+  .screen.colonnes > .section, .screen.colonnes > section { display: inline-block; width: 100%; margin-top: 0; margin-bottom: 22px; }
+  .screen.colonnes > .top, .screen.colonnes > .back, .screen.colonnes > .budget-expert-lien,
+  .screen.colonnes > .calendrier, .screen.colonnes > .agenda-tel { column-span: all; display: block; }
+  .screen.colonnes > .calendrier { display: grid; }
+  .screen.colonnes > .budget-expert-lien { display: flex; width: 100%; margin-bottom: 22px; }
+  .screen.papiers:not(.tableau) { max-width: 1640px; }
+  .screen.papiers > .list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 28px; padding: 6px 18px; }
+}
+@media (min-width: 2200px) {
+  .screen.colonnes:not(.tableau):not(.offre), .screen.papiers:not(.tableau) { max-width: 2000px; }
+  .screen.colonnes.budget { columns: 3; }
+  .screen.papiers > .list { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* ——— Le semainier : la semaine en post-it, une couleur par personne ——— */
+.semainier { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 16px 14px; position: relative; overflow: hidden;
+  background-image: radial-gradient(circle at 1px 1px, rgba(59,42,58,.06) 1px, transparent 0); background-size: 18px 18px; }
+.semainier::before { content: ""; position: absolute; left: 50%; top: -8px; width: 120px; height: 26px; transform: translateX(-50%) rotate(-2deg); background: rgba(233,178,58,.35); border-radius: 3px; }
+.sem-tete { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: flex-end; justify-content: space-between; margin-bottom: 14px; position: relative; }
+.sem-titre h2 { font-family: var(--display); font-style: italic; font-size: 24px; margin: 0 0 6px; }
+.sem-nav { display: flex; align-items: center; gap: 10px; }
+.sem-nav b { font-size: 15px; min-width: 120px; text-align: center; text-transform: lowercase; }
+.sem-nav .round { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--line); background: var(--white); font-size: 18px; line-height: 1; color: var(--ink); cursor: pointer; }
+.sem-qui { display: flex; gap: 6px; overflow-x: auto; padding: 4px 2px; scrollbar-width: none; }
+.sem-pers { display: inline-flex; align-items: center; gap: 7px; padding: 4px 12px 4px 4px; border-radius: 999px; border: 2px solid var(--line); background: var(--white); font: inherit; font-size: 13.5px; font-weight: 700; color: var(--ink); cursor: pointer; white-space: nowrap; transition: transform .15s, background .15s, border-color .15s; }
+.sem-pers:hover { transform: translateY(-1px); }
+.sem-pers.tous { padding: 0 14px; height: 42px; }
+.sem-pers.on { border-color: var(--plum); background: var(--plum); color: var(--white); }
+.sem-pers.on .portrait { box-shadow: 0 0 0 2px var(--white); }
+.sem-pers:not(.tous).on { background: var(--teinte, var(--lilac-soft)); color: var(--ink); border-color: var(--teinte-ink, var(--plum)); }
+
+.sem-grille { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(150px, 1fr); gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px 2px 10px; position: relative; }
+.sem-jour { scroll-snap-align: start; background: rgba(251,244,240,.85); border-radius: 18px; padding: 10px 8px 12px; min-height: 220px; display: flex; flex-direction: column; gap: 8px; border: 2px solid transparent; }
+.sem-jour.we { background: rgba(232,221,243,.45); }
+.sem-jour.auj { background: var(--white); border-color: var(--nest); box-shadow: 0 10px 24px rgba(217,95,69,.15); }
+.sem-jour.passe { opacity: .62; }
+.sem-date { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 0 4px 8px; border-bottom: 2px dashed var(--line); position: relative; }
+.sem-date span { font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--mist); white-space: nowrap; }
+.sem-date b { font-family: var(--display); font-size: 30px; font-weight: 600; line-height: 1; }
+.sem-date em { position: absolute; right: 2px; bottom: 10px; font-style: normal; font-size: 10.5px; font-weight: 800; color: var(--white); background: var(--nest); border-radius: 999px; padding: 2px 8px; }
+.sem-jour.auj .sem-date span { color: var(--nest); }
+.sem-notes { display: flex; flex-direction: column; gap: 9px; }
+.sem-note { --r: 0deg; display: flex; flex-direction: column; gap: 2px; text-align: left; width: 100%; border: 0; cursor: pointer; font: inherit; color: var(--ink);
+  padding: 9px 10px 10px; border-radius: 4px 14px 12px 12px; background: var(--teinte, var(--lilac-soft)); box-shadow: 0 4px 10px rgba(59,42,58,.08), inset 0 -3px 0 rgba(59,42,58,.05);
+  transform: rotate(var(--r)); transition: transform .18s, box-shadow .18s; }
+.sem-note:hover { transform: rotate(0) translateY(-2px) scale(1.02); box-shadow: 0 10px 20px rgba(59,42,58,.14); }
+.sem-note b { font-size: 13.5px; line-height: 1.25; }
+.sem-note small { font-size: 11.5px; color: var(--mist); line-height: 1.25; }
+.sem-h { white-space: nowrap; font-size: 11.5px; font-weight: 800; color: var(--teinte-ink, var(--lilac-ink)); font-variant-numeric: tabular-nums; }
+.sem-visages { display: flex; margin-top: 5px; }
+.sem-visages .portrait { margin-right: -6px; font-size: 10px !important; }
+.sem-note.ech { background: var(--white); border: 2px dashed var(--ember); border-radius: 12px; transform: none; padding-top: 12px; position: relative; }
+.sem-note.ech b { color: var(--ember); }
+.sem-pin { position: absolute; top: -9px; right: 8px; font-size: 16px; }
+.sem-vide { margin: 6px 4px; font-size: 12.5px; color: var(--mist); font-style: italic; }
+.sem-pied { margin: 6px 4px 0; }
+
+.t-lilas  { --teinte: #e8ddf3; --teinte-ink: #5a3f6e; }
+.t-peche  { --teinte: #fbe0d4; --teinte-ink: #9a4e36; }
+.t-menthe { --teinte: #d6efe2; --teinte-ink: #1f6b4a; }
+.t-soleil { --teinte: #fbefc9; --teinte-ink: #8a6312; }
+.t-ciel   { --teinte: #dbe9f8; --teinte-ink: #2f5d8a; }
+.t-rose   { --teinte: #f8dbe7; --teinte-ink: #943a62; }
+.t-sauge  { --teinte: #e4ead3; --teinte-ink: #55662a; }
+.t-multi  { --teinte: repeating-linear-gradient(135deg, #fbefc9 0 12px, #fbe0d4 12px 24px); --teinte-ink: #8a5a4a; }
+.t-foyer  { --teinte: #f1ece9; --teinte-ink: var(--mist); }
+.sem-note.t-multi { background: repeating-linear-gradient(135deg, #fbefc9 0 12px, #fdeadf 12px 24px); }
+
+@media (min-width: 1024px) {
+  .sem-grille { grid-auto-flow: initial; grid-template-columns: repeat(7, minmax(0, 1fr)); overflow: visible; }
+  .sem-jour { min-height: 300px; }
+  .screen.colonnes > .semainier, .screen > .semainier { column-span: all; display: block; margin-bottom: 22px; }
+}
+@media (min-width: 1600px) { .sem-titre h2 { font-size: 28px; } .sem-note b { font-size: 14.5px; } .sem-jour { padding: 12px 10px 14px; } }

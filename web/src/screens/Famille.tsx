@@ -21,7 +21,7 @@ const isoJour = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padS
 const joursAvant = (date: string) => Math.round((new Date(date + "T00:00:00").getTime() - new Date(isoJour(new Date()) + "T00:00:00").getTime()) / 864e5);
 const dans = (n: number) => (n <= 0 ? "aujourd'hui" : n === 1 ? "demain" : `dans ${n} jours`);
 /** Does this slot concern this member? (the canteen is one slot for several children) */
-const pour = (s: Creneau, m: Pick<Member, "id" | "prenom">) => s.member_id === m.id || (!s.member_id && !!s.membre && s.membre.split(", ").includes(m.prenom));
+export const pour = (s: Creneau, m: Pick<Member, "id" | "prenom">) => s.member_id === m.id || (!s.member_id && !!s.membre && s.membre.split(", ").includes(m.prenom));
 
 /** Round portrait: the photo when there is one, otherwise the initial on the role's colour. */
 export function Portrait({ api, m, size = 56, className = "" }: { api: Api; m: Pick<Member, "id" | "prenom" | "role" | "photo">; size?: number; className?: string }) {

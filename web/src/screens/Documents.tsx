@@ -12,7 +12,7 @@ export function Documents({ docs, go, unread }: { docs: Doc[]; go: (s: string, i
   const shown = docs.filter((d) => (!cat || d.category === cat) && (!q || [d.title, d.organisme, d.resume, d.numero_contrat].some((v) => v?.toLowerCase().includes(q.toLowerCase()))));
 
   return (
-    <div className="screen">
+    <div className="screen papiers">
       <div className="top"><div><h1>Papiers</h1><p className="sub">{docs.length} document{docs.length > 1 ? "s" : ""} dans le foyer</p></div><Bell unread={unread} onClick={() => go("notifs")} /></div>
       <DossiersCarte docs={docs} go={go} />
       <MenageCarte docs={docs} go={go} />

@@ -11,7 +11,7 @@ export function Budget({ api, charges, budget, household, go, onUpgrade, onChang
   const hidden = charges.alertes_total - charges.alertes.length;
 
   return (
-    <div className="screen">
+    <div className="screen colonnes budget">
       <div className="top"><div><h1>Budget</h1><p className="sub">Vos dépenses réelles et vos charges fixes, avec les économies à portée de main</p></div><Bell unread={unread} onClick={() => go("notifs")} /></div>
 
       <button className="budget-expert-lien" onClick={() => go("espace", "budget")}>
@@ -21,6 +21,7 @@ export function Budget({ api, charges, budget, household, go, onUpgrade, onChang
 
       <Spending api={api} budget={budget} household={household} go={go} onChanged={onChanged} onUpgrade={onUpgrade} toast={toast} />
 
+      <section className="section charges-bloc">
       <div className="section-head" style={{ marginTop: 8 }}><h2>Charges fixes d'après vos papiers</h2></div>
       <p className="note" style={{ marginBottom: 12 }}>Reconstituées à partir de {charges.charges.length} contrats et abonnements enregistrés.</p>
 
@@ -35,6 +36,7 @@ export function Budget({ api, charges, budget, household, go, onUpgrade, onChang
           ))}
         </ul>
       </div>
+      </section>
 
       <section className="section">
         <div className="section-head"><h2>Alertes sur les contrats</h2>{savings > 0 && <span className="badge">{fmtEuro(savings)} / an</span>}</div>
