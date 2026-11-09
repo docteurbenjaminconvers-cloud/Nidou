@@ -2,10 +2,15 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
+const VERSION = new Date().toISOString();
+
 export default defineConfig({
   base: "./",
+  define: { __LUCIEN_VERSION__: JSON.stringify(VERSION) },
   plugins: [
     react(),
+    // version.json: what the app compares with its own build stamp to offer « Mettre à jour » (never precached)
+    { name: "lucien-version", apply: "build", generateBundle() { this.emitFile({ type: "asset", fileName: "version.json", source: JSON.stringify({ v: VERSION }) }); } },
     VitePWA({
       registerType: "autoUpdate",
       strategies: "injectManifest",

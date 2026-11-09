@@ -1,3 +1,4 @@
+import { mettreAJour, versionEnLigne, versionLisible, VERSION } from "../miseAJour";
 import { ConfirmationPaiement } from "./Confirmation";
 import { CarteSecurite, CoffreSheet } from "./Coffre";
 import { Ico } from "./espacesCommun";
@@ -258,6 +259,7 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
           <select className="in langue-choix" aria-label="Langue / Language" value={langueChoisie()} onChange={(e) => choisirLangue(e.target.value as "fr" | "en")} data-pas-traduire>
             <option value="fr">Français</option><option value="en">English</option>
           </select></div>
+        <MiseAJourLigne toast={toast} />
         <div className="settings-row"><div><div className="t">Exporter tout</div><div className="s">Vos papiers d'origine et toutes vos données, dans un fichier .zip</div></div><button className="link" onClick={exporter}>Exporter</button></div>
         {abo?.suppression_le && household.titulaire !== false ? (
           <div className="settings-row suppr-prevue"><div><div className="t">Suppression prévue le {dateFr(abo.suppression_le)}</div><div className="s">Tout reste accessible d'ici là. Pensez à exporter vos données.</div></div><button className="link" onClick={async () => { try { await api.annulerSuppression(); toast("Suppression annulée, l'abonnement continue"); setTimeout(() => location.reload(), 900); } catch (e) { toast((e as Error).message); } }}>Annuler</button></div>
@@ -437,6 +439,21 @@ function EcrireEquipe({ api, formule, email, onClose, toast }: { api: Api; formu
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** « Mettre à jour l'application » : shows the running version, says when a newer one is ready, restarts on it. */
+function MiseAJourLigne({ toast }: { toast: (m: string) => void }) {
+  const [enLigne, setEnLigne] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { versionEnLigne().then(setEnLigne); }, []);
+  const nouvelle = !!enLigne && enLigne !== VERSION && VERSION !== "dev";
+  return (
+    <div className="settings-row">
+      <div><div className="t">Mettre à jour l'application {nouvelle && <span className="badge yolk">nouvelle version</span>}</div>
+        <div className="s">{nouvelle ? `Version du ${versionLisible(enLigne!)} disponible. Vos données ne bougent pas.` : `Version du ${versionLisible()}${enLigne ? ", la plus récente" : ""}.`}</div></div>
+      <button className="link" disabled={busy} onClick={() => { setBusy(true); toast(nouvelle ? "Mise à jour…" : "Rechargement de la dernière version…"); mettreAJour(); }}>{busy ? "…" : "Mettre à jour"}</button>
     </div>
   );
 }

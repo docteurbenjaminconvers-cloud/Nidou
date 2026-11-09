@@ -1,3 +1,4 @@
+import { mettreAJour, useNouvelleVersion } from "./miseAJour";
 import { SituationDetail, Situations } from "./screens/Situations";
 import { DocumentsLocation, PageSignature } from "./screens/Location";
 import { PageAdmin } from "./screens/Admin";
@@ -61,6 +62,7 @@ export default function App() {
   const [pause, setPause] = useState<string | null>(null); // false: unknown/no, string|null: show login (with optional error code)
 
   const notifs = useNotifications(deadlines, docs, budget, household, charges);
+  const nouvelleVersion = useNouvelleVersion();
   const toast = useCallback((m: string) => { setToastMsg(m); setTimeout(() => setToastMsg(null), 2600); }, []);
 
   const reload = useCallback(async (a = api) => {
@@ -186,6 +188,7 @@ export default function App() {
         </div>
       </nav>
       {reveal && budget && <Reveal budget={budget} onClose={() => setReveal(false)} go={go} toast={toast} />}
+      {nouvelleVersion && <button className="maj-pastille" onClick={() => { toast("Mise à jour…"); mettreAJour(); }}><b>Nouvelle version de Lucien</b><span>Mettre à jour</span></button>}
       {toastMsg && <div className="toast" role="status">{toastMsg}</div>}
     </div>
     </FamilleCtx.Provider>

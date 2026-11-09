@@ -1461,3 +1461,12 @@ button.sem-date:hover b { color: var(--nest); }
   .sem-nav { justify-content: space-between; }
   .sem-nav b { flex: 1; min-width: 0; }
 }
+
+/* « Nouvelle version de Lucien » : pastille au-dessus de la barre d'onglets */
+.maj-pastille { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--tab-h) + 22px + env(safe-area-inset-bottom)); z-index: 29;
+  display: flex; align-items: center; gap: 12px; border: 0; cursor: pointer; font: inherit; white-space: nowrap;
+  background: var(--white); color: var(--ink); border-radius: 999px; padding: 8px 8px 8px 16px; box-shadow: 0 10px 28px rgba(59,42,58,.22); animation: maj-entree .4s ease-out; }
+.maj-pastille b { font-size: 13.5px; }
+.maj-pastille span { background: var(--nest); color: var(--white); font-weight: 800; font-size: 13px; padding: 7px 14px; border-radius: 999px; }
+@keyframes maj-entree { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@media (min-width: 1024px) { .maj-pastille { bottom: 24px; left: calc(50% + var(--barre, 248px) / 2); } }
