@@ -1518,3 +1518,18 @@ button.sem-date:hover b { color: var(--nest); }
 .coord-copier { font-size: 12.5px; }
 .coord-vide { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 14px 16px; margin: 0 0 16px; border-radius: 18px; background: var(--lilac-soft); font-size: 14px; }
 .coord-vide span { flex: 1 1 220px; }
+
+/* Ajouter plusieurs papiers d'un coup */
+.lot { list-style: none; margin: 10px 0 4px; padding: 0; text-align: left; }
+.lot li { display: flex; align-items: baseline; gap: 8px; padding: 7px 4px; border-bottom: 1px solid var(--line); font-size: 14px; }
+.lot li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lot li small { color: var(--mist); font-size: 12px; }
+.lot-suivi { margin-top: 18px; }
+.lot-suivi li { display: flex; align-items: center; gap: 12px; padding: 10px 2px; }
+.lot-ico { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; background: var(--paper); color: var(--mist); }
+.lot-ok .lot-ico { background: var(--moss-soft); color: var(--mint-ink); }
+.lot-erreur .lot-ico { background: var(--peach); color: var(--ember); }
+.lot-txt { display: flex; flex-direction: column; min-width: 0; }
+.lot-txt b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lot-txt small { color: var(--mist); font-size: 12.5px; }
+.lot-erreur .lot-txt small { color: var(--ember); }
