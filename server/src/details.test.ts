@@ -28,3 +28,19 @@ test("détails d'un papier : email, téléphone et IBAN lus dans le texte, l'IA 
   assert.deepEqual(aGarder({ category: "identite", transcription: "PASSEPORT …" }, null), { texte: null, details: null });
   assert.equal(detailsDe({}, "rien d'utile"), null);
 });
+
+test("rattacher un papier au bon membre : date de naissance, premier prénom, ou autre prénom ; sinon personne", async () => {
+  const { membreConcerne } = await import("./details.js");
+  const fam = [
+    { id: "moi", prenom: "Benjamin", date_naissance: "1975-03-02" },
+    { id: "a", prenom: "Achileas", date_naissance: "2014-06-10" },
+    { id: "d", prenom: "Daphné", date_naissance: "2008-05-22" },
+  ];
+  assert.equal(membreConcerne([{ prenoms: "ACHILEAS ULYSSE", nom: "CONVERS" }], fam), "a", "first given name");
+  assert.equal(membreConcerne([{ prenoms: "Ulysse Achileas", nom: "CONVERS" }], fam), "a", "another given name");
+  assert.equal(membreConcerne([{ prenoms: "DAPHNE", nom: "CONVERS" }], fam), "d", "accents ignored");
+  assert.equal(membreConcerne([{ prenoms: "Ulysse", date_naissance: "2014-06-10" }], fam), "a", "date of birth");
+  assert.equal(membreConcerne([{ prenoms: "Benjamin" }, { prenoms: "Christina" }], fam), null, "two people: nobody");
+  assert.equal(membreConcerne([{ prenoms: "Ulysse" }], fam), null, "no match: nobody");
+  assert.equal(membreConcerne(null, fam), null);
+});

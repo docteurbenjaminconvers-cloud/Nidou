@@ -8,7 +8,7 @@ import { ecrireFichier, lireFichier } from "./coffre.js";
 import { coffreOuvert, docVerrouille, estAuCoffre, journaliser, monterCoffre } from "./coffreAcces.js";
 import { coordonnees, dateLongue, lettreResiliationStructuree, pdfLettre, texteLettre, type Lettre } from "./lettres.js";
 import { emailsDuTexte, LISIBLE_PAR_IA, MOTIFS, redigerCourrier } from "./courriers.js";
-import { aGarder, lireDetails } from "./details.js";
+import { aGarder, lireDetails, membreConcerne } from "./details.js";
 import { assemblerPages, type Page } from "./pages.js";
 import { exporterFoyer } from "./export.js";
 import { prevoirFinDeMois } from "./prevision.js";
@@ -732,7 +732,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     const garde = aGarder(ex, texte);
     const doc = db.insertDocument({
       household_id: h.id,
-      member_id: null,
+      member_id: membreConcerne(ex.personnes, db.listMembers(h.id)),
       title: ex.title,
       category: ex.category,
       organisme: ex.organisme,
@@ -772,7 +772,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     const ex = await extractDocument({ base64: buf.toString("base64"), mime: d.mime, texte: d.texte ?? undefined }, { precisOnly: true });
     if (ex.modele) db.recordIaLecture(h.id, false, reel(ex.modele.cout_lecture_centimes));
     const garde = aGarder({ ...ex, category: d.category }, d.texte);
-    db.updateDocument(d.id, { texte: garde.texte ?? undefined, details: garde.details ?? undefined });
+    db.updateDocument(d.id, { texte: garde.texte ?? undefined, details: garde.details ?? undefined, member_id: d.member_id ?? membreConcerne(ex.personnes, db.listMembers(h.id)) ?? undefined });
     const n = db.getDocument(d.id)!;
     return c.json({ details: lireDetails(n.details), texte: n.texte });
   });
@@ -798,6 +798,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
       .parse(await c.req.json());
     // a masked number (« •••• 1234 », as a closed coffre shows it) never overwrites the real one
     if (patch.numero_contrat?.includes("•")) delete patch.numero_contrat;
+    if (patch.member_id && !db.listMembers(d.household_id).some((m) => m.id === patch.member_id)) return c.json({ error: "membre", message: "Cette personne n'est pas dans votre famille." }, 400);
     db.updateDocument(d.id, patch as Partial<DocumentRow>);
     const updated = db.getDocument(d.id)!;
     db.replaceDeadlinesForDocument(updated.id, updated.household_id, deadlinesFor(updated));

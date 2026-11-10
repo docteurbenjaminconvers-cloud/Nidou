@@ -54,3 +54,29 @@ export function aGarder(ex, texte) {
     const d = detailsDe(ex, t);
     return { texte: t, details: d ? JSON.stringify(d) : null };
 }
+const norm = (x) => x.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z]+/g, " ").trim();
+/**
+ * The family member a paper is about (a child's identity card, a payslip, a school certificate), from the names the
+ * AI read on it: the same date of birth, or the first given name, or failing that another given name (« Achileas
+ * Ulysse »). Only when exactly one member fits; otherwise nobody (the person chooses, and can always change it).
+ */
+export function membreConcerne(personnes, membres) {
+    const ps = (personnes ?? []).filter((p) => p.prenoms || p.date_naissance);
+    if (ps.length !== 1 || !membres.length)
+        return null;
+    const p = ps[0];
+    const unique = (l) => (l.length === 1 ? l[0].id : null);
+    if (p.date_naissance && /^\d{4}-\d{2}-\d{2}$/.test(p.date_naissance)) {
+        const r = unique(membres.filter((m) => m.date_naissance === p.date_naissance));
+        if (r)
+            return r;
+    }
+    const prenoms = norm(p.prenoms ?? "").split(" ").filter(Boolean);
+    if (!prenoms.length)
+        return null;
+    const prenomDe = (m) => norm(m.prenom.replace(/^(mamie|mamy|papi|papy|tata|tonton)\s+/i, ""));
+    const premier = unique(membres.filter((m) => { const x = prenomDe(m); return !!x && (prenoms.join(" ").startsWith(x + " ") || prenoms.join(" ") === x || prenoms[0] === x); }));
+    if (premier)
+        return premier;
+    return unique(membres.filter((m) => { const x = prenomDe(m); return !!x && prenoms.includes(x); }));
+}

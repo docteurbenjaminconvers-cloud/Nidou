@@ -28,6 +28,7 @@ export const ExtractionSchema = z.object({
   dates_cles: z.array(z.object({ libelle: z.string(), date: z.string() })).max(12).nullable().optional(),
   destinataire: z.object({ nom: z.string().nullable().optional(), adresse: z.string().nullable().optional() }).nullable().optional(),
   transcription: z.string().nullable().optional(),
+  personnes: z.array(z.object({ prenoms: z.string().nullable().optional(), nom: z.string().nullable().optional(), date_naissance: z.string().nullable().optional() })).max(8).nullable().optional(),
 });
 export type Extraction = z.infer<typeof ExtractionSchema>;
 
@@ -82,6 +83,7 @@ const JSON_SCHEMA = {
     references: { type: ["array", "null"], description: "Toutes les références utiles pour répondre : n° d'acte, de dossier, de facture, de créance, de client, de contrat, de lettre…", items: { type: "object", properties: { libelle: { type: "string" }, valeur: { type: "string" } }, required: ["libelle", "valeur"] } },
     dates_cles: { type: ["array", "null"], description: "Autres dates importantes du document (émission, échéance, rendez-vous, délai de réponse…), AAAA-MM-JJ", items: { type: "object", properties: { libelle: { type: "string" }, date: { type: "string" } }, required: ["libelle", "date"] } },
     destinataire: { type: ["object", "null"], description: "À qui le document est adressé (nom et adresse du foyer)", properties: { nom: { type: ["string", "null"] }, adresse: { type: ["string", "null"] } } },
+    personnes: { type: ["array", "null"], description: "La ou les personnes que le document concerne nommément (titulaire d'une pièce d'identité, élève, assuré, salarié, patient exclu) : tous leurs prénoms dans l'ordre, nom, date de naissance AAAA-MM-JJ si écrite. Vide pour un document adressé au foyer en général.", items: { type: "object", properties: { prenoms: { type: ["string", "null"] }, nom: { type: ["string", "null"] }, date_naissance: { type: ["string", "null"] } } } },
     transcription: { type: ["string", "null"], description: "Pour une photo ou un PDF : le texte intégral du document, fidèlement, ligne par ligne (8 000 caractères au plus). null si le texte t'a été donné." },
   },
 } as const;

@@ -5,6 +5,7 @@ import { CATEGORIES, CATEGORY_LABEL, type Category, type Deadline, type DetailsD
 import { Back, DateChip, fmtDate, fmtEuro, PERIOD_LABEL, relative } from "../ui";
 import { CoffreSheet } from "./Coffre";
 import { CourrierAssistant } from "./Courrier";
+import { PagesPdf } from "./PagesPdf";
 import { Ico } from "./espacesCommun";
 
 type Full = Doc & { echeances: Deadline[]; texte?: string | null; details?: DetailsDoc | null; relisible?: boolean };
@@ -47,7 +48,7 @@ function Original({ api, doc, onClose, toast }: { api: Api; doc: Doc; onClose: (
       <div className="original-corps">
         {erreur ? <p className="note">{erreur}</p>
           : !fichier ? <p className="note">Ouverture…</p>
-            : type === "application/pdf" ? <iframe title={doc.title} src={fichier.url} />
+            : type === "application/pdf" ? <PagesPdf blob={fichier.blob} titre={doc.title} />
               : type.startsWith("image/") ? <img src={fichier.url} alt={doc.title} />
                 : <p className="note">Ce format ne s'affiche pas ici : touchez « Enregistrer » pour l'ouvrir avec une autre appli.</p>}
       </div>
@@ -55,7 +56,7 @@ function Original({ api, doc, onClose, toast }: { api: Api; doc: Doc; onClose: (
   );
 }
 
-export function DocumentDetail({ api, id, onBack, onChanged, toast }: { api: Api; id: string; onBack: () => void; onChanged: () => void; toast: (m: string) => void }) {
+export function DocumentDetail({ api, id, onBack, onChanged, toast, membres = [] }: { api: Api; id: string; onBack: () => void; onChanged: () => void; toast: (m: string) => void; membres?: { id: string; prenom: string }[] }) {
   const [doc, setDoc] = useState<Full | null>(null);
   const [edit, setEdit] = useState(false);
   const [draft, setDraft] = useState<Partial<Doc>>({});
@@ -136,6 +137,19 @@ export function DocumentDetail({ api, id, onBack, onChanged, toast }: { api: Api
       <Back onClick={onBack} label="Papiers" />
       <h1 className="detail-title">{doc.title}</h1>
       <p className="detail-sub">{[doc.organisme, CATEGORY_LABEL[doc.category]].filter(Boolean).join(" · ")}</p>
+
+      {membres.length > 0 && (
+        <div className="pour-qui" role="group" aria-label="Pour qui">
+          <span>Pour</span>
+          {[{ id: null as string | null, prenom: "Toute la famille" }, ...membres].map((m) => (
+            <button key={m.id ?? "foyer"} className="pill" aria-pressed={(doc.member_id ?? null) === m.id} onClick={async () => {
+              if ((doc.member_id ?? null) === m.id) return;
+              try { await api.updateDocument(doc.id, { member_id: m.id }); setDoc({ ...doc, member_id: m.id }); onChanged(); toast(m.id ? `Rangé pour ${m.prenom}` : "Rangé pour toute la famille"); }
+              catch (e) { toast((e as Error).message); }
+            }}>{m.prenom}</button>
+          ))}
+        </div>
+      )}
 
       {doc.au_coffre && (
         <div className={`coffre-bandeau ${doc.verrouille ? "" : "ouvert"}`}>

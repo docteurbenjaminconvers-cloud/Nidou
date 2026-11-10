@@ -145,7 +145,7 @@ export default function App() {
       {route.s === "veille-nouvelle" && route.id && <VeilleNouvelle api={api} memberId={route.id} onBack={() => go("membre", route.id)} go={go} toast={toast} />}
       {route.s === "veille" && route.id && <VeilleDetail api={api} id={route.id} onBack={() => history.length > 1 ? history.back() : go("famille")} toast={toast} />}
       {route.s === "docs" && <Documents docs={docs} go={go} unread={notifs.unread} />}
-      {route.s === "doc" && route.id && <DocumentDetail api={api} id={route.id} onBack={() => history.length > 1 ? history.back() : go("docs")} onChanged={reload} toast={toast} />}
+      {route.s === "doc" && route.id && <DocumentDetail api={api} id={route.id} membres={famille?.membres} onBack={() => history.length > 1 ? history.back() : go("docs")} onChanged={reload} toast={toast} />}
       {route.s === "add" && <Add api={api} household={household} docs={docs} go={go} onBack={() => go("home")} onChanged={reload} onAdded={(id) => { reload(); go("doc", id); }} toast={toast} />}
       {route.s === "budget" && <Budget api={api} charges={charges} budget={budget} household={household} go={go} onUpgrade={() => go("settings")} onChanged={reload} toast={toast} unread={notifs.unread} />}
       {route.s === "notifs" && <NotificationsScreen items={notifs.items} read={notifs.read} markRead={notifs.markRead} markAll={notifs.markAll} go={go} onBack={() => go("home")} api={api} toast={toast} />}

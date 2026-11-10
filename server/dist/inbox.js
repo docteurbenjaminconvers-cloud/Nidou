@@ -1,5 +1,5 @@
 import { avecCompteur, reel } from "./ia.js";
-import { aGarder } from "./details.js";
+import { aGarder, membreConcerne } from "./details.js";
 import { estMedical, extractDocument, heuristicExtract } from "./extract.js";
 import { budgetIa } from "./iaBudget.js";
 import { deadlinesFor } from "./deadlines.js";
@@ -54,7 +54,7 @@ export async function processInboundEmail(db, mail, opts) {
             continue; // medical papers are never kept
         const garde = aGarder(ex, input.texte);
         const doc = db.insertDocument({
-            household_id: h.id, member_id: null, title: ex.title, category: ex.category, organisme: ex.organisme, numero_contrat: ex.numero_contrat,
+            household_id: h.id, member_id: membreConcerne(ex.personnes, db.listMembers(h.id)), title: ex.title, category: ex.category, organisme: ex.organisme, numero_contrat: ex.numero_contrat,
             montant: ex.montant, periodicite: ex.periodicite, date_document: ex.date_document, date_debut: ex.date_debut, date_fin: ex.date_fin,
             preavis_jours: ex.preavis_jours, resume: ex.resume, texte: garde.texte, details: garde.details, fichier: null, mime: input.mime ?? "text/plain",
             confiance: ex.confiance, source: "email",
