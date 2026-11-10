@@ -109,6 +109,8 @@ LUCIEN_S3_SECRET_KEY=…
 - **La phrase secrète se garde hors du serveur** (gestionnaire de mots de passe, et une copie papier dans un coffre). Sans elle, aucune sauvegarde n'est lisible, par personne. Si elle est perdue, les sauvegardes le sont aussi.
 - **Côté stockage** : créer un bucket privé et une clé d'accès qui ne peut qu'écrire et lire dans ce bucket. Ajouter une règle de cycle de vie qui efface les copies de plus de 30 jours (ce que promet la politique de confidentialité). Activer si possible le verrouillage des objets (« object lock ») : même un serveur piraté ne pourra pas effacer les copies.
 - Le script refuse d'envoyer quoi que ce soit hors du serveur sans chiffrement.
+- **Sur Render (pas de cron)** : le serveur fait lui-même cette sauvegarde une fois par jour dès que `LUCIEN_SAUVEGARDE_CLE` est réglée (3 copies chiffrées gardées sur le disque, `LUCIEN_SAUVEGARDES_GARDER` pour changer). Le journal dit chaque jour si elle est partie hors du serveur.
+- L'archive contient aussi la clé du coffre gardée sur le disque (`cle-coffre`) ; si `LUCIEN_CLE_COFFRE` est réglée, **gardez-en une copie hors de Render** : sans elle, les papiers d'une sauvegarde restaurée ne s'ouvrent pas.
 
 ```bash
 docker compose exec lucien node scripts/sauvegarde.mjs                 # sauvegarde immédiate

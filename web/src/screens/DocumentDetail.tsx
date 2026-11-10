@@ -222,10 +222,10 @@ export function DocumentDetail({ api, id, onBack, onChanged, toast, membres = []
         )}
       </section>
 
-      {!["identite", "impots"].includes(doc.category) && <section className="section">
+      {doc.category !== "identite" && !doc.verrouille && <section className="section">
         <div className="section-head"><h2>Courrier prêt à envoyer</h2></div>
         <div className="pills">
-          {(["resiliation", "reclamation", "remboursement"] as const).filter((k) => k !== "resiliation" || (doc.periodicite !== "unique" && !["garantie", "vehicule"].includes(doc.category))).map((k) => (
+          {(["resiliation", "reclamation", "remboursement"] as const).filter((k) => k !== "resiliation" || (doc.periodicite !== "unique" && !["garantie", "vehicule", "impots"].includes(doc.category))).map((k) => (
             <button key={k} className="pill" aria-pressed={letterKind === k} onClick={() => { setLetterKind(k); setLetter(null); }}>
               {k === "resiliation" ? "Résiliation" : k === "reclamation" ? "Réclamation" : "Remboursement"}
             </button>

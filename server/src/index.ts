@@ -15,6 +15,7 @@ import { createApi } from "./api.js";
 import { securiser } from "./securite.js";
 import { demarrerSynchroBanques, fournisseur } from "./banques.js";
 import { demarrerRappels } from "./rappels.js";
+import { planifierSauvegardes } from "./sauvegardeJob.js";
 import { handleMcpRequest } from "./mcp.js";
 import { seedDemo } from "./seed.js";
 import { demoStatement } from "./seed-statement.js";
@@ -97,6 +98,7 @@ if (existsSync(WEB_DIST)) {
 }
 
 demarrerRappels(db, { uploadDir: join(DATA_DIR, "uploads") });
+planifierSauvegardes(DATA_DIR);
 demarrerSynchroBanques(db);
 
 serve({ fetch: app.fetch, port: PORT }, () => {
