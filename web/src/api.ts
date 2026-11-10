@@ -61,7 +61,8 @@ export interface Api {
   document(id: string): Promise<(Doc & { echeances: Deadline[]; texte?: string | null; details?: DetailsDoc | null; relisible?: boolean }) | null>;
   /** « Lucien relit ce papier »: coordinates, payment details, references read again on the page. */
   relireDocument(id: string): Promise<{ details: DetailsDoc | null; texte: string | null }>;
-  addDocument(input: { file?: File; texte?: string; nomFichier?: string }): Promise<Doc & { echeances: Deadline[] }>;
+  /** One paper: a file, or several pages (photos front / back…) put together into one PDF, or a pasted text. */
+  addDocument(input: { file?: File; pages?: File[]; texte?: string; nomFichier?: string }): Promise<Doc & { echeances: Deadline[] }>;
   updateDocument(id: string, patch: Partial<Doc>): Promise<Doc>;
   deleteDocument(id: string): Promise<void>;
   deadlines(): Promise<Deadline[]>;
@@ -215,6 +216,20 @@ export interface Api {
   banqueVeille(jeton: string, aspsp?: Banque): Promise<{ url: string | null } & Partial<VuePersonne>>;
 }
 
+/** A photo as a JPEG (at most 2 400 px on its long side): what the server can put into a PDF, HEIC included. */
+async function enJpeg(f: File): Promise<File> {
+  const url = URL.createObjectURL(f);
+  try {
+    const img = await new Promise<HTMLImageElement>((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ko(new Error("Photo illisible")); i.src = url; });
+    const k = Math.min(1, 2400 / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement("canvas");
+    c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+    c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+    const blob = await new Promise<Blob>((ok, ko) => c.toBlob((b) => (b ? ok(b) : ko(new Error("Photo illisible"))), "image/jpeg", 0.88));
+    return new File([blob], f.name.replace(/\.[a-z0-9]+$/i, "") + ".jpg", { type: "image/jpeg" });
+  } finally { URL.revokeObjectURL(url); }
+}
+
 class ApiError extends Error {
   constructor(public status: number, public code: string, message: string) { super(message); }
 }
@@ -242,7 +257,14 @@ const serverApi: Api = {
   setPlan: async (plan) => { await call("/household", json({ plan }, "PATCH")); },
   documents: (q, category) => call(`/documents?${new URLSearchParams({ ...(q ? { q } : {}), ...(category ? { category } : {}) })}`),
   document: (id) => call(`/documents/${id}`).catch(() => null) as any,
-  addDocument: async ({ file, texte, nomFichier }) => {
+  addDocument: async ({ file, pages, texte, nomFichier }) => {
+    if (pages && pages.length > 1) {
+      // one paper in several photos: each page as a JPEG (HEIC included), put together into one PDF by the server
+      const fd = new FormData();
+      for (const p of pages) fd.append("page", p.type === "application/pdf" || p.type === "image/png" || p.type === "image/jpeg" ? p : await enJpeg(p), p.name);
+      fd.append("nom", nomFichier ?? pages[0].name);
+      return call("/documents", { method: "POST", body: fd });
+    }
     if (file) {
       const fd = new FormData();
       fd.append("file", file);
@@ -468,9 +490,9 @@ function makeDemoApi(): Api {
       } : null;
       return { ...d, details, echeances: state.deadlines.filter((x) => x.document_id === id) };
     },
-    addDocument: async ({ file, texte, nomFichier }) => {
+    addDocument: async ({ file, pages, texte, nomFichier }) => {
       await new Promise((r) => setTimeout(r, 900));
-      const name = nomFichier ?? file?.name ?? "Document";
+      const name = nomFichier ?? file?.name ?? pages?.[0]?.name ?? "Document";
       const d: Doc = {
         id: crypto.randomUUID(), title: name.replace(/\.[a-z0-9]+$/i, ""), category: "autre", organisme: null, numero_contrat: null,
         montant: (texte ?? "").match(/(\d+[,.]?\d*)\s*€/)?.[1] ? parseFloat((texte ?? "").match(/(\d+[,.]?\d*)\s*€/)![1].replace(",", ".")) : null,

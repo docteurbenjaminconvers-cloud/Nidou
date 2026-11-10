@@ -1533,3 +1533,8 @@ button.sem-date:hover b { color: var(--nest); }
 .lot-txt b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lot-txt small { color: var(--mist); font-size: 12.5px; }
 .lot-erreur .lot-txt small { color: var(--ember); }
+.lot li { flex-wrap: wrap; }
+.lot-nom { flex: 1 1 140px; }
+.lot-pages { font-style: normal; font-size: 11.5px; font-weight: 800; background: var(--lilac-soft); color: var(--lilac-ink); border-radius: 999px; padding: 1px 8px; margin-left: 6px; }
+.lot-actions { display: inline-flex; gap: 10px; flex: none; }
+.lot-actions .link { font-size: 13px; }

@@ -12,10 +12,23 @@ const minus = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 export function Add({ api, onBack, onAdded, toast, household, docs = [], go }: { api: Api; onBack: () => void; onAdded: (id: string) => void; toast: (m: string) => void; household?: Household; docs?: Doc[]; go?: (s: string, id?: string) => void }) {
   const souhaits = piecesSouhaitees(etatDossiers(docs));
   const restantes = household?.ia_lectures_restantes ?? null;
-  const [files, setFiles] = useState<File[]>([]);
+  // papers to add: each one its pages (one photo, or front and back, or several pages)
+  const [papiers, setPapiers] = useState<File[][]>([]);
+  const files = papiers;
   const [suivi, setSuivi] = useState<Suivi[] | null>(null); // several papers: where each one is
-  const ajouter = (l: FileList | File[] | null | undefined) => { if (l?.length) setFiles((f) => [...f, ...Array.from(l)].slice(0, MAX)); };
-  const file = files.length === 1 ? files[0] : null;
+  const cible = useRef<number | null>(null); // the paper the next photo / file is a page of (null: a new paper)
+  const ajouter = (l: FileList | File[] | null | undefined) => {
+    if (!l?.length) return;
+    const nouveaux = Array.from(l);
+    const i = cible.current;
+    cible.current = null;
+    if (i !== null) setPapiers((p) => p.map((x, k) => (k === i ? [...x, ...nouveaux].slice(0, 12) : x)));
+    else setPapiers((p) => [...p, ...nouveaux.map((f) => [f])].slice(0, MAX));
+  };
+  const pageEn = (i: number, via: "cam" | "pick") => { cible.current = i; (via === "cam" ? cam : pick).current?.click(); };
+  const joindre = (i: number) => setPapiers((p) => p.flatMap((x, k) => (k === i - 1 ? [[...x, ...p[i]]] : k === i ? [] : [x])));
+  const file = papiers.length === 1 && papiers[0].length === 1 ? papiers[0][0] : null;
+  const envoyer = (pages: File[]) => (pages.length === 1 ? api.addDocument({ file: pages[0] }) : api.addDocument({ pages, nomFichier: pages[0].name }));
   const [texte, setTexte] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -25,14 +38,14 @@ export function Add({ api, onBack, onAdded, toast, household, docs = [], go }: {
 
   /** Several papers: read one after the other (each one its own paper), then a summary. */
   const plusieurs = async () => {
-    const items: Suivi[] = [...files.map((f) => ({ nom: f.name, etat: "attente" as const })), ...(texte.trim() ? [{ nom: "Texte collé", etat: "attente" as const }] : [])];
+    const items: Suivi[] = [...papiers.map((f) => ({ nom: f.length > 1 ? `${f[0].name} (${f.length} pages)` : f[0].name, etat: "attente" as const })), ...(texte.trim() ? [{ nom: "Texte collé", etat: "attente" as const }] : [])];
     setSuivi(items); setBusy(true); setErr(null);
     const maj = (i: number, x: Partial<Suivi>) => setSuivi((s) => s && s.map((it, k) => (k === i ? { ...it, ...x } : it)));
     for (let i = 0; i < items.length; i++) {
       maj(i, { etat: "lecture" });
       try {
-        const f = files[i];
-        const d = await api.addDocument(f ? { file: f } : { texte: texte.trim(), nomFichier: "note.txt" });
+        const f = papiers[i];
+        const d = await (f ? envoyer(f) : api.addDocument({ texte: texte.trim(), nomFichier: "note.txt" }));
         maj(i, { etat: "ok", id: d.id, titre: d.title, echeances: d.echeances.length });
       } catch (e) {
         const fin = e instanceof ApiError && e.code === "limite_plan";
@@ -40,15 +53,15 @@ export function Add({ api, onBack, onAdded, toast, household, docs = [], go }: {
         if (fin) { for (let k = i + 1; k < items.length; k++) maj(k, { etat: "erreur", message: "Non lu" }); break; }
       }
     }
-    setFiles([]); setTexte(""); setBusy(false);
+    setPapiers([]); setTexte(""); setBusy(false);
   };
 
   const submit = async () => {
     if (files.length + (texte.trim() ? 1 : 0) > 1) return plusieurs();
-    if (!file && !texte.trim()) return;
+    if (!papiers.length && !texte.trim()) return;
     setBusy(true); setErr(null);
     try {
-      const d = await api.addDocument({ file: file ?? undefined, texte: texte.trim() || undefined, nomFichier: file ? undefined : "note.txt" });
+      const d = papiers.length ? await envoyer(papiers[0]) : await api.addDocument({ texte: texte.trim(), nomFichier: "note.txt" });
       toast(d.echeances.length ? `${d.echeances.length} échéance${d.echeances.length > 1 ? "s" : ""} créée${d.echeances.length > 1 ? "s" : ""}` : "Document ajouté");
       onAdded(d.id);
     } catch (e) {
@@ -70,11 +83,20 @@ export function Add({ api, onBack, onAdded, toast, household, docs = [], go }: {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7h3l2-2h6l2 2h3v12H4z" /><circle cx="12" cy="13" r="3.5" /></svg>
         {files.length ? (
           <>
-            <b>{files.length === 1 ? "1 papier prêt" : `${files.length} papiers prêts`}</b>
+            <b>{papiers.length === 1 ? "1 papier prêt" : `${papiers.length} papiers prêts`}</b>
             <ul className="lot">
-              {files.map((f, k) => <li key={k}><span>{f.name}</span><small>{(f.size / 1024).toFixed(0)} Ko</small><button className="link" aria-label={`Retirer ${f.name}`} onClick={() => setFiles((l) => l.filter((_, j) => j !== k))}>retirer</button></li>)}
+              {papiers.map((f, k) => (
+                <li key={k}>
+                  <span className="lot-nom">{f[0].name}{f.length > 1 && <em className="lot-pages">{f.length} pages</em>}</span>
+                  <span className="lot-actions">
+                    <button className="link" disabled={f.length >= 12} onClick={() => pageEn(k, "cam")}>{f.length === 1 ? "+ verso" : "+ page"}</button>
+                    {k > 0 && <button className="link" title="Ce fichier est une page du papier au-dessus" onClick={() => joindre(k)}>joindre ↑</button>}
+                    <button className="link discret" aria-label={`Retirer ${f[0].name}`} onClick={() => setPapiers((l) => l.filter((_, j) => j !== k))}>retirer</button>
+                  </span>
+                </li>
+              ))}
             </ul>
-            {files.length < MAX && <p>Un papier par photo ou par fichier : Lucien les lit l'un après l'autre.</p>}
+            <p>Recto verso ou plusieurs pages ? « + verso » ajoute une photo au même papier.</p>
           </>
         ) : (
           <><b>Photos, PDF ou captures d'écran</b><p>Un ou plusieurs à la fois : courriers, factures, contrats, carte d'identité… Pas de document médical : Lucien ne les garde pas.</p></>

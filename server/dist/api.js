@@ -9,6 +9,7 @@ import { coffreOuvert, docVerrouille, estAuCoffre, journaliser, monterCoffre } f
 import { coordonnees, dateLongue, lettreResiliationStructuree, pdfLettre, texteLettre } from "./lettres.js";
 import { emailsDuTexte, LISIBLE_PAR_IA, MOTIFS, redigerCourrier } from "./courriers.js";
 import { aGarder, lireDetails } from "./details.js";
+import { assemblerPages } from "./pages.js";
 import { exporterFoyer } from "./export.js";
 import { prevoirFinDeMois } from "./prevision.js";
 import { annulerSuivi, demarrerSuivi, economieAnnuelle, nomMarchand, ensureResiliationsSchema, lettreRemboursement, marcheASuivre, suivis } from "./resiliations.js";
@@ -713,7 +714,24 @@ export function createApi(db, opts) {
         const ct = c.req.header("content-type") ?? "";
         if (ct.includes("multipart/form-data")) {
             const form = await c.req.formData();
-            const f = form.get("file");
+            // several pages of one paper (« page » parts, JPEG / PNG / PDF): put together into one PDF
+            const parts = form.getAll("page").filter((x) => x instanceof File);
+            let f = form.get("file");
+            if (parts.length > 1) {
+                if (parts.length > 12)
+                    return c.json({ error: "pages", message: "Douze pages au plus pour un même papier." }, 400);
+                const pages = [];
+                for (const p of parts) {
+                    const m = p.type || "application/octet-stream";
+                    if (!/^(application\/pdf|image\/(jpeg|png))$/.test(m))
+                        return c.json({ error: "type_fichier", message: "Les pages d'un papier : photos JPEG ou PNG, ou PDF." }, 415);
+                    pages.push({ mime: m, buf: Buffer.from(await p.arrayBuffer()) });
+                }
+                if (pages.reduce((n, p) => n + p.buf.length, 0) > 25 * 1024 * 1024)
+                    return c.json({ error: "fichier_trop_gros" }, 413);
+                const nom = form.get("nom")?.replace(/\.[a-z0-9]+$/i, "") || "papier";
+                f = new File([new Uint8Array(await assemblerPages(pages))], `${nom}.pdf`, { type: "application/pdf" });
+            }
             texte = form.get("texte") ?? undefined;
             if (f instanceof File) {
                 nomFichier = f.name;
@@ -1052,7 +1070,24 @@ Ce courrier vous est adressé par ${b.expediteur.nom} (${moi}), qui l'a validé 
         const ct = c.req.header("content-type") ?? "";
         if (ct.includes("multipart/form-data")) {
             const form = await c.req.formData();
-            const f = form.get("file");
+            // several pages of one paper (« page » parts, JPEG / PNG / PDF): put together into one PDF
+            const parts = form.getAll("page").filter((x) => x instanceof File);
+            let f = form.get("file");
+            if (parts.length > 1) {
+                if (parts.length > 12)
+                    return c.json({ error: "pages", message: "Douze pages au plus pour un même papier." }, 400);
+                const pages = [];
+                for (const p of parts) {
+                    const m = p.type || "application/octet-stream";
+                    if (!/^(application\/pdf|image\/(jpeg|png))$/.test(m))
+                        return c.json({ error: "type_fichier", message: "Les pages d'un papier : photos JPEG ou PNG, ou PDF." }, 415);
+                    pages.push({ mime: m, buf: Buffer.from(await p.arrayBuffer()) });
+                }
+                if (pages.reduce((n, p) => n + p.buf.length, 0) > 25 * 1024 * 1024)
+                    return c.json({ error: "fichier_trop_gros" }, 413);
+                const nom = form.get("nom")?.replace(/\.[a-z0-9]+$/i, "") || "papier";
+                f = new File([new Uint8Array(await assemblerPages(pages))], `${nom}.pdf`, { type: "application/pdf" });
+            }
             compte = (form.get("compte") || "").trim().slice(0, 120) || null;
             destination = z.enum(["locatif", "pro"]).nullable().catch(null).parse(form.get("destination") || null);
             if (f instanceof File) {
