@@ -80,3 +80,21 @@ export function membreConcerne(personnes, membres) {
         return premier;
     return unique(membres.filter((m) => { const x = prenomDe(m); return !!x && prenoms.includes(x); }));
 }
+/**
+ * The title names the person by the first name the family uses: « Carte d'identité — Ulysse Convers » becomes
+ * « … — Achileas Convers » once the paper is Achileas's (Ulysse being his second given name).
+ */
+export function titreAvecPrenom(titre, personnes, membre) {
+    if (!membre)
+        return titre;
+    const prenom = membre.prenom.replace(/^(mamie|mamy|papi|papy|tata|tonton)\s+/i, "").trim();
+    if (!prenom || norm(titre).split(" ").includes(norm(prenom)))
+        return titre;
+    const autres = (personnes ?? []).flatMap((p) => (p.prenoms ?? "").split(/[\s,]+/)).filter((x) => x && norm(x) !== norm(prenom));
+    for (const a of autres) {
+        const re = new RegExp(`(^|[^\\p{L}])${a.normalize("NFC").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=$|[^\\p{L}])`, "iu");
+        if (re.test(titre.normalize("NFC")))
+            return titre.normalize("NFC").replace(re, `$1${prenom}`);
+    }
+    return titre;
+}

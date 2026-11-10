@@ -1543,3 +1543,4 @@ button.sem-date:hover b { color: var(--nest); }
 .pour-qui { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: -4px 0 16px; }
 .pour-qui > span { font-size: 13px; font-weight: 800; color: var(--mist); margin-right: 2px; }
 .pour-qui .pill { padding: 6px 12px; font-size: 13.5px; }
+.detail-title-in { width: 100%; font-family: var(--display); font-size: 24px; font-weight: 600; padding: 10px 14px; border-radius: 16px; border: 2px solid var(--line); margin-bottom: 8px; box-sizing: border-box; }

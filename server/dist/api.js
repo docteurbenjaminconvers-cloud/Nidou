@@ -8,7 +8,7 @@ import { ecrireFichier, lireFichier } from "./coffre.js";
 import { coffreOuvert, docVerrouille, estAuCoffre, journaliser, monterCoffre } from "./coffreAcces.js";
 import { coordonnees, dateLongue, lettreResiliationStructuree, pdfLettre, texteLettre } from "./lettres.js";
 import { emailsDuTexte, LISIBLE_PAR_IA, MOTIFS, redigerCourrier } from "./courriers.js";
-import { aGarder, lireDetails, membreConcerne } from "./details.js";
+import { aGarder, lireDetails, membreConcerne, titreAvecPrenom } from "./details.js";
 import { assemblerPages } from "./pages.js";
 import { exporterFoyer } from "./export.js";
 import { prevoirFinDeMois } from "./prevision.js";
@@ -780,10 +780,12 @@ export function createApi(db, opts) {
             return c.json({ error: "document_medical", message: MESSAGE_MEDICAL }, 422);
         }
         const garde = aGarder(ex, texte);
+        const membres = db.listMembers(h.id);
+        const pour = membreConcerne(ex.personnes, membres);
         const doc = db.insertDocument({
             household_id: h.id,
-            member_id: membreConcerne(ex.personnes, db.listMembers(h.id)),
-            title: ex.title,
+            member_id: pour,
+            title: titreAvecPrenom(ex.title, ex.personnes, membres.find((m) => m.id === pour)),
             category: ex.category,
             organisme: ex.organisme,
             numero_contrat: ex.numero_contrat,

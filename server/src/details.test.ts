@@ -44,3 +44,12 @@ test("rattacher un papier au bon membre : date de naissance, premier prénom, ou
   assert.equal(membreConcerne([{ prenoms: "Ulysse" }], fam), null, "no match: nobody");
   assert.equal(membreConcerne(null, fam), null);
 });
+
+test("le titre nomme la personne par son premier prénom", async () => {
+  const { titreAvecPrenom } = await import("./details.js");
+  const p = [{ prenoms: "ACHILEAS ULYSSE", nom: "CONVERS" }];
+  assert.equal(titreAvecPrenom("Carte nationale d'identité — Ulysse Convers", p, { prenom: "Achileas" }), "Carte nationale d'identité — Achileas Convers");
+  assert.equal(titreAvecPrenom("Carte nationale d'identité — Achileas Convers", p, { prenom: "Achileas" }), "Carte nationale d'identité — Achileas Convers");
+  assert.equal(titreAvecPrenom("Carte d'identité — Céleste Convers", [{ prenoms: "Daphné, Clotilde, Céleste" }], { prenom: "Daphné" }), "Carte d'identité — Daphné Convers");
+  assert.equal(titreAvecPrenom("Assurance habitation — MAIF", p, null), "Assurance habitation — MAIF");
+});

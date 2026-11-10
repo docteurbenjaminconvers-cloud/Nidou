@@ -135,7 +135,9 @@ export function DocumentDetail({ api, id, onBack, onChanged, toast, membres = []
   return (
     <div className="screen">
       <Back onClick={onBack} label="Papiers" />
-      <h1 className="detail-title">{doc.title}</h1>
+      {edit
+        ? <input className="in detail-title-in" aria-label="Titre" value={(draft.title ?? doc.title) as string} maxLength={120} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
+        : <h1 className="detail-title">{doc.title}</h1>}
       <p className="detail-sub">{[doc.organisme, CATEGORY_LABEL[doc.category]].filter(Boolean).join(" · ")}</p>
 
       {membres.length > 0 && (

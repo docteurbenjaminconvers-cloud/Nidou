@@ -48,7 +48,7 @@ const JSON_SCHEMA = {
     "date_document", "date_debut", "date_fin", "preavis_jours", "resume", "confiance",
   ],
   properties: {
-    title: { type: "string", description: "Titre court et parlant, ex. « Assurance auto Peugeot 308 — MAIF »" },
+    title: { type: "string", description: "Titre court et parlant, ex. « Assurance auto Peugeot 308 — MAIF ». Une personne y est nommée par son premier prénom seulement (« Carte nationale d'identité — Achileas Convers », jamais un deuxième ou troisième prénom)." },
     category: { type: "string", enum: ExtractionSchema.shape.category.options },
     organisme: { type: ["string", "null"], description: "Entreprise ou administration émettrice" },
     numero_contrat: { type: ["string", "null"] },
