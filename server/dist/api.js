@@ -608,7 +608,7 @@ export function createApi(db, opts) {
         const ouvert = !estAuCoffre(d) || coffreOuvert(db, c);
         if (estAuCoffre(d) && ouvert)
             journaliser(db, { householdId: d.household_id, user: currentUser(c), doc: d, action: "consultation" });
-        return c.json({ ...pourAffichage(c, d), texte: ouvert ? d.texte : null, details: ouvert ? lireDetails(d.details) : null, relisible: !!d.fichier && !!d.mime && LISIBLE_PAR_IA.test(d.mime) && d.category !== "identite", echeances: db.listDeadlines(d.household_id, { includeDone: true }).filter((x) => x.document_id === d.id) });
+        return c.json({ ...pourAffichage(c, d), texte: ouvert ? d.texte : null, details: ouvert ? lireDetails(d.details) : null, relisible: !!d.fichier && !!d.mime && LISIBLE_PAR_IA.test(d.mime), echeances: db.listDeadlines(d.household_id, { includeDone: true }).filter((x) => x.document_id === d.id) });
     });
     /**
      * Calendar subscription (Google, Apple, Outlook): deadlines and the children's weekly activities, refreshed by the calendar app.
@@ -817,7 +817,7 @@ export function createApi(db, opts) {
             return c.json({ error: "introuvable" }, 404);
         if (estAuCoffre(d) && !coffreOuvert(db, c))
             return c.json({ error: "coffre", message: "Ouvrez le coffre pour que Lucien relise ce papier." }, 423);
-        if (d.category === "identite" || !d.fichier || !d.mime || !LISIBLE_PAR_IA.test(d.mime))
+        if (!d.fichier || !d.mime || !LISIBLE_PAR_IA.test(d.mime))
             return c.json({ error: "illisible", message: "Lucien ne peut pas relire ce papier." }, 400);
         const budget = budgetIa(db, h.id);
         if (h.plan === "gratuit" || !budget.ok(coutAppel("precis")))
@@ -829,9 +829,18 @@ export function createApi(db, opts) {
         if (ex.modele)
             db.recordIaLecture(h.id, false, reel(ex.modele.cout_lecture_centimes));
         const garde = aGarder({ ...ex, category: d.category }, d.texte);
-        db.updateDocument(d.id, { texte: garde.texte ?? undefined, details: garde.details ?? undefined, member_id: d.member_id ?? membreConcerne(ex.personnes, db.listMembers(h.id)) ?? undefined });
+        const vide = (x, y) => (x ?? y ?? undefined);
+        // an identity paper: only its number, dates and person (aGarder keeps no text nor details of it)
+        db.updateDocument(d.id, {
+            texte: garde.texte ?? undefined, details: garde.details ?? undefined,
+            member_id: vide(d.member_id, membreConcerne(ex.personnes, db.listMembers(h.id))),
+            numero_contrat: vide(d.numero_contrat, ex.numero_contrat?.replace(/\s+/g, "") || null),
+            date_debut: vide(d.date_debut, ex.date_debut), date_fin: vide(d.date_fin, ex.date_fin),
+        });
+        const relu = db.getDocument(d.id);
+        db.replaceDeadlinesForDocument(relu.id, relu.household_id, deadlinesFor(relu));
         const n = db.getDocument(d.id);
-        return c.json({ details: lireDetails(n.details), texte: n.texte });
+        return c.json({ details: lireDetails(n.details), texte: n.texte, doc: pourAffichage(c, n) });
     });
     api.patch("/documents/:id", async (c) => {
         const d = db.getDocument(c.req.param("id"));

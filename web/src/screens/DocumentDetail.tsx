@@ -171,17 +171,17 @@ export function DocumentDetail({ api, id, onBack, onChanged, toast, membres = []
         <div className="confidence ok">{doc.verifie ? "Vérifié par vous" : `Extrait par l'IA avec ${Math.round((doc.confiance ?? 0) * 100)} % de confiance`}</div>
       )}
 
-      {!doc.verrouille && <Coordonnees api={api} doc={doc} toast={toast} onDetails={(details, texte) => setDoc({ ...doc, details, texte: texte ?? doc.texte })} />}
+      {!doc.verrouille && <Coordonnees api={api} doc={doc} toast={toast} onDetails={(details, texte, maj) => { setDoc({ ...doc, ...(maj ?? {}), details, texte: texte ?? doc.texte }); if (maj) onChanged(); }} />}
 
       <div className="fields">
         <F k="category" label="Catégorie" options={CATEGORIES.map((c) => ({ value: c, label: CATEGORY_LABEL[c as Category] }))} />
         <F k="organisme" label="Organisme" />
-        <F k="numero_contrat" label="N° de contrat" />
+        <F k="numero_contrat" label={doc.category === "identite" ? "N° du document" : "N° de contrat"} />
         <F k="montant" label="Montant" type="number" />
         <F k="periodicite" label="Périodicité" options={Object.entries(PERIOD_LABEL).map(([value, label]) => ({ value, label }))} />
         <F k="date_document" label="Date du document" type="date" />
-        <F k="date_debut" label="Début" type="date" />
-        <F k="date_fin" label="Fin / échéance" type="date" />
+        <F k="date_debut" label={doc.category === "identite" ? "Délivré le" : "Début"} type="date" />
+        <F k="date_fin" label={doc.category === "identite" ? "Valable jusqu'au" : "Fin / échéance"} type="date" />
         <F k="preavis_jours" label="Préavis (jours)" type="number" />
       </div>
 
@@ -260,7 +260,7 @@ export function DocumentDetail({ api, id, onBack, onChanged, toast, membres = []
 const ibanLisible = (x: string) => x.replace(/(.{4})/g, "$1 ").trim();
 
 /** « Coordonnées et références » : what Lucien read on the paper, ready to call, write, pay or quote. */
-function Coordonnees({ api, doc, toast, onDetails }: { api: Api; doc: Full; toast: (m: string) => void; onDetails: (d: DetailsDoc | null, texte: string | null) => void }) {
+function Coordonnees({ api, doc, toast, onDetails }: { api: Api; doc: Full; toast: (m: string) => void; onDetails: (d: DetailsDoc | null, texte: string | null, maj?: Doc) => void }) {
   const [busy, setBusy] = useState(false);
   const d = doc.details;
   const copier = (x: string, quoi: string) => { navigator.clipboard?.writeText(x).then(() => toast(`${quoi} copié`)).catch(() => toast(x)); };
@@ -269,6 +269,16 @@ function Coordonnees({ api, doc, toast, onDetails }: { api: Api; doc: Full; toas
     try { const r = await api.relireDocument(doc.id); onDetails(r.details, r.texte); toast(r.details ? "Lucien a relu le papier" : "Rien de plus à relever sur ce papier"); }
     catch (e) { toast((e as Error).message); } finally { setBusy(false); }
   };
+  if (doc.category === "identite") return doc.relisible && (!doc.numero_contrat || !doc.date_fin) ? (
+    <div className="coord-vide">
+      <span>Lucien peut relire cette pièce pour reprendre son numéro et sa date de validité.</span>
+      <button className="pill-action" disabled={busy} onClick={async () => {
+        setBusy(true);
+        try { const r = await api.relireDocument(doc.id); onDetails(null, null, r.doc); toast(r.doc?.numero_contrat ? "Numéro et validité relevés" : "Lucien n'a pas pu lire le numéro"); }
+        catch (e) { toast((e as Error).message); } finally { setBusy(false); }
+      }}>{busy ? "Lecture…" : "Lucien relit la pièce"}</button>
+    </div>
+  ) : null;
   if (!d) return doc.relisible ? (
     <div className="coord-vide">
       <span>Adresse, email, téléphone, IBAN, références : Lucien peut les relever sur ce papier pour vos courriers et paiements.</span>

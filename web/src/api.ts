@@ -60,7 +60,7 @@ export interface Api {
   documents(q?: string, category?: string): Promise<Doc[]>;
   document(id: string): Promise<(Doc & { echeances: Deadline[]; texte?: string | null; details?: DetailsDoc | null; relisible?: boolean }) | null>;
   /** « Lucien relit ce papier »: coordinates, payment details, references read again on the page. */
-  relireDocument(id: string): Promise<{ details: DetailsDoc | null; texte: string | null }>;
+  relireDocument(id: string): Promise<{ details: DetailsDoc | null; texte: string | null; doc?: Doc }>;
   /** One paper: a file, or several pages (photos front / back…) put together into one PDF, or a pasted text. */
   addDocument(input: { file?: File; pages?: File[]; texte?: string; nomFichier?: string }): Promise<Doc & { echeances: Deadline[] }>;
   updateDocument(id: string, patch: Partial<Doc>): Promise<Doc>;
