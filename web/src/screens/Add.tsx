@@ -9,7 +9,7 @@ const MAX = 20;
 type Suivi = { nom: string; etat: "attente" | "lecture" | "ok" | "erreur"; id?: string; titre?: string; echeances?: number; message?: string };
 const minus = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 
-export function Add({ api, onBack, onAdded, toast, household, docs = [], go }: { api: Api; onBack: () => void; onAdded: (id: string) => void; toast: (m: string) => void; household?: Household; docs?: Doc[]; go?: (s: string, id?: string) => void }) {
+export function Add({ api, onBack, onAdded, onChanged, toast, household, docs = [], go }: { api: Api; onBack: () => void; onAdded: (id: string) => void; onChanged?: () => void; toast: (m: string) => void; household?: Household; docs?: Doc[]; go?: (s: string, id?: string) => void }) {
   const souhaits = piecesSouhaitees(etatDossiers(docs));
   const restantes = household?.ia_lectures_restantes ?? null;
   // papers to add: each one its pages (one photo, or front and back, or several pages)
@@ -54,6 +54,7 @@ export function Add({ api, onBack, onAdded, toast, household, docs = [], go }: {
       }
     }
     setPapiers([]); setTexte(""); setBusy(false);
+    onChanged?.(); // the new papers in Papiers, the deadlines in the agenda
   };
 
   const submit = async () => {
@@ -121,7 +122,7 @@ export function Add({ api, onBack, onAdded, toast, household, docs = [], go }: {
         <section className="section lot-suivi">
           <ul className="list">
             {suivi.map((x, k) => (
-              <li key={k} className={`lot-${x.etat}`} onClick={() => x.id && onAdded(x.id)} style={x.id ? { cursor: "pointer" } : undefined}>
+              <li key={k} className={`lot-${x.etat}`} onClick={() => x.id && (go ? go("doc", x.id) : onAdded(x.id))} style={x.id ? { cursor: "pointer" } : undefined}>
                 <span className="lot-ico" aria-hidden>{x.etat === "ok" ? "✓" : x.etat === "erreur" ? "!" : x.etat === "lecture" ? <span className="spinner" /> : "·"}</span>
                 <span className="lot-txt"><b>{x.titre ?? x.nom}</b><small>{x.etat === "ok" ? (x.echeances ? `${x.echeances} échéance${x.echeances > 1 ? "s" : ""} créée${x.echeances > 1 ? "s" : ""}` : "Rangé") : x.etat === "lecture" ? "Lucien lit…" : x.etat === "erreur" ? x.message : "En attente"}</small></span>
               </li>
