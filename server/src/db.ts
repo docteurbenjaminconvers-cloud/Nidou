@@ -138,6 +138,7 @@ export interface HouseholdRow {
   boite_code: string | null;   // suffix of the household's forwarding address (foyer-<code>@in.monlucien.fr)
   situation: string | null;    // seul | couple
   mcp_token: string | null;    // bearer token of this household's MCP connector
+  mcp_ecriture?: number | null; // 1: the assistant may also add (a paper, a deadline, an activity); off by default
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
   abonnement_statut: string | null;   // active | trialing | past_due | canceled | unpaid | simule
@@ -394,6 +395,7 @@ export class Db {
     if (!cols.includes("boite_code")) this.raw.exec("ALTER TABLE households ADD COLUMN boite_code TEXT");
     if (!cols.includes("situation")) this.raw.exec("ALTER TABLE households ADD COLUMN situation TEXT");
     if (!cols.includes("mcp_token")) this.raw.exec("ALTER TABLE households ADD COLUMN mcp_token TEXT");
+    if (!cols.includes("mcp_ecriture")) this.raw.exec("ALTER TABLE households ADD COLUMN mcp_ecriture INTEGER DEFAULT 0");
     if (!cols.includes("hebdo")) this.raw.exec("ALTER TABLE households ADD COLUMN hebdo INTEGER DEFAULT 1");
     if (!cols.includes("modules_choix")) this.raw.exec("ALTER TABLE households ADD COLUMN modules_choix TEXT");
     if (!cols.includes("changement_prevu")) this.raw.exec("ALTER TABLE households ADD COLUMN changement_prevu TEXT");

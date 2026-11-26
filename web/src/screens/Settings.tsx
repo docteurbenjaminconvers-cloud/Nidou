@@ -230,7 +230,7 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
 
         <div className="settings-row">
           <div><div className="t">Connecteur Claude ou ChatGPT {household.plan === "famille" ? <span className="badge">actif</span> : <span className="badge yolk">formule</span>}</div>
-            <div className="s">Votre assistant IA consulte vos papiers en lecture seule ; la banque n'est jamais lue, chaque accès est journalisé.</div></div>
+            <div className="s">{household.mcp_ecriture ? "Votre assistant IA consulte vos papiers et peut en ajouter" : "Votre assistant IA consulte vos papiers en lecture seule"} ; la banque n'est jamais lue, chaque accès est journalisé.</div></div>
           <div className="reg-liens">
             <button className="link" onClick={() => go("connecteur")}>Le tuto</button>
             {household.mcp_token && <button className="link" aria-expanded={connecteur} onClick={() => setConnecteur(!connecteur)}>{connecteur ? "Masquer" : "Mon adresse"}</button>}

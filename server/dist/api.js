@@ -411,6 +411,14 @@ export function createApi(db, opts) {
             return c.json({ error: "proprietaire" }, 403);
         return c.json({ token: db.regenerateMcpToken(household(c).id) });
     });
+    /** « L'assistant peut aussi ajouter » : off by default (the connector only reads), the owner turns it on. */
+    api.post("/mcp/ecriture", async (c) => {
+        if (!isOwner(c))
+            return c.json({ error: "proprietaire" }, 403);
+        const { actif } = z.object({ actif: z.boolean() }).parse(await c.req.json());
+        db.raw.prepare("UPDATE households SET mcp_ecriture = ? WHERE id = ?").run(actif ? 1 : 0, household(c).id);
+        return c.json({ mcp_ecriture: actif });
+    });
     // ---------- household ----------
     api.get("/household", (c) => {
         const h = household(c);
@@ -428,6 +436,7 @@ export function createApi(db, opts) {
             boite_email: h.plan === "famille" && process.env.LUCIEN_INBOX_DOMAIN ? boiteAddress(db.getHousehold(h.id).boite_code) : null,
             boite_bientot: h.plan === "famille" && !process.env.LUCIEN_INBOX_DOMAIN,
             mcp_token: h.plan === "famille" ? db.getHousehold(h.id).mcp_token : null,
+            mcp_ecriture: !!db.getHousehold(h.id).mcp_ecriture,
             utilisateur: currentUser(c),
             titulaire: isOwner(c),
             abonnement: { ...resumeAbonnement(db.getHousehold(h.id)), ...etatFin(db, h.id), retractation: etatRetractation(db, h.id), changement_prevu: changementPrevu(db, h.id) },

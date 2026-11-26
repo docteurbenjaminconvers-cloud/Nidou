@@ -12,9 +12,11 @@ import { entreeSemaine } from "./hebdo.js";
 import { pointSemaine } from "./semaine.js";
 import { etatKit, KITS } from "./dossiers.js";
 import { NUMEROS, scenarios } from "./urgence.js";
+import { rangerPapier } from "./inbox.js";
 
 /**
- * Lucien MCP server — read-only access to a household's papers for any MCP-compatible assistant
+ * Lucien MCP server — access to a household's papers for any MCP-compatible assistant: read-only by default, and a
+ * few additions (never a deletion, a change or a sending) when the household allows it —
  * (Claude, ChatGPT, Cursor…). Every call is written to the household's access log so the family
  * can see which AI looked at what.
  *
@@ -207,6 +209,97 @@ export function createMcpServer(db: Db, householdId: string) {
       return text({ ...rest, recurrences: recurrences.map((x) => ({ marchand: x.marchand, categorie: x.categorie, mensuel: x.mensuel_equivalent, jour: x.jour_du_mois, contrat_connu: Boolean(x.contrat_id) })) });
     }
   );
+
+  // ---------- actions (only when the household turned « l'assistant peut aussi ajouter » on) ----------
+  // The assistant can add, never delete, change or send: a paper from a text, a deadline, an activity, and tick a
+  // deadline. Everything is written to the access log, and limited to 30 additions a day.
+  if (db.getHousehold(householdId)?.mcp_ecriture) {
+    const ECRITURES = ["ranger_papier", "ajouter_echeance", "echeance_faite", "ajouter_activite"];
+    const tropAujourdhui = () => {
+      const depuis = new Date(Date.now() - 864e5).toISOString();
+      const n = (db.raw.prepare(`SELECT COUNT(*) n FROM mcp_access_log WHERE household_id = ? AND quand > ? AND outil IN (${ECRITURES.map(() => "?").join(",")})`).get(householdId, depuis, ...ECRITURES) as { n: number }).n;
+      return n >= 30 ? text({ erreur: "Trente ajouts par l'assistant en 24 heures : la suite se fait dans l'application Lucien." }) : null;
+    };
+    const DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date au format AAAA-MM-JJ");
+    const membre = (prenom: string | undefined) => {
+      if (!prenom) return { id: null as string | null };
+      const n = (x: string) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+      const m = db.listMembers(householdId).filter((x) => n(x.prenom) === n(prenom));
+      return m.length === 1 ? { id: m[0].id } : { erreur: `Personne inconnue : « ${prenom} ». Membres de la famille : ${db.listMembers(householdId).map((x) => x.prenom).join(", ") || "aucun"}.` };
+    };
+    const ecriture = { readOnlyHint: false, destructiveHint: false, openWorldHint: false };
+
+    server.registerTool(
+      "ranger_papier",
+      {
+        title: "Ranger un papier dans Lucien",
+        description: "Range dans Lucien un courrier, un email ou un contrat dont la personne a donné le texte dans la conversation : Lucien le lit, le classe, relève ses références et crée ses échéances. À utiliser seulement quand la personne le demande (« mets ce courrier dans Lucien »). Texte intégral du document, sans le résumer. Les documents médicaux ne sont pas gardés.",
+        inputSchema: { texte: z.string().min(40).max(20000).describe("Le texte complet du document"), nom: z.string().max(120).optional().describe("Un nom court, ex. « Avis d'échéance MAIF »") },
+        annotations: ecriture,
+      },
+      async ({ texte, nom }) => {
+        const stop = tropAujourdhui(); if (stop) return stop;
+        log("ranger_papier", { nom: nom ?? null, caracteres: texte.length });
+        const d = await rangerPapier(db, householdId, { texte, nomFichier: nom }, "assistant");
+        if (!d) return text({ range: false, raison: "Document médical : Lucien ne les garde pas." });
+        return text({ range: true, id: d.id, titre: d.title, categorie: d.category, organisme: d.organisme, ...fin(d), echeances_creees: db.listDeadlines(householdId, { includeDone: true }).filter((x) => x.document_id === d.id).map((x) => ({ titre: x.titre, date: x.date })), a_verifier_dans_lucien: (d.confiance ?? 1) < 0.7 });
+      }
+    );
+
+    server.registerTool(
+      "ajouter_echeance",
+      {
+        title: "Ajouter une échéance",
+        description: "Ajoute une échéance ou un rappel à l'agenda de Lucien (« rappelle-moi de renouveler le passeport avant le 15 mars »). Lucien préviendra la famille quelques jours avant.",
+        inputSchema: { titre: z.string().min(2).max(140), date: DATE.describe("AAAA-MM-JJ"), note: z.string().max(400).optional(), rappel_jours: z.number().int().min(0).max(90).optional().describe("Prévenir combien de jours avant (7 par défaut)") },
+        annotations: ecriture,
+      },
+      async ({ titre, date, note, rappel_jours }) => {
+        const stop = tropAujourdhui(); if (stop) return stop;
+        log("ajouter_echeance", { titre, date });
+        const e = db.insertDeadline({ household_id: householdId, document_id: null, titre, type: "echeance", date, rappel_jours: rappel_jours ?? 7, note: note ?? null });
+        return text({ ajoutee: true, id: e.id, titre: e.titre, date: e.date, rappel_jours: e.rappel_jours });
+      }
+    );
+
+    server.registerTool(
+      "echeance_faite",
+      {
+        title: "Cocher une échéance",
+        description: "Marque une échéance comme faite (ou la rouvre), quand la personne dit l'avoir réglée. L'identifiant vient de l'outil « echeances ».",
+        inputSchema: { id: z.string().describe("Identifiant de l'échéance"), faite: z.boolean().optional().describe("false pour la rouvrir") },
+        annotations: { ...ecriture, idempotentHint: true },
+      },
+      async ({ id, faite }) => {
+        const stop = tropAujourdhui(); if (stop) return stop;
+        log("echeance_faite", { id, faite: faite ?? true });
+        if (id.startsWith("f:")) { db.marquerFamilleFait(householdId, id.slice(2), faite ?? true); return text({ ok: true }); }
+        return text(db.setDeadlineDone(householdId, id, faite ?? true) ? { ok: true } : { erreur: "Échéance introuvable." });
+      }
+    );
+
+    server.registerTool(
+      "ajouter_activite",
+      {
+        title: "Ajouter une activité à l'agenda de la famille",
+        description: "Ajoute une activité qui revient chaque semaine (sport, musique, garde, cantine) à l'agenda de la famille, pour une personne ou pour tout le foyer.",
+        inputSchema: {
+          titre: z.string().min(2).max(80), jour: z.enum(["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]),
+          heure_debut: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional().describe("HH:MM"), heure_fin: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional().describe("HH:MM"),
+          pour: z.string().optional().describe("Prénom du membre de la famille concerné"), lieu: z.string().max(120).optional(), cout_mois: z.number().min(0).max(5000).optional().describe("Coût par mois en euros"),
+        },
+        annotations: ecriture,
+      },
+      async ({ titre, jour, heure_debut, heure_fin, pour, lieu, cout_mois }) => {
+        const stop = tropAujourdhui(); if (stop) return stop;
+        const m = membre(pour);
+        if ("erreur" in m) return text(m);
+        log("ajouter_activite", { titre, jour, pour: pour ?? null });
+        const a = db.insertActivite({ household_id: householdId, member_id: m.id, titre, type: "autre", jour: ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"].indexOf(jour) + 1, heure_debut: heure_debut ?? null, heure_fin: heure_fin ?? null, lieu: lieu ?? null, cout_mois: cout_mois ?? null, date_debut: null, date_fin: null, note: null } as never);
+        return text({ ajoutee: true, id: a.id, titre: a.titre, jour, heure_debut: a.heure_debut, pour: pour ?? "toute la famille" });
+      }
+    );
+  }
 
   return server;
 }

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { Api } from "../api";
 import type { Household } from "../types";
 
 type Outil = "claude" | "chatgpt";
@@ -7,8 +8,14 @@ type Outil = "claude" | "chatgpt";
  * Step-by-step guide to plug Lucien into the family's own AI assistant (Claude or ChatGPT) through the MCP connector.
  * Menu names follow the apps as of autumn 2026; they move from time to time, hence the "if you can't find it" notes.
  */
-export function Connecteur({ household, onBack, go, toast }: { household: Household; onBack: () => void; go: (s: string) => void; toast: (m: string) => void }) {
+export function Connecteur({ api, onChanged, household, onBack, go, toast }: { api: Api; onChanged: () => void; household: Household; onBack: () => void; go: (s: string) => void; toast: (m: string) => void }) {
   const [outil, setOutil] = useState<Outil>("claude");
+  const [ecriture, setEcriture] = useState(!!household.mcp_ecriture);
+  const basculer = async () => {
+    const v = !ecriture;
+    try { await api.mcpEcriture(v); setEcriture(v); onChanged(); toast(v ? "Votre assistant peut maintenant ajouter dans Lucien" : "Votre assistant ne fait plus que lire"); }
+    catch (e) { toast((e as Error).message); }
+  };
   const base = `${location.origin}/mcp`;
   const adresse = household.mcp_token ? `${base}/${household.mcp_token}` : null;
   const copier = async (v: string, quoi: string) => { try { await navigator.clipboard.writeText(v); toast(`${quoi} copié${quoi === "Adresse" ? "e" : ""}`); } catch { toast(v); } };
@@ -36,7 +43,7 @@ export function Connecteur({ household, onBack, go, toast }: { household: Househ
       <div className="top"><div><h1>Lucien dans votre IA</h1><p className="sub">Branchez vos papiers sur Claude ou ChatGPT, avec votre propre compte</p></div></div>
 
       <section className="section">
-        <p>Vous avez déjà un compte Claude ou ChatGPT ? Ajoutez-y Lucien une fois : votre assistant pourra lire vos papiers, vos échéances et vos charges, en lecture seule. Chaque lecture est notée dans votre journal Lucien.</p>
+        <p>Vous avez déjà un compte Claude ou ChatGPT ? Ajoutez-y Lucien une fois : votre assistant pourra lire vos papiers, vos échéances et vos charges. Il ne fait que lire, sauf si vous l'autorisez à ajouter (plus bas). Chaque accès est noté dans votre journal Lucien.</p>
         {adresse ? (
           <>
             <div className="settings-row"><div><div className="t">Votre adresse personnelle</div><div className="s">Elle ouvre vos papiers : ne la partagez pas. Vous pouvez la changer dans Réglages.</div></div><button className="link" onClick={() => copier(adresse, "Adresse")}>Copier</button></div>
@@ -46,6 +53,17 @@ export function Connecteur({ household, onBack, go, toast }: { household: Househ
           <div className="confidence" style={{ marginTop: 6 }}>Votre adresse personnelle apparaît ici avec une formule Solo, Duo ou Tribu. <button className="link" onClick={() => go("settings")}>Voir les formules</button></div>
         )}
       </section>
+
+      {adresse && (
+        <section className="section">
+          <div className="settings-row">
+            <div><div className="t">L'assistant peut aussi ajouter</div>
+              <div className="s">« Mets ce courrier dans Lucien », « rappelle-moi le passeport avant le 15 mars », « ajoute le piano de Daphné le mardi à 18 h ». Il peut ranger un papier, ajouter une échéance ou une activité, cocher une échéance. Il ne peut rien supprimer, rien modifier et rien envoyer en votre nom.</div></div>
+            <button className="toggle" role="switch" aria-checked={ecriture} aria-label="L'assistant peut aussi ajouter" disabled={household.titulaire === false} onClick={basculer} />
+          </div>
+          {ecriture && <p className="note" style={{ marginTop: 8 }}>Chaque ajout est noté dans votre journal, limité à 30 par jour. Si l'outil n'apparaît pas dans votre assistant, désactivez puis réactivez Lucien dans ses connecteurs.</p>}
+        </section>
+      )}
 
       <div className="pills" role="group" aria-label="Assistant">
         <button className="pill" aria-pressed={outil === "claude"} onClick={() => setOutil("claude")}>Claude</button>

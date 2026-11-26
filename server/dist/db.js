@@ -250,6 +250,8 @@ export class Db {
             this.raw.exec("ALTER TABLE households ADD COLUMN situation TEXT");
         if (!cols.includes("mcp_token"))
             this.raw.exec("ALTER TABLE households ADD COLUMN mcp_token TEXT");
+        if (!cols.includes("mcp_ecriture"))
+            this.raw.exec("ALTER TABLE households ADD COLUMN mcp_ecriture INTEGER DEFAULT 0");
         if (!cols.includes("hebdo"))
             this.raw.exec("ALTER TABLE households ADD COLUMN hebdo INTEGER DEFAULT 1");
         if (!cols.includes("modules_choix"))

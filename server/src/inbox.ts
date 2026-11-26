@@ -62,23 +62,8 @@ export async function processInboundEmail(db: Db, mail: InboundEmail, opts: { pl
 
   const docs: DocumentRow[] = [];
   for (const input of inputs) {
-    const budget = budgetIa(db, h.id);
-    const [ex, cout] = await avecCompteur(async () => {
-      const ex = budget.ok() ? await extractDocument(input) : { ...heuristicExtract(input), modele: null };
-      return [ex, ex.modele ? reel(ex.modele.cout_lecture_centimes) : 0] as const;
-    });
-    if (ex.modele) db.recordIaLecture(h.id, false, cout);
-    if (estMedical(ex)) continue; // medical papers are never kept
-    const garde = aGarder(ex, input.texte);
-    const pourQui = membreConcerne(ex.personnes, db.listMembers(h.id));
-    const doc = db.insertDocument({
-      household_id: h.id, member_id: pourQui, title: titreAvecPrenom(ex.title, ex.personnes, db.listMembers(h.id).find((m) => m.id === pourQui)), category: ex.category, organisme: ex.organisme, numero_contrat: ex.numero_contrat,
-      montant: ex.montant, periodicite: ex.periodicite, date_document: ex.date_document, date_debut: ex.date_debut, date_fin: ex.date_fin,
-      preavis_jours: ex.preavis_jours, resume: ex.resume, texte: garde.texte, details: garde.details, fichier: null, mime: input.mime ?? "text/plain",
-      confiance: ex.confiance, source: "email",
-    });
-    db.replaceDeadlinesForDocument(doc.id, h.id, deadlinesFor(doc));
-    docs.push(doc);
+    const doc = await rangerPapier(db, h.id, input, "email");
+    if (doc) docs.push(doc);
   }
   return { statut: "ok", household_id: h.id, documents: docs };
 }
@@ -101,4 +86,29 @@ export async function fromBrevo(payload: { items?: BrevoItem[] }): Promise<Inbou
 interface BrevoItem {
   Uuid: string; MessageId?: string; From?: { Address: string }; To?: { Address: string }[]; Subject?: string; RawTextBody?: string;
   Attachments?: { Name: string; ContentType: string; DownloadToken: string }[];
+}
+
+/**
+ * Reads one paper (a file or a text) and puts it away like a photo taken in the app: fields, details, the member it
+ * is about, its deadlines. Null for a medical paper (never kept). `source`: where it came from (email, assistant).
+ */
+export async function rangerPapier(db: Db, householdId: string, input: { base64?: string; mime?: string; nomFichier?: string; texte?: string }, source: string): Promise<DocumentRow | null> {
+  const budget = budgetIa(db, householdId);
+  const [ex, cout] = await avecCompteur(async () => {
+    const ex = budget.ok() ? await extractDocument(input) : { ...heuristicExtract(input), modele: null };
+    return [ex, ex.modele ? reel(ex.modele.cout_lecture_centimes) : 0] as const;
+  });
+  if (ex.modele) db.recordIaLecture(householdId, false, cout);
+  if (estMedical(ex)) return null; // medical papers are never kept
+  const garde = aGarder(ex, input.texte);
+  const membres = db.listMembers(householdId);
+  const pourQui = membreConcerne(ex.personnes, membres);
+  const doc = db.insertDocument({
+    household_id: householdId, member_id: pourQui, title: titreAvecPrenom(ex.title, ex.personnes, membres.find((m) => m.id === pourQui)), category: ex.category, organisme: ex.organisme, numero_contrat: ex.numero_contrat,
+    montant: ex.montant, periodicite: ex.periodicite, date_document: ex.date_document, date_debut: ex.date_debut, date_fin: ex.date_fin,
+    preavis_jours: ex.preavis_jours, resume: ex.resume, texte: garde.texte, details: garde.details, fichier: null, mime: input.mime ?? "text/plain",
+    confiance: ex.confiance, source,
+  });
+  db.replaceDeadlinesForDocument(doc.id, householdId, deadlinesFor(doc));
+  return doc;
 }
