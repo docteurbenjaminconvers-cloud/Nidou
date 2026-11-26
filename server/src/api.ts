@@ -52,6 +52,7 @@ import { agendaIcs } from "./ics.js";
 import { AUTH_ON, consommerLien, cookieHeader, demandeAutorisee, demanderLien, emailValide, sessionToken } from "./auth.js";
 import { agendaSemaine, familleReport, echeancesFamille, JOURS, coutsParMembre } from "./famille.js";
 import { boiteAddress, fromBrevo, processInboundEmail, type InboundEmail } from "./inbox.js";
+import { courrierRelance, marquerRepondu, mediateurPour, poserAttente, suivisCourriers, type LettreGardee } from "./suiviCourriers.js";
 import { parseStatement, merchantOf, categorise, ruleCategory, fingerprint, TX_CATEGORIES, TX_LABEL, type ParsedTx } from "./transactions.js";
 import { budgetReport, findRecurrences } from "./budget.js";
 import { demoStatement } from "./seed-statement.js";
@@ -975,8 +976,12 @@ Ce courrier vous est adressé par ${b.expediteur.nom} (${moi}), qui l'a validé 
       pieces: [{ nom: fichierCourrier(l), contenu: pdf }],
     });
     if (!ok && (process.env.LUCIEN_PUBLIC_URL ?? "").startsWith("https://")) return c.json({ error: "envoi", message: "L'email n'est pas parti. Réessayez dans un moment ou téléchargez le PDF." }, 502);
-    db.raw.prepare("INSERT INTO lettres_envoyees (id, household_id, cle, canal, destinataire, objet, empreinte, envoye_le) VALUES (?, ?, ?, 'email', ?, ?, ?, ?)")
-      .run(randomUUID(), h.id, `doc:${doc.id}`, b.email, l.objet, createHash("sha256").update(pdf).digest("hex"), new Date().toISOString());
+    const deja = (db.raw.prepare("SELECT COUNT(*) n FROM lettres_envoyees WHERE household_id = ? AND cle = ?").get(h.id, `doc:${doc.id}`) as { n: number }).n;
+    const quand = new Date().toISOString();
+    const gardee: LettreGardee = { expediteur: l.expediteur, destinataire: l.destinataire, objet: l.objet, reference: l.reference ?? null };
+    db.raw.prepare("INSERT INTO lettres_envoyees (id, household_id, cle, canal, destinataire, objet, empreinte, envoye_le, lettre) VALUES (?, ?, ?, 'email', ?, ?, ?, ?, ?)")
+      .run(randomUUID(), h.id, `doc:${doc.id}`, b.email, l.objet, createHash("sha256").update(pdf).digest("hex"), quand, JSON.stringify(gardee));
+    poserAttente(db, h.id, doc, quand, deja > 0); // the answer is awaited in the agenda, 15 days from now
     return c.json({ ok: true, envoye_a: b.email, copie: moi }, 201);
   });
 
@@ -985,6 +990,35 @@ Ce courrier vous est adressé par ${b.expediteur.nom} (${moi}), qui l'a validé 
     const d = docDuFoyer(c, c.req.param("id"));
     if (!d) return c.json({ error: "introuvable" }, 404);
     return c.json({ envois: db.raw.prepare("SELECT destinataire, objet, envoye_le FROM lettres_envoyees WHERE household_id = ? AND cle = ? ORDER BY envoye_le DESC").all(d.household_id, `doc:${d.id}`) });
+  });
+
+  /** Letters awaiting an answer, the reminder to send, the mediator to turn to. */
+  api.get("/courriers/suivi", (c) => c.json({ suivis: suivisCourriers(db, household(c).id) }));
+
+  api.post("/courriers/suivi/repondu", async (c) => {
+    const b = z.object({ document_id: z.string().min(1).max(80), repondu: z.boolean() }).parse(await c.req.json());
+    if (!docDuFoyer(c, b.document_id)) return c.json({ error: "introuvable" }, 404);
+    marquerRepondu(db, household(c).id, b.document_id, b.repondu);
+    return c.json({ ok: true });
+  });
+
+  /** The reminder letter, ready to reread: same addressee and references as the last letter sent about this paper. */
+  api.post("/courriers/relance", async (c) => {
+    const h = household(c);
+    const b = z.object({ document_id: z.string().min(1).max(80) }).parse(await c.req.json());
+    const doc = docDuFoyer(c, b.document_id);
+    if (!doc) return c.json({ error: "introuvable" }, 404);
+    const envois = db.raw.prepare("SELECT destinataire, objet, envoye_le, lettre FROM lettres_envoyees WHERE household_id = ? AND cle = ? ORDER BY envoye_le").all(h.id, `doc:${doc.id}`) as unknown as { destinataire: string; objet: string; envoye_le: string; lettre: string | null }[];
+    if (estAuCoffre(doc) && !coffreOuvert(db, c)) return c.json({ error: "coffre", message: "Ouvrez le coffre pour préparer la relance de ce papier." }, 423);
+    if (!envois.length) return c.json({ error: "aucun", message: "Aucun courrier envoyé pour ce papier." }, 400);
+    const premier = envois[0], dernier = envois[envois.length - 1];
+    const sig = signataire(c);
+    let gardee: LettreGardee | null = null;
+    try { gardee = dernier.lettre ? JSON.parse(dernier.lettre) as LettreGardee : null; } catch { gardee = null; }
+    const det = lireDetails(doc.details);
+    gardee ??= { expediteur: { nom: sig.nom, adresse: sig.adresse }, destinataire: { nom: doc.organisme ?? "Service client", adresse: [det?.contact.service, det?.contact.adresse].filter(Boolean).join("\n") || null }, objet: dernier.objet, reference: null };
+    const lettre = courrierRelance({ premiere: gardee, envoyee_le: premier.envoye_le, mediateur: mediateurPour(doc.category) });
+    return c.json({ lettre, emails: [dernier.destinataire], source: doc.title, avec_ia: false, corps: lettre.corps.join("\n\n"), expediteur: { nom: gardee.expediteur.nom, adresse: gardee.expediteur.adresse ?? sig.adresse }, email_client: currentUser(c)?.email ?? null });
   });
 
   // ---------- dépenses (relevés bancaires) ----------

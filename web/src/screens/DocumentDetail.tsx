@@ -1,10 +1,10 @@
 import { conservation, SOURCE_CONSERVATION } from "../../../server/src/conservation";
 import { useEffect, useState } from "react";
 import type { Api } from "../api";
-import { CATEGORIES, CATEGORY_LABEL, type Category, type Deadline, type DetailsDoc, type Doc } from "../types";
+import { CATEGORIES, CATEGORY_LABEL, type BrouillonCourrier, type Category, type Deadline, type DetailsDoc, type Doc } from "../types";
 import { Back, DateChip, fmtDate, fmtEuro, PERIOD_LABEL, relative } from "../ui";
 import { CoffreSheet } from "./Coffre";
-import { CourrierAssistant } from "./Courrier";
+import { CourrierAssistant, SuiviCourrierCarte } from "./Courrier";
 import { PagesPdf } from "./PagesPdf";
 import { Ico } from "./espacesCommun";
 
@@ -62,6 +62,8 @@ export function DocumentDetail({ api, id, onBack, onChanged, toast, membres = []
   const [draft, setDraft] = useState<Partial<Doc>>({});
   const [letter, setLetter] = useState<string | null>(null);
   const [letterKind, setLetterKind] = useState<"resiliation" | "reclamation" | "remboursement" | null>(null);
+  const [relance, setRelance] = useState<BrouillonCourrier | null>(null); // the reminder letter Lucien prepared, being reread
+  const [suiviV, setSuiviV] = useState(0);
   const [nom, setNom] = useState(() => localStorage.getItem("lucien.nom") ?? "");
   const [motif, setMotif] = useState("");
   const [busy, setBusy] = useState(false);
@@ -224,14 +226,15 @@ export function DocumentDetail({ api, id, onBack, onChanged, toast, membres = []
 
       {doc.category !== "identite" && !doc.verrouille && <section className="section">
         <div className="section-head"><h2>Courrier prêt à envoyer</h2></div>
+        <SuiviCourrierCarte api={api} doc={doc} version={suiviV} toast={toast} onChange={() => { onChanged(); api.document(id).then(setDoc).catch(() => {}); }} onRelance={(b) => { setRelance(b); setLetterKind("reclamation"); setLetter(null); }} />
         <div className="pills">
           {(["resiliation", "reclamation", "remboursement"] as const).filter((k) => k !== "resiliation" || (doc.periodicite !== "unique" && !["garantie", "vehicule", "impots"].includes(doc.category))).map((k) => (
-            <button key={k} className="pill" aria-pressed={letterKind === k} onClick={() => { setLetterKind(k); setLetter(null); }}>
+            <button key={k} className="pill" aria-pressed={letterKind === k} onClick={() => { setLetterKind(k); setLetter(null); setRelance(null); }}>
               {k === "resiliation" ? "Résiliation" : k === "reclamation" ? "Réclamation" : "Remboursement"}
             </button>
           ))}
         </div>
-        {(letterKind === "reclamation" || letterKind === "remboursement") && <CourrierAssistant api={api} doc={doc} type={letterKind} toast={toast} />}
+        {(letterKind === "reclamation" || letterKind === "remboursement") && <CourrierAssistant api={api} doc={doc} type={letterKind} toast={toast} relance={relance} onEnvoye={() => { setSuiviV((v) => v + 1); onChanged(); api.document(id).then(setDoc).catch(() => {}); }} />}
         {letterKind === "resiliation" && (
           <>
             <label className="lbl" htmlFor="nom">Votre nom</label>

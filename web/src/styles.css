@@ -1498,6 +1498,20 @@ button.sem-date:hover b { color: var(--nest); }
 .courrier-carte.confirmer { border: 2px solid var(--nest); }
 .courrier-carte.envoye { background: var(--moss-soft); color: var(--mint-ink); }
 .courrier-deja { margin: 0; }
+.courrier-carte.suivi { margin-bottom: 12px; gap: 12px; }
+.courrier-carte.suivi.suivi-relancer, .courrier-carte.suivi.suivi-mediateur { border: 2px solid var(--nest); }
+.suivi-fil { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.suivi-fil li { position: relative; padding: 0 0 14px 26px; display: flex; flex-direction: column; gap: 1px; }
+.suivi-fil li:last-child { padding-bottom: 0; }
+.suivi-fil li::before { content: ""; position: absolute; left: 3px; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: var(--white); border: 2px solid var(--line); box-sizing: border-box; }
+.suivi-fil li.fait::before { background: var(--mint-ink); border-color: var(--mint-ink); }
+.suivi-fil li.encours::before { border-color: var(--nest); box-shadow: 0 0 0 4px rgba(217,95,69,.15); }
+.suivi-fil li:not(:last-child)::after { content: ""; position: absolute; left: 8px; top: 18px; bottom: 0; width: 2px; background: var(--line); }
+.suivi-fil b { font-size: 15px; }
+.suivi-fil span { font-size: 13.5px; color: var(--mist); line-height: 1.4; overflow-wrap: anywhere; }
+.suivi-med { display: flex; flex-direction: column; gap: 6px; background: var(--peach); border-radius: 14px; padding: 12px; font-size: 14px; line-height: 1.45; }
+.suivi-med .btn { align-self: flex-start; margin-top: 4px; text-decoration: none; }
+.suivi-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 @media (max-width: 420px) { .courrier-canaux { grid-template-columns: 1fr; } }
 .courrier-assist textarea.in { width: 100%; border-radius: 16px; border: 2px solid var(--line); padding: 12px 14px; font: inherit; font-size: 15px; color: var(--ink); background: var(--white); resize: vertical; box-sizing: border-box; }
 .courrier-assist textarea.in:focus { outline: none; border-color: var(--lilac); }

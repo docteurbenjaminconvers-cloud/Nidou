@@ -1,3 +1,5 @@
+import type { SuiviCourrier } from "../../server/src/suiviCourriers";
+export type { SuiviCourrier };
 import { langueChoisie } from "./i18n/traduction";
 import type { AssistantEtat, AssistantMessage, AssistantReponse, AideResiliation, ChampsLettre, ChampsCourrier, BrouillonCourrier, DetailsDoc, EtatCoffre, Resiliation, Prevision, DepensePartagee, EtatPartages, ReglementPartage } from "./types";
 import type { Activite, AnalysePro, Remarque, BankStatus, DestinationCompte, BudgetAction, BudgetReport, ChargesReport, Deadline, Doc, FamilleReport, Household, ImportResult, Member, Mesure, Temoin, Banque, BanquesReport, Veille, VeillesReport, VuePersonne } from "./types";
@@ -90,6 +92,10 @@ export interface Api {
   courrierPdf(c: ChampsCourrier): Promise<Blob>;
   envoyerCourrier(c: ChampsCourrier & { email: string }): Promise<{ ok: true; envoye_a: string; copie: string }>;
   envoisCourrier(documentId: string): Promise<{ envois: { destinataire: string; objet: string; envoye_le: string }[] }>;
+  /** Letters sent and awaited answers: the reminder after 15 days, then the mediator. */
+  suiviCourriers(): Promise<{ suivis: SuiviCourrier[] }>;
+  courrierRepondu(documentId: string, repondu: boolean): Promise<void>;
+  relancerCourrier(documentId: string): Promise<BrouillonCourrier>;
   envoyerLettreResiliation(champs: ChampsLettre & { email: string }): Promise<{ ok: true; envoye_a: string; copie: string }>;
   /** Shared expenses between members. */
   partages(): Promise<EtatPartages>;
@@ -319,6 +325,9 @@ const serverApi: Api = {
   envoyerCourrier: (champs) => call("/courriers/envoyer", json(champs)),
   relireDocument: (id) => call(`/documents/${encodeURIComponent(id)}/relire`, { method: "POST" }),
   envoisCourrier: (id) => call(`/courriers/${encodeURIComponent(id)}/envois`),
+  suiviCourriers: () => call("/courriers/suivi"),
+  courrierRepondu: async (document_id, repondu) => { await call("/courriers/suivi/repondu", json({ document_id, repondu })); },
+  relancerCourrier: (document_id) => call("/courriers/relance", json({ document_id })),
   partages: () => call("/partages"),
   ajouterDepensePartagee: (d) => call("/partages/depenses", json(d)),
   supprimerDepensePartagee: (id) => call(`/partages/depenses/${encodeURIComponent(id)}`, { method: "DELETE" }),
@@ -574,6 +583,9 @@ function makeDemoApi(): Api {
     courrierPdf: async () => { throw new ApiError(400, "demo", "En démonstration, le courrier se copie en texte."); },
     envoyerCourrier: async () => { throw new ApiError(400, "demo", "En démonstration, Lucien n'envoie pas de vrai email."); },
     envoisCourrier: async () => ({ envois: [] }),
+    suiviCourriers: async () => ({ suivis: [] }),
+    courrierRepondu: async () => {},
+    relancerCourrier: async () => { throw new ApiError(400, "demo", "En démonstration, aucun courrier n'est parti."); },
     relireDocument: async () => { throw new ApiError(400, "demo", "En démonstration, Lucien ne relit pas les papiers."); },
     demarrerResiliation: async (cle: string) => {
       const act = (structuredClone(state.household.plan === "famille" ? demoBudgetFamille : demoBudget) as BudgetReport).actions.find((x) => x.marchand === cle);

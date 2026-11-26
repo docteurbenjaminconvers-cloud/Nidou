@@ -1,3 +1,4 @@
+import { suivisCourriers } from "./suiviCourriers.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { estAuCoffre, masquer } from "./coffreAcces.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
@@ -137,6 +138,15 @@ export function createMcpServer(db, householdId) {
         const lignes = lignesFamille(coutsParMembre(db.listMembers(householdId), db.listActivites(householdId))).filter((l) => !excluded.has(l.category));
         const r = chargesReport(visible(), undefined, lignes);
         return text(r);
+    });
+    server.registerTool("courriers_en_attente", {
+        title: "Courriers envoyés et réponses attendues",
+        description: "Les réclamations et demandes de remboursement envoyées depuis Lucien : à qui, quand, si une réponse est arrivée, s'il est temps de relancer (15 jours sans réponse) ou de saisir le médiateur (lequel, à partir de quand, à quelles conditions). La relance elle-même se relit et s'envoie dans l'application Lucien.",
+        inputSchema: {},
+    }, async () => {
+        log("courriers_en_attente", {});
+        const vus = new Set(visible().map((d) => d.id));
+        return text(suivisCourriers(db, householdId).filter((s) => vus.has(s.document_id)));
     });
     server.registerTool("rechercher", {
         title: "Rechercher dans les papiers",

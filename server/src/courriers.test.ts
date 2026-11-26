@@ -9,6 +9,7 @@ import { consommerLien, demanderLien, oublierDemandes } from "./auth.js";
 import { initCoffre } from "./coffre.js";
 import { courrierModele, emailsDuTexte } from "./courriers.js";
 import { texteLettre } from "./lettres.js";
+import { etatSuivi, mediateurPour } from "./suiviCourriers.js";
 
 const RELANCE = `DIRECTION GÉNÉRALE DES FINANCES PUBLIQUES
 Centre des Finances Publiques
@@ -68,8 +69,44 @@ test("courrier : rédigé, puis envoyé seulement à une adresse lue dans les pa
     assert.equal((await api.request("/courriers/envoyer", { method: "POST", headers: ck, body: JSON.stringify({ ...courrier, email: "sip.uzes@dgfip.finances.gouv.fr" }) })).status, 201);
     const envois = await (await api.request(`/courriers/${doc.id}/envois`, { headers: ck })).json() as any;
     assert.equal(envois.envois.length, 2);
+    // the answer is awaited: one agenda line 15 days from now, moved by the second letter
+    const attentes = () => db.listDeadlines(hid, { includeDone: true }).filter((x) => x.type === "courrier");
+    assert.equal(attentes().length, 1); assert.match(attentes()[0].titre, /Réponse attendue de Centre des Finances Publiques/);
+    let suivi = (await (await api.request("/courriers/suivi", { headers: ck })).json() as any).suivis;
+    assert.equal(suivi.length, 1); assert.equal(suivi[0].statut, "attente"); assert.equal(suivi[0].envois.length, 2);
+    // 16 days later, a single letter: time for the reminder, written from the letter kept
+    db.raw.prepare("DELETE FROM lettres_envoyees WHERE destinataire LIKE 'sip.%'").run();
+    db.raw.prepare("UPDATE lettres_envoyees SET envoye_le = ?").run(new Date(Date.now() - 16 * 86400_000).toISOString());
+    suivi = (await (await api.request("/courriers/suivi", { headers: ck })).json() as any).suivis;
+    assert.equal(suivi[0].statut, "relancer"); assert.match(suivi[0].mediateur.nom, /consommation/);
+    const rel = await (await api.request("/courriers/relance", { method: "POST", headers: ck, body: JSON.stringify({ document_id: doc.id }) })).json() as any;
+    assert.match(rel.lettre.objet, /^Relance — Contestation/); assert.match(rel.corps, /resté sans réponse/); assert.match(rel.corps, /médiateur de la consommation/);
+    assert.deepEqual(rel.emails, ["sgc.uzes@dgfip.finances.gouv.fr"]); assert.equal(rel.lettre.destinataire.adresse, b.lettre.destinataire.adresse);
+    assert.equal((await api.request("/courriers/envoyer", { method: "POST", headers: ck, body: JSON.stringify({ ...courrier, objet: rel.lettre.objet, corps: rel.corps, email: rel.emails[0] }) })).status, 201);
+    suivi = (await (await api.request("/courriers/suivi", { headers: ck })).json() as any).suivis;
+    assert.equal(suivi[0].statut, "attente"); assert.match(attentes().find((x) => !x.fait)!.note!, /Relance envoyée/);
+    // still nothing 15 days after the reminder: the mediator ; then the answer comes
+    db.raw.prepare("UPDATE lettres_envoyees SET envoye_le = ? WHERE objet LIKE 'Relance%'").run(new Date(Date.now() - 15 * 86400_000).toISOString());
+    suivi = (await (await api.request("/courriers/suivi", { headers: ck })).json() as any).suivis;
+    assert.equal(suivi[0].statut, "mediateur");
+    assert.equal((await api.request("/courriers/suivi/repondu", { method: "POST", headers: ck, body: JSON.stringify({ document_id: doc.id, repondu: true }) })).status, 200);
+    suivi = (await (await api.request("/courriers/suivi", { headers: ck })).json() as any).suivis;
+    assert.equal(suivi[0].statut, "repondu"); assert.ok(attentes().every((x) => x.fait));
     assert.equal(db.raw.prepare("SELECT expediteur_adresse a FROM households WHERE id = ?").get(hid)!.a, "1 rue X\n34000 Montpellier", "the sender is remembered");
   } finally {
     console.log = log; process.env.LUCIEN_AUTH = avant;
   }
+});
+
+test("suivi d'un courrier : attente, relance à 15 jours, médiateur après la relance ; le bon médiateur selon le papier", () => {
+  const doc = { id: "d", title: "Facture EDF", organisme: "EDF", category: "energie" };
+  const e1 = { id: "1", destinataire: "a@edf.fr", objet: "Contestation", envoye_le: "2026-11-01T10:00:00.000Z" };
+  assert.equal(etatSuivi(doc, [e1], null, "2026-11-15").statut, "attente");
+  const s = etatSuivi(doc, [e1], null, "2026-11-16");
+  assert.equal(s.statut, "relancer"); assert.equal(s.prochaine_etape_le, "2026-11-16"); assert.equal(s.mediateur_des_le, "2026-12-31");
+  const e2 = { ...e1, id: "2", envoye_le: "2026-11-17T09:00:00.000Z" };
+  assert.equal(etatSuivi(doc, [e1, e2], null, "2026-11-20").statut, "attente");
+  assert.equal(etatSuivi(doc, [e1, e2], null, "2026-12-02").statut, "mediateur");
+  assert.equal(etatSuivi(doc, [e1, e2], "2026-12-03", "2026-12-10").statut, "repondu");
+  assert.match(mediateurPour("telecom").site!, /mediation-telecom/); assert.match(mediateurPour("impots").nom, /Conciliateur fiscal/); assert.equal(mediateurPour("autre").attente_jours, null);
 });
