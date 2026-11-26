@@ -459,6 +459,33 @@ const serverApi: Api = {
 };
 
 // ---------- demo adapter ----------
+const mensuelDemo = (d: Doc) => Math.round((d.montant ?? 0) * (d.periodicite === "annuel" ? 1 / 12 : d.periodicite === "trimestriel" ? 1 / 3 : 1) * 100) / 100;
+
+/** A finished « Chercher moins cher » for the demo: invented suppliers, so that no real price is claimed. */
+function rechercheDemo(d: Doc): NonNullable<EtatPrix["recherche"]> {
+  const paye = mensuelDemo(d);
+  const prix = (taux: number) => Math.max(0.99, Math.floor(paye * taux) + 0.99);
+  const eco = (p: number) => (paye > p ? Math.round((paye - p) * 12) : null);
+  const eur = (n: number) => n.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const noms: Record<string, [string, string, string, string, string, string]> = {
+    telecom: ["Océane Télécom", "Fibre 1 Gb/s + mobile 100 Go", "Même débit. Frais de mise en service offerts.", "Lumo", "Box Fibre + forfait 80 Go", "Débit 500 Mb/s au lieu de 1 Gb/s."],
+    energie: ["Solaria Énergie", "Offre Fixe 2 ans", "Prix du kWh fixe pendant 2 ans, même puissance, sans engagement.", "Volta", "Électricité verte indexée", "Prix indexé sur le tarif réglementé, remise sur le kWh."],
+    assurance: ["Mutuelle des Garrigues", "Formule équivalente", "Prix « à partir de » : un devis à garanties égales est nécessaire.", "Assur'Sud", "Formule essentielle", "Franchise plus élevée. Résiliable à tout moment après un an."],
+    abonnement: ["La même enseigne", "Formule annuelle", "Payée en une fois, sans engagement au-delà.", "Studio Forme", "Formule sans engagement", "Service équivalent, résiliable chaque mois."],
+  };
+  const n = noms[d.category] ?? noms.abonnement;
+  const p1 = prix(d.category === "abonnement" ? 0.8 : 0.7), p2 = prix(d.category === "abonnement" ? 0.88 : 0.76);
+  const site = (nom: string) => nom.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z]+/g, "-").replace(/^-|-$/g, "") + ".example";
+  const offres = [[n[0], n[1], n[2], p1], [n[3], n[4], n[5], p2]].map(([f, o, c, p]) => ({ fournisseur: f as string, offre: o as string, prix_mensuel: p as number, prix_detail: `${eur(p as number)} € par mois, sans engagement`, conditions: c as string, economie_annuelle: eco(p as number), url: `https://${site(f as string)}/offre`, site: site(f as string) }));
+  return {
+    id: "demo-" + d.id, document_id: d.id, cherche_le: new Date().toISOString(), paye_mensuel: paye,
+    resume: `Vous payez environ ${Math.round(paye - p1)} € de plus par mois que les offres du moment pour le même service. Exemple de démonstration : les fournisseurs ci-dessous sont inventés.`,
+    reference: d.category === "energie" ? "Tarif réglementé de vente (tarif Bleu) : Lucien le compare au prix de votre kWh." : null,
+    prudence: d.category === "assurance" ? "En assurance, le prix dépend de votre situation et des garanties : ces montants sont des points de départ, demandez un devis à garanties égales." : d.category === "telecom" ? "Vérifiez votre éligibilité (fibre, réseau mobile) et la fin de votre engagement avant de changer." : null,
+    offres, sources: offres.map((o) => ({ url: o.url, titre: `${o.fournisseur} — ${o.offre}` })),
+  };
+}
+
 function makeDemoApi(): Api {
   const state = {
     depensesPartagees: [] as DepensePartagee[],
@@ -482,7 +509,17 @@ function makeDemoApi(): Api {
     veillesSupp: 0,
     assistantOption: false,
     assistantQuestions: 0,
+    envois: [] as { id: string; document_id: string; destinataire: string; objet: string; envoye_le: string }[],
+    repondus: {} as Record<string, string>,
+    recherches: {} as Record<string, NonNullable<EtatPrix["recherche"]>>,
   };
+  {
+    const facture = state.docs.find((x) => x.category === "energie" && /facture/i.test(x.title));
+    if (facture) state.envois.push({ id: "demo-envoi", document_id: facture.id, destinataire: "service-client@exemple.fr", objet: `Contestation — ${facture.title}`, envoye_le: new Date(Date.now() - 16 * 86400_000).toISOString() });
+    const box = state.docs.find((x) => x.category === "telecom" && !!x.montant);
+    if (box) state.recherches[box.id] = { ...rechercheDemo(box), cherche_le: new Date(Date.now() - 2 * 86400_000).toISOString() };
+    state.household.boite_email = "foyer-martin@in.monlucien.fr";
+  }
   // Demo of the watch: same rules as the server, on a fictional statement (pension, then a scam unfolding).
   const veilleDemo = makeVeilleDemo(state, () => state.household, () => state.famille.membres);
   const today = () => new Date().toISOString().slice(0, 10);
@@ -588,39 +625,47 @@ function makeDemoApi(): Api {
       return brouillon;
     },
     courrierPdf: async () => { throw new ApiError(400, "demo", "En démonstration, le courrier se copie en texte."); },
-    envoyerCourrier: async () => { throw new ApiError(400, "demo", "En démonstration, Lucien n'envoie pas de vrai email."); },
-    envoisCourrier: async () => ({ envois: [] }),
+    envoyerCourrier: async (c) => {
+      // nothing leaves in the demo: the letter is only noted, so that the follow-up can be tried
+      state.envois.push({ id: nouvelId(), document_id: c.document_id, destinataire: c.email, objet: c.objet, envoye_le: new Date().toISOString() });
+      delete state.repondus[c.document_id];
+      return { ok: true as const, envoye_a: c.email, copie: "claire@exemple.fr" };
+    },
+    envoisCourrier: async (id) => ({ envois: state.envois.filter((e) => e.document_id === id) }),
     prixDocument: async (id) => {
       const d = state.docs.find((x) => x.id === id);
       const comparable = ["energie", "telecom", "assurance", "abonnement"].includes(d?.category ?? "") && !!d?.montant;
-      // the demo shows one finished search, on the broadband contract (invented operators: no real price is claimed)
-      const recherche: EtatPrix["recherche"] = d?.category === "telecom" && d.montant ? {
-        id: "demo", document_id: id, cherche_le: new Date(Date.now() - 2 * 86400_000).toISOString(), paye_mensuel: d.montant,
-        resume: "Vous payez environ 20 € de plus par mois que les offres fibre et mobile sans engagement du moment. Votre engagement est terminé : rien ne vous retient.",
-        reference: null, prudence: "Vérifiez votre éligibilité (fibre, réseau mobile) et la fin de votre engagement avant de changer.",
-        offres: [
-          { fournisseur: "Océane Télécom", offre: "Fibre 1 Gb/s + mobile 100 Go", prix_mensuel: 44.98, prix_detail: "29,99 € la box + 14,99 € le mobile, sans engagement", conditions: "Même débit. Frais de mise en service offerts.", economie_annuelle: 240, url: "https://oceane-telecom.example/fibre-mobile", site: "oceane-telecom.example" },
-          { fournisseur: "Lumo", offre: "Box Fibre + forfait 80 Go", prix_mensuel: 47.98, prix_detail: "31,99 € + 15,99 € par mois, prix garanti 2 ans", conditions: "Débit 500 Mb/s au lieu de 1 Gb/s.", economie_annuelle: 204, url: "https://lumo.example/box", site: "lumo.example" },
-        ],
-        sources: [{ url: "https://oceane-telecom.example/fibre-mobile", titre: "Océane Télécom — fibre et mobile" }, { url: "https://lumo.example/box", titre: "Lumo — Box Fibre" }],
-      } : null;
-      return { comparable, paye_mensuel: d?.montant ?? 0, recherche, valable: !!recherche, restantes: 4, par_mois: 5, disponible: true };
+      const recherche = state.recherches[id] ?? null;
+      return { comparable, paye_mensuel: d ? mensuelDemo(d) : 0, recherche, valable: !!recherche, restantes: Math.max(0, 5 - Object.keys(state.recherches).length), par_mois: 5, disponible: true };
     },
-    chercherPrix: async () => { throw new ApiError(402, "demo", "La recherche se fait dans la vraie application."); },
+    chercherPrix: async (id) => {
+      // the demo plays a search: invented suppliers (no real price is claimed), the same checks and wording as the real one
+      const d = state.docs.find((x) => x.id === id);
+      if (!d) throw new ApiError(404, "introuvable", "Papier introuvable.");
+      await new Promise((r) => setTimeout(r, 2200));
+      state.recherches[id] = rechercheDemo(d);
+      const recherche = state.recherches[id];
+      return { comparable: true, paye_mensuel: mensuelDemo(d), recherche, valable: true, restantes: Math.max(0, 5 - Object.keys(state.recherches).length), par_mois: 5, disponible: true };
+    },
     suiviCourriers: async () => {
-      // the demo shows one letter left unanswered: the reminder is ready, the energy mediator comes next
-      const d = state.docs.find((x) => x.category === "energie" && /facture/i.test(x.title));
-      if (!d) return { suivis: [] };
-      const envoi = new Date(Date.now() - 16 * 86400_000).toISOString();
-      const plus = (n: number) => new Date(Date.parse(envoi) + n * 86400_000).toISOString().slice(0, 10);
-      return { suivis: [{
-        document_id: d.id, titre: d.title, organisme: d.organisme ?? null, statut: "relancer", depuis_jours: 16, prochaine_etape_le: plus(15), repondu_le: null,
-        envois: [{ id: "demo", destinataire: "service-client@exemple.fr", objet: `Contestation — ${d.title}`, envoye_le: envoi }],
-        mediateur: { nom: "Médiateur national de l'énergie", dans_lettre: "le Médiateur national de l'énergie", site: "https://www.energie-mediateur.fr", attente_jours: 60, conditions: "Gratuit. Vous pouvez le saisir deux mois après votre réclamation écrite restée sans réponse, et au plus tard un an après." },
-        mediateur_des_le: plus(60),
-      }] };
+      const med = (cat: string) => cat === "energie" ? { nom: "Médiateur national de l'énergie", dans_lettre: "le Médiateur national de l'énergie", site: "https://www.energie-mediateur.fr", attente_jours: 60 as number | null, conditions: "Gratuit. Vous pouvez le saisir deux mois après votre réclamation écrite restée sans réponse, et au plus tard un an après." }
+        : cat === "telecom" ? { nom: "Médiateur des communications électroniques", dans_lettre: "le Médiateur des communications électroniques", site: "https://www.mediation-telecom.org", attente_jours: 60 as number | null, conditions: "Gratuit. Après une réclamation écrite au service clients, puis au service consommateurs, restées sans réponse satisfaisante." }
+        : { nom: "Le médiateur de la consommation du professionnel", dans_lettre: "le médiateur de la consommation dont vous relevez", site: "https://www.economie.gouv.fr/mediation-conso", attente_jours: null as number | null, conditions: "Gratuit. Tout professionnel doit indiquer son médiateur. Il se saisit après une réclamation écrite restée sans suite, au plus tard un an après." };
+      const jour = (iso: string, n: number) => new Date(Date.parse(iso) + n * 86400_000).toISOString().slice(0, 10);
+      const suivis: SuiviCourrier[] = [];
+      for (const id of [...new Set(state.envois.map((e) => e.document_id))]) {
+        const d = state.docs.find((x) => x.id === id);
+        if (!d) continue;
+        const envois = state.envois.filter((e) => e.document_id === id).sort((a, b) => a.envoye_le.localeCompare(b.envoye_le)).map(({ document_id: _d, ...e }) => e);
+        const dernier = envois[envois.length - 1];
+        const depuis = Math.round((Date.now() - Date.parse(dernier.envoye_le)) / 86400_000);
+        const repondu = state.repondus[id] ?? null;
+        const m = med(d.category);
+        suivis.push({ document_id: id, titre: d.title, organisme: d.organisme ?? null, envois, statut: repondu ? "repondu" : depuis < 15 ? "attente" : envois.length === 1 ? "relancer" : "mediateur", depuis_jours: depuis, prochaine_etape_le: jour(dernier.envoye_le, 15), repondu_le: repondu, mediateur: m, mediateur_des_le: m.attente_jours ? jour(envois[0].envoye_le, m.attente_jours) : null });
+      }
+      return { suivis };
     },
-    courrierRepondu: async () => {},
+    courrierRepondu: async (id, repondu) => { if (repondu) state.repondus[id] = new Date().toISOString(); else delete state.repondus[id]; },
     relancerCourrier: async (id) => {
       const d = state.docs.find((x) => x.id === id);
       const quand = new Date(Date.now() - 16 * 86400_000).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });

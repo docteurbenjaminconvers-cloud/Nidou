@@ -25,6 +25,7 @@ import { Connecteur } from "./screens/Connecteur";
 import { Logo } from "./ui";
 import { useNotifications, NotificationsScreen } from "./notifications";
 import { Reveal, REVEAL_KEY } from "./screens/Reveal";
+import { Visite } from "./Visite";
 import { Famille, MembreDetail, ActiviteDetail } from "./screens/Famille";
 import { Login } from "./screens/Login";
 import { Semaine, calculerSemaine } from "./screens/Semaine";
@@ -188,6 +189,7 @@ export default function App() {
         </div>
       </nav>
       {reveal && budget && <Reveal budget={budget} onClose={() => setReveal(false)} go={go} toast={toast} />}
+      {api.mode === "demo" && <Visite docs={docs} go={go} enPause={reveal} />}
       {nouvelleVersion && <button className="maj-pastille" onClick={() => { toast("Mise à jour…"); mettreAJour(); }}><b>Nouvelle version de Lucien</b><span>Mettre à jour</span></button>}
       {toastMsg && <div className="toast" role="status">{toastMsg}</div>}
     </div>

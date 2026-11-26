@@ -1584,3 +1584,30 @@ button.sem-date:hover b { color: var(--nest); }
 .prix-offres a, .prix-sources a { color: var(--nest); font-weight: 600; overflow-wrap: anywhere; }
 .prix-sources { font-size: 13.5px; }
 .prix-sources ul { margin: 6px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+
+/* ---------- guided tour of the demonstration ---------- */
+.visite { position: fixed; z-index: 25; left: 5px; right: 5px; bottom: calc(env(safe-area-inset-bottom) + 96px); margin: 0 auto; max-width: 520px; background: var(--plum); color: var(--white); border-radius: 24px; padding: 12px 16px 10px; box-shadow: 0 18px 44px rgba(59, 42, 58, 0.38); animation: visite-monte .28s ease-out; }
+@keyframes visite-monte { from { transform: translateY(14px); opacity: 0; } to { transform: none; opacity: 1; } }
+.visite-corps { cursor: pointer; display: flex; flex-direction: column; gap: 4px; padding-right: 26px; outline: none; }
+.visite-corps b { font-family: var(--display); font-style: italic; font-size: 18.5px; line-height: 1.2; }
+.visite-corps p { margin: 0; font-size: 13.5px; line-height: 1.4; color: rgba(255, 255, 255, 0.88); }
+.visite-pas { font-size: 11.5px; font-weight: 800; letter-spacing: .08em; color: rgba(255, 255, 255, 0.6); }
+.visite-essayer { display: flex; gap: 6px; background: rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 7px 10px; margin-top: 4px !important; color: var(--white) !important; font-weight: 700; }
+.visite-essayer i { font-style: normal; color: #f6c9b8; }
+.visite-fermer { position: absolute; top: 8px; right: 10px; width: 32px; height: 32px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.12); color: var(--white); font-size: 20px; line-height: 1; }
+.visite-barre { height: 3px; border-radius: 3px; background: rgba(255, 255, 255, 0.16); margin: 8px 0 4px; overflow: hidden; }
+.visite-barre span { display: block; height: 100%; background: var(--nest); border-radius: 3px; transition: width .3s; }
+.visite-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.visite-actions .link { color: rgba(255, 255, 255, 0.8); background: none; border: 0; font-weight: 700; padding: 8px 4px; }
+.visite-actions .link:disabled { opacity: .3; }
+.visite-actions .btn { padding: 9px 18px; text-decoration: none; }
+.visite-reprendre { position: fixed; z-index: 21; right: 14px; bottom: calc(env(safe-area-inset-bottom) + 98px); border: 0; border-radius: 999px; background: var(--plum); color: var(--white); font-weight: 800; font-size: 13px; padding: 9px 14px; box-shadow: 0 10px 24px rgba(59, 42, 58, 0.3); }
+.visite-active .screen { padding-bottom: 310px; }
+.visite-active .toast { bottom: auto; top: calc(env(safe-area-inset-top) + 14px); }
+.visite-cible { scroll-margin-top: 14px; border-radius: 22px; box-shadow: 0 0 0 3px var(--nest), 0 0 0 9px rgba(217, 95, 69, 0.16); transition: box-shadow .3s; }
+section.visite-cible { padding: 10px; margin-left: -10px; margin-right: -10px; }
+@media (min-width: 1024px) {
+  .visite { left: auto; right: 28px; bottom: 28px; margin: 0; width: 400px; }
+  .visite-reprendre { bottom: 28px; right: 28px; }
+  .visite-active .screen { padding-bottom: 60px; }
+}
