@@ -33,7 +33,11 @@ export async function brancherBoite(env: NodeJS.ProcessEnv = process.env, f: typ
   }
 }
 
-export function demarrerBoite(): void {
+/** At start-up, then every 10 minutes for a day while Brevo refuses (domain being verified, DNS on its way). */
+export function demarrerBoite(essais = 144): void {
   if (!process.env.LUCIEN_INBOX_DOMAIN) { console.log("[boîte email] fermée : LUCIEN_INBOX_DOMAIN non réglé"); return; }
-  void brancherBoite().then((r) => console.log(`[boîte email] ${process.env.LUCIEN_INBOX_DOMAIN} : ${{ inactif: "en attente (LUCIEN_INBOX_SECRET, BREVO_API_KEY et une adresse publique https sont nécessaires)", deja: "branchée", cree: "branchée à l'instant chez Brevo", corrige: "adresse de réception corrigée chez Brevo", echec: "non branchée (voir l'erreur ci-dessus)" }[r]}`));
+  void brancherBoite().then((r) => {
+    console.log(`[boîte email] ${process.env.LUCIEN_INBOX_DOMAIN} : ${{ inactif: "en attente (LUCIEN_INBOX_SECRET, BREVO_API_KEY et une adresse publique https sont nécessaires)", deja: "branchée", cree: "branchée à l'instant chez Brevo", corrige: "adresse de réception corrigée chez Brevo", echec: essais > 1 ? "non branchée, nouvel essai dans 10 minutes" : "non branchée (voir l'erreur ci-dessus)" }[r]}`);
+    if (r === "echec" && essais > 1) setTimeout(() => demarrerBoite(essais - 1), 10 * 60_000).unref();
+  });
 }
