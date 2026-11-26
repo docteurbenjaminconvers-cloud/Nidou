@@ -583,18 +583,51 @@ function makeDemoApi(): Api {
       const brouillon: BrouillonCourrier = {
         lettre: { destinataire: { nom: d?.organisme ?? "Service client", adresse: "Service client\n10 rue de la République\n34000 Montpellier" }, objet: `${type === "reclamation" ? "Contestation" : "Demande de remboursement"} — ${d?.title ?? ""}`, reference: d?.numero_contrat ? `Contrat n° ${d.numero_contrat}` : null },
         corps: ["Madame, Monsieur,", `Je vous écris au sujet de « ${d?.title ?? "votre courrier"} ».`, explication.trim(), `Je vous remercie ${type === "reclamation" ? "de réexaminer mon dossier et de m'apporter une réponse écrite sous quinze jours" : "de procéder au remboursement sous trente jours et de me le confirmer par écrit"}.`, "Je vous prie d'agréer, Madame, Monsieur, l'expression de mes salutations distinguées."].join("\n\n"),
-        emails: ["service-client@exemple.fr"], source: d?.title ?? "", avec_ia: false, expediteur: { nom: "Claire Martin", adresse: null }, email_client: "claire@exemple.fr",
+        emails: ["service-client@exemple.fr"], source: d?.title ?? "", avec_ia: true, expediteur: { nom: "Claire Martin", adresse: null }, email_client: "claire@exemple.fr",
       };
       return brouillon;
     },
     courrierPdf: async () => { throw new ApiError(400, "demo", "En démonstration, le courrier se copie en texte."); },
     envoyerCourrier: async () => { throw new ApiError(400, "demo", "En démonstration, Lucien n'envoie pas de vrai email."); },
     envoisCourrier: async () => ({ envois: [] }),
-    prixDocument: async (id) => ({ comparable: ["energie", "telecom", "assurance", "abonnement"].includes(state.docs.find((d) => d.id === id)?.category ?? ""), paye_mensuel: state.docs.find((d) => d.id === id)?.montant ?? 0, recherche: null, valable: false, restantes: 0, par_mois: 5, disponible: false }),
+    prixDocument: async (id) => {
+      const d = state.docs.find((x) => x.id === id);
+      const comparable = ["energie", "telecom", "assurance", "abonnement"].includes(d?.category ?? "") && !!d?.montant;
+      // the demo shows one finished search, on the broadband contract (invented operators: no real price is claimed)
+      const recherche: EtatPrix["recherche"] = d?.category === "telecom" && d.montant ? {
+        id: "demo", document_id: id, cherche_le: new Date(Date.now() - 2 * 86400_000).toISOString(), paye_mensuel: d.montant,
+        resume: "Vous payez environ 20 € de plus par mois que les offres fibre et mobile sans engagement du moment. Votre engagement est terminé : rien ne vous retient.",
+        reference: null, prudence: "Vérifiez votre éligibilité (fibre, réseau mobile) et la fin de votre engagement avant de changer.",
+        offres: [
+          { fournisseur: "Océane Télécom", offre: "Fibre 1 Gb/s + mobile 100 Go", prix_mensuel: 44.98, prix_detail: "29,99 € la box + 14,99 € le mobile, sans engagement", conditions: "Même débit. Frais de mise en service offerts.", economie_annuelle: 240, url: "https://oceane-telecom.example/fibre-mobile", site: "oceane-telecom.example" },
+          { fournisseur: "Lumo", offre: "Box Fibre + forfait 80 Go", prix_mensuel: 47.98, prix_detail: "31,99 € + 15,99 € par mois, prix garanti 2 ans", conditions: "Débit 500 Mb/s au lieu de 1 Gb/s.", economie_annuelle: 204, url: "https://lumo.example/box", site: "lumo.example" },
+        ],
+        sources: [{ url: "https://oceane-telecom.example/fibre-mobile", titre: "Océane Télécom — fibre et mobile" }, { url: "https://lumo.example/box", titre: "Lumo — Box Fibre" }],
+      } : null;
+      return { comparable, paye_mensuel: d?.montant ?? 0, recherche, valable: !!recherche, restantes: 4, par_mois: 5, disponible: true };
+    },
     chercherPrix: async () => { throw new ApiError(402, "demo", "La recherche se fait dans la vraie application."); },
-    suiviCourriers: async () => ({ suivis: [] }),
+    suiviCourriers: async () => {
+      // the demo shows one letter left unanswered: the reminder is ready, the energy mediator comes next
+      const d = state.docs.find((x) => x.category === "energie" && /facture/i.test(x.title));
+      if (!d) return { suivis: [] };
+      const envoi = new Date(Date.now() - 16 * 86400_000).toISOString();
+      const plus = (n: number) => new Date(Date.parse(envoi) + n * 86400_000).toISOString().slice(0, 10);
+      return { suivis: [{
+        document_id: d.id, titre: d.title, organisme: d.organisme ?? null, statut: "relancer", depuis_jours: 16, prochaine_etape_le: plus(15), repondu_le: null,
+        envois: [{ id: "demo", destinataire: "service-client@exemple.fr", objet: `Contestation — ${d.title}`, envoye_le: envoi }],
+        mediateur: { nom: "Médiateur national de l'énergie", dans_lettre: "le Médiateur national de l'énergie", site: "https://www.energie-mediateur.fr", attente_jours: 60, conditions: "Gratuit. Vous pouvez le saisir deux mois après votre réclamation écrite restée sans réponse, et au plus tard un an après." },
+        mediateur_des_le: plus(60),
+      }] };
+    },
     courrierRepondu: async () => {},
-    relancerCourrier: async () => { throw new ApiError(400, "demo", "En démonstration, aucun courrier n'est parti."); },
+    relancerCourrier: async (id) => {
+      const d = state.docs.find((x) => x.id === id);
+      const quand = new Date(Date.now() - 16 * 86400_000).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+      const objet = `Relance — Contestation — ${d?.title ?? ""}`;
+      const corps = ["Madame, Monsieur,", `Par courrier du ${quand}, ayant pour objet « Contestation — ${d?.title ?? ""} », je vous ai écrit. Sauf erreur de ma part, ce courrier est resté sans réponse à ce jour.`, "Je vous renouvelle donc ma demande et vous remercie de bien vouloir y répondre par écrit sous quinze jours à compter de la réception du présent courrier.", "À défaut de réponse dans ce délai, je saisirai le Médiateur national de l'énergie, en joignant la copie de mes courriers.", "Je vous prie d'agréer, Madame, Monsieur, l'expression de mes salutations distinguées."];
+      return { lettre: { destinataire: { nom: d?.organisme ?? "Service client", adresse: "Service client\n10 rue de la République\n34000 Montpellier" }, objet, reference: d?.numero_contrat ? `Contrat n° ${d.numero_contrat}` : null }, corps: corps.join("\n\n"), emails: ["service-client@exemple.fr"], source: d?.title ?? "", avec_ia: false, expediteur: { nom: "Claire Martin", adresse: null }, email_client: "claire@exemple.fr" } as BrouillonCourrier;
+    },
     relireDocument: async () => { throw new ApiError(400, "demo", "En démonstration, Lucien ne relit pas les papiers."); },
     demarrerResiliation: async (cle: string) => {
       const act = (structuredClone(state.household.plan === "famille" ? demoBudgetFamille : demoBudget) as BudgetReport).actions.find((x) => x.marchand === cle);
