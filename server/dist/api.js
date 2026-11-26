@@ -1,4 +1,4 @@
-import { anthropicCreate, avecCompteur, reel } from "./ia.js";
+import { anthropicCreate, avecCompteur, modelFor, reel } from "./ia.js";
 import { Hono } from "hono";
 import { z } from "zod";
 import { mkdir, unlink } from "node:fs/promises";
@@ -50,6 +50,7 @@ import { agendaIcs } from "./ics.js";
 import { AUTH_ON, consommerLien, cookieHeader, demandeAutorisee, demanderLien, emailValide, sessionToken } from "./auth.js";
 import { agendaSemaine, familleReport, echeancesFamille, coutsParMembre } from "./famille.js";
 import { accuserReception, boiteAddress, fromBrevo, processInboundEmail } from "./inbox.js";
+import * as O from "./observatoire.js";
 import { courrierRelance, marquerRepondu, mediateurPour, poserAttente, suivisCourriers } from "./suiviCourriers.js";
 import { parseStatement, merchantOf, categorise, ruleCategory, fingerprint, TX_CATEGORIES, TX_LABEL } from "./transactions.js";
 import { budgetReport, findRecurrences } from "./budget.js";
@@ -102,6 +103,7 @@ export function createApi(db, opts) {
         return c.json({ error: "erreur", message: "Erreur interne" }, 500);
     });
     V.ensureVeilleSchema(db);
+    O.ensureObservatoireSchema(db);
     ensureAssistantSchema(db);
     ensureEbSchema(db);
     ensureSuppressionSchema(db);
@@ -1063,6 +1065,53 @@ Ce courrier vous est adressé par ${b.expediteur.nom} (${moi}), qui l'a validé 
         if (!d)
             return c.json({ error: "introuvable" }, 404);
         return c.json({ envois: db.raw.prepare("SELECT destinataire, objet, envoye_le FROM lettres_envoyees WHERE household_id = ? AND cle = ? ORDER BY envoye_le DESC").all(d.household_id, `doc:${d.id}`) });
+    });
+    // ---------- observatoire des prix : « Chercher moins cher » ----------
+    const etatPrix = (h, doc) => {
+        const derniere = O.derniereRecherche(db, h.id, doc.id);
+        return {
+            comparable: O.comparable(doc), paye_mensuel: O.mensuelDe(doc), recherche: derniere, valable: O.encoreValable(derniere),
+            restantes: Math.max(0, O.RECHERCHES_PAR_MOIS() - O.recherchesDuMois(db, h.id)), par_mois: O.RECHERCHES_PAR_MOIS(),
+            disponible: modelFor("precis")?.provider === "anthropic" && db.effectivePlan(db.getHousehold(h.id)) !== "gratuit",
+        };
+    };
+    api.get("/documents/:id/prix", (c) => {
+        const doc = docDuFoyer(c, c.req.param("id"));
+        if (!doc)
+            return c.json({ error: "introuvable" }, 404);
+        return c.json(etatPrix(household(c), doc));
+    });
+    api.post("/documents/:id/prix/chercher", async (c) => {
+        const h = household(c);
+        const doc = docDuFoyer(c, c.req.param("id"));
+        if (!doc)
+            return c.json({ error: "introuvable" }, 404);
+        if (estAuCoffre(doc) && !coffreOuvert(db, c))
+            return c.json({ error: "coffre", message: "Ouvrez le coffre pour que Lucien lise ce papier." }, 423);
+        const e = etatPrix(h, doc);
+        if (!e.comparable)
+            return c.json({ error: "non_comparable", message: "Je compare les contrats d'énergie, de box et mobile, d'assurance et les abonnements dont je connais le montant." }, 400);
+        if (!e.disponible)
+            return c.json({ error: "limite_plan", message: "La recherche d'offres moins chères fait partie de la formule complète." }, 402);
+        if (e.restantes <= 0)
+            return c.json({ error: "limite_mois", message: `Vous avez utilisé vos ${e.par_mois} recherches de ce mois. Elles reviennent le 1er.` }, 429);
+        const budget = budgetIa(db, h.id);
+        if (!budget.ok(O.COUT_ESTIME_CENTIMES))
+            return c.json({ error: "budget_ia", message: "Le budget IA du mois est atteint : la recherche reviendra le 1er." }, 429);
+        try {
+            const r = await O.chercherMoinsCher(doc);
+            const cout = reel(O.COUT_ESTIME_CENTIMES);
+            budget.compter(cout);
+            O.garderRecherche(db, h.id, r, cout);
+        }
+        catch (err) {
+            const cout = reel(0);
+            if (cout > 0)
+                budget.compter(cout); // a search that gave nothing still cost its tokens
+            console.error(`[prix] recherche impossible : ${err.message.slice(0, 200)}`);
+            return c.json({ error: "recherche", message: "La recherche n'a rien donné d'exploitable cette fois. Réessayez dans un moment." }, 502);
+        }
+        return c.json(etatPrix(h, doc), 201);
     });
     /** Letters awaiting an answer, the reminder to send, the mediator to turn to. */
     api.get("/courriers/suivi", (c) => c.json({ suivis: suivisCourriers(db, household(c).id) }));

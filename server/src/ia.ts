@@ -48,13 +48,14 @@ export function prixModele(model: string, entreeTotale = 0): { entree: number; s
   return { entree: env("LUCIEN_PRIX_SONNET_ENTREE", 2), sortie: env("LUCIEN_PRIX_SONNET_SORTIE", 10), cacheLecture: 0.1, cacheEcriture: 2.5 }; // Sonnet 5.5, and any other model at Sonnet's price
 }
 
-export interface Usage { input_tokens: number; output_tokens: number; cache_read_input_tokens?: number | null; cache_creation_input_tokens?: number | null }
+export interface Usage { input_tokens: number; output_tokens: number; cache_read_input_tokens?: number | null; cache_creation_input_tokens?: number | null; server_tool_use?: { web_search_requests?: number | null } | null }
 
 /** What one Anthropic call cost, in cents of euro, from the tokens it used. */
 export function centimesReels(model: string, u: Usage): number {
   const entree = u.input_tokens + (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0);
   const p = prixModele(model, entree);
-  const usd = (u.input_tokens * p.entree + u.output_tokens * p.sortie + (u.cache_read_input_tokens ?? 0) * p.cacheLecture + (u.cache_creation_input_tokens ?? 0) * p.cacheEcriture) / 1e6;
+  const usd = (u.input_tokens * p.entree + u.output_tokens * p.sortie + (u.cache_read_input_tokens ?? 0) * p.cacheLecture + (u.cache_creation_input_tokens ?? 0) * p.cacheEcriture) / 1e6
+    + (u.server_tool_use?.web_search_requests ?? 0) * Number(process.env.LUCIEN_PRIX_RECHERCHE_WEB ?? 0.01); // web search: $10 per 1,000 searches
   return usd * Number(process.env.LUCIEN_USD_EUR ?? 0.92) * 100;
 }
 

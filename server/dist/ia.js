@@ -39,7 +39,8 @@ export function prixModele(model, entreeTotale = 0) {
 export function centimesReels(model, u) {
     const entree = u.input_tokens + (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0);
     const p = prixModele(model, entree);
-    const usd = (u.input_tokens * p.entree + u.output_tokens * p.sortie + (u.cache_read_input_tokens ?? 0) * p.cacheLecture + (u.cache_creation_input_tokens ?? 0) * p.cacheEcriture) / 1e6;
+    const usd = (u.input_tokens * p.entree + u.output_tokens * p.sortie + (u.cache_read_input_tokens ?? 0) * p.cacheLecture + (u.cache_creation_input_tokens ?? 0) * p.cacheEcriture) / 1e6
+        + (u.server_tool_use?.web_search_requests ?? 0) * Number(process.env.LUCIEN_PRIX_RECHERCHE_WEB ?? 0.01); // web search: $10 per 1,000 searches
     return usd * Number(process.env.LUCIEN_USD_EUR ?? 0.92) * 100;
 }
 const compteur = new AsyncLocalStorage();

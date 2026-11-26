@@ -5,6 +5,7 @@ import { CATEGORIES, CATEGORY_LABEL, type BrouillonCourrier, type Category, type
 import { Back, DateChip, fmtDate, fmtEuro, PERIOD_LABEL, relative } from "../ui";
 import { CoffreSheet } from "./Coffre";
 import { CourrierAssistant, SuiviCourrierCarte } from "./Courrier";
+import { ObservatoirePrix } from "./Prix";
 import { PagesPdf } from "./PagesPdf";
 import { Ico } from "./espacesCommun";
 
@@ -223,6 +224,8 @@ export function DocumentDetail({ api, id, onBack, onChanged, toast, membres = []
           </ul>
         )}
       </section>
+
+      {!doc.verrouille && <ObservatoirePrix api={api} doc={doc} toast={toast} />}
 
       {doc.category !== "identite" && !doc.verrouille && <section className="section">
         <div className="section-head"><h2>Courrier prêt à envoyer</h2></div>

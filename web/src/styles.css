@@ -883,7 +883,7 @@ b, strong { font-weight: 800; }
 .lire-ligne { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
 .lire-ligne > * { flex: 1 1 160px; }
 .resil-feuille { overflow-y: auto; }
-.resil-gain { font-family: var(--serif, Georgia, serif); font-style: italic; font-size: 26px; font-weight: 600; color: var(--moss-ink, #2f7a55); margin: 4px 0 8px; }
+.resil-gain { font-family: var(--display); font-style: italic; font-size: 26px; font-weight: 600; color: var(--moss-ink, #2f7a55); margin: 4px 0 8px; }
 .resil-etapes { margin: 0 0 14px; padding-left: 20px; display: grid; gap: 8px; font-size: 14px; line-height: 1.45; }
 .resil-suivi { margin-top: 18px; }
 .resil-suivi h3 { font-size: 16px; margin: 0 0 8px; }
@@ -898,7 +898,7 @@ b, strong { font-weight: 800; }
 .prevision.alerte { background: var(--ember-soft, #f9e3df); }
 .prevision-tete { all: unset; cursor: pointer; display: flex; justify-content: space-between; align-items: flex-end; width: 100%; gap: 10px; }
 .prevision-tete small { display: block; font-size: 12.5px; color: var(--ink-2, #5b5060); font-weight: 700; }
-.prevision-tete b { font-family: var(--serif, Georgia, serif); font-style: italic; font-size: 28px; font-weight: 600; }
+.prevision-tete b { font-family: var(--display); font-style: italic; font-size: 28px; font-weight: 600; }
 .prevision.alerte .prevision-tete b { color: var(--ember); }
 .prevision-detail { font-size: 13px; color: var(--ink-2, #5b5060); }
 .prevision-msg { margin: 6px 0 0; font-size: 13.5px; line-height: 1.45; }
@@ -1564,3 +1564,23 @@ button.sem-date:hover b { color: var(--nest); }
 .depot-email span { font-size: 13.5px; color: var(--mist); line-height: 1.4; }
 .depot-email code { font-size: 13.5px; font-weight: 700; overflow-wrap: anywhere; }
 .depot-email .btn { flex: none; }
+
+.prix-carte { background: var(--white); border-radius: 22px; padding: 16px; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--shadow-soft, 0 2px 10px rgba(60,40,30,.06)); }
+.prix-carte p { margin: 0; line-height: 1.45; }
+.prix-carte .btn { align-self: flex-start; }
+.prix-attente { flex-direction: row; align-items: center; gap: 14px; }
+.prix-attente div { display: flex; flex-direction: column; gap: 2px; }
+.prix-attente span:not(.spinner) { font-size: 13.5px; color: var(--mist); }
+.prix-gain { font-family: var(--display); font-size: 21px; }
+.prix-gain b { color: var(--mint-ink); }
+.prix-gain.bon { color: var(--mint-ink); }
+.prix-ref { font-size: 14px; background: var(--lilac-soft); border-radius: 12px; padding: 10px 12px; }
+.prix-offres { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.prix-offres li { border: 1px solid var(--line); border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 3px; font-size: 14px; line-height: 1.4; }
+.prix-offres li > span { color: var(--mist); overflow-wrap: anywhere; }
+.prix-offres li > span.prix-offre { color: inherit; font-weight: 600; }
+.prix-tete { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 16px; }
+.prix-eco { flex: none; background: var(--moss); color: var(--mint-ink); border-radius: 999px; padding: 2px 10px; font-size: 13.5px; font-weight: 700; }
+.prix-offres a, .prix-sources a { color: var(--nest); font-weight: 600; overflow-wrap: anywhere; }
+.prix-sources { font-size: 13.5px; }
+.prix-sources ul { margin: 6px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
