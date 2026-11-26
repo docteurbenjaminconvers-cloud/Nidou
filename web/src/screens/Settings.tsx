@@ -212,7 +212,7 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
 
         <div className="settings-row">
           <div><div className="t">Papiers par email {household.boite_email ? <span className="badge">actif</span> : <span className="badge yolk">{household.boite_bientot ? "bientôt" : "formule"}</span>}</div>
-            <div className="s">{household.boite_email ? "Transférez une facture ou un contrat à votre adresse Lucien : il se range tout seul et crée ses rappels." : household.boite_bientot ? "Votre adresse personnelle arrive bientôt. En attendant, ajoutez vos papiers avec le bouton +." : "Une adresse personnelle pour transférer vos papiers, avec une formule."}</div></div>
+            <div className="s">{household.boite_email ? "Transférez une facture ou envoyez les photos d'un courrier à votre adresse Lucien : il range le papier, crée ses rappels et vous répond quand c'est fait." : household.boite_bientot ? "Votre adresse personnelle arrive bientôt. En attendant, ajoutez vos papiers avec le bouton +." : "Une adresse personnelle pour transférer vos papiers, avec une formule."}</div></div>
           {household.boite_email && <button className="link" onClick={() => copier(household.boite_email!, "Adresse copiée")}>Copier</button>}
         </div>
         {household.boite_email && <div className="code reg-code">{household.boite_email}</div>}

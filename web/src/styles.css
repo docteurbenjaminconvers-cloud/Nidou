@@ -1558,3 +1558,9 @@ button.sem-date:hover b { color: var(--nest); }
 .pour-qui > span { font-size: 13px; font-weight: 800; color: var(--mist); margin-right: 2px; }
 .pour-qui .pill { padding: 6px 12px; font-size: 13.5px; }
 .detail-title-in { width: 100%; font-family: var(--display); font-size: 24px; font-weight: 600; padding: 10px 14px; border-radius: 16px; border: 2px solid var(--line); margin-bottom: 8px; box-sizing: border-box; }
+
+.depot-email { display: flex; align-items: center; gap: 12px; margin-top: 16px; padding: 14px; border-radius: 18px; background: var(--lilac-soft); }
+.depot-email > div { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.depot-email span { font-size: 13.5px; color: var(--mist); line-height: 1.4; }
+.depot-email code { font-size: 13.5px; font-weight: 700; overflow-wrap: anywhere; }
+.depot-email .btn { flex: none; }

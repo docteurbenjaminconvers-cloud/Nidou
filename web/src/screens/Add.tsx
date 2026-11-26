@@ -114,6 +114,13 @@ export function Add({ api, onBack, onAdded, onChanged, toast, household, docs = 
       <label className="lbl" htmlFor="texte">Collez le texte d'un email ou d'un document</label>
       <textarea id="texte" className="ta" value={texte} onChange={(e) => setTexte(e.target.value)} placeholder={"Ex. : MAIF — Avis d'échéance\nContrat n° AUT-4471-8820\nCotisation annuelle : 612 €\nPériode du 01/12/2026 au 30/11/2027"} />
 
+      {household?.boite_email && (
+        <div className="depot-email">
+          <div><b>Ou par email</b><span>Transférez une facture, ou envoyez les photos d'un courrier, à votre adresse Lucien. Il range le papier et vous répond quand c'est fait.</span><code>{household.boite_email}</code></div>
+          <button className="btn ghost" onClick={async () => { try { await navigator.clipboard.writeText(household.boite_email!); toast("Adresse copiée"); } catch { toast(household.boite_email!); } }}>Copier</button>
+        </div>
+      )}
+
       {err && <p className="note" style={{ color: "var(--ember)", marginTop: 10 }}>{err}</p>}
       <div style={{ marginTop: 16 }}>
         <button className="btn block" disabled={busy || (!files.length && !texte.trim())} onClick={submit}>{busy ? <><span className="spinner" /> {suivi ? `Lecture ${Math.min(suivi.filter((x) => x.etat !== "attente").length, suivi.length)} sur ${suivi.length}…` : "Lecture du document…"}</> : files.length + (texte.trim() ? 1 : 0) > 1 ? `Lire et ranger les ${files.length + (texte.trim() ? 1 : 0)} papiers` : "Lire et ranger"}</button>

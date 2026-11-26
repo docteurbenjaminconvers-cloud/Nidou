@@ -51,7 +51,7 @@ import { agendaIcs } from "./ics.js";
 
 import { AUTH_ON, consommerLien, cookieHeader, demandeAutorisee, demanderLien, emailValide, sessionToken } from "./auth.js";
 import { agendaSemaine, familleReport, echeancesFamille, JOURS, coutsParMembre } from "./famille.js";
-import { boiteAddress, fromBrevo, processInboundEmail, type InboundEmail } from "./inbox.js";
+import { accuserReception, boiteAddress, fromBrevo, processInboundEmail, type InboundEmail } from "./inbox.js";
 import { courrierRelance, marquerRepondu, mediateurPour, poserAttente, suivisCourriers, type LettreGardee } from "./suiviCourriers.js";
 import { parseStatement, merchantOf, categorise, ruleCategory, fingerprint, TX_CATEGORIES, TX_LABEL, type ParsedTx } from "./transactions.js";
 import { budgetReport, findRecurrences } from "./budget.js";
@@ -439,7 +439,11 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     });
     const mails: InboundEmail[] = Array.isArray(body) ? body.map((m) => generic.parse(m)) : body?.items ? await fromBrevo(body) : [generic.parse(body)];
     const resultats = [];
-    for (const m of mails) resultats.push(await processInboundEmail(db, m, { plan: (hh) => db.effectivePlan(db.getHousehold(hh.id)!) }));
+    for (const m of mails) {
+      const r = await processInboundEmail(db, m, { plan: (hh) => db.effectivePlan(db.getHousehold(hh.id)!) });
+      resultats.push(r);
+      await accuserReception(db, m, r).catch(() => false); // the person learns what became of their email
+    }
     return c.json({ resultats: resultats.map((r) => (r.statut === "ok" ? { statut: "ok", documents: r.documents.length } : r)) });
   });
 
