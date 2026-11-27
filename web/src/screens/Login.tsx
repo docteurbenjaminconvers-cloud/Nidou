@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Api } from "../api";
 import { Logo, SITE } from "../ui";
 
@@ -10,10 +10,15 @@ export function Login({ api, erreur }: { api: Api; erreur?: string | null }) {
   const [ferme, setFerme] = useState(false);
   const [err, setErr] = useState<string | null>(erreur === "expire" ? "Ce lien a expiré. Demandez-en un nouveau." : erreur === "utilise" ? "Ce lien a déjà servi. Demandez-en un nouveau." : erreur === "invalide" ? "Lien invalide. Demandez-en un nouveau." : null);
 
+  // arrived through a shared invitation link: said at once, and checked (places left, date not past)
+  const [invitation] = useState(() => { try { return localStorage.getItem("lucien.invitation"); } catch { return null; } });
+  const [invite, setInvite] = useState<boolean | null>(null);
+  useEffect(() => { if (invitation) api.invitationValable(invitation).then((r) => setInvite(r.valable)).catch(() => setInvite(null)); }, [invitation]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const submit = async () => {
     setBusy(true); setErr(null);
     try { localStorage.setItem("lucien.email", email); } catch {}
-    try { const r = await api.demanderLien(email.trim()); setSent({ envoye: r.envoye, lien: r.lien }); }
+    try { const r = await api.demanderLien(email.trim(), invitation); setSent({ envoye: r.envoye, lien: r.lien }); try { localStorage.removeItem("lucien.invitation"); } catch { /* storage refused */ } }
     catch (e) { const code = (e as { code?: string }).code; setFerme(code === "sur_invitation"); setErr((e as Error).message); }
     finally { setBusy(false); }
   };
@@ -22,6 +27,8 @@ export function Login({ api, erreur }: { api: Api; erreur?: string | null }) {
     <div className="app">
       <div className="screen" style={{ minHeight: "90dvh", display: "flex", flexDirection: "column", justifyContent: "center" }}>
         <div style={{ marginBottom: 28 }}><Logo /></div>
+        {invitation && invite === true && <div className="confidence ok" style={{ display: "block", width: "100%", marginBottom: 14 }}><b>Vous êtes invité·e à essayer Lucien.</b> 15 jours d'accès complet, gratuitement et sans carte bancaire. Saisissez votre email pour créer votre espace.</div>}
+        {invitation && invite === false && <div className="confidence" style={{ display: "block", width: "100%", marginBottom: 14 }}>Ce lien d'invitation n'est plus valable : toutes les places sont prises, ou sa date est passée. Demandez-en un nouveau à la personne qui vous l'a envoyé.</div>}
         <h1 className="detail-title">Ouvrir votre espace</h1>
         <p className="detail-sub">Pas de mot de passe : on vous envoie un lien par email. Il ouvre Lucien sur ce téléphone, et c'est tout.</p>
         {sent ? (

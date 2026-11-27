@@ -14,6 +14,12 @@ try {
   }
 } catch {}
 
+// A shared invitation link (family group chat): ...?invitation=CODE, kept until the person has asked for their login link.
+try {
+  const inv = new URLSearchParams(location.search).get("invitation") ?? new URLSearchParams(location.hash.split("?")[1] ?? "").get("invitation");
+  if (inv && /^[A-Za-z0-9]{6,24}$/.test(inv)) localStorage.setItem("lucien.invitation", inv.toLowerCase());
+} catch {}
+
 // A link shared by a partner accountant: ...?partenaire=CODE (before or after the #), kept until the household is logged in.
 try {
   const code = new URLSearchParams(location.search).get("partenaire") ?? new URLSearchParams(location.hash.split("?")[1] ?? "").get("partenaire");

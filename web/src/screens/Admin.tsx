@@ -5,6 +5,7 @@ import type { Api } from "../api";
 type Statut = "en_attente" | "valide" | "refuse";
 interface CabinetAdmin { code: string; nom: string; email: string; ville: string | null; statut: Statut; cree_le: string; clients: number; abonnes: number }
 interface MessageSupport { id: string; user_email: string | null; sujet: string; message: string; contexte: Record<string, string>; traite: boolean; cree_le: string }
+interface LienPartage { code: string; nom: string; places: number; utilises: number; expire_le: string; cree_le: string; valable: boolean; url: string }
 interface Invite { email: string; prenom: string | null; note: string | null; cree_le: string; inscrit: boolean; offert?: boolean }
 const SUJET: Record<string, string> = { question: "Question", probleme: "Problème", banque: "Banque", abonnement: "Abonnement", idee: "Idée" };
 interface Resume { cabinets: { en_attente: number; valides: number; refuses: number }; via_cabinets: { foyers: number; abonnes: number }; foyers: { total: number; abonnes: number }; ia: { gratuit_eur: number; payant_eur: number } }
@@ -23,6 +24,7 @@ function demo() {
     { code: "COMP-2HWN", nom: "Compta Sud Conseil", email: "bonjour@comptasud.fr", ville: "Uzès", statut: "valide", cree_le: j(65), clients: 6, abonnes: 5 },
     { code: "TEST-QQQQ", nom: "Test test", email: "test@test.com", ville: null, statut: "refuse", cree_le: j(20), clients: 0, abonnes: 0 },
   ];
+  let liensDemo: LienPartage[] = [];
   let invites: Invite[] = [{ email: "christina@exemple.fr", prenom: "Christina", note: null, cree_le: j(1), inscrit: true }, { email: "anne@exemple.fr", prenom: "Anne", note: null, cree_le: j(0.5), inscrit: false }];
   let messages: MessageSupport[] = [
     { id: "m1", user_email: "camille@exemple.fr", sujet: "banque", message: "Bonjour, ma banque (Crédit Agricole) me demande de me reconnecter tous les 3 mois, c'est normal ?", contexte: { foyer: "Famille Martin", formule: "duo", abonnement: "active", appareil: "iPhone, Safari, appli installée", ecran: "390×844", page: "budget" }, traite: false, cree_le: j(0.2) },
@@ -46,6 +48,9 @@ function demo() {
     async offrir(email: string, offert: boolean) { const x = invites.find((i) => i.email === email); if (x) x.offert = offert; return {}; },
     async inviter(p: { email: string; prenom: string }) { invites = [{ email: p.email.toLowerCase(), prenom: p.prenom || null, note: null, cree_le: new Date().toISOString(), inscrit: false }, ...invites.filter((x) => x.email !== p.email.toLowerCase())]; return { envoye: true }; },
     async retirerAcces(email: string) { invites = invites.filter((x) => x.email !== email); },
+    async liens() { return liensDemo.map((x) => ({ ...x })); },
+    async creerLien(p: { nom: string; places: number; jours: number }) { const code = Math.random().toString(36).slice(2, 12).padEnd(10, "x"); const url = `${location.origin}/?invitation=${code}`; liensDemo = [{ code, nom: p.nom, places: p.places, utilises: 0, expire_le: new Date(Date.now() + p.jours * 864e5).toISOString(), cree_le: new Date().toISOString(), valable: true, url }, ...liensDemo]; return { code, url }; },
+    async supprimerLien(code: string) { liensDemo = liensDemo.filter((x) => x.code !== code); },
     async lienConnexion() { return { lien: "https://nidou.onrender.com/api/auth/lien?token=demo", valable_minutes: 30 }; },
   };
 }
@@ -72,6 +77,9 @@ function serveur(jeton: string) {
     offrir: (email: string, offert: boolean) => appel(`/admin/acces/${encodeURIComponent(email)}`, { method: "PATCH", body: JSON.stringify({ offert }) }),
     lienConnexion: (email: string) => appel<{ lien: string; valable_minutes: number }>("/admin/acces/lien", { method: "POST", body: JSON.stringify({ email }) }),
     retirerAcces: (email: string) => appel(`/admin/acces/${encodeURIComponent(email)}`, { method: "DELETE" }),
+    liens: () => appel<{ liens: LienPartage[] }>("/admin/acces/liens").then((r) => r.liens),
+    creerLien: (p: { nom: string; places: number; jours: number }) => appel<{ code: string; url: string }>("/admin/acces/liens", { method: "POST", body: JSON.stringify(p) }),
+    supprimerLien: (code: string) => appel(`/admin/acces/liens/${code}`, { method: "DELETE" }),
   };
 }
 
@@ -89,6 +97,9 @@ export function PageAdmin({ api }: { api: Api }) {
   const [onglet, setOnglet] = useState<"cabinets" | "messages" | "acces">("cabinets");
   const [acces, setAcces] = useState<{ restreint: boolean; liste: Invite[] } | null>(null);
   const [nouvel, setNouvel] = useState<{ email: string; prenom: string; offert?: boolean }>({ email: "", prenom: "", offert: true });
+  const [liens, setLiens] = useState<LienPartage[]>([]);
+  const [nouveauLien, setNouveauLien] = useState({ nom: "Famille", places: 10, jours: 15 });
+  const texteInvitation = (url: string) => `Je vous invite à essayer Lucien, l'application qui range les papiers, rappelle les échéances et fait faire des économies. 15 jours d'accès complet, gratuitement et sans carte bancaire : ${url}\nDites-moi ce que vous en pensez !`;
   const [lienEmail, setLienEmail] = useState("");
   const [lien, setLien] = useState<string | null>(null);
   const [messages, setMessages] = useState<MessageSupport[] | null>(null);
@@ -145,7 +156,7 @@ export function PageAdmin({ api }: { api: Api }) {
 
       <div className="pills admin-onglets">
         <button className="pill" aria-pressed={onglet === "cabinets"} onClick={() => setOnglet("cabinets")}>Cabinets</button>
-        <button className="pill" aria-pressed={onglet === "acces"} onClick={async () => { setOnglet("acces"); setAcces(await client.acces().catch(() => null)); }}>Avant-première</button>
+        <button className="pill" aria-pressed={onglet === "acces"} onClick={async () => { setOnglet("acces"); setAcces(await client.acces().catch(() => null)); setLiens(await client.liens().catch(() => [])); }}>Avant-première</button>
         <button className="pill" aria-pressed={onglet === "messages"} onClick={() => { setOnglet("messages"); chargerMessages(); }}>Messages des utilisateurs{messages ? ` (${messages.filter((m) => !m.traite).length} à traiter)` : ""}</button>
       </div>
 
@@ -158,6 +169,25 @@ export function PageAdmin({ api }: { api: Api }) {
             <input className="in" required type="email" placeholder="Email" value={nouvel.email} onChange={(e) => setNouvel({ ...nouvel, email: e.target.value })} />
             <label className="note" style={{ display: "flex", gap: 8, alignItems: "center" }}><input type="checkbox" checked={!!nouvel.offert} onChange={(e) => setNouvel({ ...nouvel, offert: e.target.checked })} /> Accès offert : tout Lucien gratuitement pendant l'avant-première</label>
             <div className="admin-form-actions"><button className="btn">Inviter et envoyer l'email</button></div>
+          </form>
+          <form className="admin-form" onSubmit={async (e) => { e.preventDefault(); try { await client.creerLien(nouveauLien); setLiens(await client.liens()); info("Lien créé : copiez-le pour l'envoyer"); } catch (x) { info((x as Error).message); } }}>
+            <b>Lien à partager (groupe WhatsApp, SMS…)</b>
+            <span className="note">Un seul lien pour plusieurs personnes : chacune l'ouvre, saisit son email et obtient son propre espace, avec 15 jours d'accès complet. Elles apparaissent ensuite dans la liste ci-dessous, où vous pouvez cocher « accès offert » pour prolonger.</span>
+            <input className="in" required maxLength={60} placeholder="Nom du lien (pour vous)" value={nouveauLien.nom} onChange={(e) => setNouveauLien({ ...nouveauLien, nom: e.target.value })} />
+            <label className="note" style={{ display: "flex", gap: 8, alignItems: "center" }}>Nombre de places <input className="in" style={{ width: 90 }} type="number" min={1} max={100} value={nouveauLien.places} onChange={(e) => setNouveauLien({ ...nouveauLien, places: Math.max(1, Math.min(100, Number(e.target.value) || 1)) })} /></label>
+            <label className="note" style={{ display: "flex", gap: 8, alignItems: "center" }}>Valable (jours) <input className="in" style={{ width: 90 }} type="number" min={1} max={90} value={nouveauLien.jours} onChange={(e) => setNouveauLien({ ...nouveauLien, jours: Math.max(1, Math.min(90, Number(e.target.value) || 1)) })} /></label>
+            <div className="admin-form-actions"><button className="btn">Créer le lien</button></div>
+            {liens.map((l) => (
+              <div key={l.code} className="admin-lien-partage">
+                <div><b>{l.nom}</b><span className="note"> · {l.utilises} / {l.places} places prises · {l.valable ? `valable jusqu'au ${dateFr(l.expire_le)}` : "terminé"}</span></div>
+                <div className="code admin-lien" data-pas-traduire>{l.url}</div>
+                <div className="admin-form-actions">
+                  <button type="button" className="btn ghost" onClick={async () => { try { await navigator.clipboard.writeText(l.url); info("Lien copié"); } catch { info("Copiez le lien à la main"); } }}>Copier le lien</button>
+                  <button type="button" className="btn ghost" onClick={async () => { try { await navigator.clipboard.writeText(texteInvitation(l.url)); info("Message copié : collez-le dans le groupe"); } catch { info("Copiez le lien à la main"); } }}>Copier un message tout prêt</button>
+                  <button type="button" className="link" onClick={async () => { await client.supprimerLien(l.code); setLiens(await client.liens()); info("Lien supprimé : les personnes déjà entrées gardent leur accès"); }}>Supprimer</button>
+                </div>
+              </div>
+            ))}
           </form>
           <form className="admin-form" onSubmit={async (e) => { e.preventDefault(); try { setLien((await client.lienConnexion(lienEmail.trim())).lien); } catch (x) { info((x as Error).message); } }}>
             <b>Créer un lien de connexion</b>

@@ -56,3 +56,35 @@ test("accès offert : un proche marqué « offert » a tout Lucien sans payer, e
   assert.equal((await api.request("/admin/acces/inconnu%40exemple.fr", json({ offert: true }, "PATCH", auth))).status, 404);
   delete process.env.LUCIEN_ACCES; delete process.env.LUCIEN_ADMIN_TOKEN;
 });
+
+test("lien à partager : chacun entre avec son adresse, tant qu'il reste une place et que la date n'est pas passée", async () => {
+  process.env.LUCIEN_AUTH = "1"; process.env.LUCIEN_ADMIN_TOKEN = "secret-admin"; process.env.LUCIEN_ACCES = "restreint"; delete process.env.LUCIEN_ACCES_EMAILS;
+  const { oublierDemandes } = await import("./auth.js"); oublierDemandes();
+  try {
+    const db = new Db(":memory:");
+    const api = createApi(db, { uploadDir: "/tmp/lucien-test-uploads" });
+    const auth = { authorization: "Bearer secret-admin" };
+    assert.equal((await api.request("/admin/acces/liens", json({ nom: "Famille", places: 2, jours: 15 }))).status, 403, "admin only");
+    const cree = await (await api.request("/admin/acces/liens", json({ nom: "Famille", places: 2, jours: 15 }, "POST", auth))).json();
+    assert.match(cree.url, /\/\?invitation=[a-z0-9]{10}$/);
+    assert.deepEqual(await (await api.request(`/auth/invitation/${cree.code}`)).json(), { valable: true });
+    assert.deepEqual(await (await api.request("/auth/invitation/nimportequoi")).json(), { valable: false });
+    assert.equal((await api.request("/auth/demander", json({ email: "tante@exemple.fr" }))).status, 403, "without the link: closed");
+    assert.equal((await api.request("/auth/demander", json({ email: "tante@exemple.fr", invitation: "mauvaiscode" }))).status, 403);
+    assert.notEqual((await api.request("/auth/demander", json({ email: "Tante@exemple.fr", invitation: cree.code.toUpperCase() }))).status, 403);
+    assert.notEqual((await api.request("/auth/demander", json({ email: "tante@exemple.fr", invitation: cree.code }))).status, 403, "same address: no second place taken");
+    assert.notEqual((await api.request("/auth/demander", json({ email: "cousin@exemple.fr", invitation: cree.code }))).status, 403);
+    const plein = await api.request("/auth/demander", json({ email: "voisin@exemple.fr", invitation: cree.code }));
+    assert.equal(plein.status, 403); assert.match((await plein.json()).message, /plus valable/);
+    const liens = (await (await api.request("/admin/acces/liens", { headers: auth })).json()).liens;
+    assert.equal(liens[0].utilises, 2); assert.equal(liens[0].valable, false);
+    const liste = (await (await api.request("/admin/acces", { headers: auth })).json()).liste;
+    assert.deepEqual(liste.map((x: any) => x.email).sort(), ["cousin@exemple.fr", "tante@exemple.fr"]); assert.match(liste[0].note, /Lien « Famille »/);
+    assert.notEqual((await api.request("/auth/demander", json({ email: "tante@exemple.fr" }))).status, 403, "once in, the link is no longer needed");
+    // a link past its date
+    const vieux = await (await api.request("/admin/acces/liens", json({ nom: "Vieux", places: 5, jours: 1 }, "POST", auth))).json();
+    db.raw.prepare("UPDATE acces_liens SET expire_le = ? WHERE code = ?").run("2020-01-01T00:00:00.000Z", vieux.code);
+    assert.equal((await api.request("/auth/demander", json({ email: "ami@exemple.fr", invitation: vieux.code }))).status, 403);
+    assert.equal((await api.request(`/admin/acces/liens/${vieux.code}`, { method: "DELETE", headers: auth })).status, 200);
+  } finally { delete process.env.LUCIEN_ACCES; delete process.env.LUCIEN_ADMIN_TOKEN; }
+});

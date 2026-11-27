@@ -1611,3 +1611,5 @@ section.visite-cible { padding: 10px; margin-left: -10px; margin-right: -10px; }
   .visite-reprendre { bottom: 28px; right: 28px; }
   .visite-active .screen { padding-bottom: 60px; }
 }
+
+.admin-lien-partage { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--line); padding-top: 10px; margin-top: 4px; }

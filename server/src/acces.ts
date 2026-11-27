@@ -4,6 +4,7 @@
  * database and is managed from the admin page; LUCIEN_ACCES_EMAILS adds addresses from the server settings
  * (Benjamin's own, so he can never lock himself out).
  */
+import { randomBytes } from "node:crypto";
 import type { Hono } from "hono";
 import { z } from "zod";
 import type { Db } from "./db.js";
@@ -21,6 +22,29 @@ export function ensureAccesSchema(db: Db) {
   db.raw.exec("CREATE TABLE IF NOT EXISTS acces_invites (email TEXT PRIMARY KEY, prenom TEXT, note TEXT, cree_le TEXT NOT NULL)");
   const cols = (db.raw.prepare("PRAGMA table_info(acces_invites)").all() as { name: string }[]).map((c) => c.name);
   if (!cols.includes("offert")) db.raw.exec("ALTER TABLE acces_invites ADD COLUMN offert INTEGER NOT NULL DEFAULT 0");
+  db.raw.exec("CREATE TABLE IF NOT EXISTS acces_liens (code TEXT PRIMARY KEY, nom TEXT NOT NULL, places INTEGER NOT NULL, utilises INTEGER NOT NULL DEFAULT 0, expire_le TEXT NOT NULL, cree_le TEXT NOT NULL)");
+}
+
+/**
+ * A link to share (a family group chat): whoever opens it may create their space, with the ordinary 15-day trial,
+ * until its places are taken or its date is past. Each address that uses it joins the list of invited people, where
+ * it can be removed or offered a free access like any other.
+ */
+export interface LienPartage { code: string; nom: string; places: number; utilises: number; expire_le: string; cree_le: string }
+const lienValable = (l: LienPartage | undefined, maintenant = new Date().toISOString()): l is LienPartage => !!l && l.utilises < l.places && l.expire_le > maintenant;
+export function lienPartage(db: Db, code: string): LienPartage | undefined {
+  ensureAccesSchema(db);
+  return /^[a-z0-9]{6,24}$/i.test(code) ? db.raw.prepare("SELECT * FROM acces_liens WHERE code = ?").get(code.toLowerCase()) as unknown as LienPartage | undefined : undefined;
+}
+/** Lets this address in through a shared link. True when the address is now invited (a place is taken once per address). */
+export function entrerParLien(db: Db, code: string, email: string): boolean {
+  const l = lienPartage(db, code);
+  const e = email.trim().toLowerCase();
+  if (!lienValable(l)) return false;
+  if (db.raw.prepare("SELECT 1 FROM acces_invites WHERE email = ?").get(e)) return true;
+  db.raw.prepare("INSERT INTO acces_invites (email, prenom, note, cree_le) VALUES (?, NULL, ?, ?)").run(e, `Lien « ${l.nom} »`, new Date().toISOString());
+  db.raw.prepare("UPDATE acces_liens SET utilises = utilises + 1 WHERE code = ?").run(l.code);
+  return true;
 }
 
 /**
@@ -68,6 +92,27 @@ export function monterAcces(api: Hono<any>, db: Db) {
     const r = interdit(c); if (r) return r;
     const liste = db.raw.prepare("SELECT a.*, (SELECT COUNT(*) FROM users u WHERE lower(u.email) = a.email) AS inscrit FROM acces_invites a ORDER BY a.cree_le DESC").all() as unknown as { inscrit: number; offert: number }[];
     return c.json({ restreint: accesRestreint(), liste: liste.map((x) => ({ ...x, inscrit: x.inscrit > 0, offert: x.offert === 1 })) });
+  });
+
+  // ----- links to share -----
+  /** Public: is this shared link still good? (nothing else about it leaves) */
+  api.get("/auth/invitation/:code", (c) => c.json({ valable: lienValable(lienPartage(db, c.req.param("code"))) }));
+  api.get("/admin/acces/liens", (c) => {
+    const non = interdit(c); if (non) return non;
+    const liens = db.raw.prepare("SELECT * FROM acces_liens ORDER BY cree_le DESC").all() as unknown as LienPartage[];
+    return c.json({ liens: liens.map((l) => ({ ...l, valable: lienValable(l), url: `${publicUrl()}/?invitation=${l.code}` })) });
+  });
+  api.post("/admin/acces/liens", async (c) => {
+    const non = interdit(c); if (non) return non;
+    const b = z.object({ nom: z.string().trim().min(1).max(60), places: z.number().int().min(1).max(100), jours: z.number().int().min(1).max(90) }).parse(await c.req.json());
+    const code = randomBytes(9).toString("base64url").replace(/[^a-z0-9]/gi, "").toLowerCase().slice(0, 10).padEnd(10, "x");
+    db.raw.prepare("INSERT INTO acces_liens (code, nom, places, utilises, expire_le, cree_le) VALUES (?, ?, ?, 0, ?, ?)").run(code, b.nom, b.places, new Date(Date.now() + b.jours * 86400_000).toISOString(), new Date().toISOString());
+    return c.json({ code, url: `${publicUrl()}/?invitation=${code}` }, 201);
+  });
+  api.delete("/admin/acces/liens/:code", (c) => {
+    const non = interdit(c); if (non) return non;
+    db.raw.prepare("DELETE FROM acces_liens WHERE code = ?").run(c.req.param("code").toLowerCase()); // people already in keep their access
+    return c.json({ ok: true });
   });
 
   api.post("/admin/acces", async (c) => {

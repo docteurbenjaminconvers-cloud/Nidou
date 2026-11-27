@@ -140,7 +140,9 @@ export interface Api {
   deleteActivite(id: string): Promise<void>;
   // accounts & shared household
   moi(): Promise<{ user: { id: string; email: string; prenom: string | null } | null; auth: boolean; foyers: { id: string; nom: string; role: string }[] }>;
-  demanderLien(email: string): Promise<{ ok: boolean; envoye: boolean; lien: string | null }>;
+  demanderLien(email: string, invitation?: string | null): Promise<{ ok: boolean; envoye: boolean; lien: string | null }>;
+  /** Is this shared invitation link still good? */
+  invitationValable(code: string): Promise<{ valable: boolean }>;
   /** Tells the server the app's language, so emails and notifications follow it. */
   enregistrerLangue(langue: "fr" | "en"): Promise<void>;
   deconnexion(): Promise<void>;
@@ -368,7 +370,8 @@ const serverApi: Api = {
   updateActivite: (id, patch) => call(`/activites/${id}`, json(patch, "PATCH")),
   deleteActivite: async (id) => { await call(`/activites/${id}`, { method: "DELETE" }); },
   moi: () => call("/auth/moi"),
-  demanderLien: (email) => call("/auth/demander", json({ email, langue: langueChoisie() })),
+  demanderLien: (email, invitation) => call("/auth/demander", json({ email, langue: langueChoisie(), ...(invitation ? { invitation } : {}) })),
+  invitationValable: (code) => call(`/auth/invitation/${encodeURIComponent(code)}`),
   enregistrerLangue: async (langue) => { await call("/moi/langue", json({ langue })).catch(() => {}); },
   deconnexion: async () => { await call("/auth/deconnexion", { method: "POST" }); await viderCacheLocal(); },
   comptes: () => call("/foyer/comptes"),
@@ -737,6 +740,7 @@ function makeDemoApi(): Api {
     deleteActivite: async (id) => { state.famille.activites = state.famille.activites.filter((x) => x.id !== id); },
     moi: async () => ({ user: { id: "u1", email: "demo@monlucien.fr", prenom: "Moi" }, auth: false, foyers: [{ id: state.household.id, nom: state.household.nom, role: "proprietaire" }] }),
     demanderLien: async () => ({ ok: true, envoye: false, lien: null }),
+    invitationValable: async () => ({ valable: true }),
     enregistrerLangue: async () => {},
     deconnexion: async () => {},
     comptes: async () => ({ comptes: state.comptes, invitations: state.invitations }),

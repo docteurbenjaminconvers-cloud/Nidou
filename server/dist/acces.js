@@ -1,3 +1,10 @@
+/**
+ * Avant-première : with LUCIEN_ACCES=restreint, only invited addresses can ask for a login link (people who already
+ * have an account, and those invited into a household by its owner, keep their access). The list lives in the
+ * database and is managed from the admin page; LUCIEN_ACCES_EMAILS adds addresses from the server settings
+ * (Benjamin's own, so he can never lock himself out).
+ */
+import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { emailValide } from "./auth.js";
 import { envoyerEmail } from "./mail.js";
@@ -11,6 +18,24 @@ export function ensureAccesSchema(db) {
     const cols = db.raw.prepare("PRAGMA table_info(acces_invites)").all().map((c) => c.name);
     if (!cols.includes("offert"))
         db.raw.exec("ALTER TABLE acces_invites ADD COLUMN offert INTEGER NOT NULL DEFAULT 0");
+    db.raw.exec("CREATE TABLE IF NOT EXISTS acces_liens (code TEXT PRIMARY KEY, nom TEXT NOT NULL, places INTEGER NOT NULL, utilises INTEGER NOT NULL DEFAULT 0, expire_le TEXT NOT NULL, cree_le TEXT NOT NULL)");
+}
+const lienValable = (l, maintenant = new Date().toISOString()) => !!l && l.utilises < l.places && l.expire_le > maintenant;
+export function lienPartage(db, code) {
+    ensureAccesSchema(db);
+    return /^[a-z0-9]{6,24}$/i.test(code) ? db.raw.prepare("SELECT * FROM acces_liens WHERE code = ?").get(code.toLowerCase()) : undefined;
+}
+/** Lets this address in through a shared link. True when the address is now invited (a place is taken once per address). */
+export function entrerParLien(db, code, email) {
+    const l = lienPartage(db, code);
+    const e = email.trim().toLowerCase();
+    if (!lienValable(l))
+        return false;
+    if (db.raw.prepare("SELECT 1 FROM acces_invites WHERE email = ?").get(e))
+        return true;
+    db.raw.prepare("INSERT INTO acces_invites (email, prenom, note, cree_le) VALUES (?, NULL, ?, ?)").run(e, `Lien « ${l.nom} »`, new Date().toISOString());
+    db.raw.prepare("UPDATE acces_liens SET utilises = utilises + 1 WHERE code = ?").run(l.code);
+    return true;
 }
 /**
  * Accès offert (avant-première) : a household with at least one member whose invitation is marked « offert » gets the
@@ -59,6 +84,32 @@ export function monterAcces(api, db) {
             return r;
         const liste = db.raw.prepare("SELECT a.*, (SELECT COUNT(*) FROM users u WHERE lower(u.email) = a.email) AS inscrit FROM acces_invites a ORDER BY a.cree_le DESC").all();
         return c.json({ restreint: accesRestreint(), liste: liste.map((x) => ({ ...x, inscrit: x.inscrit > 0, offert: x.offert === 1 })) });
+    });
+    // ----- links to share -----
+    /** Public: is this shared link still good? (nothing else about it leaves) */
+    api.get("/auth/invitation/:code", (c) => c.json({ valable: lienValable(lienPartage(db, c.req.param("code"))) }));
+    api.get("/admin/acces/liens", (c) => {
+        const non = interdit(c);
+        if (non)
+            return non;
+        const liens = db.raw.prepare("SELECT * FROM acces_liens ORDER BY cree_le DESC").all();
+        return c.json({ liens: liens.map((l) => ({ ...l, valable: lienValable(l), url: `${publicUrl()}/?invitation=${l.code}` })) });
+    });
+    api.post("/admin/acces/liens", async (c) => {
+        const non = interdit(c);
+        if (non)
+            return non;
+        const b = z.object({ nom: z.string().trim().min(1).max(60), places: z.number().int().min(1).max(100), jours: z.number().int().min(1).max(90) }).parse(await c.req.json());
+        const code = randomBytes(9).toString("base64url").replace(/[^a-z0-9]/gi, "").toLowerCase().slice(0, 10).padEnd(10, "x");
+        db.raw.prepare("INSERT INTO acces_liens (code, nom, places, utilises, expire_le, cree_le) VALUES (?, ?, ?, 0, ?, ?)").run(code, b.nom, b.places, new Date(Date.now() + b.jours * 86400_000).toISOString(), new Date().toISOString());
+        return c.json({ code, url: `${publicUrl()}/?invitation=${code}` }, 201);
+    });
+    api.delete("/admin/acces/liens/:code", (c) => {
+        const non = interdit(c);
+        if (non)
+            return non;
+        db.raw.prepare("DELETE FROM acces_liens WHERE code = ?").run(c.req.param("code").toLowerCase()); // people already in keep their access
+        return c.json({ ok: true });
     });
     api.post("/admin/acces", async (c) => {
         const r = interdit(c);

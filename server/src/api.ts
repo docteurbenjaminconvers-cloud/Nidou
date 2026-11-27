@@ -42,7 +42,7 @@ import { connexionEnDouble } from "./doublons.js";
 import { analyseProFoyer, deciderPro, recurrencesPro } from "./analysePro.js";
 import { remarquer, type EtapeSituation } from "./remarques.js";
 import { vueSituation, type SituationRow } from "./situationsApi.js";
-import { accesAutorise, MESSAGE_FERME, monterAcces, synchroniserOffert } from "./acces.js";
+import { accesAutorise, MESSAGE_FERME, monterAcces, synchroniserOffert, entrerParLien } from "./acces.js";
 import { monterPartages } from "./partages.js";
 import { monterSituations } from "./situationsApi.js";
 import { bordereau, etatDossiers, etatKit, KITS } from "./dossiers.js";
@@ -119,13 +119,15 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
 
   // ---------- auth (magic link) ----------
   api.post("/auth/demander", async (c) => {
-    const body = z.object({ email: z.string(), langue: z.enum(["fr", "en"]).optional() }).parse(await c.req.json());
+    const body = z.object({ email: z.string(), langue: z.enum(["fr", "en"]).optional(), invitation: z.string().max(40).optional() }).parse(await c.req.json());
     const email = body.email.trim().toLowerCase();
     if (!emailValide(email)) return c.json({ error: "email", message: "Adresse email invalide." }, 400);
-    if (!accesAutorise(db, email)) return c.json({ error: "sur_invitation", message: MESSAGE_FERME() }, 403);
     const ip = (c.req.header("x-forwarded-for") ?? "").split(",")[0].trim() || c.req.header("x-real-ip") || "inconnue";
     if (!demandeAutorisee(`ip:${ip}`, 10) || !demandeAutorisee(`email:${email}`, 3))
       return c.json({ error: "trop_de_demandes", message: "Trop de demandes de lien. Réessayez dans 15 minutes." }, 429);
+    // on invitation: the address is on the list, or it comes through a shared link that still has a place
+    if (!accesAutorise(db, email) && !(body.invitation && entrerParLien(db, body.invitation, email)))
+      return c.json({ error: "sur_invitation", message: body.invitation ? "Ce lien d'invitation n'est plus valable (toutes les places sont prises, ou sa date est passée). Demandez-en un nouveau à la personne qui vous l'a envoyé." : MESSAGE_FERME() }, 403);
     const r = await demanderLien(db, email, { langue: body.langue ?? (db.userByEmail(email)?.langue === "en" ? "en" : "fr") });
     if (!r.envoye && !r.lien) return c.json({ error: "email_non_envoye", message: "L'email de connexion n'a pas pu partir. Réessayez dans quelques minutes." }, 503);
     return c.json({ ok: true, envoye: r.envoye, lien: r.lien });
