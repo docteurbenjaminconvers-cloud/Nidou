@@ -46,7 +46,7 @@ function lire(): string[] {
 const garder = (l: string[]) => { try { localStorage.setItem(CLE, JSON.stringify(l)); } catch { /* storage refused */ } };
 
 /** The two-tone icons are drawn once (web/public/icones) and shared with the design files. */
-const Icone = ({ id }: { id: string }) => <img src={`icones/${id}.svg`} width="30" height="30" alt="" aria-hidden />;
+const Icone = ({ id }: { id: string }) => <img src={`icones/${id}.svg`} width="36" height="36" alt="" aria-hidden />;
 
 export function Rubriques({ go, ...c }: Contexte & { go: (s: string, id?: string) => void }) {
   const [choix, setChoix] = useState<string[]>(lire);
