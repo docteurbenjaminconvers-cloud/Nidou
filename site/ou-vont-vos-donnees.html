@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Où vont vos données — Lucien</title>
+<meta name="description" content="Qui héberge vos papiers, qui les lit, pendant combien de temps : la chaîne complète des données de Lucien, prestataire par prestataire.">
+<link rel="canonical" href="https://monlucien.fr/ou-vont-vos-donnees.html">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="fonts.css">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<header class="nav"><div class="wrap"><a class="brand" href="index.html"><svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="32" fill="#D95F45"/><path d="M12 21.5c0-2.6 2.7-4.3 5-3.2l11.5 6.2v15l-11.5 6.2c-2.3 1.1-5-.6-5-3.2z" fill="#FBF4F0"/><path d="M52 21.5c0-2.6-2.7-4.3-5-3.2l-11.5 6.2v15l11.5 6.2c2.3 1.1 5-.6 5-3.2z" fill="#FBF4F0"/><rect x="26.5" y="24.5" width="11" height="15" rx="4" fill="#E9B23A"/></svg>Lucien</a><nav><a class="btn" href="index.html#inscription">Liste d'attente</a></nav></div></header>
+<main><section><div class="wrap legal">
+<h1>Où vont vos données</h1>
+<p class="meta">Dernière mise à jour : 28 novembre 2026</p>
+<p>Vous nous confiez des papiers importants. Voici, sans rien arrondir, par où ils passent : qui les héberge, qui les lit, combien de temps, et ce que vous pouvez couper. La <a href="confidentialite.html">politique de confidentialité</a> donne le détail juridique.</p>
+
+<h2>En trois phrases</h2>
+<ul>
+<li>Vos papiers sont gardés en Europe (Francfort), chiffrés sur le disque.</li>
+<li>Pour les lire, Lucien les envoie à une IA (Anthropic, États-Unis) qui n'a pas le droit de s'en servir pour entraîner ses modèles et les efface sous 30 jours. Vous pouvez couper cette lecture.</li>
+<li>Rien n'est vendu, rien ne sert à de la publicité, et vous pouvez tout exporter ou tout effacer vous-même.</li>
+</ul>
+
+<h2>Le trajet d'un papier</h2>
+<ol>
+<li><b>Vous l'ajoutez</b> (photo, PDF, ou email transféré). Il voyage chiffré (https) jusqu'au serveur de Lucien.</li>
+<li><b>Lucien le lit.</b> Par défaut, le papier est envoyé à un modèle d'IA d'Anthropic, qui renvoie l'organisme, les montants et les dates. Les <b>pièces d'identité</b> (passeport, carte d'identité, permis) font exception : elles sont rangées sans passer par l'IA, sauf si vous l'autorisez. Les documents médicaux sont refusés et effacés.</li>
+<li><b>Il est rangé</b> sur le serveur, à Francfort, chiffré (AES-256). Les papiers d'identité, de mutuelle, d'impôts et de banque vont au coffre-fort : ils ne s'ouvrent qu'après Face ID, votre empreinte ou un code reçu par email.</li>
+<li><b>Vous le retrouvez</b>, et vous seul décidez de le partager, de l'exporter ou de le supprimer.</li>
+</ol>
+
+<h2>Qui voit quoi</h2>
+<table class="tableau empile">
+<thead><tr><th>Prestataire</th><th>Son rôle</th><th>Ce qu'il reçoit</th><th>Où, combien de temps</th></tr></thead>
+<tbody>
+<tr><td><b>Render</b><br>société américaine</td><td data-l="Son rôle">Héberge l'application et sa base</td><td data-l="Ce qu'il reçoit">Tout ce que vous mettez dans Lucien, vos fichiers étant chiffrés sur le disque</td><td data-l="Où, combien de temps">Francfort (Allemagne). Tant que votre compte existe</td></tr>
+<tr><td><b>Anthropic</b><br>société américaine</td><td data-l="Son rôle">Lecture des papiers par l'IA, « Demander à Lucien », rédaction des courriers, classement des dépenses, « Chercher moins cher »</td><td data-l="Ce qu'il reçoit">Le papier à lire ; votre question et les éléments utiles pour y répondre ; des libellés d'opérations à classer. Pour « Chercher moins cher », le contrat sans numéros, emails ni IBAN</td><td data-l="Où, combien de temps">États-Unis. Effacé sous 30 jours ; jusqu'à 2 ans seulement si un contenu est signalé pour abus. Jamais utilisé pour entraîner les modèles</td></tr>
+<tr><td><b>Brevo</b><br>société française</td><td data-l="Son rôle">Envoi des emails, et réception de ceux que vous transférez à votre adresse Lucien</td><td data-l="Ce qu'il reçoit">Votre adresse email, le contenu des emails de Lucien, et les emails que vous lui transférez avec leurs pièces jointes</td><td data-l="Où, combien de temps">Union européenne</td></tr>
+<tr><td><b>Stripe</b></td><td data-l="Son rôle">Paiement de l'abonnement</td><td data-l="Ce qu'il reçoit">Votre carte (Lucien ne la voit jamais), votre email, vos factures</td><td data-l="Où, combien de temps">Union européenne et États-Unis. Dix ans pour les factures (obligation légale)</td></tr>
+<tr><td><b>Enable Banking ou Bridge</b><br>prestataires agréés</td><td data-l="Son rôle">Connexion à votre banque, si vous la demandez</td><td data-l="Ce qu'il reçoit">Vos comptes et opérations, en lecture seule. Jamais vos identifiants</td><td data-l="Où, combien de temps">Union européenne. Autorisation de 180 jours au plus, que vous retirez quand vous voulez</td></tr>
+<tr><td><b>Apple, Google ou Mozilla</b></td><td data-l="Son rôle">Notifications sur votre téléphone</td><td data-l="Ce qu'il reçoit">Le texte du rappel, chiffré</td><td data-l="Où, combien de temps">Le temps de l'afficher</td></tr>
+<tr><td><b>GitHub</b></td><td data-l="Son rôle">Héberge ce site vitrine et la démonstration</td><td data-l="Ce qu'il reçoit">Aucun de vos papiers : la démonstration n'enregistre rien</td><td data-l="Où, combien de temps">États-Unis</td></tr>
+</tbody>
+</table>
+<p>Pour Render et Anthropic, sociétés américaines, le transfert hors de l'Union européenne est encadré par le cadre de protection des données UE–États-Unis ou, à défaut, par les clauses contractuelles types de la Commission européenne, intégrées à leurs contrats.</p>
+
+<h2>L'IA, précisément</h2>
+<ul>
+<li><b>Pas d'entraînement.</b> Les conditions commerciales d'Anthropic lui interdisent d'entraîner ses modèles sur ce que Lucien lui envoie.</li>
+<li><b>Une conservation courte.</b> Anthropic efface les contenus reçus sous 30 jours. Seule exception : un contenu signalé par ses systèmes de sécurité pour abus peut être gardé jusqu'à 2 ans.</li>
+<li><b>Vos pièces d'identité restent chez Lucien.</b> Elles ne sont pas envoyées à l'IA, sauf si vous l'autorisez dans Réglages. Pour qu'une photo soit reconnue à coup sûr comme pièce d'identité, choisissez « Identité » en l'ajoutant : une photo sans nom parlant ne peut pas être reconnue avant d'être lue.</li>
+<li><b>Vous pouvez tout couper.</b> Réglages, « Vos données et l'IA », « Lire mes papiers avec l'IA » : désactivé, vos papiers sont lus sur le serveur de Lucien, sans IA. La lecture est moins fine, et vous complétez les champs.</li>
+<li><b>Votre propre assistant</b> (Claude, ChatGPT) n'accède à vos papiers que si vous activez le connecteur. Il ne voit jamais vos opérations bancaires ni les numéros complets du coffre-fort, et chaque consultation est notée dans votre journal.</li>
+</ul>
+
+<h2>Ce que nous ne faisons pas</h2>
+<ul>
+<li>Aucune vente de données, aucune publicité, aucun traceur.</li>
+<li>Aucun document médical gardé.</li>
+<li>Aucun identifiant bancaire reçu, aucune opération possible sur vos comptes.</li>
+</ul>
+
+<h2>Ce qui est encore en cours</h2>
+<p>Nous préférons le dire. Lucien est en avant-première, et deux points ne sont pas terminés :</p>
+<ul>
+<li><b>La sauvegarde hors du serveur.</b> Une sauvegarde chiffrée est faite chaque nuit ; sa copie sur un second hébergeur, en France, est en cours de mise en place.</li>
+<li><b>La relecture juridique</b> de nos textes par un conseil spécialisé.</li>
+</ul>
+
+<h2>Reprendre la main</h2>
+<p>Dans l'application, Réglages : « Exporter tout » vous remet tous vos papiers et toutes vos données ; « Supprimer le compte » efface le foyer. Une question sur vos données : privacy@monlucien.fr.</p>
+</div></section></main>
+<footer><div class="wrap"><span>© 2026 Lucien</span><span><a href="index.html">Accueil</a> · <a href="cgu.html">CGU</a> · <a href="cgv.html">CGV</a> · <a href="mentions-legales.html">Mentions légales</a> · <a href="confidentialite.html">Confidentialité</a> · <a href="ou-vont-vos-donnees.html">Où vont vos données</a></span></div></footer>
+</body>
+</html>

@@ -1,3 +1,4 @@
+import { iaPourPapier, RESUME_SANS_IA } from "./iaChoix.js";
 import { avecCompteur, reel } from "./ia.js";
 import { aGarder, membreConcerne, titreAvecPrenom } from "./details.js";
 import { estMedical, extractDocument, heuristicExtract } from "./extract.js";
@@ -118,10 +119,17 @@ export async function fromBrevo(payload) {
  */
 export async function rangerPapier(db, householdId, input, source) {
     const budget = budgetIa(db, householdId);
+    // the household's own choice: no AI at all, or no AI for identity papers
+    const choix = iaPourPapier(db.getHousehold(householdId), { nomFichier: input.nomFichier, texte: input.texte });
     const [ex, cout] = await avecCompteur(async () => {
-        const ex = budget.ok() ? await extractDocument(input) : { ...heuristicExtract(input), modele: null };
+        const ex = budget.ok() && choix.ia ? await extractDocument(input) : { ...heuristicExtract(input), modele: null };
         return [ex, ex.modele ? reel(ex.modele.cout_lecture_centimes) : 0];
     });
+    if (choix.raison) {
+        ex.resume = RESUME_SANS_IA[choix.raison];
+        if (choix.raison === "identite")
+            ex.category = "identite";
+    }
     if (ex.modele)
         db.recordIaLecture(householdId, false, cout);
     if (estMedical(ex))

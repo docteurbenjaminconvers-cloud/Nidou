@@ -53,6 +53,7 @@ import { agendaSemaine, familleReport, echeancesFamille, coutsParMembre } from "
 import { accuserReception, boiteAddress, fromBrevo, processInboundEmail } from "./inbox.js";
 import * as O from "./observatoire.js";
 import { courrierRelance, marquerRepondu, mediateurPour, poserAttente, suivisCourriers } from "./suiviCourriers.js";
+import { iaPourPapier, RESUME_SANS_IA } from "./iaChoix.js";
 import { parseStatement, merchantOf, categorise, ruleCategory, fingerprint, TX_CATEGORIES, TX_LABEL } from "./transactions.js";
 import { budgetReport, findRecurrences } from "./budget.js";
 import { demoStatement } from "./seed-statement.js";
@@ -419,6 +420,19 @@ export function createApi(db, opts) {
             return c.json({ error: "proprietaire" }, 403);
         return c.json({ token: db.regenerateMcpToken(household(c).id) });
     });
+    /** What the AI may read: papers at all (on by default), identity papers too (off by default). The owner decides. */
+    api.post("/household/ia", async (c) => {
+        if (!isOwner(c))
+            return c.json({ error: "proprietaire" }, 403);
+        const b = z.object({ papiers: z.boolean().optional(), identite: z.boolean().optional() }).parse(await c.req.json());
+        const id = household(c).id;
+        if (b.papiers !== undefined)
+            db.raw.prepare("UPDATE households SET ia_papiers = ? WHERE id = ?").run(b.papiers ? 1 : 0, id);
+        if (b.identite !== undefined)
+            db.raw.prepare("UPDATE households SET ia_identite = ? WHERE id = ?").run(b.identite ? 1 : 0, id);
+        const h = db.getHousehold(id);
+        return c.json({ ia_papiers: h.ia_papiers !== 0, ia_identite: !!h.ia_identite });
+    });
     /** « L'assistant peut aussi ajouter » : off by default (the connector only reads), the owner turns it on. */
     api.post("/mcp/ecriture", async (c) => {
         if (!isOwner(c))
@@ -445,6 +459,8 @@ export function createApi(db, opts) {
             boite_bientot: h.plan === "famille" && !process.env.LUCIEN_INBOX_DOMAIN,
             mcp_token: h.plan === "famille" ? db.getHousehold(h.id).mcp_token : null,
             mcp_ecriture: !!db.getHousehold(h.id).mcp_ecriture,
+            ia_papiers: db.getHousehold(h.id).ia_papiers !== 0,
+            ia_identite: !!db.getHousehold(h.id).ia_identite,
             utilisateur: currentUser(c),
             titulaire: isOwner(c),
             abonnement: { ...resumeAbonnement(db.getHousehold(h.id)), ...etatFin(db, h.id), retractation: etatRetractation(db, h.id), changement_prevu: changementPrevu(db, h.id) },
@@ -787,11 +803,18 @@ export function createApi(db, opts) {
         const capOk = !gratuit || db.iaDepenseMois().gratuit_eur < freeCapEur();
         const budget = budgetIa(db, h.id);
         const budgetOk = gratuit || budget.ok();
-        const iaAutorisee = quotaOk && capOk && budgetOk;
+        // the household's own choice: no AI at all, or no AI for identity papers
+        const choix = iaPourPapier(db.getHousehold(h.id), { categorie: dit.categorie, nomFichier, texte });
+        const iaAutorisee = quotaOk && capOk && budgetOk && choix.ia;
         const ex = iaAutorisee ? await extractDocument({ texte, base64, mime, nomFichier }) : { ...heuristicExtract({ texte, nomFichier }), modele: null };
         if (ex.modele)
             db.recordIaLecture(h.id, gratuit, reel(ex.modele.cout_lecture_centimes));
-        if (!budgetOk)
+        if (choix.raison) {
+            ex.resume = RESUME_SANS_IA[choix.raison];
+            if (choix.raison === "identite")
+                ex.category = "identite";
+        }
+        else if (!budgetOk)
             ex.resume = "Votre foyer a atteint ce mois-ci la limite de lectures par l'IA : ce papier a été lu sans IA. Vérifiez et complétez les champs ; la lecture par l'IA reprend le 1er du mois.";
         else if (!iaAutorisee) {
             ex.resume = FREE_LIMITS.iaLecturesParMois === 0
@@ -849,6 +872,9 @@ export function createApi(db, opts) {
         if (!d.fichier || !d.mime || !LISIBLE_PAR_IA.test(d.mime))
             return c.json({ error: "illisible", message: "Lucien ne peut pas relire ce papier." }, 400);
         const budget = budgetIa(db, h.id);
+        const choixIa = iaPourPapier(db.getHousehold(h.id), { categorie: d.category, nomFichier: d.title, texte: d.texte });
+        if (!choixIa.ia)
+            return c.json({ error: "sans_ia", message: choixIa.raison === "identite" ? "Les pièces d'identité ne sont pas lues par l'IA. Vous pouvez l'autoriser dans Réglages, « Vos données et l'IA »." : "Votre foyer lit ses papiers sans IA. Vous pouvez changer ce choix dans Réglages, « Vos données et l'IA »." }, 403);
         if (h.plan === "gratuit" || !budget.ok(coutAppel("precis")))
             return c.json({ error: "budget", message: "La lecture par l'IA n'est pas disponible pour le moment." }, 402);
         const buf = await lireFichier(join(opts.uploadDir, basename(d.fichier))).catch(() => null);

@@ -71,6 +71,16 @@ const fmtPrix = (n: number) => `${(Math.round(n * 100) / 100).toLocaleString("fr
 const ROLE_LABEL: Record<string, string> = { adulte: "adulte", enfant: "enfant", parent_a_charge: "parent à charge", autre_a_charge: "personne à charge" };
 
 export function Settings({ api, household, onBack, onPlan, toast, go }: { api: Api; household: Household; onBack: () => void; onPlan: (p: Household["plan"]) => void; toast: (m: string) => void; go: (s: string, id?: string) => void }) {
+  const [iaPapiers, setIaPapiers] = useState(household.ia_papiers !== false);
+  const [iaIdentite, setIaIdentite] = useState(!!household.ia_identite);
+  const reglerIa = async (choix: { papiers?: boolean; identite?: boolean }) => {
+    try {
+      await api.reglerIa(choix);
+      if (choix.papiers !== undefined) { setIaPapiers(choix.papiers); toast(choix.papiers ? "Vos papiers sont lus avec l'IA" : "Vos papiers sont lus sans IA"); }
+      if (choix.identite !== undefined) { setIaIdentite(choix.identite); toast(choix.identite ? "Pièces d'identité lues avec l'IA" : "Pièces d'identité rangées sans IA"); }
+      onPlan(household.plan);
+    } catch (e) { toast((e as Error).message); }
+  };
   const mcpUrl = `${location.origin}/mcp`;
   const [suppression, setSuppression] = useState(false);
   const [aide, setAide] = useState(false);
@@ -251,6 +261,21 @@ export function Settings({ api, household, onBack, onPlan, toast, go }: { api: A
       {/* ---------- Sécurité ---------- */}
       <CarteSecurite api={api} toast={toast} />
 
+      {/* ---------- Vos données et l'IA ---------- */}
+      <section className="section reg-carte">
+        <p className="reg-titre">Vos données et l'IA</p>
+        <div className="settings-row">
+          <div><div className="t">Lire mes papiers avec l'IA</div>
+            <div className="s">Pour lire un papier, Lucien l'envoie à un modèle d'IA (Anthropic), qui n'a pas le droit de s'en servir pour s'entraîner et l'efface sous 30 jours. Désactivé, vos papiers ne quittent plus Lucien : ils sont lus sur place, moins bien, et vous complétez les champs.</div></div>
+          <button className="toggle" role="switch" aria-checked={iaPapiers} aria-label="Lire mes papiers avec l'IA" disabled={household.titulaire === false} onClick={() => reglerIa({ papiers: !iaPapiers })} />
+        </div>
+        <div className="settings-row">
+          <div><div className="t">Lire aussi mes pièces d'identité avec l'IA</div>
+            <div className="s">Désactivé par défaut : passeport, carte d'identité, permis sont rangés sans passer par l'IA, et vous indiquez la date d'expiration. Pour qu'un papier soit reconnu à coup sûr, choisissez « Identité » en l'ajoutant.</div></div>
+          <button className="toggle" role="switch" aria-checked={iaPapiers && iaIdentite} aria-label="Lire aussi mes pièces d'identité avec l'IA" disabled={household.titulaire === false || !iaPapiers} onClick={() => reglerIa({ identite: !iaIdentite })} />
+        </div>
+        <p className="note" style={{ marginTop: 8 }}><a href="https://monlucien.fr/ou-vont-vos-donnees.html" target="_blank" rel="noreferrer">Où vont vos données</a> : qui héberge, qui lit, combien de temps.</p>
+      </section>
       {/* ---------- Aide et données ---------- */}
       <section className="section reg-carte">
         <p className="reg-titre">Aide et données</p>

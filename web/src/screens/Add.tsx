@@ -162,7 +162,11 @@ export function Add({ api, onBack, onAdded, onChanged, toast, household, docs = 
           {!busy && <div className="actions" style={{ marginTop: 12 }}><button className="btn" onClick={() => go ? go("docs") : onBack()}>Voir mes papiers</button><button className="btn ghost" onClick={() => setSuivi(null)}>En ajouter d'autres</button></div>}
         </section>
       )}
-      <p className="note" style={{ marginTop: 12 }}>Vous pourrez corriger chaque champ extrait avant de le valider. Rien n'est partagé avec une IA externe sans votre accord.</p>
+      <p className="note" style={{ marginTop: 12 }}>Vous pourrez corriger chaque champ extrait avant de le valider. {household?.ia_papiers === false
+        ? "Votre foyer lit ses papiers sans IA : ils ne quittent pas Lucien."
+        : household?.ia_identite
+          ? "Pour lire un papier, Lucien l'envoie à un modèle d'IA (Anthropic), qui ne s'en sert pas pour s'entraîner."
+          : "Pour lire un papier, Lucien l'envoie à un modèle d'IA (Anthropic), qui ne s'en sert pas pour s'entraîner. Une pièce d'identité ? Choisissez « Identité » : elle est rangée sans passer par l'IA."} <a href="https://monlucien.fr/ou-vont-vos-donnees.html" target="_blank" rel="noreferrer">Où vont vos données</a></p>
       {restantes !== null && (
         <p className="note" style={{ marginTop: 8 }}>
           {(household?.limites?.iaLecturesParMois ?? 0) === 0

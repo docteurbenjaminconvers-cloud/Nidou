@@ -498,3 +498,12 @@ html[dir="rtl"] .legal .tableau th, html[dir="rtl"] .legal .tableau td { text-al
   .navigateur-barre span { padding: 4px 16px; }
   .lettre-demo { padding: 0 0 46px 10px; margin-top: 10px; }
 }
+
+/* a table read as cards on a phone */
+@media (max-width: 700px) {
+  .legal .tableau.empile thead { display: none; }
+  .legal .tableau.empile tr { display: block; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .legal .tableau.empile td { display: block; border: 0; padding: 3px 0; }
+  .legal .tableau.empile td[data-l]::before { content: attr(data-l); display: block; margin-top: 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--mist); }
+}
+.legal ol { padding-left: 22px; } .legal ol li { margin-bottom: 8px; }

@@ -177,6 +177,8 @@ export interface Api {
   regenererMcp(): Promise<string>;
   /** « L'assistant peut aussi ajouter » (off by default: the connector only reads). */
   mcpEcriture(actif: boolean): Promise<void>;
+  /** What the AI may read: papers at all, identity papers too. */
+  reglerIa(choix: { papiers?: boolean; identite?: boolean }): Promise<void>;
   assistant(messages: AssistantMessage[]): Promise<AssistantReponse>;
   assistantOption(actif: boolean): Promise<AssistantEtat>;
   renommer(nom: string): Promise<void>;
@@ -424,6 +426,7 @@ const serverApi: Api = {
   retirerCompte: async (id) => { await call(`/foyer/comptes/${id}`, { method: "DELETE" }); },
   regenererMcp: async () => (await call<{ token: string }>("/mcp/regenerer", { method: "POST" })).token,
   mcpEcriture: async (actif) => { await call("/mcp/ecriture", json({ actif })); },
+  reglerIa: async (choix) => { await call("/household/ia", json(choix)); },
   assistant: (messages) => call("/assistant", json({ messages, langue: langueChoisie() })),
   assistantOption: async (actif) => (await call<{ etat: AssistantEtat }>("/abonnement/assistant", json({ actif }))).etat,
   renommer: async (nom) => { await call("/household", json({ nom }, "PATCH")); },
@@ -846,6 +849,7 @@ function makeDemoApi(): Api {
     retirerCompte: async (id) => { state.comptes = state.comptes.filter((c) => c.id !== id); },
     regenererMcp: async () => "demo-" + crypto.randomUUID().slice(0, 8),
     mcpEcriture: async (actif) => { state.household.mcp_ecriture = actif; },
+    reglerIa: async (choix) => { if (choix.papiers !== undefined) state.household.ia_papiers = choix.papiers; if (choix.identite !== undefined) state.household.ia_identite = choix.identite; },
     assistant: async (messages) => {
       const e = assistantEtatDemo(state);
       if (e.acces === "aucun") throw new ApiError(402, "acces", "L'assistant Lucien est une option à 2,90 € par mois, en plus d'une formule.");
