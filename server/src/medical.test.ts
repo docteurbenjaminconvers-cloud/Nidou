@@ -33,3 +33,26 @@ test("documents médicaux : refusés à l'envoi et par email, fichier effacé ; 
     assert.equal(res.statut, "ok"); assert.equal(res.statut === "ok" && res.documents.length, 0, "nothing kept");
   } finally { if (avant === undefined) delete process.env.LUCIEN_AUTH; else process.env.LUCIEN_AUTH = avant; }
 });
+
+test("ajout d'un papier : le type et la personne choisis l'emportent sur la lecture", async () => {
+  const avant = process.env.LUCIEN_AUTH; process.env.LUCIEN_AUTH = "0";
+  try {
+    const db = new Db(":memory:");
+    const api = createApi(db, { uploadDir: mkdtempSync(join(tmpdir(), "lucien-dit-")) });
+    const h = db.firstHousehold() ?? db.createHousehold("Famille");
+    const lea = db.addMember(h.id, "Léa", "enfant");
+    const texte = "Avis d'échéance MAIF, assurance habitation, contrat HAB-22, cotisation 240 €";
+    const envoi = (plus: object) => api.request("/documents", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ texte, nomFichier: "avis.txt", ...plus }) });
+    const sans = await (await envoi({})).json() as any;
+    const avec = await (await envoi({ categorie: "education", membre: lea.id })).json() as any;
+    assert.equal(avec.category, "education"); assert.equal(avec.member_id, lea.id);
+    assert.notEqual(sans.category, "education");
+    // an unknown type, « sante », or somebody of another household: ignored, the reading decides
+    const faux = await (await envoi({ categorie: "sante", membre: "inconnu" })).json() as any;
+    assert.equal(faux.category, sans.category); assert.equal(faux.member_id, sans.member_id);
+    const form = new FormData();
+    form.append("file", new File([texte], "avis.txt", { type: "text/plain" })); form.append("categorie", "logement"); form.append("membre", lea.id);
+    const f = await (await api.request("/documents", { method: "POST", body: form })).json() as any;
+    assert.equal(f.category, "logement"); assert.equal(f.member_id, lea.id);
+  } finally { if (avant === undefined) delete process.env.LUCIEN_AUTH; else process.env.LUCIEN_AUTH = avant; }
+});

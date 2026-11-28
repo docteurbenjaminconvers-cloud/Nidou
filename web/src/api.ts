@@ -68,7 +68,7 @@ export interface Api {
   /** « Lucien relit ce papier »: coordinates, payment details, references read again on the page. */
   relireDocument(id: string): Promise<{ details: DetailsDoc | null; texte: string | null; doc?: Doc }>;
   /** One paper: a file, or several pages (photos front / back…) put together into one PDF, or a pasted text. */
-  addDocument(input: { file?: File; pages?: File[]; texte?: string; nomFichier?: string }): Promise<Doc & { echeances: Deadline[] }>;
+  addDocument(input: { file?: File; pages?: File[]; texte?: string; nomFichier?: string; categorie?: string; membre?: string }): Promise<Doc & { echeances: Deadline[] }>;
   updateDocument(id: string, patch: Partial<Doc>): Promise<Doc>;
   deleteDocument(id: string): Promise<void>;
   deadlines(): Promise<Deadline[]>;
@@ -286,21 +286,22 @@ const serverApi: Api = {
   setPlan: async (plan) => { await call("/household", json({ plan }, "PATCH")); },
   documents: (q, category) => call(`/documents?${new URLSearchParams({ ...(q ? { q } : {}), ...(category ? { category } : {}) })}`),
   document: (id) => call(`/documents/${id}`).catch(() => null) as any,
-  addDocument: async ({ file, pages, texte, nomFichier }) => {
+  addDocument: async ({ file, pages, texte, nomFichier, categorie, membre }) => {
+    const dit = (fd: FormData) => { if (categorie) fd.append("categorie", categorie); if (membre) fd.append("membre", membre); return fd; };
     if (pages && pages.length > 1) {
       // one paper in several photos: each page as a JPEG (HEIC included), put together into one PDF by the server
       const fd = new FormData();
       for (const p of pages) fd.append("page", p.type === "application/pdf" || p.type === "image/png" || p.type === "image/jpeg" ? p : await enJpeg(p), p.name);
       fd.append("nom", nomFichier ?? pages[0].name);
-      return call("/documents", { method: "POST", body: fd });
+      return call("/documents", { method: "POST", body: dit(fd) });
     }
     if (file) {
       const fd = new FormData();
       fd.append("file", file);
       if (texte) fd.append("texte", texte);
-      return call("/documents", { method: "POST", body: fd });
+      return call("/documents", { method: "POST", body: dit(fd) });
     }
-    return call("/documents", json({ texte, nomFichier }));
+    return call("/documents", json({ texte, nomFichier, ...(categorie ? { categorie } : {}), ...(membre ? { membre } : {}) }));
   },
   updateDocument: (id, patch) => call(`/documents/${id}`, json(patch, "PATCH")),
   deleteDocument: async (id) => { await call(`/documents/${id}`, { method: "DELETE" }); },
@@ -628,14 +629,14 @@ function makeDemoApi(): Api {
       } : null;
       return { ...d, details, echeances: state.deadlines.filter((x) => x.document_id === id) };
     },
-    addDocument: async ({ file, pages, texte, nomFichier }) => {
+    addDocument: async ({ file, pages, texte, nomFichier, categorie, membre }) => {
       await new Promise((r) => setTimeout(r, 900));
       const name = nomFichier ?? file?.name ?? pages?.[0]?.name ?? "Document";
       const d: Doc = {
-        id: crypto.randomUUID(), title: name.replace(/\.[a-z0-9]+$/i, ""), category: "autre", organisme: null, numero_contrat: null,
+        id: crypto.randomUUID(), title: name.replace(/\.[a-z0-9]+$/i, ""), category: (categorie as Doc["category"]) ?? "autre", organisme: null, numero_contrat: null,
         montant: (texte ?? "").match(/(\d+[,.]?\d*)\s*€/)?.[1] ? parseFloat((texte ?? "").match(/(\d+[,.]?\d*)\s*€/)![1].replace(",", ".")) : null,
         periodicite: /mois/i.test(texte ?? "") ? "mensuel" : null, date_document: today(), date_debut: null, date_fin: null, preavis_jours: null,
-        resume: "Mode démo : l'extraction IA complète fonctionne avec le serveur Lucien.", confiance: 0.3, verifie: 0, member_id: null, cree_le: new Date().toISOString(),
+        resume: "Ceci est la démonstration : Lucien ne lit pas vraiment ce papier et rien n'est enregistré. Dans votre vrai Lucien, il lit le document, le range et crée les rappels.", confiance: 0.3, verifie: 0, member_id: membre ?? null, cree_le: new Date().toISOString(),
       };
       state.docs.unshift(d);
       return { ...d, echeances: [] };

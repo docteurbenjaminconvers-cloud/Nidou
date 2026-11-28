@@ -1,8 +1,9 @@
-import { useRef, useState } from "react";
+import { useContext, useRef, useState } from "react";
 import type { Api } from "../api";
 import { ApiError } from "../api";
 import { Back } from "../ui";
-import type { Doc, Household } from "../types";
+import { CATEGORIES, CATEGORY_LABEL, type Doc, type Household } from "../types";
+import { FamilleCtx } from "../menuFamille";
 import { etatDossiers, piecesSouhaitees } from "../../../server/src/dossiers";
 
 const MAX = 20;
@@ -28,7 +29,12 @@ export function Add({ api, onBack, onAdded, onChanged, toast, household, docs = 
   const pageEn = (i: number, via: "cam" | "pick") => { cible.current = i; (via === "cam" ? cam : pick).current?.click(); };
   const joindre = (i: number) => setPapiers((p) => p.flatMap((x, k) => (k === i - 1 ? [[...x, ...p[i]]] : k === i ? [] : [x])));
   const file = papiers.length === 1 && papiers[0].length === 1 ? papiers[0][0] : null;
-  const envoyer = (pages: File[]) => (pages.length === 1 ? api.addDocument({ file: pages[0] }) : api.addDocument({ pages, nomFichier: pages[0].name }));
+  // optional: the person says what the paper is and whose it is; otherwise Lucien finds out by reading it
+  const membres = useContext(FamilleCtx)?.famille?.membres ?? [];
+  const [categorie, setCategorie] = useState("");
+  const [membre, setMembre] = useState("");
+  const dit = { ...(categorie ? { categorie } : {}), ...(membre ? { membre } : {}) };
+  const envoyer = (pages: File[]) => (pages.length === 1 ? api.addDocument({ file: pages[0], ...dit }) : api.addDocument({ pages, nomFichier: pages[0].name, ...dit }));
   const [texte, setTexte] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -45,7 +51,7 @@ export function Add({ api, onBack, onAdded, onChanged, toast, household, docs = 
       maj(i, { etat: "lecture" });
       try {
         const f = papiers[i];
-        const d = await (f ? envoyer(f) : api.addDocument({ texte: texte.trim(), nomFichier: "note.txt" }));
+        const d = await (f ? envoyer(f) : api.addDocument({ texte: texte.trim(), nomFichier: "note.txt", ...dit }));
         maj(i, { etat: "ok", id: d.id, titre: d.title, echeances: d.echeances.length });
       } catch (e) {
         const fin = e instanceof ApiError && e.code === "limite_plan";
@@ -62,7 +68,7 @@ export function Add({ api, onBack, onAdded, onChanged, toast, household, docs = 
     if (!papiers.length && !texte.trim()) return;
     setBusy(true); setErr(null);
     try {
-      const d = papiers.length ? await envoyer(papiers[0]) : await api.addDocument({ texte: texte.trim(), nomFichier: "note.txt" });
+      const d = papiers.length ? await envoyer(papiers[0]) : await api.addDocument({ texte: texte.trim(), nomFichier: "note.txt", ...dit });
       toast(d.echeances.length ? `${d.echeances.length} échéance${d.echeances.length > 1 ? "s" : ""} créée${d.echeances.length > 1 ? "s" : ""}` : "Document ajouté");
       onAdded(d.id);
     } catch (e) {
@@ -113,6 +119,24 @@ export function Add({ api, onBack, onAdded, onChanged, toast, household, docs = 
       <p className="or">ou</p>
       <label className="lbl" htmlFor="texte">Collez le texte d'un email ou d'un document</label>
       <textarea id="texte" className="ta" value={texte} onChange={(e) => setTexte(e.target.value)} placeholder={"Ex. : MAIF — Avis d'échéance\nContrat n° AUT-4471-8820\nCotisation annuelle : 612 €\nPériode du 01/12/2026 au 30/11/2027"} />
+
+      <div className="preciser">
+        <label><span>Type de papier</span>
+          <select className="in" value={categorie} onChange={(e) => setCategorie(e.target.value)}>
+            <option value="">Lucien choisit</option>
+            {CATEGORIES.map((k) => <option key={k} value={k}>{CATEGORY_LABEL[k]}</option>)}
+          </select>
+        </label>
+        {membres.length > 1 && (
+          <label><span>Pour qui</span>
+            <select className="in" value={membre} onChange={(e) => setMembre(e.target.value)}>
+              <option value="">Lucien choisit</option>
+              {membres.map((m) => <option key={m.id} value={m.id}>{m.prenom}</option>)}
+            </select>
+          </label>
+        )}
+        <p>Facultatif. Si vous savez déjà, dites-le : Lucien range le papier au bon endroit du premier coup.{papiers.length + (texte.trim() ? 1 : 0) > 1 ? " Ce choix s'applique à tous les papiers de cet envoi." : ""}</p>
+      </div>
 
       {household?.boite_email && (
         <div className="depot-email">

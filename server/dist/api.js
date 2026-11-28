@@ -57,6 +57,8 @@ import { parseStatement, merchantOf, categorise, ruleCategory, fingerprint, TX_C
 import { budgetReport, findRecurrences } from "./budget.js";
 import { demoStatement } from "./seed-statement.js";
 import { simulatedConnect, simulatedSync, verifyBridgeSignature } from "./bridge.js";
+/** Types of paper a person may choose when adding one. */
+const CATEGORIES_CHOISIES = ["assurance", "energie", "telecom", "logement", "banque", "impots", "abonnement", "identite", "garantie", "education", "vehicule", "autre"];
 /**
  * Plans. Every household starts with a 15-day reverse trial of the full Famille plan, then falls back to a bare free plan:
  * documents are read locally (no AI call), no statement import, no bank connection, push notifications only.
@@ -731,9 +733,12 @@ export function createApi(db, opts) {
         }
         let texte, base64, mime, nomFichier;
         let fichier = null;
+        // what the person said about the paper when adding it (both optional): they win over the reading
+        let dit = {};
         const ct = c.req.header("content-type") ?? "";
         if (ct.includes("multipart/form-data")) {
             const form = await c.req.formData();
+            dit = { categorie: form.get("categorie") ?? undefined, membre: form.get("membre") ?? undefined };
             // several pages of one paper (« page » parts, JPEG / PNG / PDF): put together into one PDF
             const parts = form.getAll("page").filter((x) => x instanceof File);
             let f = form.get("file");
@@ -771,9 +776,10 @@ export function createApi(db, opts) {
             }
         }
         else {
-            const body = z.object({ texte: z.string().min(1), nomFichier: z.string().optional() }).parse(await c.req.json());
+            const body = z.object({ texte: z.string().min(1), nomFichier: z.string().optional(), categorie: z.string().optional(), membre: z.string().optional() }).parse(await c.req.json());
             texte = body.texte;
             nomFichier = body.nomFichier;
+            dit = { categorie: body.categorie, membre: body.membre };
         }
         // Free plan: local reading only (no AI call), unless a free quota is configured and the global free budget is not exhausted.
         const gratuit = h.plan === "gratuit";
@@ -799,9 +805,12 @@ export function createApi(db, opts) {
                 await unlink(join(opts.uploadDir, basename(fichier))).catch(() => { });
             return c.json({ error: "document_medical", message: MESSAGE_MEDICAL }, 422);
         }
+        // the type chosen when adding (never « sante »: Lucien keeps no medical paper)
+        if (dit.categorie && CATEGORIES_CHOISIES.includes(dit.categorie))
+            ex.category = dit.categorie;
         const garde = aGarder(ex, texte);
         const membres = db.listMembers(h.id);
-        const pour = membreConcerne(ex.personnes, membres);
+        const pour = (dit.membre && membres.find((m) => m.id === dit.membre)?.id) || membreConcerne(ex.personnes, membres);
         const doc = db.insertDocument({
             household_id: h.id,
             member_id: pour,

@@ -1646,3 +1646,24 @@ section.visite-cible { padding: 10px; margin-left: -10px; margin-right: -10px; }
 .poche-carte b { font-family: var(--display); font-size: 26px; }
 .poche-carte span { font-size: 13.5px; color: var(--mist); }
 .poche-actions { flex-wrap: wrap; }
+
+/* the demonstration says so on every screen: nothing typed here is kept */
+.bandeau-demo { position: sticky; top: 0; z-index: 24; margin: 0 -20px 6px; padding: calc(env(safe-area-inset-top) + 7px) 16px 7px; display: flex; align-items: center; justify-content: center; gap: 6px 12px; flex-wrap: wrap; background: var(--plum); color: var(--white); font-size: 12.5px; line-height: 1.3; text-align: center; }
+.bandeau-demo a { color: var(--white); font-weight: 800; text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; }
+
+/* « Demander à Lucien »: always within reach, on every screen */
+.demander { position: fixed; right: max(14px, calc(50% - 266px)); bottom: calc(var(--tab-h) + env(safe-area-inset-bottom) + 12px); z-index: 20; display: inline-flex; align-items: center; gap: 8px; padding: 11px 16px 11px 13px; border: 0; border-radius: 999px; background: var(--plum); color: var(--white); font: inherit; font-size: 14px; font-weight: 800; box-shadow: 0 10px 26px rgba(59, 42, 58, 0.34); }
+.demander svg { width: 20px; height: 20px; flex: none; }
+.demander:active { transform: scale(.97); }
+.app { padding-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom) + 76px); }
+@media (min-width: 1024px) { .demander { right: 28px; bottom: 28px; padding: 13px 20px 13px 16px; font-size: 15px; } .bandeau-demo { margin: 0 0 10px; border-radius: 0 0 16px 16px; } }
+@media print { .demander, .bandeau-demo { display: none; } }
+
+/* adding a paper: say what it is and whose it is (optional) */
+.preciser { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 12px; margin-top: 16px; }
+.preciser label { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.preciser label span { font-size: 13px; font-weight: 700; color: var(--mist); }
+.preciser p { grid-column: 1 / -1; margin: 0; font-size: 13px; color: var(--mist); line-height: 1.4; }
+/* in the demonstration the « Visite guidée » pill leaves the right corner to « Demander à Lucien » */
+@media (max-width: 1023px) { .visite-reprendre { right: auto; left: max(14px, calc(50% - 266px)); bottom: calc(var(--tab-h) + env(safe-area-inset-bottom) + 14px); } }
+@media (min-width: 1024px) { .en-demo .demander { bottom: 78px; } }

@@ -139,7 +139,13 @@ export default function App() {
 
   return (
     <FamilleCtx.Provider value={{ api, famille, household, go }}>
-    <div className="app">
+    <div className={`app${api.mode === "demo" ? " en-demo" : ""}`}>
+      {api.mode === "demo" && (
+        <div className="bandeau-demo" role="note">
+          <span><b>Démonstration</b> : famille fictive, rien n'est enregistré.</span>
+          <a href="https://monlucien.fr/#inscription">Essayer avec mes papiers</a>
+        </div>
+      )}
       {route.s === "deadlines" && <Deadlines api={api} membres={famille?.membres} deadlines={deadlines} go={go} onDone={onDone} unread={notifs.unread} semaine={famille?.semaine} extra={<AgendaTelephone api={api} deadlines={deadlines} famille={famille} household={household} toast={toast} />} />}
       {route.s === "famille" && <Famille api={api} household={household} go={go} unread={notifs.unread} onChanged={reload} toast={toast} sel={route.id} docs={docs} deadlines={deadlines} />}
       {route.s === "membre" && route.id && <MembreDetail api={api} id={route.id} onBack={() => go("famille", route.id)} go={go} onChanged={reload} toast={toast} />}
@@ -190,6 +196,12 @@ export default function App() {
           <button className="tab ordi" aria-current={tab === "settings" || tab === "connecteur" ? "page" : undefined} onClick={() => go("settings")}><TabIcon d="M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z" />Réglages</button>
         </div>
       </nav>
+      {!["assistant", "add"].includes(route.s) && (
+        <button className="demander" onClick={() => go("assistant")} aria-label="Demander à Lucien">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z" /><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" /></svg>
+          <span>Demander à Lucien</span>
+        </button>
+      )}
       {reveal && budget && <Reveal budget={budget} onClose={() => setReveal(false)} go={go} toast={toast} />}
       {api.mode === "demo" && <Visite docs={docs} ado={(famille?.membres ?? []).filter((m) => m.role === "enfant").sort((a, b) => (a.date_naissance ?? "9").localeCompare(b.date_naissance ?? "9"))[0]?.id} go={go} enPause={reveal} />}
       {nouvelleVersion && <button className="maj-pastille" onClick={() => { toast("Mise à jour…"); mettreAJour(); }}><b>Nouvelle version de Lucien</b><span>Mettre à jour</span></button>}
