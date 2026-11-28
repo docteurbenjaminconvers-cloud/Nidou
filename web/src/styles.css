@@ -1613,3 +1613,36 @@ section.visite-cible { padding: 10px; margin-left: -10px; margin-right: -10px; }
 }
 
 .admin-lien-partage { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--line); padding-top: 10px; margin-top: 4px; }
+
+/* ---------- argent de poche ---------- */
+.poche-solde { background: var(--plum); color: var(--white); border-radius: 26px; padding: 18px 20px; display: flex; flex-direction: column; gap: 3px; margin-bottom: 14px; }
+.poche-solde b { font-family: var(--display); font-size: 42px; line-height: 1.05; }
+.poche-solde span { font-size: 13.5px; color: rgba(255, 255, 255, 0.82); }
+.poche-solde span:first-child { font-weight: 800; letter-spacing: .06em; text-transform: uppercase; font-size: 11.5px; }
+.poche-solde.avance { background: var(--nest-deep); }
+.poche-actions { margin-bottom: 6px; }
+.poche-form { background: var(--white); border-radius: 20px; padding: 14px; display: flex; flex-direction: column; gap: 10px; margin: 8px 0; }
+.poche-form .actions { margin: 0; }
+.poche-objectif { background: var(--white); border-radius: 20px; padding: 14px; display: flex; flex-direction: column; gap: 9px; margin-bottom: 10px; }
+.poche-objectif-tete { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.poche-objectif-tete span { font-size: 13.5px; color: var(--mist); flex: none; }
+.poche-jauge { height: 10px; border-radius: 10px; background: var(--lilac-soft); overflow: hidden; }
+.poche-jauge span { display: block; height: 100%; border-radius: 10px; background: var(--mint-ink); transition: width .35s; }
+.poche-objectif-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.poche-mission { display: flex; justify-content: space-between; align-items: center; gap: 10px; background: var(--white); border-radius: 18px; padding: 10px 14px; margin-bottom: 8px; }
+.poche-mission-actions { display: flex; align-items: center; gap: 10px; flex: none; }
+.poche-mission .btn { padding: 8px 14px; }
+.poche-carnet { list-style: none; margin: 0; padding: 0; background: var(--white); border-radius: 20px; }
+.poche-carnet li { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.poche-carnet li:last-child { border-bottom: 0; }
+.poche-date { flex: none; width: 52px; font-size: 12.5px; color: var(--mist); }
+.poche-libelle { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
+.poche-libelle b { font-size: 14.5px; overflow-wrap: anywhere; }
+.poche-libelle small { font-size: 12px; color: var(--mist); }
+.poche-montant { flex: none; font-weight: 800; font-variant-numeric: tabular-nums; }
+.poche-montant.plus { color: var(--mint-ink); }
+.poche .link.discret { color: var(--mist); }
+.poche-carte { width: 100%; text-align: left; border: 0; background: var(--white); border-radius: 20px; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; }
+.poche-carte b { font-family: var(--display); font-size: 26px; }
+.poche-carte span { font-size: 13.5px; color: var(--mist); }
+.poche-actions { flex-wrap: wrap; }

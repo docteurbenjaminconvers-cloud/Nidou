@@ -44,6 +44,7 @@ import { remarquer, type EtapeSituation } from "./remarques.js";
 import { vueSituation, type SituationRow } from "./situationsApi.js";
 import { accesAutorise, MESSAGE_FERME, monterAcces, synchroniserOffert, entrerParLien } from "./acces.js";
 import { monterPartages } from "./partages.js";
+import { monterPoche } from "./poche.js";
 import { monterSituations } from "./situationsApi.js";
 import { bordereau, etatDossiers, etatKit, KITS } from "./dossiers.js";
 import { zip } from "./zip.js";
@@ -322,6 +323,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
   monterSupport(api, db, { household, utilisateur: currentUser });
   monterAcces(api, db);
   monterPartages(api, db, { household });
+  monterPoche(api, db, { household });
   monterSituations(api, db, { household, prenom: (c) => currentUser(c)?.prenom ?? null });
 
   // ---------- abonnement (Stripe) ----------
@@ -489,6 +491,7 @@ export function createApi(db: Db, opts: { uploadDir: string }) {
     const m = db.getMember(c.req.param("id"));
     if (!m || m.household_id !== household(c).id) return c.json({ error: "introuvable" }, 404);
     if (m.photo) await unlink(join(opts.uploadDir, basename(m.photo))).catch(() => {});
+    for (const t of ["poche_reglages", "poche_mouvements", "poche_objectifs", "poche_missions"]) db.raw.prepare(`DELETE FROM ${t} WHERE household_id = ? AND member_id = ?`).run(m.household_id, m.id); // the child's kitty goes with them
     db.deleteMember(m.id);
     return c.json({ ok: true });
   });

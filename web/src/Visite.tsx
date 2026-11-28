@@ -7,6 +7,8 @@ import type { Doc } from "./types";
  */
 interface Etape {
   ecran: string;
+  /** the eldest child's page (pocket money) */
+  membre?: boolean;
   /** which paper to open, for the « doc » screen */
   papier?: (docs: Doc[]) => Doc | undefined;
   /** what to point at: a CSS selector, or « h2:Titre » for the section under that heading */
@@ -28,6 +30,7 @@ const ETAPES: Etape[] = [
   { ecran: "doc", papier: facture, cible: "h2:Courrier prêt à envoyer", titre: "Réclamation, relance, médiateur", texte: "Ce courrier est resté 16 jours sans réponse : la relance est déjà rédigée. Sans réponse à la relance, Lucien indique le médiateur à saisir.", essayer: "Touchez « Relire la relance », ou « Réclamation » pour contester autre chose." },
   { ecran: "deadlines", titre: "Agenda", texte: "Les échéances des papiers et les activités de chacun au même endroit, avec le rappel avant la date limite.", essayer: "Passez de la journée à la semaine, puis au mois." },
   { ecran: "famille", titre: "Famille", texte: "Chaque personne du foyer a sa page : sa semaine, ses papiers, ce qui arrive, ce qu'elle coûte.", essayer: "Touchez un visage." },
+  { ecran: "poche", membre: true, titre: "Argent de poche", texte: "La cagnotte de l'ado se tient toute seule : l'argent de poche s'ajoute chaque semaine, les dépenses se notent, les missions rapportent un peu plus, et un objectif montre le chemin parcouru.", essayer: "Touchez « + 5 € » sur l'objectif, ou « C'est fait » sur une mission." },
   { ecran: "budget", titre: "Budget", texte: "Vos vraies dépenses, et les économies faciles classées par gain : abonnements oubliés, hausses silencieuses, doublons, frais évitables. Chaque alerte a son bouton pour agir." },
   { ecran: "espace/budget", titre: "Budget expert", texte: "Les comptes du foyer tenus comme par un expert-comptable : compte de résultat, prévisionnel, patrimoine net, ratios." },
   { ecran: "espace/pro", titre: "Vie pro", texte: "Bulletins de salaire contrôlés, cumul imposable, et pour les indépendants les cotisations et les éléments de la déclaration." },
@@ -52,7 +55,7 @@ function trouver(cible: string): HTMLElement | null {
   return document.querySelector<HTMLElement>(cible);
 }
 
-export function Visite({ docs, go, enPause }: { docs: Doc[]; go: (s: string, id?: string) => void; enPause: boolean }) {
+export function Visite({ docs, ado, go, enPause }: { docs: Doc[]; ado?: string; go: (s: string, id?: string) => void; enPause: boolean }) {
   const [n, setN] = useState<number | null>(lire);
   const montre = useRef<HTMLElement | null>(null);
   const e = n === null ? null : ETAPES[n];
@@ -69,6 +72,7 @@ export function Visite({ docs, go, enPause }: { docs: Doc[]; go: (s: string, id?
     const [s, id] = e.ecran.split("/");
     const papier = e.papier?.(docs);
     if (e.papier && !papier && docs.length) { /* that paper was deleted during the demo: the step only explains */ }
+    else if (e.membre) { if (ado) go(s, ado); }
     else if (e.papier ? !!papier : true) go(s, e.papier ? papier!.id : id);
     let essais = 0;
     const t = setInterval(() => {
@@ -77,7 +81,7 @@ export function Visite({ docs, go, enPause }: { docs: Doc[]; go: (s: string, id?
       else if (++essais > 12 || !e.cible) { clearInterval(t); if (!e.cible) document.getElementById("root")?.scrollTo({ top: 0 }); }
     }, 250);
     return () => clearInterval(t);
-  }, [n, enPause, docs.length > 0]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [n, enPause, docs.length > 0, ado]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const aller = (v: number | null) => { garder(v); setN(v); };
   if (enPause) return null;

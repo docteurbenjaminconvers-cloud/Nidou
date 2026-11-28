@@ -26,6 +26,7 @@ import { Logo } from "./ui";
 import { useNotifications, NotificationsScreen } from "./notifications";
 import { Reveal, REVEAL_KEY } from "./screens/Reveal";
 import { Visite } from "./Visite";
+import { Poche } from "./screens/Poche";
 import { Famille, MembreDetail, ActiviteDetail } from "./screens/Famille";
 import { Login } from "./screens/Login";
 import { Semaine, calculerSemaine } from "./screens/Semaine";
@@ -134,7 +135,7 @@ export default function App() {
     );
   }
 
-  const tab = route.s === "dossiers" || route.s === "dossier" || route.s === "menage" ? "docs" : route.s === "doc" || route.s === "add" ? "" : route.s === "membre" || route.s === "activite" || route.s === "veille" || route.s === "veille-nouvelle" || route.s === "partages" ? "famille" : route.s;
+  const tab = route.s === "dossiers" || route.s === "dossier" || route.s === "menage" ? "docs" : route.s === "doc" || route.s === "add" ? "" : route.s === "membre" || route.s === "activite" || route.s === "veille" || route.s === "veille-nouvelle" || route.s === "partages" || route.s === "poche" ? "famille" : route.s;
 
   return (
     <FamilleCtx.Provider value={{ api, famille, household, go }}>
@@ -156,6 +157,7 @@ export default function App() {
       {route.s === "menage" && <Menage api={api} docs={docs} go={go} onBack={() => go("docs")} onChanged={reload} toast={toast} />}
       {route.s === "dossiers" && <Dossiers docs={docs} go={go} onBack={() => go("docs")} />}
       {route.s === "partages" && <Partages api={api} onBack={() => history.back()} toast={toast} />}
+      {route.s === "poche" && route.id && <Poche api={api} membre={route.id} onBack={() => history.back()} toast={toast} />}
       {route.s === "dossier" && route.id && <Dossier cle={route.id} api={api} household={household} docs={docs} go={go} onBack={() => go("dossiers")} toast={toast} />}
       {route.s === "offre" && <Offre api={api} household={household} focus={route.id} onBack={() => history.length > 1 ? history.back() : go("home")} onChange={reload} toast={toast} />}
       {route.s === "espace" && route.id === "budget" && <EspaceBudget api={api} go={go} onBack={() => history.length > 1 ? history.back() : go("home")} toast={toast} />}
@@ -168,7 +170,7 @@ export default function App() {
       {route.s === "semaine" && <Semaine point={calculerSemaine(household, deadlines, docs, budget, famille)} household={household} go={go} onBack={() => history.length > 1 ? history.back() : go("home")} />}
       {route.s === "connecteur" && <Connecteur api={api} onChanged={reload} household={household} go={go} onBack={() => history.length > 1 ? history.back() : go("settings")} toast={toast} />}
       {route.s === "settings" && <Settings api={api} household={household} onBack={() => go("home")} onPlan={() => reload()} toast={toast} go={go} />}
-      {(route.s === "home" || !["deadlines", "docs", "doc", "add", "budget", "settings", "notifs", "famille", "membre", "activite", "veille", "veille-nouvelle", "assistant", "connecteur", "semaine", "dossiers", "dossier", "menage", "urgence", "coup-dur", "offre", "espace", "partages", "location", "situations", "situation", "verif-pro"].includes(route.s) || (!route.id && ["membre", "activite", "veille", "veille-nouvelle", "doc", "dossier", "coup-dur", "espace", "situation", "location"].includes(route.s))) && (
+      {(route.s === "home" || !["deadlines", "docs", "doc", "add", "budget", "settings", "notifs", "famille", "membre", "activite", "veille", "veille-nouvelle", "assistant", "connecteur", "semaine", "poche", "dossiers", "dossier", "menage", "urgence", "coup-dur", "offre", "espace", "partages", "location", "situations", "situation", "verif-pro"].includes(route.s) || (!route.id && ["membre", "activite", "veille", "veille-nouvelle", "doc", "dossier", "coup-dur", "espace", "situation", "location"].includes(route.s))) && (
         <Today api={api} household={household} deadlines={deadlines} docs={docs} charges={charges} budget={budget} go={go} onDone={onDone} unread={notifs.unread} famille={famille} />
       )}
 
@@ -189,7 +191,7 @@ export default function App() {
         </div>
       </nav>
       {reveal && budget && <Reveal budget={budget} onClose={() => setReveal(false)} go={go} toast={toast} />}
-      {api.mode === "demo" && <Visite docs={docs} go={go} enPause={reveal} />}
+      {api.mode === "demo" && <Visite docs={docs} ado={(famille?.membres ?? []).filter((m) => m.role === "enfant").sort((a, b) => (a.date_naissance ?? "9").localeCompare(b.date_naissance ?? "9"))[0]?.id} go={go} enPause={reveal} />}
       {nouvelleVersion && <button className="maj-pastille" onClick={() => { toast("Mise à jour…"); mettreAJour(); }}><b>Nouvelle version de Lucien</b><span>Mettre à jour</span></button>}
       {toastMsg && <div className="toast" role="status">{toastMsg}</div>}
     </div>

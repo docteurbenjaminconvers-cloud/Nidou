@@ -1,3 +1,4 @@
+import { PocheCarte } from "./Poche";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Api } from "../api";
 import type { Activite, Conseil, Creneau, Deadline, Doc, FamilleReport, Household, Member, Role } from "../types";
@@ -392,6 +393,8 @@ function VueMembre({ moi = false, api, f, m, go, docs, deadlines, toast, onPhoto
           <p className="note" style={{ marginTop: 8 }}>Soit {fmtEuro(cout.total * 12)} sur l'année.</p>
         </section>
       )}
+
+      {m.role === "enfant" && (m.age === null || m.age === undefined || m.age >= 6) && <PocheCarte api={api} membre={m.id} prenom={m.prenom} go={go} />}
 
       {estProtegeable(m) && <VeilleCard api={api} membre={m} go={go} />}
 

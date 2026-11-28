@@ -1,5 +1,7 @@
 import type { SuiviCourrier } from "../../server/src/suiviCourriers";
 export type { SuiviCourrier };
+import { LIBELLE_VERSEMENT, etatPoche, signe as signePoche, versementsDus, type EtatPoche, type MissionPoche, type MouvementPoche, type ObjectifPoche, type ReglagePoche } from "../../server/src/pocheCalcul";
+export type { EtatPoche };
 import type { RecherchePrix } from "../../server/src/observatoire";
 export interface EtatPrix { comparable: boolean; paye_mensuel: number; recherche: RecherchePrix | null; valable: boolean; restantes: number; par_mois: number; disponible: boolean }
 import { langueChoisie } from "./i18n/traduction";
@@ -94,6 +96,18 @@ export interface Api {
   courrierPdf(c: ChampsCourrier): Promise<Blob>;
   envoyerCourrier(c: ChampsCourrier & { email: string }): Promise<{ ok: true; envoye_a: string; copie: string }>;
   envoisCourrier(documentId: string): Promise<{ envois: { destinataire: string; objet: string; envoye_le: string }[] }>;
+  /** Argent de poche d'un enfant : sa cagnotte, son rythme, ses dépenses, objectifs et missions. */
+  poche(membre: string): Promise<EtatPoche>;
+  pocheReglage(membre: string, r: { montant: number; frequence: "semaine" | "mois"; jour: number; actif: boolean }): Promise<EtatPoche>;
+  pocheMouvement(membre: string, m: { type: "depense" | "bonus" | "retenue"; montant: number; libelle: string }): Promise<EtatPoche>;
+  pocheEffacer(id: string): Promise<EtatPoche>;
+  pocheObjectif(membre: string, o: { titre: string; cible: number }): Promise<EtatPoche>;
+  pocheObjectifMettre(id: string, montant: number): Promise<EtatPoche>;
+  pocheObjectifAcheter(id: string): Promise<EtatPoche>;
+  pocheObjectifSupprimer(id: string): Promise<EtatPoche>;
+  pocheMission(membre: string, m: { titre: string; montant: number }): Promise<EtatPoche>;
+  pocheMissionPayer(id: string): Promise<EtatPoche>;
+  pocheMissionSupprimer(id: string): Promise<EtatPoche>;
   /** « Chercher moins cher »: the last search for this contract, and a new one (about a minute). */
   prixDocument(documentId: string): Promise<EtatPrix>;
   chercherPrix(documentId: string): Promise<EtatPrix>;
@@ -332,6 +346,17 @@ const serverApi: Api = {
   envoyerCourrier: (champs) => call("/courriers/envoyer", json(champs)),
   relireDocument: (id) => call(`/documents/${encodeURIComponent(id)}/relire`, { method: "POST" }),
   envoisCourrier: (id) => call(`/courriers/${encodeURIComponent(id)}/envois`),
+  poche: (m) => call(`/poche/${encodeURIComponent(m)}`),
+  pocheReglage: (m, r) => call(`/poche/${encodeURIComponent(m)}/reglage`, json(r, "PUT")),
+  pocheMouvement: (m, x) => call(`/poche/${encodeURIComponent(m)}/mouvements`, json(x)),
+  pocheEffacer: (id) => call(`/poche/mouvements/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  pocheObjectif: (m, o) => call(`/poche/${encodeURIComponent(m)}/objectifs`, json(o)),
+  pocheObjectifMettre: (id, montant) => call(`/poche/objectifs/${encodeURIComponent(id)}/mettre`, json({ montant })),
+  pocheObjectifAcheter: (id) => call(`/poche/objectifs/${encodeURIComponent(id)}/acheter`, { method: "POST" }),
+  pocheObjectifSupprimer: (id) => call(`/poche/objectifs/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  pocheMission: (m, x) => call(`/poche/${encodeURIComponent(m)}/missions`, json(x)),
+  pocheMissionPayer: (id) => call(`/poche/missions/${encodeURIComponent(id)}/payer`, { method: "POST" }),
+  pocheMissionSupprimer: (id) => call(`/poche/missions/${encodeURIComponent(id)}`, { method: "DELETE" }),
   prixDocument: (id) => call(`/documents/${encodeURIComponent(id)}/prix`),
   chercherPrix: (id) => call(`/documents/${encodeURIComponent(id)}/prix/chercher`, { method: "POST" }),
   suiviCourriers: () => call("/courriers/suivi"),
@@ -462,6 +487,60 @@ const serverApi: Api = {
 };
 
 // ---------- demo adapter ----------
+/** Demo of the pocket money: the same count as the server (pocheCalcul), kept in memory, with a teenager already set up. */
+function pocheDemo(membres: () => Member[]): Pick<Api, "poche" | "pocheReglage" | "pocheMouvement" | "pocheEffacer" | "pocheObjectif" | "pocheObjectifMettre" | "pocheObjectifAcheter" | "pocheObjectifSupprimer" | "pocheMission" | "pocheMissionPayer" | "pocheMissionSupprimer"> {
+  const auj = () => new Date().toISOString().slice(0, 10);
+  const il = (n: number) => new Date(Date.now() - n * 86400_000).toISOString().slice(0, 10);
+  const id = () => crypto.randomUUID();
+  const c2 = (n: number) => Math.round(n * 100) / 100;
+  const reglages = new Map<string, ReglagePoche>();
+  let mouvements: MouvementPoche[] = []; // newest first
+  let objectifs: ObjectifPoche[] = [];
+  let missions: MissionPoche[] = [];
+  const ado = membres().filter((m) => m.role === "enfant").sort((a, b) => (a.date_naissance ?? "9").localeCompare(b.date_naissance ?? "9"))[0];
+  if (ado) {
+    reglages.set(ado.id, { member_id: ado.id, montant: 12, frequence: "semaine", jour: 6, depuis: il(45), actif: true });
+    mouvements = [
+      { id: id(), member_id: ado.id, date: il(3), type: "depense", montant: -9.5, libelle: "Cinéma avec Inès", auto: false },
+      { id: id(), member_id: ado.id, date: il(9), type: "mission", montant: 10, libelle: "Garder Jean samedi soir", auto: false },
+      { id: id(), member_id: ado.id, date: il(16), type: "depense", montant: -14, libelle: "Cadeau d'anniversaire de Chloé", auto: false },
+      { id: id(), member_id: ado.id, date: il(30), type: "bonus", montant: 20, libelle: "Très bon bulletin", auto: false },
+    ];
+    objectifs = [{ id: id(), member_id: ado.id, titre: "Billet de concert", cible: 65, mis_de_cote: 40, cree_le: il(40) }];
+    missions = [{ id: id(), member_id: ado.id, titre: "Garder Jean un soir", montant: 10, cree_le: il(40) }, { id: id(), member_id: ado.id, titre: "Laver la voiture", montant: 8, cree_le: il(20) }];
+  }
+  const lire = (mid: string): EtatPoche => {
+    const m = membres().find((x) => x.id === mid && x.role === "enfant");
+    if (!m) throw new ApiError(404, "membre", "L'argent de poche se tient pour un enfant du foyer.");
+    const r = reglages.get(mid) ?? null;
+    if (r) {
+      const dernier = mouvements.filter((x) => x.member_id === mid && x.auto).map((x) => x.date).sort().pop() ?? null;
+      for (const d of versementsDus(r, dernier, auj())) mouvements.push({ id: id(), member_id: mid, date: d, type: "versement", montant: r.montant, libelle: LIBELLE_VERSEMENT(r.frequence), auto: true });
+    }
+    return etatPoche({ member_id: mid, prenom: m.prenom, reglage: r, mouvements: mouvements.filter((x) => x.member_id === mid), objectifs: objectifs.filter((x) => x.member_id === mid), missions: missions.filter((x) => x.member_id === mid), aujourdhui: auj() });
+  };
+  const obj = (oid: string) => { const o = objectifs.find((x) => x.id === oid); if (!o) throw new ApiError(404, "introuvable", "Objectif introuvable."); return o; };
+  return {
+    poche: async (m) => lire(m),
+    pocheReglage: async (m, r) => { reglages.set(m, { member_id: m, montant: c2(r.montant), frequence: r.frequence, jour: r.jour, depuis: auj(), actif: r.actif && r.montant > 0 }); return lire(m); },
+    pocheMouvement: async (m, x) => { mouvements.unshift({ id: id(), member_id: m, date: auj(), type: x.type, montant: c2(signePoche(x.type) * x.montant), libelle: x.libelle, auto: false }); return lire(m); },
+    pocheEffacer: async (i) => { const x = mouvements.find((y) => y.id === i); mouvements = mouvements.filter((y) => y.id !== i); return lire(x?.member_id ?? ""); },
+    pocheObjectif: async (m, o) => { objectifs.push({ id: id(), member_id: m, titre: o.titre, cible: c2(o.cible), mis_de_cote: 0, cree_le: auj() }); return lire(m); },
+    pocheObjectifMettre: async (i, montant) => {
+      const o = obj(i); const e = lire(o.member_id);
+      const voulu = c2(Math.max(0, Math.min(o.cible, o.mis_de_cote + montant)));
+      const possible = c2(Math.min(voulu, o.mis_de_cote + Math.max(0, e.disponible)));
+      if (montant > 0 && possible <= o.mis_de_cote) throw new ApiError(400, "disponible", `${e.prenom} n'a plus rien de disponible à mettre de côté.`);
+      o.mis_de_cote = montant > 0 ? possible : voulu; return lire(o.member_id);
+    },
+    pocheObjectifAcheter: async (i) => { const o = obj(i); if (o.mis_de_cote > 0) mouvements.unshift({ id: id(), member_id: o.member_id, date: auj(), type: "depense", montant: -o.mis_de_cote, libelle: o.titre, auto: false }); objectifs = objectifs.filter((x) => x.id !== i); return lire(o.member_id); },
+    pocheObjectifSupprimer: async (i) => { const o = obj(i); objectifs = objectifs.filter((x) => x.id !== i); return lire(o.member_id); },
+    pocheMission: async (m, x) => { missions.push({ id: id(), member_id: m, titre: x.titre, montant: c2(x.montant), cree_le: auj() }); return lire(m); },
+    pocheMissionPayer: async (i) => { const mi = missions.find((x) => x.id === i); if (!mi) throw new ApiError(404, "introuvable", "Mission introuvable."); mouvements.unshift({ id: id(), member_id: mi.member_id, date: auj(), type: "mission", montant: mi.montant, libelle: mi.titre, auto: false }); return lire(mi.member_id); },
+    pocheMissionSupprimer: async (i) => { const mi = missions.find((x) => x.id === i); missions = missions.filter((x) => x.id !== i); return lire(mi?.member_id ?? ""); },
+  };
+}
+
 const mensuelDemo = (d: Doc) => Math.round((d.montant ?? 0) * (d.periodicite === "annuel" ? 1 / 12 : d.periodicite === "trimestriel" ? 1 / 3 : 1) * 100) / 100;
 
 /** A finished « Chercher moins cher » for the demo: invented suppliers, so that no real price is claimed. */
@@ -628,6 +707,7 @@ function makeDemoApi(): Api {
       return brouillon;
     },
     courrierPdf: async () => { throw new ApiError(400, "demo", "En démonstration, le courrier se copie en texte."); },
+    ...pocheDemo(() => state.famille.membres),
     envoyerCourrier: async (c) => {
       // nothing leaves in the demo: the letter is only noted, so that the follow-up can be tried
       state.envois.push({ id: nouvelId(), document_id: c.document_id, destinataire: c.email, objet: c.objet, envoye_le: new Date().toISOString() });
