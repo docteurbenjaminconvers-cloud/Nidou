@@ -21,7 +21,8 @@ interface Etape {
 const facture = (docs: Doc[]) => docs.find((d) => d.category === "energie" && /facture/i.test(d.title));
 const ETAPES: Etape[] = [
   { ecran: "home", titre: "Bienvenue chez Lucien", texte: "Voici la famille Martin, une famille de démonstration. Je vous fais visiter en deux minutes. Tout se manipule, et rien n'est enregistré.", essayer: "Touchez cette bulle pour avancer." },
-  { ecran: "home", titre: "Aujourd'hui", texte: "L'écran du matin : la prochaine échéance en grand, la journée de chacun et les économies déjà trouvées." },
+  { ecran: "home", titre: "Aujourd'hui", texte: "L'accueil va à l'essentiel : une question à Lucien, ce qu'il y a à faire, puis vos rubriques." },
+  { ecran: "home", cible: ".rubriques", titre: "Vos rubriques, à la carte", texte: "Chaque foyer compose son accueil : gardez ce qui vous sert, retirez le reste, ajoutez une rubrique quand vous en avez besoin.", essayer: "Touchez « Personnaliser »." },
   { ecran: "add", cible: ".dropzone", titre: "Ajouter un papier", texte: "Une photo, un PDF, ou plusieurs d'un coup. Un recto verso devient un seul document. Lucien lit tout : dates, montants, coordonnées, références.", essayer: "Collez le texte d'une facture plus bas, puis « Lire et ranger »." },
   { ecran: "add", cible: ".depot-email", titre: "Ou par email", texte: "Chaque foyer a son adresse Lucien. Transférez-y une facture ou les photos d'un courrier : le papier est rangé et Lucien vous répond quand c'est fait." },
   { ecran: "docs", titre: "Papiers", texte: "Tout est classé et se retrouve par organisme, par numéro ou par un mot du document. Les papiers d'identité vont au coffre, chiffrés.", essayer: "Touchez un papier pour l'ouvrir." },
